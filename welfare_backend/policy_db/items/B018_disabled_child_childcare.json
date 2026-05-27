@@ -1,0 +1,407 @@
+{
+  "id": "B018",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 18,
+  "title": "장애아 보육료 지원 (만 12세 이하 장애아동)",
+  "short_summary": "장애아 보육료 지원(만12세 이하 장애아동) (전단지 원문)",
+  "category": "보육·교육",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": "정액 정부지원단가(소득 무관 전액)",
+    "amount": "2026년 기준 장애아 종일반(교사 대 아동비율 1:3, 장애아 전담교사 배치) 월 634,000원. 연장반 야간연장보육료(시간당 3,000원, 월 60시간 한도). 장애아 방과후보육료(초등학교 취학 만 12세 이하)는 별도 정부고시 단가(2026년 기준 약 532,000원 수준, 연도별 보육사업안내 확인 필요)로 지원. 기관보육료 추가지원: 인건비 미지원 민간·가정어린이집에서 장애아동 보육 시 기관보육료 별도 지원(0~2세반 장애아 포함).",
+    "scope": "어린이집(국공립·민간·가정·직장·장애아전문/장애아통합)·유치원·특수학교 유치부 등 영유아보육법·유아교육법 적용 보육·교육시설의 정부지원분 전액. 시·도지사가 정한 수납한도액 내에서 부모부담 보육료가 면제. 단, 차액보육료(특별활동비·견학비 등 부모 자율부담)는 별도. 서울 등 일부 광역시도는 추가 수당(예: 서울시 장애아 보육수당) 별도 운영."
+  },
+  "eligibility": {
+    "target": "장애인복지카드(등록증)를 소지한 만 12세 이하 미취학 또는 취학 장애아동",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "companion_allowed": null,
+    "income_criteria": "소득기준 없음(전액 지원). 부모 소득·재산과 무관.",
+    "age_criteria": "원칙: 만 0~5세 미취학 장애영유아 + 초등학교 취학 만 6~12세 장애아동(방과후보육료). 예외: 「장애인 등에 대한 특수교육법」 제15조에 따른 특수교육대상자로 선정된 만 3~5세는 장애인등록증이 없어도 특수교육대상자 진단·평가 결과 통지서로 지원. 장애소견이 있는 의사진단서를 제출하는 만 5세 이하 영유아도 한시적 지원. 부득이한 사유(질병 등)로 취학을 유예한 만 6~12세도 지원.",
+    "residency_criteria": "주민등록상 주소지 시·군·구의 사업안내 적용. 전국 공통이나 일부 광역지자체는 추가 수당(예: 서울시 장애아 보육수당) 운영."
+  },
+  "legal_basis": [
+    {
+      "name": "영유아보육법",
+      "article": "제34조(무상보육), 제34조의2(양육수당), 제35조(보육 우선 제공), 제36조(국가 및 지방자치단체의 비용 보조)",
+      "url": "https://www.law.go.kr/법령/영유아보육법"
+    },
+    {
+      "name": "영유아보육법 시행령",
+      "article": "제22조(무상보육 실시), 제23조(보육비용의 보조)",
+      "url": "https://www.law.go.kr/법령/영유아보육법시행령"
+    },
+    {
+      "name": "장애인복지법",
+      "article": "제38조(자녀교육비 지급)·제39조(보육의 우선 제공) 관련",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인 등에 대한 특수교육법",
+      "article": "제15조(특수교육대상자의 선정), 제18조(장애영아 교육지원)",
+      "url": "https://www.law.go.kr/법령/장애인등에대한특수교육법"
+    },
+    {
+      "name": "보건복지부 보육사업안내(연도별 고시)",
+      "article": "장애아 보육료 지원 단가표",
+      "url": "https://central.childcare.go.kr/"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국(중앙)",
+      "agency": "보건복지부 보육정책관 보육지원과",
+      "lines_or_routes": [],
+      "apply_channel": "보건복지부 보육사업안내(연 1회 고시)에 따라 전국 단가·운영기준 일괄 고시",
+      "card_or_proof_type": "장애인복지카드(등록증) 또는 특수교육대상자 진단·평가 결과 통지서",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10704010000",
+      "notes": "매년 1월 보육사업안내 개정 시 단가 확정. 2026년 장애아 종일반 월 634,000원."
+    },
+    {
+      "region": "전국(운영지원)",
+      "agency": "중앙육아종합지원센터(한국보육진흥원 위탁 운영)",
+      "lines_or_routes": [],
+      "apply_channel": "아이사랑 포털(childcare.go.kr)을 통해 어린이집 입소·보육료 결제 관리",
+      "card_or_proof_type": "국민행복카드(아이행복카드)",
+      "url": "https://central.childcare.go.kr/",
+      "notes": "장애아 보육료 지원 단가·기준 상세 안내, 어린이집 검색, 보육료 신청 지원."
+    },
+    {
+      "region": "서울",
+      "agency": "서울특별시(서울시 보육담당관) 및 25개 자치구",
+      "lines_or_routes": [],
+      "apply_channel": "주소지 동주민센터 방문 또는 복지로 온라인 신청",
+      "card_or_proof_type": "국민행복카드(아이행복카드), 장애인복지카드",
+      "url": "https://news.seoul.go.kr/welfare/archives/114913",
+      "notes": "서울시는 국가 기본 장애아 보육료 외에 '서울시 장애아 보육수당' 별도 운영(서울 거주 장애아동 대상 추가 지원). 서울시 육아종합지원센터(seoulchildcare.go.kr)에서 어린이집 검색 가능."
+    },
+    {
+      "region": "경기",
+      "agency": "경기도(경기도 여성가족국) 및 31개 시·군",
+      "lines_or_routes": [],
+      "apply_channel": "주소지 동주민센터 방문 또는 복지로 온라인 신청",
+      "card_or_proof_type": "국민행복카드(아이행복카드)",
+      "url": "https://ggyc.childcare.go.kr/",
+      "notes": "경기도 육아종합지원센터에서 장애아 어린이집 목록 검색 가능. 시·군별 수납한도액 상이할 수 있음."
+    },
+    {
+      "region": "부산",
+      "agency": "부산광역시(부산시 보육지원팀) 및 16개 구·군",
+      "lines_or_routes": [],
+      "apply_channel": "주소지 동주민센터 방문 또는 복지로 온라인 신청",
+      "card_or_proof_type": "국민행복카드(아이행복카드)",
+      "url": "https://busan.childcare.go.kr/",
+      "notes": "부산육아종합지원센터에서 지역 내 장애아 통합·전문 어린이집 검색 가능."
+    },
+    {
+      "region": "대구",
+      "agency": "대구광역시(대구시 보육청소년과) 및 8개 구·군",
+      "lines_or_routes": [],
+      "apply_channel": "주소지 동주민센터 방문 또는 복지로 온라인 신청",
+      "card_or_proof_type": "국민행복카드(아이행복카드)",
+      "url": "https://daegu.go.kr/woman/index.do?menu_id=00050122",
+      "notes": "대구시 보육료 지원 단가는 전국 공통 기준 적용."
+    },
+    {
+      "region": "인천",
+      "agency": "인천광역시(인천시 보육지원팀) 및 10개 구·군",
+      "lines_or_routes": [],
+      "apply_channel": "주소지 동주민센터 방문 또는 복지로 온라인 신청",
+      "card_or_proof_type": "국민행복카드(아이행복카드)",
+      "url": "https://www.incheon.go.kr/",
+      "notes": "인천 육아종합지원센터(inyc.childcare.go.kr)에서 어린이집 검색 가능."
+    }
+  ],
+  "how_to_use": {
+    "default": "(1) 동주민센터 또는 복지로에서 '장애아 보육료'로 자격 신청 → (2) 자격 인정 후 국민행복카드(아이행복카드)를 신청·발급 → (3) 어린이집/유치원에 카드 결제로 출석일수에 따라 정부지원금 자동 청구. 부모는 차액보육료(있는 경우)만 부담.",
+    "with_card": "이미 발급된 국민행복카드(BC·롯데·삼성·신한·KB국민·NH농협 중 1개)로 어린이집·유치원의 단말기에 매월 결제. 출석부 연동. 카드 미결제 시 정부지원금 미청구로 본인 전액 부담 위험.",
+    "without_card": "카드 미보유 시: 시설에 임시 등록 후 카드 발급 즉시 결제로 처리. 카드 발급 전까지는 자격 결정일로 소급 적용.",
+    "exceptions": "국·공립 특수학교 유치부에 다니는 경우 무상교육이 우선 적용되며 중복 지원되지 않음. 단, 특수학교 미배치 상태로 장애영유아 어린이집에서 순회교육을 받는 경우는 예외적으로 보육료 지원 가능. 유치원(사립) 장애유아는 유아학비(누리과정) 지원과 특수교육비 추가 지원이 중복 적용 가능."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "주소지 동주민센터(행정복지센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "복지로 온라인 신청",
+        "method": "온라인",
+        "url": "https://online.bokjiro.go.kr/apl/info/aplInfoNurView.do"
+      },
+      {
+        "channel": "정부24 — 장애아 보육료 신청",
+        "method": "온라인",
+        "url": "https://www.gov.kr/portal/service/serviceInfo/PTG000050097"
+      },
+      {
+        "channel": "국민행복카드 발급(BC·삼성·신한·KB국민·NH농협 카드사·은행)",
+        "method": "온라인",
+        "url": "https://www.voucher.go.kr/"
+      },
+      {
+        "channel": "임신육아종합포털 아이사랑(어린이집 입소·결제·시설 검색)",
+        "method": "온라인",
+        "url": "https://www.childcare.go.kr/"
+      },
+      {
+        "channel": "시·도 육아종합지원센터(지역별 장애아 어린이집 안내)",
+        "method": "방문",
+        "url": "https://central.childcare.go.kr/"
+      }
+    ],
+    "required_documents": [
+      "사회복지서비스 및 급여 제공(변경) 신청서(현장 비치)",
+      "장애인복지카드(또는 장애인등록증) 사본",
+      "신청인 신분증(주민등록증·운전면허증 등)",
+      "특수교육대상자: 진단·평가 결과 통지서(교육청 발급)",
+      "만 5세 이하 비등록 영유아: 의사진단서(장애소견)",
+      "취학유예자: 취학유예통지서",
+      "가족관계증명서 또는 주민등록등본(대리 신청 시)",
+      "대리인 신분증 및 위임장(대리 신청 시)",
+      "국민행복카드 발급 신청서(은행·카드사 별도 양식)",
+      "보육료 지원신청서(어린이집 입소 시 시설에서 수령 가능)"
+    ],
+    "processing_period": "신청 후 14일 이내(특별한 사유 시 16일 이내 연장). 결정일자부터 보육료 지원 적용. 입소 전 미리 신청 권장(소급 불가).",
+    "fee": {
+      "default": "무료(신청·자격결정 수수료 없음).",
+      "exceptions": "차액보육료(특별활동비·현장학습비·교재비 등 자율부담)는 별도 부담."
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "장애아 보육료는 만 12세 도래 월까지 또는 시설 이용 종료 시점까지 지속. 매년 자격 재확인은 불필요(아동 연령·시설 변동 시 자동 갱신).",
+    "renewal": "만 13세 도래·시설 종료·장애 재판정 결과 변경 시 종료. 시설 변경 시 복지로/동주민센터에 시설 정보 갱신 필요."
+  },
+  "exceptions_and_caveats": [
+    "특수학교(영아학급·유치원과정·초등학교 과정 포함) 이용 시 무상교육 우선 적용 — 보육료 중복 지원 불가.",
+    "차액보육료(특별활동비·현장학습비·교재비 등 부모 자율부담)는 정부지원에서 제외.",
+    "보육료를 거짓으로 지원받거나 타인이 받게 한 경우 영유아보육법 제54조에 따라 1년 이하 징역 또는 1천만원 이하 벌금, 부당이득 전액 환수.",
+    "장애아 종일반(1:3 비율, 전담교사 배치) 운영 미준수 시 일반 영유아 보육료 단가 적용(중증·경증 구분 없음).",
+    "방학기간 중 종일제 보육 이용 취학아동은 별도 산정식 적용(출석일수 기준 월 상한 다름).",
+    "광역지자체에 따라 추가 수당·바우처(예: 서울시 장애아 가족지원수당) 별도 운영, 본 항목과 병용 가능.",
+    "보육료(시설 이용)와 양육수당(가정양육) 중복 불가 — 매월 1일자로 전환 신청 가능.",
+    "부모급여(0~23개월) 수급 중 어린이집 이용 시 보육료와 부모급여 차액 지급 방식 적용(중복 아님).",
+    "국민행복카드 미결제(미사용) 월은 지원금이 청구되지 않으므로 매월 결제 필수.",
+    "장애아 전담교사 자격: 특수교사 자격증 소지자, 「장애아동 복지지원법」상 장애영유아 보육교사 자격증 소지자 중 하나여야 전담교사 배치 인정."
+  ],
+  "penalties_for_misuse": "영유아보육법 제54조: 거짓·부정한 방법으로 보육료를 받은 자는 1년 이하 징역 또는 1천만원 이하 벌금. 보육료 부정수급 적발 시 전액 환수.",
+  "faq": [
+    {
+      "q": "장애인등록증이 없어도 장애아 보육료를 받을 수 있나요?",
+      "a": "원칙은 장애인복지카드 소지자이지만, 만 3~5세에 「장애인 등에 대한 특수교육법」 제15조에 따른 특수교육대상자로 선정된 경우에는 교육청에서 발급한 진단·평가 결과 통지서로 지원받을 수 있습니다. 또한 만 5세 이하 영유아가 장애소견이 있는 의사진단서를 제출하면 한시적으로 지원이 가능합니다."
+    },
+    {
+      "q": "월 단가가 얼마인가요? 부모가 따로 내야 하는 돈은요?",
+      "a": "2026년 기준 장애아 종일반(교사 1명당 아동 3명 비율, 장애아 전담교사 배치) 단가는 월 634,000원입니다. 정부가 시설에 직접 지급하며, 부모는 시·도지사가 정한 수납한도액 범위에서는 추가 부담이 없습니다. 다만 특별활동비·현장학습비·교재비 등 부모 자율부담 항목(차액보육료)은 별도입니다."
+    },
+    {
+      "q": "초등학교에 다니는 장애아동도 받을 수 있나요?",
+      "a": "네, 만 12세 이하 취학 장애아동은 '장애아 방과후보육료'를 어린이집 또는 지역아동센터·특수학교 방과후 과정에서 지원받습니다. 2026년 방과후보육료 단가는 정부고시 별도 통보(2026년 기준 약 532,000원 수준, 연도별 확인 필요)됩니다. 질병 등 부득이한 사유로 취학을 유예한 만 6~12세 아동은 종일반 단가(월 634,000원)가 그대로 적용됩니다."
+    },
+    {
+      "q": "신청은 어디서 하나요?",
+      "a": "주소지 동주민센터(행정복지센터)에 방문하거나 복지로(online.bokjiro.go.kr) 또는 정부24에서 온라인으로 신청합니다. 자격이 결정되면 국민행복카드(BC·삼성·신한·KB국민·NH농협 등)를 발급받아 어린이집·유치원에서 결제합니다."
+    },
+    {
+      "q": "유치원·특수학교 다니는 경우는요?",
+      "a": "국·공립 특수학교 유치부에 다니는 경우 무상교육이 우선이며 보육료는 중복 지원되지 않습니다. 사립유치원의 경우 유아학비(누리과정) 지원이 적용되며, 장애유아는 특수교육비 추가 지원이 가능합니다. 어린이집과 유치원을 옮긴 경우 자격은 자동 승계되지만 시설 정보는 동주민센터·복지로에 갱신해야 합니다."
+    },
+    {
+      "q": "소득 제한이 있나요?",
+      "a": "없습니다. 장애아 보육료는 소득·재산과 무관하게 전액 정부지원입니다. 따라서 가구 소득과 상관없이 장애인복지카드(또는 특수교육대상자 통지서)만 있으면 신청 가능합니다."
+    },
+    {
+      "q": "처리 기간이 얼마나 걸리나요?",
+      "a": "신청 후 14일 이내 결정(특별한 사유가 있으면 16일 이내 연장). 결정일자부터 보육료가 적용되며, 결정일 이전에 시설을 이용한 비용은 소급 처리되지 않으므로 가능한 한 입소 전에 미리 신청하는 것이 좋습니다."
+    },
+    {
+      "q": "다른 수당(부모급여·양육수당)과 같이 받을 수 있나요?",
+      "a": "장애아 보육료(시설 이용)와 양육수당(가정양육)은 중복 수령이 불가합니다. 시설을 이용하면 보육료, 가정에서 양육하면 양육수당(또는 부모급여)을 받을 수 있습니다. 매월 1일자로 보육료와 양육수당 간 전환 신청이 가능합니다."
+    }
+  ],
+  "sources": [
+    {
+      "title": "장애아 보육료 — 중앙육아종합지원센터",
+      "publisher": "중앙육아종합지원센터",
+      "publisher_type": "공기업",
+      "url": "https://central.childcare.go.kr/lcentral/d1_30000/d1_600058/d1_600320/d1_600323.jsp",
+      "fallback_url": "https://central.childcare.go.kr/lcentral/d1_30000/d1_600058/d1_600320/d1_600321.jsp",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 단가표 영역",
+        "robots_txt_ok": true,
+        "notes": "단가는 매년 1월 보건복지부 보육사업안내 고시에 따라 갱신."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "장애아보육료 지원 — 복지로",
+      "publisher": "보건복지부 복지로",
+      "publisher_type": "중앙정부",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00001067",
+      "fallback_url": "https://online.bokjiro.go.kr/apl/info/aplInfoNurView.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "어린이집 보육료 지원 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://www.easylaw.go.kr/CSP/CnpClsMain.laf?csmSeq=626&ccfNo=2&cciNo=3&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "영유아보육법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/영유아보육법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인 등에 대한 특수교육법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인등에대한특수교육법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국민행복카드 — 사회서비스사업 13종",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "http://www.voucher.go.kr/voucher/healthCare.do",
+      "fallback_url": "https://www.voucher.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "임신육아종합포털 아이사랑(어린이집 입소·결제)",
+      "publisher": "한국보육진흥원",
+      "publisher_type": "공기업",
+      "url": "https://www.childcare.go.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "2026년도 서울시 보육료 지원단가",
+      "publisher": "서울특별시",
+      "publisher_type": "광역지자체",
+      "url": "https://news.seoul.go.kr/welfare/archives/114913",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

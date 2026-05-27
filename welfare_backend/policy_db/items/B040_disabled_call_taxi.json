@@ -1,0 +1,808 @@
+{
+  "id": "B040",
+  "leaflet_section": "기타",
+  "leaflet_number": 40,
+  "title": "장애인 콜택시(특별교통수단) 운영",
+  "short_summary": "보행상 장애가 심한 등록 장애인이 거주지 이동지원센터에 사전 등록 후 전화·앱으로 호출해 이용하는 휠체어 탑승 설비 택시. 일반 콜택시 대비 약 35~50% 요금.",
+  "category": "교통",
+  "benefit_type": "서비스제공",
+  "supported_amount": {
+    "rate": null,
+    "amount": null,
+    "scope": "일반 콜택시 대비 약 35~50% 수준의 정액 또는 거리비례 요금. 시·도별 상이. 서울 기준 5km까지 1,500원, 부산 기준 5km까지 1,800원. 결제는 현금·카드·교통카드·계좌이체 등 지자체별 가능 수단 상이."
+  },
+  "eligibility": {
+    "target": "「장애인복지법 시행규칙」 제28조 제1항에 따른 보행상의 장애가 심한(중증) 등록 장애인. 지체장애·뇌병변장애 중 보행에 심각한 지장이 있는 중증 장애인이 주요 대상. 일부 지자체는 조례 또는 심의회 인정으로 임산부·65세 이상 고령자 등 추가 허용.",
+    "severity_levels": ["심한 장애(중증)"],
+    "companion_allowed": {
+      "applicable_to": "심한 장애(중증)",
+      "count": 2,
+      "scope": "보호자(동반인) 1~2명까지 동승 가능. 경기도 기준 동반 가족·보호자 2명 이내. 지자체별 상이."
+    },
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "원칙적으로 해당 지자체 거주자. 수도권(서울·인천·경기)은 2023.12.21부터 광역 협약으로 수도권 전역 이용 가능(사전 예약 필수, 07~22시). 도 단위 광역이동지원센터는 도내 시·군 간 이동 지원."
+  },
+  "legal_basis": [
+    {
+      "name": "교통약자의 이동편의 증진법",
+      "article": "제2조(정의), 제16조(특별교통수단의 운행 등) ①②③, 제17조(이동지원센터 설치 등)",
+      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법"
+    },
+    {
+      "name": "교통약자의 이동편의 증진법 시행령",
+      "article": "특별교통수단 운행 대수 기준 등 위임 규정",
+      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법시행령"
+    },
+    {
+      "name": "교통약자의 이동편의 증진법 시행규칙",
+      "article": "특별교통수단 차량 대수 기준, 이동지원센터 운영 기준",
+      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법시행규칙"
+    },
+    {
+      "name": "장애인복지법 시행규칙",
+      "article": "제28조 제1항(보행상의 장애인 범위)",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "서울특별시",
+      "agency": "서울시설공단 장애인콜택시(바로콜)",
+      "lines_or_routes": [],
+      "apply_channel": "서울시설공단 장애인콜택시 이용등록 신청 — 방문(거주지 동주민센터 경유) 또는 온라인(서울시설공단 홈페이지 바로콜 앱)",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "https://www.sisul.or.kr/open_content/calltaxi/",
+      "notes": "콜번호 1588-4388 / 02-2024-4200. 24시간 연중무휴. 호출 방법: 전화, 장애인콜택시 앱, 문자(청각장애인). 서울 기준 5km까지 1,500원, 5~10km km당 280원, 10km 초과 km당 70원. 대기 요금 없음. 수도권 광역 이동(인천·경기) 사전 예약제(이용일 하루 전, 07~22시)."
+    },
+    {
+      "region": "인천광역시",
+      "agency": "인천교통약자이동지원센터 반디콜",
+      "lines_or_routes": [],
+      "apply_channel": "인천교통약자이동지원센터 방문 또는 전화 신청",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "https://www.intis.or.kr/",
+      "notes": "콜번호 1577-0320 / 032-430-7000. 운영시간 확인 필요. 호출 방법: 전화, 인터넷 예약(intis.or.kr). 시내 기본요금 2km까지 1,200원, 2~10km km당 200원, 10km 초과 5km당 300원. 시외 요금 시내의 2배. 서울 강서구·경기 김포·시흥·부천 등 일부 인접 지역까지 운행 범위 확대. 예약은 이용일 2일 전부터 가능."
+    },
+    {
+      "region": "부산광역시",
+      "agency": "부산시설공단 두리발",
+      "lines_or_routes": [],
+      "apply_channel": "부산시설공단 두리발 이동지원센터 방문 또는 전화 신청",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "http://www.duribal.co.kr/",
+      "notes": "콜번호 1555-1114 / 051-466-8800. 24시간 운영. 호출 방법: 전화, 앱. 기본요금 5km까지 1,800원, 422m당 100원·102초당 100원 추가. 일반 택시의 약 35% 수준. 2025년 4월부터 특별교통수단과 교통약자 콜택시 통합 운영."
+    },
+    {
+      "region": "대구광역시",
+      "agency": "대구공공시설관리공단 나드리콜",
+      "lines_or_routes": [],
+      "apply_channel": "대구공공시설관리공단 나드리콜 이동지원센터 방문 또는 전화 신청",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "https://nadrihome.dpfc.or.kr/",
+      "notes": "콜번호 1577-6776 / 053-603-6000. 전일 예약제(접수 평일 09~16시). 당일 즉시 배차 어려움. 호출 방법: 전화. 시내 정액 요금(도시철도 요금 3배 초과 금지). 차량 약 200대 운영."
+    },
+    {
+      "region": "대전광역시",
+      "agency": "대전교통약자이동지원센터(대전광역시사회서비스원 위탁)",
+      "lines_or_routes": [],
+      "apply_channel": "대전교통약자이동지원센터 방문 또는 전화 신청",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "https://www.djcall.or.kr/",
+      "notes": "가입 콜번호 042-612-1050 / 차량접수 042-612-1010. 운영시간 확인 필요. 호출 방법: 전화, 앱(사랑나눔콜), 홈페이지."
+    },
+    {
+      "region": "광주광역시",
+      "agency": "광주광역시교통약자이동지원센터 새빛콜",
+      "lines_or_routes": [],
+      "apply_channel": "광주광역시교통약자이동지원센터 방문 또는 전화 신청",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "https://gjtsc.com/",
+      "notes": "콜번호 1668-2222. 운영시간 확인 필요. 호출 방법: 전화."
+    },
+    {
+      "region": "울산광역시",
+      "agency": "울산교통약자이동지원센터 부르미",
+      "lines_or_routes": [],
+      "apply_channel": "울산교통약자이동지원센터 방문 또는 전화 신청",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "https://www.usdws.or.kr/",
+      "notes": "콜번호 052-292-8253. 운영시간 확인 필요. 호출 방법: 전화."
+    },
+    {
+      "region": "세종특별자치시",
+      "agency": "세종도시교통공사 누리콜",
+      "lines_or_routes": [],
+      "apply_channel": "세종도시교통공사 이동지원센터 방문 또는 전화 신청",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "https://nuricall.sctc.kr/",
+      "notes": "콜번호 1899-9042. 운영시간 확인 필요. 호출 방법: 전화, 앱(누리콜), 홈페이지."
+    },
+    {
+      "region": "경기도",
+      "agency": "경기도교통약자광역이동지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "경기도교통약자광역이동지원센터 방문 또는 전화 신청. 시·군별 이동지원센터 경유 가능",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "https://ggsts.gg.go.kr/",
+      "notes": "콜번호 1666-0420 / 031-857-0420. 24시간 연중무휴. 호출 방법: 전화, AI상담, 앱, 모바일웹. 동반 가족·보호자 2명 이내."
+    },
+    {
+      "region": "강원특별자치도",
+      "agency": "강원특별자치도광역이동지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "강원특별자치도광역이동지원센터 방문 또는 전화 신청. 시·군별 이동지원센터 경유 가능",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "https://call.gwd.go.kr/",
+      "notes": "콜번호 1577-2014. 운영시간 확인 필요. 호출 방법: 전화, 앱."
+    },
+    {
+      "region": "충청북도",
+      "agency": "충청북도광역이동지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "충청북도광역이동지원센터 방문 또는 전화 신청. 시·군별 이동지원센터 경유 가능",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "http://chungbuk-th-back.essetel.co.kr/",
+      "notes": "콜번호 1533-0220. 운영시간 확인 필요. 호출 방법: 전화."
+    },
+    {
+      "region": "충청남도",
+      "agency": "충청남도광역이동지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "충청남도광역이동지원센터 방문 또는 전화 신청. 시·군별 이동지원센터 경유 가능",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "http://www.16445588.or.kr/",
+      "notes": "콜번호 1644-5588. 운영시간 확인 필요. 호출 방법: 전화."
+    },
+    {
+      "region": "전북특별자치도",
+      "agency": "전북특별자치도광역이동지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "전북특별자치도광역이동지원센터 방문 또는 전화 신청. 시·군별 이동지원센터 경유 가능",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "http://www.0632270002.com/",
+      "notes": "콜번호 063-227-0002. 운영시간 확인 필요. 호출 방법: 전화."
+    },
+    {
+      "region": "전라남도",
+      "agency": "전라남도광역이동지원센터(도움콜)",
+      "lines_or_routes": [],
+      "apply_channel": "전라남도광역이동지원센터 방문 또는 전화 신청(이용등록 061-287-8341). 시·군별 이동지원센터 경유 가능",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "https://www.doumcall.kr/",
+      "notes": "콜번호 1899-1110 / 이용등록 061-287-8341. 운영시간 확인 필요. 호출 방법: 전화."
+    },
+    {
+      "region": "경상북도",
+      "agency": "경북광역이동지원센터(부름콜)",
+      "lines_or_routes": [],
+      "apply_channel": "경북광역이동지원센터 방문 또는 전화 신청. 시·군별 이동지원센터 경유 가능",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "http://brmcall.co.kr/",
+      "notes": "콜번호 1899-7770. 운영시간 확인 필요. 호출 방법: 전화."
+    },
+    {
+      "region": "경상남도",
+      "agency": "경상남도광역이동지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "경상남도광역이동지원센터 방문 또는 전화 신청. 시·군별 이동지원센터 경유 가능",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "http://15664488.co.kr/",
+      "notes": "콜번호 1566-4488. 운영시간 확인 필요. 호출 방법: 전화."
+    },
+    {
+      "region": "제주특별자치도",
+      "agency": "제주특별자치도교통약자이동지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "제주특별자치도교통약자이동지원센터 방문 또는 전화 신청",
+      "card_or_proof_type": "이용등록신청서, 장애인등록증(복지카드) 사본, 신분증, 개인정보 동의서",
+      "url": "http://www.jejuhappycall.com",
+      "notes": "콜번호 1899-6884. 운영시간 확인 필요. 호출 방법: 전화, 예약. 일반 택시의 약 40% 요금(확인 필요). 동승 인원: 휠체어 이용 시 본인 포함 4명, 미이용 시 3명까지(사례 기준)."
+    }
+  ],
+  "how_to_use": {
+    "default": "거주지 이동지원센터에 회원 등록 후 전화·앱·인터넷 예약으로 호출. 차량이 배차되면 탑승하여 목적지까지 이동하고 정해진 요금을 결제.",
+    "call_methods": "① 전화 호출(가장 일반적): 각 지역 이동지원센터 콜번호로 직접 전화. ② 모바일 앱: 서울 '장애인콜택시' 앱, 경기도 광역이동지원 앱, 세종 '누리콜' 앱 등. ③ 인터넷 예약: 인천 intis.or.kr, 대전 djcall.or.kr 등. ④ 문자 접수: 서울 청각장애인 대상.",
+    "reservation": "즉시 호출: 서울·부산·경기 등 24시간 운영 지역에서 가능(차량 부족 시 대기 수십 분~수 시간 발생). 사전 예약: 대구는 전일 예약제(당일 배차 불가), 수도권 광역 이동(서울↔인천↔경기)은 이용일 하루 전 예약 필수(07~22시), 인천은 이용일 2일 전.",
+    "exceptions": "반드시 사전 회원 등록 후 이용. 비회원 당일 이용 불가. 시·도 경계를 넘는 이동은 원칙적 불가(수도권 광역 협약 예외). 일시적 휠체어 이용자는 3차 의료기관 진단서 제출 후 진료·치료 목적에 한해 이용 가능."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "거주지 이동지원센터(직접 방문)",
+        "method": "방문",
+        "url": "https://ggsts.gg.go.kr/"
+      },
+      {
+        "channel": "거주지 동주민센터(행정복지센터) 경유",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "각 지역 이동지원센터 전화 신청",
+        "method": "전화",
+        "url": null
+      },
+      {
+        "channel": "서울시설공단 바로콜 앱(서울 거주자)",
+        "method": "모바일 앱",
+        "url": "https://www.sisul.or.kr/open_content/calltaxi/introduce/join.jsp"
+      },
+      {
+        "channel": "인천 반디콜 인터넷 예약(인천 거주자)",
+        "method": "온라인",
+        "url": "https://www.intis.or.kr/"
+      }
+    ],
+    "required_documents": [
+      "이용등록신청서(현장 비치)",
+      "장애인등록증(복지카드) 앞·뒷면 사본",
+      "신분증(주민등록증·운전면허증 등)",
+      "개인정보 수집·이용 동의서",
+      "일시적 휠체어 이용자: 3차 의료기관 전문의 진단서(진료·치료 목적 확인용)",
+      "대리 신청 시: 위임장, 대리인 신분증"
+    ],
+    "processing_period": "통상 1주일~1개월(지자체별 상이). 신청 후 자격 심사를 거쳐 등록 승인 통보.",
+    "fee": {
+      "default": "등록 신청 자체는 무료. 이용 시 이용 요금 발생(지자체별 정액 또는 거리비례 요금).",
+      "exceptions": "서울 바우처택시 포인트 차감 방식 등 지자체별 결제 방식 상이."
+    },
+    "online_available": false,
+    "proxy_allowed": true
+  },
+  "exceptions_and_caveats": [
+    "반드시 사전 회원 등록 필요. 비회원 당일 즉시 이용 불가.",
+    "원칙적으로 거주 지자체 관할 구역 내 이동만 허용. 서울은 인접 12개 시 및 인천국제공항까지 사전 협의 시 이용 가능(진료 목적 등).",
+    "시·도 경계 초과 이동 불가 또는 추가 요금. 인천 시외 요금은 시내의 2배. 수도권(서울·인천·경기) 광역 협약은 사전 예약 필수(07~22시).",
+    "예약 후 무단 취소·노쇼(no-show) 일정 횟수 이상 시 이용 정지 등 제재. 지자체별 약관 확인 필요.",
+    "일시적 휠체어 이용자는 3차 의료기관 전문의 진단서 제출 후 진료·치료 목적에 한해 이용 가능. 비진료 목적 이용 제한.",
+    "대구 나드리콜은 전일 예약제로 당일 즉시 배차 불가. 수도권 광역 이동도 전일 예약 필수.",
+    "전국적 차량 부족으로 즉시 배차 어려운 경우 빈번. 출퇴근 시간대 수요 집중으로 대기 시간 길어질 수 있음.",
+    "이용 자격(등록 정보)은 일정 기간마다 재확인 절차가 있을 수 있음. 지자체별 갱신 주기 확인 필요.",
+    "정신적 장애(지적·정신·자폐성)의 경우 단독 탑승 기준이 지자체별 상이. 서울은 2025년 2월 1일 이후 단독 탑승 가능.",
+    "시각장애인·신장장애인은 별도 바우처·복지콜 등 이용 권장. 지자체별 이용 기준 확인 필요."
+  ],
+  "faq": [
+    {
+      "q": "장애인 콜택시 누구나 탈 수 있나요?",
+      "a": "아니요. 보행상 장애가 심한(중증) 등록 장애인만 원칙적으로 이용 가능합니다. 일부 지자체는 임산부·65세 이상 고령자 등을 조례 또는 심의회 인정으로 추가 허용합니다."
+    },
+    {
+      "q": "비회원도 당일 바로 이용할 수 있나요?",
+      "a": "아니요. 반드시 거주지 이동지원센터에 사전 회원 등록이 필요합니다. 등록 후 승인을 받아야 이용할 수 있습니다."
+    },
+    {
+      "q": "타 지역에 가도 이용 가능한가요?",
+      "a": "원칙적으로 거주 지자체 관할 구역 내에서만 이용 가능합니다. 수도권(서울·인천·경기)은 2023년 12월 21일부터 광역 협약으로 수도권 전역 이용이 가능하나 사전 예약이 필수입니다(07~22시). 그 외 지역은 도 단위 광역이동지원센터를 통해 도내 시·군 간 이동 지원을 받을 수 있습니다."
+    },
+    {
+      "q": "예약은 며칠 전부터 가능한가요?",
+      "a": "지자체별로 다릅니다. 서울 수도권 광역 이동은 이용일 하루 전에 예약해야 하고, 인천은 이용일 2일 전부터 예약 가능합니다. 대구는 전일 예약제로 반드시 하루 전에 예약해야 합니다."
+    },
+    {
+      "q": "동반자도 같이 탈 수 있나요?",
+      "a": "네. 보호자(동반인) 1~2명까지 동승이 가능합니다. 경기도 기준으로 동반 가족·보호자 2명 이내입니다. 지자체별 기준이 다를 수 있으므로 이용 지역 센터에 확인하세요."
+    },
+    {
+      "q": "요금은 얼마인가요?",
+      "a": "지역마다 다릅니다. 서울은 5km까지 1,500원, 부산은 5km까지 1,800원이며, 대체로 일반 택시의 35~50% 수준입니다. 제주는 일반 택시의 약 40% 수준(확인 필요). 정확한 요금은 각 지역 이동지원센터에 문의하세요."
+    },
+    {
+      "q": "앱으로도 부를 수 있나요?",
+      "a": "네. 서울은 '장애인콜택시' 앱, 경기도는 경기도 광역이동지원 앱, 세종은 '누리콜' 앱을 통해 호출할 수 있습니다. 전화 호출도 모든 지역에서 가능합니다."
+    },
+    {
+      "q": "노쇼(무단 취소) 페널티가 있나요?",
+      "a": "서울 등 일부 지자체에서는 일정 횟수 이상 무단 취소·노쇼 시 이용 정지 등의 제재가 있습니다. 지자체별 약관을 확인하고, 이용이 어려울 때는 미리 취소 연락을 해야 합니다."
+    },
+    {
+      "q": "야간·주말에도 이용 가능한가요?",
+      "a": "서울·부산·경기 등 일부 대도시는 24시간 연중무휴로 운영합니다. 중소 지자체는 운영 시간에 제한이 있을 수 있으므로, 이용 전 해당 지역 센터에 운영시간을 확인하세요."
+    },
+    {
+      "q": "다른 시·도로 이동도 가능한가요?",
+      "a": "시·도 경계를 넘는 이동은 원칙적으로 불가하거나 추가 요금이 발생합니다. 수도권(서울·인천·경기)은 광역 협약으로 가능하며, 인천은 인접한 서울 강서구·경기 일부까지 이용 가능합니다. 사전 협의가 필요합니다."
+    },
+    {
+      "q": "휠체어 없는 장애인도 탈 수 있나요?",
+      "a": "네. 보행상 장애가 심한 중증 장애인이면 반드시 휠체어를 이용하지 않아도 됩니다. 자격 심사 시 보행 장애 정도를 확인합니다."
+    },
+    {
+      "q": "대기 시간이 너무 깁니다. 왜 그런가요?",
+      "a": "전국적으로 특별교통수단 차량이 수요에 비해 부족한 상황입니다. 특히 출퇴근 시간대에 수요가 집중됩니다. 사전 예약 기능이 있는 지역에서는 미리 예약하면 대기 시간을 줄일 수 있습니다."
+    },
+    {
+      "q": "정신적 장애(지적·자폐성·정신장애)가 있는 경우에도 이용할 수 있나요?",
+      "a": "지자체별 기준이 다릅니다. 서울은 2025년 2월 1일 이후 정신적 장애인의 단독 탑승이 가능해졌습니다. 이용 전 해당 지역 이동지원센터에 반드시 확인하세요."
+    }
+  ],
+  "contact": [
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
+    { "name": "국토교통부 교통복지 콜센터", "phone": "1599-0001", "url": "https://www.molit.go.kr/" },
+    { "name": "법제처 법령해석 콜센터", "phone": "1110", "url": "https://www.moleg.go.kr/" },
+    { "name": "서울시설공단 장애인콜택시(바로콜)", "phone": "1588-4388", "url": "https://www.sisul.or.kr/open_content/calltaxi/" },
+    { "name": "인천교통약자이동지원센터 반디콜", "phone": "1577-0320", "url": "https://www.intis.or.kr/" },
+    { "name": "부산시설공단 두리발", "phone": "1555-1114", "url": "http://www.duribal.co.kr/" },
+    { "name": "대구공공시설관리공단 나드리콜", "phone": "1577-6776", "url": "https://nadrihome.dpfc.or.kr/" },
+    { "name": "대전교통약자이동지원센터", "phone": "042-612-1010", "url": "https://www.djcall.or.kr/" },
+    { "name": "광주광역시교통약자이동지원센터 새빛콜", "phone": "1668-2222", "url": "https://gjtsc.com/" },
+    { "name": "울산교통약자이동지원센터 부르미", "phone": "052-292-8253", "url": "https://www.usdws.or.kr/" },
+    { "name": "세종도시교통공사 누리콜", "phone": "1899-9042", "url": "https://nuricall.sctc.kr/" },
+    { "name": "경기도교통약자광역이동지원센터", "phone": "1666-0420", "url": "https://ggsts.gg.go.kr/" },
+    { "name": "강원특별자치도광역이동지원센터", "phone": "1577-2014", "url": "https://call.gwd.go.kr/" },
+    { "name": "충청북도광역이동지원센터", "phone": "1533-0220", "url": "http://chungbuk-th-back.essetel.co.kr/" },
+    { "name": "충청남도광역이동지원센터", "phone": "1644-5588", "url": "http://www.16445588.or.kr/" },
+    { "name": "전북특별자치도광역이동지원센터", "phone": "063-227-0002", "url": "http://www.0632270002.com/" },
+    { "name": "전라남도광역이동지원센터 도움콜", "phone": "1899-1110", "url": "https://www.doumcall.kr/" },
+    { "name": "경북광역이동지원센터 부름콜", "phone": "1899-7770", "url": "http://brmcall.co.kr/" },
+    { "name": "경상남도광역이동지원센터", "phone": "1566-4488", "url": "http://15664488.co.kr/" },
+    { "name": "제주특별자치도교통약자이동지원센터", "phone": "1899-6884", "url": "http://www.jejuhappycall.com" }
+  ],
+  "sources": [
+    {
+      "title": "교통약자의 이동편의 증진법",
+      "publisher": "법제처 국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1003&ccfNo=2&cciNo=2&cnpClsNo=2",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 상단 '시행일' 표기",
+        "robots_txt_ok": true,
+        "notes": "제16조(특별교통수단의 운행), 제17조(이동지원센터) 조항 집중 모니터링."
+      },
+      "accessed": "2026-05-22",
+      "priority": "primary"
+    },
+    {
+      "title": "교통약자의 이동편의 증진법 시행규칙",
+      "publisher": "법제처 국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법시행규칙",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "차량 대수 기준 별표",
+        "robots_txt_ok": true,
+        "notes": "특별교통수단 차량 대수 기준 및 이동지원센터 운영 기준 수록."
+      },
+      "accessed": "2026-05-22",
+      "priority": "primary"
+    },
+    {
+      "title": "특별교통수단의 운행 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "법령DB",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1003&ccfNo=2&cciNo=2&cnpClsNo=2",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "본문 '최종수정일' 표기",
+        "robots_txt_ok": true,
+        "notes": "법제처 생활법령 정보로 법령 해설 및 이용 절차 요약 제공."
+      },
+      "accessed": "2026-05-22",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행규칙 (제28조 보행상의 장애인 범위)",
+      "publisher": "법제처 국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제28조 조문",
+        "robots_txt_ok": true,
+        "notes": "보행상 장애인 범위 정의 조항 집중 모니터링."
+      },
+      "accessed": "2026-05-22",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인콜택시 이용기준 — 서울시설공단",
+      "publisher": "서울시설공단",
+      "publisher_type": "공기업",
+      "url": "https://www.sisul.or.kr/open_content/calltaxi/introduce/receipt.jsp",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "이용기준 본문 영역",
+        "robots_txt_ok": true,
+        "notes": "서울 이용 자격·요금·이용 방법 상세 기재."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "수도권 광역이동 이용안내 — 서울시설공단",
+      "publisher": "서울시설공단",
+      "publisher_type": "공기업",
+      "url": "https://sisul.or.kr/open_content/calltaxi/introduce/widearea.jsp",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "광역이동 안내 본문",
+        "robots_txt_ok": true,
+        "notes": "수도권 광역 협약(2023.12.21~) 운행 범위·예약 방법 기재."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "장애인콜택시 가입안내 — 서울시설공단",
+      "publisher": "서울시설공단",
+      "publisher_type": "공기업",
+      "url": "https://www.sisul.or.kr/open_content/calltaxi/introduce/join.jsp",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "가입안내 본문",
+        "robots_txt_ok": true,
+        "notes": "서울 이용등록 신청 절차·필요서류 기재."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "부산 장애인콜택시 두리발 이용안내",
+      "publisher": "부산시설공단",
+      "publisher_type": "공기업",
+      "url": "https://www.duribal.co.kr/voucher_call/info.html",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "이용안내 본문",
+        "robots_txt_ok": true,
+        "notes": "2025년 4월 특별교통수단·교통약자 콜택시 통합 운영 반영."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "대구 나드리콜 이동지원센터",
+      "publisher": "대구공공시설관리공단",
+      "publisher_type": "공기업",
+      "url": "https://nadrihome.dpfc.or.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "메인 페이지 이용안내 영역",
+        "robots_txt_ok": true,
+        "notes": "대구 전일 예약제, 차량 약 200대 운영."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "인천교통약자이동지원센터 반디콜 이용안내",
+      "publisher": "인천교통약자이동지원센터",
+      "publisher_type": "광역지자체",
+      "url": "https://www.intis.or.kr/?mcode=guide02",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "이용안내 본문",
+        "robots_txt_ok": true,
+        "notes": "인천 요금·운행 범위·예약 방법 기재."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "대전교통약자이동지원센터 이용안내",
+      "publisher": "대전광역시사회서비스원",
+      "publisher_type": "광역지자체",
+      "url": "https://djcall.or.kr/information2.php",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "이용안내 본문",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "광주 새빛콜 이용안내",
+      "publisher": "광주광역시교통약자이동지원센터",
+      "publisher_type": "광역지자체",
+      "url": "https://gjtsc.com/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "메인 이용안내 영역",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "경기도 광역이동지원서비스 이용안내",
+      "publisher": "경기도교통약자광역이동지원센터",
+      "publisher_type": "광역지자체",
+      "url": "https://ggsts.gg.go.kr/?mcode=gud01",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "이용안내 본문",
+        "robots_txt_ok": true,
+        "notes": "24시간 연중무휴, AI상담 서비스 제공."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "세종 누리콜 이용안내",
+      "publisher": "세종도시교통공사",
+      "publisher_type": "공기업",
+      "url": "https://www.sctc.kr/page/PAGE2110051801333196",
+      "fallback_url": "https://nuricall.sctc.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "이용안내 본문",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "전남광역이동지원센터 도움콜",
+      "publisher": "전라남도",
+      "publisher_type": "광역지자체",
+      "url": "https://www.doumcall.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "메인 이용안내 영역",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "경북광역이동지원센터 부름콜",
+      "publisher": "경상북도",
+      "publisher_type": "광역지자체",
+      "url": "http://brmcall.co.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "이용안내 본문",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "제주특별자치도교통약자이동지원센터",
+      "publisher": "제주특별자치도",
+      "publisher_type": "광역지자체",
+      "url": "http://www.jejuhappycall.com",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "이용안내 본문",
+        "robots_txt_ok": true,
+        "notes": "요금 확인 필요(일반 택시의 약 40% 수준으로 알려짐)."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "17개 광역시도 장애인콜택시 연락처",
+      "publisher": "한국척수장애인협회",
+      "publisher_type": "민간",
+      "url": "http://www.kscia.org/kscia/bbs/board.php?bo_table=bo_07&wr_id=1631",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "게시글 본문",
+        "robots_txt_ok": true,
+        "notes": "17개 광역시도 이동지원센터 연락처 통합 목록. 정보 최신성 별도 확인 필요."
+      },
+      "accessed": "2026-05-22",
+      "priority": "supplementary"
+    },
+    {
+      "title": "전국교통약자이동지원센터정보 표준데이터",
+      "publisher": "공공데이터포털",
+      "publisher_type": "공공데이터포털",
+      "url": "https://www.data.go.kr/data/15028207/standard.do",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://api.odcloud.kr/api",
+        "auth_required": true,
+        "docs_url": "https://www.data.go.kr/"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "전국 이동지원센터 기관명·연락처·운영시간 표준데이터. API로 조회 가능."
+      },
+      "accessed": "2026-05-22",
+      "priority": "supplementary"
+    },
+    {
+      "title": "장애인콜택시 수도권까지 광역 운영(2023.12)",
+      "publisher": "서울특별시",
+      "publisher_type": "광역지자체",
+      "url": "https://news.seoul.go.kr/traffic/archives/510685",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "보도자료 본문",
+        "robots_txt_ok": true,
+        "notes": "수도권 광역 협약 2023년 12월 21일 시행 근거 보도자료."
+      },
+      "accessed": "2026-05-22",
+      "priority": "supplementary"
+    },
+    {
+      "title": "부산시 교통약자 콜택시 4월부터 통합 운영(2025.3)",
+      "publisher": "부산광역시",
+      "publisher_type": "광역지자체",
+      "url": "https://busan.go.kr/nbtnewsBU/1672442",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "보도자료 본문",
+        "robots_txt_ok": true,
+        "notes": "2025년 4월 부산 특별교통수단·교통약자 콜택시 통합 운영 보도자료."
+      },
+      "accessed": "2026-05-22",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B001", "B002", "B039"],
+  "last_verified": "2026-05-22",
+  "version": "1.0.0"
+}

@@ -1,0 +1,266 @@
+{
+  "id": "B034",
+  "leaflet_section": "저소득층(기초 및 차상위)",
+  "leaflet_number": 3,
+  "title": "장애아동수당",
+  "short_summary": "장애아동수당(만18세 미만): 2~20만원 이내(등급, 소득, 거주형태에 따라 차등) (전단지 원문)",
+  "category": "소득지원",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": null,
+    "amount": "월 30,000원 ~ 220,000원 (2026년 기준). 장애 정도(중증/경증) × 소득계층(기초/차상위) × 거주형태(재가/시설)에 따라 6개 구간 차등 지급.",
+    "scope": "「장애인복지법」 제50조에 따른 장애아동의 추가 지출비용 보전. 2026년 단가표: ① 기초수급(생계·의료) 재가 중증 220,000원/월, ② 기초수급(생계·의료) 재가 경증 110,000원/월, ③ 기초수급(주거·교육) 재가 중증 170,000원/월, ④ 기초수급(주거·교육) 재가 경증 110,000원/월, ⑤ 차상위계층 재가 중증 110,000원/월, ⑥ 차상위계층 재가 경증 110,000원/월, ⑦ 보장시설 입소(생계·의료) 중증 90,000원/월, ⑧ 보장시설 입소(생계·의료) 경증 30,000원/월."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」에 따라 등록된 장애아동으로서 만 18세 미만이고 국민기초생활보장 수급자(생계·의료·주거·교육급여) 또는 차상위계층에 해당하는 사람",
+    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "companion_allowed": null,
+    "income_criteria": "기초생활보장 수급자(생계·의료·주거·교육급여) 또는 차상위계층(소득인정액이 기준 중위소득 50% 이하). 소득·재산 조사로 결정. 계층에 따라 지급 단가가 상이함.",
+    "age_criteria": "만 18세 미만. 만 18세 도달 시 장애아동수당 지급 종료. 단, 만 18세 이상~만 20세 이하이면서 초·중·고·특수학교에 재학 중인 경우 학교 졸업·중퇴·휴학 시까지 장애아동수당 계속 지급 가능(장애수당 B033으로 전환 전).",
+    "residency_criteria": "국내 거주(주민등록 기준). 해외 장기 체류(60일 이상) 시 지급 정지."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제50조(장애아동수당 및 보호수당)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행령",
+      "article": "제30조의2(장애아동수당의 지급 대상자 및 금액 등), 제32조(장애수당 등의 지급 방법)",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+    },
+    {
+      "name": "장애인복지법 시행규칙",
+      "article": "제23조(장애수당 등의 신청), 제24조(결정·통지)",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "시·군·구청(장애인복지 담당) / 읍·면·동 행정복지센터",
+      "lines_or_routes": ["수급 결정(시군구장)", "신청 접수·조사(읍면동)", "지급(시군구)"],
+      "apply_channel": "아동 주소지 읍면동 행정복지센터 방문 또는 복지로(bokjiro.go.kr) 온라인 신청(부모만 가능)",
+      "card_or_proof_type": null,
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710030200",
+      "notes": "급여는 매월 20일(공휴일·토요일이면 전날) 신청인(보호자) 명의 또는 아동 명의 계좌로 입금."
+    }
+  ],
+  "how_to_use": {
+    "default": "신청 후 소득·재산 조사(약 30일) → 수급 결정 → 매월 20일 신청인 또는 아동 계좌로 자동 입금. 별도 창구 방문 없이 매월 자동 지급.",
+    "with_card": null,
+    "without_card": null,
+    "exceptions": "① 온라인(복지로) 신청은 부모가 보호자인 경우에만 가능. 위탁부모 등 기타 보호자는 반드시 읍면동 방문 신청. ② 만 18세 도달 시 다음 달부터 장애수당(B033) 또는 장애인연금(B032) 수급으로 전환해야 하므로 전환 신청 필요. ③ 보장시설 입소 여부에 따라 지급액 차등(재가 vs 시설). ④ 지급은 신청일이 속한 달부터 시작."
+  },
+  "application": {
+    "where": [
+      { "channel": "아동 주소지 읍면동 행정복지센터(동주민센터)", "method": "방문", "url": "https://www.gov.kr/" },
+      { "channel": "복지로 홈페이지(부모 보호자에 한해 온라인 신청 가능)", "method": "온라인", "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003198" },
+      { "channel": "복지로 모바일 앱(부모 보호자에 한해 가능)", "method": "모바일 앱", "url": "https://www.bokjiro.go.kr/" }
+    ],
+    "required_documents": [
+      "사회보장급여(서비스) 신청서(현장 비치 또는 복지로 다운로드)",
+      "신청인(보호자) 신분증",
+      "장애아동의 장애인등록증 또는 장애인복지카드",
+      "통장 사본(보호자 또는 아동 명의)",
+      "대리 신청 시: 위임장, 대리인 신분증, 보호자 신분증(사본)",
+      "(필요 시) 소득·재산 증빙서류(금융정보 제공동의서 포함)",
+      "위탁부모 등 기타 보호자: 보호 관계를 증명하는 서류"
+    ],
+    "processing_period": "신청일로부터 약 30일 이내 결정. 급여는 수급 결정된 달 또는 다음 달부터 매월 20일 지급.",
+    "fee": {
+      "default": "없음 (신청 수수료 무료)",
+      "exceptions": null
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "만 18세 미만까지 지속 지급(단, 재학 중이면 만 20세 초과 전까지 연장 가능). 기초·차상위 자격을 잃으면 수급 종료. 정기 소득·재산 조사로 자격 재확인.",
+    "renewal": "별도 갱신 신청 불필요(자동 지급). 소득·재산·가구원 변동, 장애 등급 변경, 시설 입소·퇴소 시 읍면동에 신고 의무. 만 18세 도달 시 전환 신청 필요."
+  },
+  "exceptions_and_caveats": [
+    "만 18세 이상~만 20세 이하이면서 초·중·고·특수학교 재학 중인 경우 장애아동수당을 계속 받을 수 있음. 졸업·중퇴·휴학 시부터 장애수당(B033) 또는 장애인연금(B032)으로 전환 신청 필요.",
+    "온라인(복지로) 신청은 아동의 보호자가 부모(친권자)인 경우에만 가능. 위탁부모·시설장 등은 읍면동 방문 신청만 가능.",
+    "보장시설 입소 시 지급액이 크게 줄어듦(중증 90,000원, 경증 30,000원). 시설 입소·퇴소 시 즉시 신고하여 지급액이 올바르게 조정되도록 해야 함.",
+    "장애아동수당은 아동수당(보편적 아동수당, 만 8세 미만 대상)과 중복 수급 가능(별개 제도).",
+    "장애아동수당은 기초생활보장 소득산정 시 포함되지 않으므로 다른 급여에 영향 없음.",
+    "소득 계층이 변동(예: 차상위계층 → 기초수급자 전환)되면 지급 단가도 변경됨. 변동 발생 시 읍면동에 신고해야 다음 달부터 올바른 단가로 지급.",
+    "중증장애아동이 만 18세가 되면 장애인연금법상 중증 여부에 따라 장애인연금(B032) 또는 장애수당(B033)으로 전환. 전환 신청을 하지 않으면 장애아동수당이 자동 종료된 후 공백이 생길 수 있으므로 만 18세 도달 전 미리 신청 권장.",
+    "2026년 기준 단가는 보건복지부 「장애인연금 사업안내」(장애수당·장애아동수당 포함) 지침에 따름. 매년 조정될 수 있으므로 사업안내 최신본 확인 필요."
+  ],
+  "penalties_for_misuse": "소득·재산 변동 미신고 또는 거짓 신고로 수급하면 부당이득 환수(「장애인복지법」 제86조의2). 반환 명령에 불응 시 부당이득액의 2배 이하 과징금 부과 가능.",
+  "faq": [
+    {
+      "q": "장애아동수당은 얼마나 받나요?",
+      "a": "2026년 기준 장애 정도(중증·경증)와 소득 계층(기초수급·차상위), 거주 형태(재가·시설)에 따라 다릅니다. 가장 많이 받는 경우는 기초수급(생계·의료) 재가 중증 장애아동으로 월 22만원입니다. 보장시설 입소 경증은 월 3만원으로 가장 적습니다."
+    },
+    {
+      "q": "소득 계층별 지급 금액이 어떻게 되나요?",
+      "a": "2026년 기준: ① 기초수급(생계·의료) 재가 중증 220,000원, ② 기초수급(생계·의료) 재가 경증 110,000원, ③ 기초수급(주거·교육) 재가 중증 170,000원, ④ 기초수급(주거·교육) 재가 경증 110,000원, ⑤ 차상위 재가 중증 110,000원, ⑥ 차상위 재가 경증 110,000원, ⑦ 보장시설(생계·의료) 중증 90,000원, ⑧ 보장시설(생계·의료) 경증 30,000원."
+    },
+    {
+      "q": "만 18세가 되면 어떻게 되나요?",
+      "a": "원칙적으로 만 18세가 되는 달의 다음 달부터 장애아동수당 지급이 종료됩니다. 단, 초·중·고·특수학교에 재학 중이면 졸업·중퇴·휴학 시까지 계속 받을 수 있습니다. 18세 이후에는 장애인연금(중증 해당자) 또는 장애수당(경증 또는 연금 미대상 중증)을 신청해야 하므로, 18세 도달 전에 미리 전환 신청을 하는 것이 좋습니다."
+    },
+    {
+      "q": "일반 아동수당과 동시에 받을 수 있나요?",
+      "a": "네. 장애아동수당과 일반 아동수당(만 8세 미만 대상 월 10만원)은 별개 제도로 중복 수급이 가능합니다."
+    },
+    {
+      "q": "신청은 어떻게 하나요?",
+      "a": "아동의 주소지 읍면동 행정복지센터에 보호자가 방문하여 신청하거나, 복지로(bokjiro.go.kr)에서 온라인으로 신청할 수 있습니다. 온라인 신청은 보호자가 부모(친권자)인 경우에만 가능하며, 위탁부모 등 기타 보호자는 반드시 방문 신청해야 합니다."
+    },
+    {
+      "q": "시설에 입소하면 금액이 줄어드나요?",
+      "a": "보장시설에 입소하여 생계·의료급여를 받으면 중증은 월 90,000원, 경증은 월 30,000원으로 줄어듭니다. 시설 입소·퇴소 시 읍면동에 신고해야 지급액이 올바르게 조정됩니다."
+    },
+    {
+      "q": "중증 장애아동인데 보조금이 더 많은가요?",
+      "a": "네. 동일 소득 계층이라면 중증(심한 장애)이 경증(심하지 않은 장애)보다 높은 금액을 받습니다. 예: 기초수급(생계·의료) 재가 기준 중증 22만원 vs 경증 11만원."
+    }
+  ],
+  "contact": [
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr/" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
+    { "name": "주소지 읍면동 행정복지센터", "phone": null, "url": "https://www.gov.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제50조(장애아동수당 및 보호수당) 본문",
+        "robots_txt_ok": true,
+        "notes": "제50조 변경 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행령",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제30조의2, 제32조 본문",
+        "robots_txt_ok": true,
+        "notes": "장애아동수당 지급 대상·금액 규정."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애수당/장애아동수당 — 보건복지부",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710030200",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 단가표",
+        "robots_txt_ok": true,
+        "notes": "장애아동수당 단가표 게시. 매년 초 갱신."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애아동수당 — 복지로 서비스 상세",
+      "publisher": "보건복지부 복지로",
+      "publisher_type": "중앙정부",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003198",
+      "fallback_url": "https://www.bokjiro.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "급여 금액, 대상 설명 영역",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "장애수당 및 장애아동수당 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=2&cciNo=1&cnpClsNo=2",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "법령 해설. 단가표보다 법적 설명 중심."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "2025년 장애인연금 사업안내(장애수당 및 장애아동수당 포함) — 보건복지부",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/board.es?mid=a10107010000&bid=0039&act=view&list_no=1486590",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "pdf_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "사업안내 PDF에 장애아동수당 단가표 포함. 2026년판 발간 시 URL 갱신 필요."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    }
+  ],
+  "related_items": ["B032", "B033"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

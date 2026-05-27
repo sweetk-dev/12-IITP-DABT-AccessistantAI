@@ -1,0 +1,421 @@
+{
+  "id": "B022",
+  "leaflet_section": "심한장애(중증) 전국공통",
+  "leaflet_number": 22,
+  "title": "발달장애인 공공후견 지원",
+  "short_summary": "발달장애인 공공후견 지원(만19세 이상 의사결정 지원 필요한 사람, 전국가구평균소득 150% 이하) (전단지 원문)",
+  "category": "활동지원",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": "후견심판청구비용 1인당 최대 50만원 + 후견인 활동비 월 15~50만원(피후견인 수·업무 강도별)",
+    "amount": "(1) 후견심판청구비용(가정법원 신청 인지대·송달료·감정비·변호사 보조비 등): 1인당 최대 500,000원 실비 지원. 50만원 초과분은 자비 또는 사회복지공동모금회·법률구조공단 별도 지원 모색. (2) 후견인 활동비(보수): 피후견인 1인 후견 시 월 150,000~200,000원, 다수 피후견인 후견 시 최대 월 400,000~500,000원. 한국장애인개발원이 후견인에게 직접 지급. 기존 성년후견 개시자도 활동비 지원만 별도 신청 가능.",
+    "scope": "한정후견·특정후견 위주(전면후견은 제한적). 신상보호(주거·의료·교육·일상생활)·재산관리(통장·연금·임금 관리·부동산 거래 동의)·법률행위 동의·취소(계약 체결·사기 피해 취소권) 등 후견인의 직무 범위를 가정법원이 결정. 한국장애인개발원이 후견법인으로 활동하거나 지역 발달장애인지원센터가 사회복지법인 후견인을 추천."
+  },
+  "eligibility": {
+    "target": "만 19세 이상 「장애인복지법」상 등록 발달장애인(지적장애·자폐성장애). 지적·자폐성을 부장애로 가진 자도 신청 가능. 의사결정 지원이 필요하다고 인정되는 자.",
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
+    "companion_allowed": null,
+    "income_criteria": "기준 중위소득 150% 이하(전국가구평균소득 150% 이하). 2026년 가구 규모별 기준: 1인 가구 약 3,481,000원, 2인 가구 약 5,762,000원, 3인 가구 약 7,401,000원, 4인 가구 약 9,741,000원. 단, 후견인 활동비는 피후견인 소득과 무관하게 한국장애인개발원이 후견인에게 지급. 150% 초과 가구도 후견 절차 자체는 가능하나 본 사업의 비용 지원은 불가.",
+    "age_criteria": "만 19세 이상.",
+    "residency_criteria": "전국 공통. 시·군·구 및 지역 발달장애인지원센터를 통해 신청."
+  },
+  "legal_basis": [
+    {
+      "name": "발달장애인 권리보장 및 지원에 관한 법률",
+      "article": "제9조(성년후견제 이용지원)",
+      "url": "https://www.law.go.kr/법령/발달장애인권리보장및지원에관한법률"
+    },
+    {
+      "name": "민법",
+      "article": "제9조~제14조의3(성년후견·한정후견·특정후견·임의후견)",
+      "url": "https://www.law.go.kr/법령/민법"
+    },
+    {
+      "name": "가사소송법",
+      "article": "성년후견·한정후견·특정후견 사건의 관할·절차",
+      "url": "https://www.law.go.kr/법령/가사소송법"
+    },
+    {
+      "name": "장애인복지법",
+      "article": "제35조 관련",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "보건복지부 발달장애인 공공후견지원 사업안내(연도별)",
+      "article": "후견심판청구비·활동비 단가",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040100"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국(중앙)",
+      "agency": "보건복지부 장애인서비스과",
+      "lines_or_routes": [],
+      "apply_channel": "연도별 사업안내 고시로 전국 후견심판청구비·활동비 단가 확정",
+      "card_or_proof_type": null,
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040100",
+      "notes": "2026년 기준 후견심판청구비 최대 50만원, 후견인 활동비 월 15~50만원. 문의: 보건복지부 장애인서비스과 044-202-3348."
+    },
+    {
+      "region": "전국(운영·관리)",
+      "agency": "한국장애인개발원(중앙장애아동·발달장애인지원센터)",
+      "lines_or_routes": [],
+      "apply_channel": "후견인 후보자 추천·관리, 후견인 활동비 지급(후견인 직접 지급), 후견인 교육 실시",
+      "card_or_proof_type": null,
+      "url": "https://www.koddi.or.kr/",
+      "notes": "전화: 02-3433-0600 / 1800-5921. 후견인 윤리교육·전문교육 이수 의무."
+    },
+    {
+      "region": "서울",
+      "agency": "서울특별시 발달장애인지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "공공후견 신청 접수, 후견인 후보자 추천, 가정법원 청구 지원",
+      "card_or_proof_type": null,
+      "url": "https://www.broso.or.kr/seoul/contents.do?menuId=0507000000",
+      "notes": "서울 권역 공공후견 사례 관리 및 후견인 매칭."
+    },
+    {
+      "region": "경기",
+      "agency": "경기도 발달장애인지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "공공후견 신청 접수, 후견인 후보자 추천, 가정법원 청구 지원",
+      "card_or_proof_type": null,
+      "url": "https://www.broso.or.kr/gyeonggi/mainPage.do",
+      "notes": "경기도 내 시·군·구청 연계 후 후견인 매칭."
+    },
+    {
+      "region": "부산",
+      "agency": "부산광역시 발달장애인지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "공공후견 신청 접수, 후견인 후보자 추천",
+      "card_or_proof_type": null,
+      "url": "https://www.broso.or.kr/busan/mainPage.do",
+      "notes": "전화: 051-714-7360."
+    },
+    {
+      "region": "광주",
+      "agency": "광주광역시 발달장애인지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "공공후견 신청 접수, 후견인 후보자 추천",
+      "card_or_proof_type": null,
+      "url": "https://www.broso.or.kr/gwangju/mainPage.do",
+      "notes": "전화: 062-714-3352."
+    },
+    {
+      "region": "대전",
+      "agency": "대전광역시 발달장애인지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "공공후견 신청 접수, 후견인 후보자 추천",
+      "card_or_proof_type": null,
+      "url": "https://www.broso.or.kr/daejeon/mainPage.do",
+      "notes": "전화: 042-719-1085."
+    }
+  ],
+  "how_to_use": {
+    "default": "(1) 본인·가족·지역 발달장애인지원센터·읍면동 주민센터·사회복지시설 종사자가 시·군·구청에 신청 → (2) 시·군·구청 사실조사·심사(약 30일) → (3) 한국장애인개발원이 후견인 후보자 추천(가족 우선 → 가족 불가 시 공공후견인) → (4) 가정법원에 후견 심판 청구(청구비용은 사업비에서 최대 50만원 지원) → (5) 법원 감정·심리 → (6) 법원 결정 후 후견 개시. 후견인 활동비는 한국장애인개발원에서 후견인에게 매월 직접 지급.",
+    "with_card": null,
+    "without_card": null,
+    "exceptions": "신청자에게 가족 후견인이 가능한 경우 우선 선임 → 가족 후견 불가 시 공공후견인(법인·전문가) 매칭. 기존에 성년후견을 받고 있는 자는 본 사업의 활동비 지원만 별도 신청 가능. 정신감정 절차가 길어지면 전체 기간(6~12개월)을 초과할 수 있음."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "주소지 시·군·구청 장애인복지 담당부서",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "지역 발달장애인지원센터(광역별, broso.or.kr)",
+        "method": "방문",
+        "url": "https://www.broso.or.kr/"
+      },
+      {
+        "channel": "주소지 읍·면·동 주민센터(초기 접수 연계)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "한국장애인개발원(중앙 문의)",
+        "method": "전화",
+        "url": "https://www.koddi.or.kr/"
+      },
+      {
+        "channel": "복지로 — 발달장애인 공공후견지원 안내",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/"
+      }
+    ],
+    "required_documents": [
+      "공공후견지원사업 신청서(시·군·구청 비치)",
+      "피후견 예정자의 장애인복지카드 사본",
+      "가족관계증명서·주민등록등본",
+      "건강보험료 납부확인서(최근 3개월치, 소득 심사용)",
+      "의사진단서(필요 시) / 의사결정 능력 평가 자료",
+      "신청인 신분증(주민등록증·운전면허증 등)",
+      "후견인 후보자 관련 서류(가족 후견인 예정 시 — 해당 서류)",
+      "(가정법원 청구 단계) 정신감정 결과지·신상조사서·재산 관련 자료",
+      "(가정법원 청구 단계) 진술서·감정촉탁서 등 법원이 요구하는 추가 서류",
+      "소득 특례 증명서(기초생활수급자·차상위계층 — 해당 시)"
+    ],
+    "processing_period": "시·군·구 사실조사 약 30일 + 후견인 매칭(2~4주) + 가정법원 심판(통상 3~6개월, 정신감정 포함) → 전체 약 6~12개월 소요. 정신감정 절차가 복잡하면 12개월 초과 가능.",
+    "fee": {
+      "default": "신청·자격결정 수수료 무료. 후견심판청구비용은 1인 최대 50만원 실비 지원.",
+      "exceptions": "법원이 정한 감정비·송달료·인지대 합계가 50만원 초과 시 차액은 자부담 또는 사회복지공동모금회·법률구조공단 지원 모색."
+    },
+    "online_available": false,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "가정법원이 정한 후견 기간(특정후견의 경우 1~2년, 한정후견은 종료사유 발생 시까지).",
+    "renewal": "특정후견 종료 후 재청구 가능. 활동비는 후견 결정 유지되는 동안 매월 지급."
+  },
+  "exceptions_and_caveats": [
+    "발달장애 = 지적장애 + 자폐성장애. 부장애로 지적·자폐성을 가진 자(예: 뇌병변+지적)는 신청 가능.",
+    "기존에 성년후견(전면후견)이 개시된 자도 후견인 활동비 지원 신청 가능.",
+    "가족(부모·형제·자녀)이 후견인이 될 수 있으며, 가족 후견 불가 시 사회복지법인·전문가·한국장애인개발원이 공공후견인으로 활동.",
+    "후견인은 윤리교육·전문교육을 이수해야 하며 한국장애인개발원의 정기 관리·감독을 받음.",
+    "기준 중위소득 150% 초과 가구도 후견 자체는 가정법원 절차로 가능하나, 본 사업의 비용 지원(청구비·활동비)은 받을 수 없음(자비 부담).",
+    "특정후견은 1~2년 단위로 갱신 청구 필요. 갱신하지 않으면 후견 자동 종료.",
+    "후견인 부정행위 적발 시 즉시 해임·교체 + 형사처벌(횡령·배임).",
+    "본 사업은 한정후견·특정후견 위주 — 전면후견(성년후견)은 자기결정권 침해 우려로 제한적 적용.",
+    "후견인은 피후견인의 의사를 최대한 존중해야 하며 일방적 결정 금지(후견인이 피후견인 의사 무시 시 가정법원에 신고 가능).",
+    "기존 개인 신탁·후견계약이 있는 경우 중복 적용 여부 시·군·구 및 가정법원 확인 필요."
+  ],
+  "penalties_for_misuse": "민법 제940조(후견인의 변경)에 따라 후견인이 임무를 게을리하거나 부정행위 시 가정법원이 직권으로 후견인 변경. 횡령·배임 시 형법 제355조(횡령·배임죄)로 5년 이하 징역 또는 1천5백만원 이하 벌금. 보조금 부정수급은 「보조금 관리에 관한 법률」 제40조에 따라 5년 이하 징역 또는 5천만원 이하 벌금.",
+  "faq": [
+    {
+      "q": "성년후견·한정후견·특정후견은 무엇이 다른가요?",
+      "a": "성년후견(전면후견)은 의사결정 능력이 지속적으로 결여된 자에게 광범위한 후견을 제공합니다. 한정후견은 특정 영역(예: 재산관리)에서 능력이 부족할 때, 특정후견은 일시적·특정 사무(예: 부동산 매매·소송 1건)에 대한 후견입니다. 본 사업은 발달장애인의 자기결정권을 최대한 보장하기 위해 한정후견·특정후견을 우선합니다."
+    },
+    {
+      "q": "누가 후견인이 되나요?",
+      "a": "가족(부모·형제·자녀)이 우선 검토되며, 가족 후견이 어려운 경우 사회복지법인·법무법인·한국장애인개발원이 공공후견인으로 활동합니다. 모든 후견인은 가정법원이 최종 선임하며 한국장애인개발원이 추천·관리합니다."
+    },
+    {
+      "q": "후견심판청구비용은 얼마나 지원되나요?",
+      "a": "1인당 최대 50만원 실비 지원(인지대·송달료·정신감정비·변호사 보조비 등). 50만원을 초과하는 비용(예: 정밀 정신감정)이 발생하면 차액은 자비 부담 또는 사회복지공동모금회·법률구조공단(전화 132) 지원을 별도 모색하세요."
+    },
+    {
+      "q": "후견인 활동비는 누가 받나요? 얼마인가요?",
+      "a": "후견인이 한국장애인개발원으로부터 받습니다(피후견인이 받는 것이 아님). 피후견인 1인 후견 시 월 150,000~200,000원, 다수 피후견인 후견 시 월 최대 400,000~500,000원. 후견 결정이 유지되는 동안 매월 지급됩니다."
+    },
+    {
+      "q": "신청은 어디서, 누가 할 수 있나요?",
+      "a": "시·군·구청 장애인복지 담당부서 또는 지역 발달장애인지원센터(broso.or.kr)에서 신청합니다. 신청권자는 본인·가족·읍면동 주민센터·사회복지시설 종사자·발달장애인지원센터 등입니다. 본인이 의사결정 능력이 어려운 경우 가족·지원기관이 대신 신청할 수 있습니다."
+    },
+    {
+      "q": "신청 후 얼마나 걸리나요?",
+      "a": "시·군·구 사실조사 약 30일 + 후견인 매칭(2~4주) + 가정법원 심판(통상 3~6개월, 정신감정 포함) → 전체 약 6~12개월. 정신감정 절차가 길어지면 더 걸릴 수 있습니다."
+    },
+    {
+      "q": "소득 기준이 있나요?",
+      "a": "기준 중위소득 150% 이하입니다(2026년 4인 가구 약 974만 원). 150% 초과 가구도 후견 절차 자체는 가능하나, 본 사업의 청구비·활동비 지원은 받을 수 없고 자비로 진행해야 합니다."
+    },
+    {
+      "q": "후견인은 무엇을 하나요?",
+      "a": "법원이 정한 범위 내에서 (1) 신상보호(주거·의료·교육·일상생활 결정 지원), (2) 재산관리(통장·연금·임금 관리, 부동산 거래 동의), (3) 법률행위 동의·취소(계약 체결 동의, 사기 피해 시 취소권 행사) 등을 담당합니다. 후견인은 본인이 결정에 참여하도록 지원하는 것이 의무이며, 본인 의사를 무시하고 일방 결정해서는 안 됩니다."
+    },
+    {
+      "q": "후견인이 잘못하면 어떻게 되나요?",
+      "a": "민법 제940조에 따라 가정법원이 직권으로 후견인을 변경·해임합니다. 횡령·배임 시 형법 제355조에 따라 5년 이하 징역 또는 1천5백만원 이하 벌금. 보조금 부정수급은 「보조금 관리에 관한 법률」에 따라 5년 이하 징역 또는 5천만원 이하 벌금."
+    },
+    {
+      "q": "이미 성년후견을 받고 있는데, 활동비만 받을 수 있나요?",
+      "a": "네, 기존 성년후견이 개시된 자도 후견인 활동비 지원만 별도 신청 가능합니다. 시·군·구청 또는 한국장애인개발원(02-3433-0600 / 1800-5921)에 문의하세요."
+    },
+    {
+      "q": "후견인은 어떤 교육을 받나요?",
+      "a": "한국장애인개발원이 정한 윤리교육·전문교육 이수 의무가 있습니다. 후견 활동 중에도 정기적으로 관리·감독을 받습니다. 교육 미이수 시 후견인 자격이 박탈될 수 있습니다."
+    },
+    {
+      "q": "특정후견이 끝나면 어떻게 되나요?",
+      "a": "특정후견은 법원이 정한 사무가 완료되거나 기간(통상 1~2년)이 만료되면 자동 종료됩니다. 계속 후견이 필요하면 가정법원에 재청구해야 합니다. 재청구 시에도 본 사업의 지원을 받을 수 있으며, 시·군·구청 또는 발달장애인지원센터에서 지원합니다."
+    },
+    {
+      "q": "후견인이 없으면 어떤 어려움이 생기나요?",
+      "a": "발달장애인이 단독으로 부동산 계약·금융 거래·의료 동의 등 중요한 법률행위를 할 때 상대방이 계약 취소를 주장하거나 피해를 입을 수 있습니다. 또한 사기·착취의 피해가 발생해도 혼자 대응하기 어려워, 후견인의 법적 보호와 지원이 필요합니다."
+    }
+  ],
+  "sources": [
+    {
+      "title": "중앙장애아동·발달장애인지원센터",
+      "publisher": "한국장애인개발원",
+      "publisher_type": "공기업",
+      "url": "https://www.broso.or.kr/",
+      "fallback_url": "https://www.koddi.or.kr/service/children.jsp",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "발달장애인 권리보장 및 지원에 관한 법률",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/발달장애인권리보장및지원에관한법률",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "한국장애인개발원 — 공공후견 지원사업",
+      "publisher": "한국장애인개발원",
+      "publisher_type": "공기업",
+      "url": "https://www.koddi.or.kr/",
+      "fallback_url": "https://www.koddi.or.kr/system/download.jsp?type=hp_board&subType=ATT2&fileName=20190614054201002.hwp",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "사업안내 책자 PDF 갱신 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "가사소송법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/가사소송법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "성년후견 사건 관할·절차 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "민법 (성년후견·한정후견·특정후견)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/민법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제9조~제14조의3",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "발달장애인 공공후견 지원사업 — 보건복지부",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040100",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 사업안내 영역",
+        "robots_txt_ok": true,
+        "notes": "단가·절차 변경 시 갱신."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "발달장애인 공공후견지원 사업 — KDI 경제교육·정보센터",
+      "publisher": "KDI",
+      "publisher_type": "공기업",
+      "url": "https://eiec.kdi.re.kr/policy/customView.do?polc_seq=273&pa_cd=0001300004&child_cd=000130000400001",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "발달장애인 공공후견지원 사업 — 복지뱅크",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjibank.or.kr/bokji/view.php?zipEncode=%3DeJnY0tB152x3vwA2zspSfMvWLME",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    }
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

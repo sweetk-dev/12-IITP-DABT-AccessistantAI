@@ -1,0 +1,606 @@
+{
+  "id": "B014",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 14,
+  "title": "공공체육시설 이용료 50% 할인",
+  "short_summary": "공공체육시설 요금 50% 할인(심한 장애인은 동행하는 보호자 1인 포함). * 공공체육시설: 생활체육관, 수영장, 테니스장, 스키장 등 (전단지 원문)",
+  "category": "문화·체육",
+  "benefit_type": "할인",
+  "supported_amount": {
+    "rate": "50%",
+    "amount": null,
+    "scope": "국가·지방자치단체가 설치·운영하는 공공체육시설(전문체육시설·생활체육시설)의 입장료·이용료·강습료에 대해 50% 할인. 대상 시설: ①생활체육관·실내체육관 ②수영장·실내수영장 ③테니스장·배드민턴장·골프장(퍼블릭) ④빙상장(스케이트장)·롤러장 ⑤골프연습장·게이트볼장 ⑥축구장·야구장(아마추어용) ⑦공공 스키장(강원도 영월·정선군 등 일부) ⑧시·도 종합운동장의 보조경기장·헬스장. 강습·수강·일일권 모두 적용. 단 구체 할인율과 적용 범위는 각 지방자치단체 조례·시설관리공단 규정에 따라 다를 수 있음(50%가 표준)."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 장애인. 외국인 등록 장애인(「장애인복지법」 제32조의2)도 동일하게 적용.",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "companion_allowed": {
+      "applicable_to": "심한 장애(중증)",
+      "count": 1,
+      "scope": "심한 장애(중증) 등록 장애인을 동행하는 보호자 1인까지 같은 50% 할인 적용. 보호자는 친인척·간병인·활동지원사·자녀 등 누구나 가능. 시설별로 동반자 무료(100% 면제)로 운영하는 경우도 있음(예: 일부 구민체육센터). 경증은 본인만 50%."
+    },
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "원칙적으로 전국 공통이나 일부 지자체 시설은 해당 지자체 거주자만 우대(또는 외지인 할인율 차등). 시설관리공단 시설(서울시설공단·인천시설관리공단·부산시설관리공단 등) 강좌 수강 시 일부 우선등록 권한."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제30조(경제적 부담의 경감)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행령",
+      "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+    },
+    {
+      "name": "체육시설의 설치ㆍ이용에 관한 법률",
+      "article": "제5조(전문체육시설)·제6조(생활체육시설)·제8조(공공체육시설의 사용료 감면)",
+      "url": "https://www.law.go.kr/법령/체육시설의설치ㆍ이용에관한법률"
+    },
+    {
+      "name": "체육시설의 설치ㆍ이용에 관한 법률 시행령",
+      "article": "제4조의2(전문체육시설 및 생활체육시설의 사용료 감면)",
+      "url": "https://www.law.go.kr/법령/체육시설의설치ㆍ이용에관한법률시행령"
+    },
+    {
+      "name": "장애인ㆍ노인ㆍ임산부 등의 편의증진 보장에 관한 법률",
+      "article": "공공체육시설 접근 및 이용 편의 일반 근거",
+      "url": "https://www.law.go.kr/법령/장애인ㆍ노인ㆍ임산부등의편의증진보장에관한법률"
+    },
+    {
+      "name": "각 지자체 체육시설물 관리 및 운영 조례",
+      "article": "사용료 감면 규정(통상 100분의 50)",
+      "url": "https://www.elis.go.kr/"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "서울특별시",
+      "agency": "서울시설공단 · 각 자치구 시설관리공단",
+      "lines_or_routes": [
+        "올림픽수영장(잠실)",
+        "잠실종합운동장(주경기장·야구장·체조경기장)",
+        "장충체육관",
+        "목동운동장·아이스링크",
+        "강남스포츠문화센터(수영장 등)",
+        "구민체육센터(25개 자치구별 운영)",
+        "구립 헬스장·테니스장·배드민턴장",
+        "한강공원 야외 수영장·물놀이장(여름철)"
+      ],
+      "apply_channel": "현장 방문 등록 시 장애인등록증 제시 → 50% 할인 적용 회원등록. 강좌 수강 시 통합예약 사이트에서 본인인증 후 감면사유 자동 적용(또는 센터 방문 후 인증).",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드, 장애정도결정서, 장애정도 추가심사 결과 안내문",
+      "url": "https://www.sisul.or.kr/",
+      "notes": "서울시설공단 콜센터(1588-4388)로 복지카드 등 제출 시 신규 이용등록 가능. 자치구별로 강남구는 통합예약(life.gangnam.go.kr), 송파구는 송파시설관리공단 별도 운영 등 다양. 한강공원 수영장·물놀이장은 미래한강본부가 운영."
+    },
+    {
+      "region": "부산광역시",
+      "agency": "부산시설공단 · 각 구·군 시설관리공단",
+      "lines_or_routes": [
+        "사직야구장·사직실내체육관·사직수영장",
+        "구덕운동장",
+        "강서체육공원",
+        "구민체육센터(16개 구·군별 운영)",
+        "수영장·테니스장·배드민턴장"
+      ],
+      "apply_channel": "현장 등록 시 장애인등록증 제시. 일부 시설은 부산광역시 통합 예약 시스템 운영.",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드",
+      "url": "https://www.bisco.or.kr/",
+      "notes": "부산시설공단 시설은 등록 장애인 50%, 중증 동반 1인 50%."
+    },
+    {
+      "region": "대구·인천·광주·대전·울산",
+      "agency": "각 광역시설관리공단",
+      "lines_or_routes": [
+        "대구: 대구스포츠파크·대구실내체육관·대구수영장",
+        "인천: 인천시설관리공단(아시아드주경기장·인천수영장·인천축구전용경기장 등)",
+        "광주: 광주시설관리공단(광주월드컵경기장·염주체육관·수영장)",
+        "대전: 대전시설관리공단(한밭종합운동장·충무체육관)",
+        "울산: 울산시설공단(문수축구경기장·동천체육관)"
+      ],
+      "apply_channel": "현장 방문 + 장애인등록증 제시 → 50% 할인. 인천시설관리공단 콜센터(032-451-2114).",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드",
+      "url": "https://www.ifmc.kr/",
+      "notes": "광역시 직영 시설은 대부분 등록 장애인 50%, 중증 동반 1인 50%로 표준화."
+    },
+    {
+      "region": "경기·강원·충청·전라·경상·제주",
+      "agency": "각 시·군 시설관리공단 또는 지자체 체육진흥과 직영",
+      "lines_or_routes": [
+        "성남시설관리공단(성남시 종합운동장·체육관·수영장)",
+        "수원시지속가능도시재단(수원종합운동장)",
+        "용인시 직영(용인종합운동장)",
+        "고양시도시관리공사",
+        "안양시시설관리공단",
+        "춘천·원주·강릉시 직영",
+        "청주·천안·전주·광주·창원·포항·울산·제주 등"
+      ],
+      "apply_channel": "현장 방문 등록 시 장애인등록증 제시. 일부 지자체는 통합예약 사이트 운영(예: 안양시 통합예약).",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드",
+      "url": null,
+      "notes": "기초지자체별 조례에 따라 적용. 대부분 50% 할인이 표준이나 일부는 더 높은 할인(중증 70~100%, 동반자 100%) 적용 — 거주 지자체에 확인 필요."
+    },
+    {
+      "region": "공공 스키장",
+      "agency": "강원도·정선군·평창군·인제군 등 지자체 / 강원랜드(공기업)",
+      "lines_or_routes": [
+        "정선 하이원리조트 스키장(공기업 강원랜드 운영) — 리프트권",
+        "강원도 영월스키장 등 일부 공공 운영 시설"
+      ],
+      "apply_channel": "현장 매표소에서 장애인등록증 제시 → 리프트권 50% 할인. 일부는 평일·비수기 한정.",
+      "card_or_proof_type": "장애인등록증(복지카드)",
+      "url": "https://www.high1.com/",
+      "notes": "**민자 스키장(용평·휘닉스파크·비발디파크·웰리힐리·오크밸리·곤지암·지산·곰동산·에덴벨리·무주덕유산 등)은 본 항목 적용 외**. 단 민자 스키장도 자체적으로 장애인 할인을 운영하는 경우 많음(50% 또는 시즌별 차등). 예: 용평리조트 비수기·평일 50% 등. 강원랜드 하이원은 공기업이라 본 항목 준용 가능."
+    },
+    {
+      "region": "공공 골프장",
+      "agency": "각 지자체·공기업",
+      "lines_or_routes": [
+        "지자체 운영 퍼블릭(예: 군산퍼블릭·서울 노원 어울림골프장 등)"
+      ],
+      "apply_channel": "현장 매표소에서 장애인등록증 제시.",
+      "card_or_proof_type": "장애인등록증(복지카드)",
+      "url": null,
+      "notes": "공공 골프장(시·군 운영 퍼블릭)은 그린피 50% 할인. 회원제·민자 골프장은 본 항목 적용 외."
+    },
+    {
+      "region": "장애인 전용 체육시설",
+      "agency": "대한장애인체육회 · 시·도 장애인체육회 · 장애인복지관",
+      "lines_or_routes": [
+        "이천 장애인체육종합훈련원(국가대표 훈련시설)",
+        "장애인스포츠센터(서울 송파·강동·노원·관악·양천 등)",
+        "장애인복지관 부설 체육시설(전국 240여 개소)"
+      ],
+      "apply_channel": "장애인 전용 시설은 대부분 본인 무료 또는 1,000~3,000원 정도 저렴한 요금. 장애인등록증 제시 후 회원등록.",
+      "card_or_proof_type": "장애인등록증(복지카드)",
+      "url": "https://www.koreanpc.kr/",
+      "notes": "장애인 전용 시설은 본 항목과 별개로 더 큰 할인(또는 무료) 적용. 일반 공공체육시설과 함께 활용 권장."
+    }
+  ],
+  "how_to_use": {
+    "default": "(1) 시설 또는 통합예약 사이트(예: life.gangnam.go.kr, 서울시설공단 홈페이지)에서 회원가입 시 본인 인증 단계에서 장애인 정보 자동 연동 또는 (2) 현장 방문 시 안내데스크에서 장애인등록증(복지카드) 제시 → 감면 사유 등록 → 이용권/회원증 발급 → 강습·일일권 결제 시 50% 자동 적용. 중증은 동반자 함께 등록 시 보호자 1인분도 50%.",
+    "with_card": "장애인등록증(실물 복지카드) 또는 모바일 복지카드(정부24·복지로 앱). 본인인증 단계에서 자동 연동되는 사이트(서울시 일부 시설관리공단 통합예약)도 있음.",
+    "without_card": "신분증 + 주민센터 발급 '장애인 증명서' 또는 '장애 정도 결정서'로 대체 가능. 분실 시 동주민센터에서 즉시 발급. 모바일 복지카드 활용 권장.",
+    "exceptions": "①민자 시설(체인 헬스장·휘트니스·민간 수영장·민간 골프장·민자 스키장)은 본 항목 적용 외 ②지자체 조례별로 할인율 차등(50%가 표준, 일부는 30%·70%·100% 등 다양) ③단체 강습·특별 프로그램·전문 강사 수강은 별도 할인율 ④할인 사유가 2개 이상인 경우(예: 장애인 + 기초생활수급자) 더 높은 할인율이 자동 적용 ⑤거주 지역 외 시설 이용 시 비거주자 요금이 별도 적용되는 경우 있음."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "현장 시설 안내데스크",
+        "method": "방문",
+        "url": null
+      },
+      {
+        "channel": "서울시설공단",
+        "method": "온라인",
+        "url": "https://www.sisul.or.kr/"
+      },
+      {
+        "channel": "강남구 통합예약",
+        "method": "온라인",
+        "url": "https://life.gangnam.go.kr/"
+      },
+      {
+        "channel": "각 자치구 시설관리공단",
+        "method": "온라인",
+        "url": null
+      },
+      {
+        "channel": "장애인스포츠 통합 안내(대한장애인체육회)",
+        "method": "온라인",
+        "url": "https://www.koreanpc.kr/"
+      },
+      {
+        "channel": "각 시설 콜센터",
+        "method": "전화",
+        "url": null
+      }
+    ],
+    "required_documents": [
+      "장애인등록증(복지카드)",
+      "또는 모바일 복지카드(정부24·복지로 앱)",
+      "또는 장애 정도 결정서(주민센터 발급)",
+      "본인 신분증",
+      "동반자 등록 시 동반자 신분증(중증)",
+      "(수영장 등) 건강검진 결과지 또는 진단서(일부 시설)"
+    ],
+    "processing_period": "현장 등록: 즉시. 온라인 강좌 수강: 본인인증 후 즉시. 강좌별 수강신청 일정에 따름(통상 매월 25~31일 다음 달 수강신청).",
+    "fee": {
+      "default": "정상가의 50%",
+      "exceptions": "할인 사유 중복 시 더 높은 할인율 자동 적용. 지자체별 50%~100% 차등."
+    },
+    "online_available": true,
+    "proxy_allowed": false
+  },
+  "validity": {
+    "expiry": "장애인등록증 유효기간과 동일.",
+    "renewal": "복지카드 분실·훼손 시 동주민센터 또는 복지로(bokjiro.go.kr) 재발급. 시설 회원증은 시설별 갱신 주기(통상 1~2년)에 따라 갱신."
+  },
+  "exceptions_and_caveats": [
+    "**민자·민간 체육시설은 본 항목 적용 외** — 체인 헬스장, 민간 수영장, 회원제 골프장, 민자 스키장(용평·휘닉스·비발디파크·웰리힐리 등) 등. 단 민자 스키장도 자체적으로 장애인 할인 운영하는 경우 많음(별도 확인).",
+    "지자체별 조례에 따라 할인율 차등 — 50%가 표준이나 일부 구·시는 중증 70~100%, 동반자 100% 등 더 큰 혜택을 운영.",
+    "거주 지역 외 시설 이용 시 비거주자 요금이 별도 적용될 수 있음 — 동일 50% 할인은 적용되나 기준 요금이 다름.",
+    "강습·수강은 보통 1~3개월 단위로 신청, 정원 마감 시 우대 회원도 등록 불가. 일부 시설은 장애인 우선등록 권한 부여.",
+    "수영장 등 일부 시설은 건강검진 결과지·진단서 제출 요구 가능(특히 중증 장애인).",
+    "할인 사유 중복(예: 장애인 + 65세 이상 + 기초생활수급자) 시 더 높은 할인율 자동 적용 — 이중 할인은 불가.",
+    "강남구 통합예약 등 일부 사이트는 본인인증으로 자동 감면 적용, 일부는 센터 방문 인증 후 적용. 시스템 차이로 첫 등록 시 시간 소요 가능.",
+    "외국인 등록 장애인은 「장애인복지법」 제32조의2에 따라 등록한 경우 동일 적용.",
+    "장애인 전용 체육시설(이천 훈련원·장애인스포츠센터·복지관 부설 체육시설)은 본 항목과 별개로 무료 또는 더 큰 할인 적용. 함께 활용 권장.",
+    "**공공 스키장은 강원랜드(하이원)·강원도 일부 시설만 해당** — 대부분의 스키장이 민자 — 본 항목 적용 시설은 매우 제한적."
+  ],
+  "penalties_for_misuse": "타인 장애인등록증 도용 등록 시 「형법」 제231조(사문서 위조·변조) 위반. 적발 시 차액 추징, 회원 자격 정지(보통 1년), 일정 기간 시설 이용 제한.",
+  "faq": [
+    {
+      "q": "어떤 시설이 '공공체육시설'에 해당하나요?",
+      "a": "국가나 지방자치단체가 설치·운영하는 체육시설로 ①생활체육관·실내체육관 ②수영장 ③테니스장·배드민턴장 ④빙상장 ⑤골프연습장·게이트볼장 ⑥축구장·야구장(아마추어) ⑦공공 스키장 등이 포함됩니다. 운영주체로 보면 서울시설공단·인천시설관리공단·부산시설공단 등 시·도 시설공단, 각 자치구·시·군 시설관리공단, 지자체 직영 시설이 해당됩니다. **체인 헬스장, 민간 수영장, 회원제 골프장, 민자 스키장은 본 항목 적용 외**."
+    },
+    {
+      "q": "강습료(수영 강습 등)도 50% 할인되나요?",
+      "a": "네. 일일권·자유수영뿐 아니라 강습료(월 수강료)도 50% 할인 대상입니다. 다만 강습은 정원이 정해져 있어 신청 시기를 놓치면 우대 회원도 등록 불가합니다. 일부 시설은 장애인 우선등록 권한(일반보다 1~2일 먼저 신청 가능)을 운영하므로, 거주 지역 시설관리공단·구청에 문의해 보세요."
+    },
+    {
+      "q": "보호자도 같은 50% 할인?",
+      "a": "**중증** 동반 보호자 1인까지 같은 50% 적용. 보호자는 친인척·간병인·활동지원사·자녀 등 누구든. 일부 시설은 동반자를 100% 무료로 운영하는 경우도 있음. **경증은 본인만 50%**."
+    },
+    {
+      "q": "스키장도 50% 할인되나요?",
+      "a": "공공 스키장(강원랜드 하이원리조트, 강원도 영월스키장 등 매우 제한적)만 본 항목 적용. **대부분의 스키장이 민자 운영**(용평·휘닉스·비발디파크·웰리힐리·오크밸리·곤지암·지산·곰동산·무주덕유산 등)이라 본 항목 적용 외. 단 민자 스키장도 자체적으로 장애인 할인을 운영하는 경우가 많아 매표소·홈페이지 확인 필요(통상 평일·비수기 50%). 강원랜드 하이원은 공기업이라 본 항목 준용 가능."
+    },
+    {
+      "q": "거주지 외 다른 지역 시설도 50%?",
+      "a": "원칙적으로 전국 공통 적용이나 일부 지자체 시설은 거주자 우대(외지인은 기본요금이 더 비싸거나 일부 강좌 외지인 제한)입니다. 일일권은 50% 할인이 어디서나 가능하지만, 강좌 등록은 거주지 시설을 권장합니다."
+    },
+    {
+      "q": "장애인 전용 체육시설(장애인스포츠센터)과는 어떻게 다른가요?",
+      "a": "장애인 전용 체육시설(이천 장애인체육종합훈련원, 송파장애인스포츠센터 등)은 본 항목과 별개로 운영되며 대부분 본인 무료 또는 1,000~3,000원의 매우 저렴한 요금. 본 항목은 '일반' 공공체육시설의 50% 할인. 둘 다 등록 장애인이 활용 가능하므로 거주 지역 장애인복지관·장애인체육회에 문의해 두 시설을 모두 활용하는 것이 좋습니다."
+    },
+    {
+      "q": "수영장 이용 시 건강검진 결과지가 필요한가요?",
+      "a": "일부 시설(특히 중증 장애인)은 의사 소견서·건강검진 결과지를 요구할 수 있습니다. 수영장 이용 자체에 의학적 제한이 있는 경우(간질·심장 질환 등)를 확인하기 위함입니다. 사전에 시설에 전화로 문의하시고 필요 서류를 준비하세요."
+    },
+    {
+      "q": "외국인도 적용되나요?",
+      "a": "「장애인복지법」 제32조의2에 따라 외국인 등록 후 장애인 등록을 마친 경우 동일 적용. 외국 발급 장애인증 불가."
+    },
+    {
+      "q": "할인 사유가 2개 이상인 경우(장애인 + 기초생활수급자) 중복 할인되나요?",
+      "a": "아닙니다. **중복 할인은 되지 않으며 더 높은 할인율 하나만 자동 적용**됩니다. 예: 장애인 50% + 기초생활수급자 70% → 70% 적용. 통합예약 사이트에서 본인 정보 인증 시 시스템이 자동 판단."
+    },
+    {
+      "q": "어떻게 등록하나요?",
+      "a": "**현장 등록**: 거주 지역 구민체육센터·시설관리공단 시설 안내데스크에 장애인등록증과 신분증 제시 → 회원등록 → 이용. **온라인**: 거주 지역 시설관리공단·구청 통합예약 사이트(예: 서울시설공단 sisul.or.kr, 강남구 life.gangnam.go.kr)에서 회원가입 시 본인인증으로 장애인 정보 자동 연동되는 경우도 있음. 자동 연동 안 되면 첫 1회 시설 방문 인증 필요."
+    },
+    {
+      "q": "분실하거나 등록증을 안 가져온 경우?",
+      "a": "모바일 복지카드(정부24·복지로 앱) 인정. 모두 없는 경우 가까운 주민센터에서 즉시 발급되는 '장애 정도 결정서' 또는 '장애인 증명서'로 대체 가능(시설별 정책 상이). 사전에 시설에 전화 확인 권장."
+    }
+  ],
+  "contact": [
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "문화체육관광부 스포츠지원과",
+      "phone": "044-203-3114",
+      "url": "https://www.mcst.go.kr/"
+    },
+    {
+      "name": "대한장애인체육회",
+      "phone": "02-2068-9100",
+      "url": "https://www.koreanpc.kr/"
+    },
+    {
+      "name": "서울시설공단",
+      "phone": "1588-4388",
+      "url": "https://www.sisul.or.kr/"
+    },
+    {
+      "name": "부산시설공단",
+      "phone": "051-860-7600",
+      "url": "https://www.bisco.or.kr/"
+    },
+    {
+      "name": "인천시설관리공단",
+      "phone": "032-451-2114",
+      "url": "https://www.ifmc.kr/"
+    },
+    {
+      "name": "대구시설공단",
+      "phone": "053-602-7000",
+      "url": "https://www.dgfc.or.kr/"
+    },
+    {
+      "name": "광주광역시도시공사",
+      "phone": "062-360-7000",
+      "url": "https://www.gjco.or.kr/"
+    },
+    {
+      "name": "대전시설관리공단",
+      "phone": "042-380-5114",
+      "url": "https://www.djsiseol.or.kr/"
+    },
+    {
+      "name": "강원랜드 하이원리조트(스키장)",
+      "phone": "1588-7789",
+      "url": "https://www.high1.com/"
+    }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "B001과 공유."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행령 (별표2 공공시설 등의 이용요금 감면 기준)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표2 표 내용",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "체육시설의 설치ㆍ이용에 관한 법률 / 시행령",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/체육시설의설치ㆍ이용에관한법률",
+      "fallback_url": "https://www.law.go.kr/법령/체육시설의설치ㆍ이용에관한법률시행령",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제8조 사용료 감면 / 시행령 제4조의2",
+        "robots_txt_ok": true,
+        "notes": "공공체육시설 사용료 감면 직접 근거. 시행규칙은 2026.01.01. 개정 시행본 적용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "체육시설의 설치ㆍ이용에 관한 법률 시행규칙",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/체육시설의설치ㆍ이용에관한법률시행규칙",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "2026.01.01 시행 개정본."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "서울시설공단",
+      "publisher": "서울시설공단",
+      "publisher_type": "광역지자체",
+      "url": "https://www.sisul.or.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "체육시설 안내·요금 영역",
+        "robots_txt_ok": true,
+        "notes": "콜센터 1588-4388에서 복지카드 등 제출로 신규 이용등록."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "강남구 통합예약 — 할인감면안내(체육시설)",
+      "publisher": "강남구청",
+      "publisher_type": "기초지자체",
+      "url": "https://life.gangnam.go.kr/fmcs/441",
+      "fallback_url": "https://life.gangnam.go.kr/fmcs/341",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "할인사유 안내 영역",
+        "robots_txt_ok": true,
+        "notes": "할인사유 2개 이상일 때 더 높은 할인율 자동 적용. 강남스포츠문화센터 등 자치구 대표 사례."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "공공요금 감면 — 보건복지부 장애인정책",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010500",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공시설 이용요금 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=4&cciNo=2&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "대한장애인체육회 — 장애인스포츠 안내",
+      "publisher": "대한장애인체육회",
+      "publisher_type": "공기업",
+      "url": "https://www.koreanpc.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애인 전용 체육시설(이천 훈련원 등) 안내. 본 항목과 별개 부가 정보."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "강원랜드 하이원리조트 스키장",
+      "publisher": "강원랜드(공기업)",
+      "publisher_type": "공기업",
+      "url": "https://www.high1.com/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "리프트 요금 영역",
+        "robots_txt_ok": true,
+        "notes": "공공 스키장 대표 사례."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "법제처 유권해석 — 체육시설 사용료 감면(시행령 제4조의2)",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://www.nepla.ai/wiki/교육-문화-언론/레저-스포츠/-유권해석-체육시설의-설치-이용에-관한-법률-시행령-제4조의2-전문체육시설-및-생활체육시설의-사용료-감면/-법제처-유권해석-체육시설의-설치-이용에-관한-법률-시행령-제4조의2제4호에-따른-65세-이상의-사람-장애인-및-국민기초생활-보장법-에-따른-수급자를-위한-행사-의-범위-체육시설의-설치-이용에-관한-법률-시행령-제4조의2제4호-등-관련-rv5n72m7k8zm",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "manual_review",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "법제처 유권해석. 일회성 참고."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "자치법규정보시스템(ELIS) — 지자체별 체육시설 운영 조례",
+      "publisher": "행정안전부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.elis.go.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "각 지자체 조례별 감면 비율 확인용. '체육시설물 관리 및 운영 조례' 키워드로 검색."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": [
+    "B008",
+    "B009"
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

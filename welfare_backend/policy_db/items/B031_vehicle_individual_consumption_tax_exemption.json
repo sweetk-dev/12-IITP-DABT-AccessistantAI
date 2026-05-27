@@ -1,0 +1,451 @@
+{
+  "id": "B031",
+  "leaflet_section": "심한장애(중증) 전국공통",
+  "leaflet_number": 7,
+  "title": "장애인 승용자동차 개별소비세 면제",
+  "short_summary": "승용자동차에 대한 개별소비세 면제 (전단지 원문)",
+  "category": "세제",
+  "benefit_type": "면제",
+  "supported_amount": {
+    "rate": "100%",
+    "amount": "개별소비세 최대 500만원 + 교육세(개별소비세의 30%) + 부가가치세(개별소비세·교육세분) 동반 면제",
+    "scope": "승용자동차(자동차관리법상 승용차) 구입 시 제조장·보세구역 반출 단계에서 부과되는 개별소비세(세율 5%, 출고가의 3.5% 해당) 면제. 이에 연동된 교육세(개별소비세의 30%) 및 부가가치세(개별소비세·교육세분에 붙는 10%)도 함께 면제. 개별소비세 면제 한도 500만원 — 과세표준(출고가)이 1억원을 초과하는 고가 차량은 면제액이 500만원에서 상한 적용. 교육세·부가세 포함 실질 절감액: 개별소비세 500만원 × 1.3(교육세) × 1.1(부가세) = 최대 약 715만원."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 심한 장애인(중증). 장애인 본인 단독 명의 또는 동일 세대 보호자와의 공동명의 승용자동차 구입 시 적용. 장애인 1인당 1대 한정(동시에 여러 대 구입 시 1대만 면제).",
+    "severity_levels": ["심한 장애(중증)"],
+    "companion_allowed": null,
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "전국 공통. 국내 제조차는 제조장 관할 세무서, 수입차는 보세구역 관할 세관장에게 면세 신청. 신청은 출고(반출) 전에 해야 함."
+  },
+  "legal_basis": [
+    {
+      "name": "개별소비세법",
+      "article": "제18조(면세) 제1항 제1호 나목 — 장애인용 승용자동차",
+      "url": "https://www.law.go.kr/법령/개별소비세법"
+    },
+    {
+      "name": "개별소비세법 시행령",
+      "article": "제30조(면세반출 신고 절차) 및 제35조(추징)",
+      "url": "https://www.law.go.kr/법령/개별소비세법시행령"
+    },
+    {
+      "name": "개별소비세법 시행규칙",
+      "article": "제13조(면세 신청 서류) — 승용자동차 개별소비세 면세반출 신고서",
+      "url": "https://www.law.go.kr/법령/개별소비세법시행규칙"
+    },
+    {
+      "name": "교육세법",
+      "article": "제5조(세율) — 개별소비세의 30%. 개별소비세 면제 시 교육세 동반 면제",
+      "url": "https://www.law.go.kr/법령/교육세법"
+    },
+    {
+      "name": "부가가치세법",
+      "article": "제26조(면세) — 개별소비세·교육세 면제분의 부가세도 과세표준에서 제외",
+      "url": "https://www.law.go.kr/법령/부가가치세법"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국(국내 제조차)",
+      "agency": "자동차 제조사(현대·기아·GM 등) 영업소·딜러 및 관할 세무서",
+      "lines_or_routes": ["전국 자동차 판매 영업소"],
+      "apply_channel": "차량 출고 전 자동차 영업소(딜러)에서 면세 신청서 제출 → 딜러가 관할 세무서에 면세반출 신고 대행(또는 직접 세무서 신고)",
+      "card_or_proof_type": "승용자동차 개별소비세 면세반출 신고서, 장애인등록증(복지카드) 사본",
+      "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2282&cntntsId=7737",
+      "notes": "국내 제조차는 제조장(공장) 관할 세무서에 면세반출 신고. 실제로는 자동차 영업소(딜러)가 신고를 대행하며, 구매자는 장애인등록증 사본과 신청서 서명만 하면 됨. 출고 후 신청 불가 — 반드시 출고(공장 반출) 전 신청."
+    },
+    {
+      "region": "전국(수입차)",
+      "agency": "수입 자동차 딜러 및 관할 세관장",
+      "lines_or_routes": ["수입차 공식 딜러 전국 전시장·영업소"],
+      "apply_channel": "차량 출고(통관) 전 수입 딜러 영업소에서 면세 신청 → 딜러가 보세구역 관할 세관장에 면세반출 신고 대행",
+      "card_or_proof_type": "승용자동차 개별소비세 면세반출 신고서, 장애인등록증(복지카드) 사본, 자동차매매계약서 사본",
+      "url": "https://www.customs.go.kr/",
+      "notes": "수입차는 보세구역(항구·공항 세관) 관할 세관장에게 신고. 면세 신청 시점은 보세구역 반출(통관) 전. 딜러가 통관 절차와 함께 면세 처리 대행. BMW·벤츠·아우디·테슬라 등 수입 브랜드 딜러에서 동일하게 적용."
+    }
+  ],
+  "how_to_use": {
+    "default": "차량 계약 시 딜러에게 '장애인 개별소비세 면제 신청'을 요청. 딜러가 장애인등록증 사본, 매매계약서, 면세반출 신고서를 구비하여 제조장(또는 세관) 관할 세무서(또는 세관장)에 출고 전 신고. 출고 후 차량 가격에서 개별소비세·교육세가 이미 제외된 가격으로 청구됨.",
+    "with_card": "장애인복지카드(장애인등록증)를 신분 확인 및 장애 증명 서류로 딜러에 제출. 특별한 추가 카드 없음.",
+    "without_card": "장애인복지카드 미소지 시 장애인복지 담당 주민센터에서 '장애인등록 사실 확인서'를 발급받아 제출. 단, 출고 전 신청 기한을 놓치지 않도록 사전 준비 필요.",
+    "exceptions": "전기차·수소차는 개별소비세 과세 대상이지만, 전기차는 300만원, 수소차는 400만원의 별도 친환경차 개별소비세 감면(~2026년 12월 31일)도 적용됨. 장애인 감면(500만원)과 친환경차 감면 중 어느 쪽이 더 유리한지는 차량 가격에 따라 다르므로 딜러 또는 세무서에 확인. 두 가지 동시 중복 적용은 불가."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "자동차 판매 영업소(딜러) — 출고 전 신청 대행",
+        "method": "방문",
+        "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2282&cntntsId=7737"
+      },
+      {
+        "channel": "차량 제조장 관할 세무서(국내 제조차 직접 신청 시)",
+        "method": "방문",
+        "url": "https://www.nts.go.kr/"
+      },
+      {
+        "channel": "보세구역 관할 세관장(수입차 직접 신청 시)",
+        "method": "방문",
+        "url": "https://www.customs.go.kr/"
+      },
+      {
+        "channel": "국세청 홈택스(Hometax) — 관련 서류 조회 및 일부 민원",
+        "method": "온라인",
+        "url": "https://www.hometax.go.kr/"
+      }
+    ],
+    "required_documents": [
+      "승용자동차 개별소비세 면세반출 신고서(딜러 또는 세무서·세관 비치 양식)",
+      "장애인등록증(장애인복지카드) 사본 — 장애 등록 사실 확인용",
+      "자동차매매계약서 사본(구매 계약 내용 확인용)",
+      "신분증 사본(주민등록증·운전면허증 등)",
+      "공동명의 구입 시: 공동명의자의 신분증 및 관계를 증명하는 서류(주민등록등본·가족관계증명서)",
+      "대리 신청 시: 위임장, 대리인 신분증"
+    ],
+    "processing_period": "출고 전 신청 → 당일 또는 수일 이내 세무서(세관) 처리. 면세 승인 후 차량 출고 시 개별소비세를 제외한 가격으로 출고.",
+    "fee": {
+      "default": "무료(면세 신청 수수료 없음). 실질적으로 출고가에서 개별소비세·교육세·부가세분이 차감된 저렴한 가격으로 구매.",
+      "exceptions": "이미 출고된 차량에 대해서는 소급 면제 불가. 신청 시기를 놓친 경우 구제 방법 없음."
+    },
+    "online_available": false,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "면제는 1회성(1대 구입 시 1회). 차량을 구입한 날로부터 5년간 의무 보유. 5년 이내 명의 이전(양도·증여 등) 또는 용도 변경 시 개별소비세 추징.",
+    "renewal": "5년 이후 차량을 처분하고 새 차를 구입할 때 다시 면세 신청 가능. 5년 이내에 차를 바꾸고 싶다면: 기존 차량 처분 전 세무서 또는 딜러에 추징 금액 확인 후 진행. 경감 사유(사망 등)가 있을 경우 추징 면제 가능."
+  },
+  "exceptions_and_caveats": [
+    "개별소비세 면제 한도: 500만원. 따라서 출고가격이 높은 고가 차량의 경우 개별소비세 총액이 500만원을 초과하면 초과분은 납부해야 함. 예: 출고가 1억 4천만원 차량의 개별소비세 ≒ 약 500만원이 면제 상한에 해당.",
+    "5년 의무 보유: 구입일로부터 5년 이내 명의 이전(판매·증여·상속 제외 — 구입자 사망 시 추징 없음) 또는 용도 변경(비장애인에게 양도 등) 시 면제받은 개별소비세 전액 추징. 단, 구입자 사망 시는 5년 이내라도 추징 없음.",
+    "반드시 출고(공장 반출) 전 신청: 차량이 제조장(공장) 또는 보세구역(세관)에서 반출되기 전에 면세 신청을 해야 함. 출고 후 소급 면제 불가.",
+    "차량 요건 제한 없음(B030 지방세 면제와 달리): 개별소비세 면제는 '승용자동차'이면 배기량·인승·적재량 제한이 별도로 없음. 단, 개별소비세 과세 대상인 승용차에 한함(화물차·이륜차 등은 개별소비세 과세 대상 아님).",
+    "공동명의 요건: 장애인 본인 단독 명의, 또는 동일 세대(주민등록표상 세대 동일)의 배우자·직계존비속(부모·자녀·조부모 등)·형제자매·직계비속의 배우자와의 공동명의. 다른 세대에 속하는 가족 단독 명의로는 불가.",
+    "전기차·수소차의 경우 친환경차 감면(전기 300만원, 수소 400만원)과 장애인 감면(500만원) 중 유리한 1종만 선택 적용 — 중복 불가. 차량 가격에 따라 어느 쪽이 유리한지 딜러 또는 세무서에 확인.",
+    "외제차(수입차)도 적용됨. 수입 승용차 구입 시 보세구역 통관 전 관할 세관장에 면세 신청.",
+    "이미 출고된 차량은 소급 적용 불가. 딜러 측에서 감면 신청 누락 시 구제 불가 — 계약 시 반드시 '장애인 개별소비세 면제' 명시 요청.",
+    "장애인 등록 말소(장애 호전 등) 후에는 해당 자동차에 대해 추징 사유가 발생할 수 있음 — 5년 이내 장애 등록 말소 시 담당 세무서에 사전 확인 필요.",
+    "개별소비세 면제 차량의 명의를 같은 장애인에게 이전하거나(같은 사람이 차를 바꾸는 경우 아님), 사망·혼인·해외이민 등 특별한 사유가 있는 경우 추징이 면제될 수 있음 — 개별 사안별로 세무서 확인 필요."
+  ],
+  "penalties_for_misuse": "구입일로부터 5년 이내 명의 이전 또는 용도 변경 시 면제된 개별소비세 전액 신고·납부 의무 발생(개별소비세법 제18조 제2항 및 시행령 제35조). 납부 지연 시 가산세(지연일수 × 일 0.022%) 추가. 허위 서류 제출로 면세를 받은 경우 면세액의 2배 이하 벌금(개별소비세법 제23조)."  ,
+  "faq": [
+    {
+      "q": "개별소비세 면제는 얼마나 절약되나요?",
+      "a": "승용자동차 출고가에 대해 개별소비세 5%가 부과되는데, 최대 500만원까지 면제됩니다. 여기에 교육세(개별소비세의 30%)와 부가가치세(개별소비세·교육세분의 10%)도 연동 면제되어, 실질 절감액은 최대 약 715만원(500만원 × 1.3 × 1.1)에 달합니다. 예를 들어 출고가 3,500만원 차량이라면 개별소비세 약 175만원 + 교육세 약 52만원 + 부가세 약 23만원 = 총 약 250만원 절감됩니다."
+    },
+    {
+      "q": "신청은 언제, 어디서 해야 하나요?",
+      "a": "반드시 차량 출고(공장 반출 또는 세관 통관) 전에 신청해야 합니다. 실제로는 자동차 구입 계약 시 딜러(영업사원)에게 '장애인 개별소비세 면제 적용'을 요청하면, 딜러가 장애인등록증 사본과 면세반출 신고서를 받아 관할 세무서(국내차) 또는 세관(수입차)에 신고를 대행합니다. 출고 후에는 소급 적용이 불가하므로, 계약 시점에 반드시 확인하세요."
+    },
+    {
+      "q": "5년 안에 차를 팔면 세금을 돌려줘야 하나요?",
+      "a": "네. 구입일로부터 5년 이내에 다른 사람에게 명의를 이전(판매·증여 등)하거나 용도를 변경하면 면제받은 개별소비세 전액을 신고·납부해야 합니다. 단, 구입자 본인이 5년 이내에 사망한 경우에는 추징하지 않습니다. 5년이 지난 후 차를 처분하는 것은 자유롭게 가능합니다."
+    },
+    {
+      "q": "차 값이 1억원 넘는 고가 차량도 면제되나요? 면제 한도가 있나요?",
+      "a": "면제 한도는 개별소비세 기준 500만원입니다. 개별소비세는 출고가의 약 5%이므로 과세표준 약 1억원 초과 차량부터 한도에 걸립니다. 예를 들어 출고가 2억원 차량의 개별소비세는 약 1,000만원이지만, 500만원까지만 면제되고 나머지 500만원은 납부해야 합니다."
+    },
+    {
+      "q": "가족(배우자, 부모님) 이름으로 차를 사도 면제되나요?",
+      "a": "동일 세대에 속하는 가족과 공동명의로 구입하는 경우에만 면제됩니다. 같은 주민등록표에 함께 기재된 배우자·직계존비속(부모·자녀·조부모 등)·형제자매·직계비속의 배우자와의 공동명의로 구입하면 됩니다. 다른 집(다른 세대)에 사는 가족 단독 명의로는 면제가 적용되지 않습니다."
+    },
+    {
+      "q": "전기차나 수소차도 개별소비세 면제를 받을 수 있나요?",
+      "a": "전기차와 수소차도 개별소비세 과세 대상 승용차이므로 장애인 면제(500만원 한도)를 받을 수 있습니다. 그러나 전기차는 별도로 친환경차 감면(300만원, ~2026년 12월 31일)이 있고, 수소차는 400만원 감면이 있는데 두 가지를 동시에 받을 수 없습니다. 장애인 500만원 감면이 전기차 300만원 감면보다 유리하므로, 전기차 구입 장애인은 장애인 면제를 선택하는 것이 유리합니다."
+    },
+    {
+      "q": "외제차(수입차)도 면제받을 수 있나요?",
+      "a": "네. BMW, 벤츠, 테슬라 등 수입 승용차도 장애인 개별소비세 면제 대상입니다. 수입차는 보세구역(항구·공항 세관)에서 통관되기 전에 수입 딜러가 세관장에게 면세반출 신고를 합니다. 수입 브랜드 딜러에게 계약 시 면제 신청을 요청하면 됩니다."
+    },
+    {
+      "q": "차를 고를 때 배기량이나 인승 제한이 있나요?",
+      "a": "개별소비세 면제에는 배기량·인승·적재량 제한이 없습니다. '승용자동차'이기만 하면 됩니다. 이 점에서 취득세·자동차세 면제(B030, 배기량 2,000cc 이하 또는 7~10인승 등 제한 있음)와 다릅니다. 단, 개별소비세는 승용자동차에만 부과되므로 화물차·이륜차는 해당 없음."
+    },
+    {
+      "q": "딜러가 감면 신청을 깜빡하고 출고했어요. 나중에 환급받을 수 있나요?",
+      "a": "안타깝지만 출고(공장 반출·통관) 후에는 소급 적용이 불가합니다. 개별소비세 면제는 반출 전 신청이 법적 요건이기 때문입니다. 이런 경우에는 딜러 측의 과실로 보아 민사적으로 해결하거나(딜러에게 손해배상 요구), 관할 세무서·세관에 이의를 제기해 볼 수 있으나 환급이 보장되지는 않습니다. 계약 시 반드시 서면으로 '장애인 개별소비세 면제 신청'을 명시해 두세요."
+    },
+    {
+      "q": "장애 등록이 말소되면 차에 대한 세금을 다시 내야 하나요?",
+      "a": "구입 당시 적법하게 면세 신청을 했다면, 이후 장애 상태가 호전되어 등록이 말소되더라도 이미 면제된 개별소비세를 소급해서 추징하지는 않습니다. 다만, 5년 이내에 명의 이전이나 용도 변경이 있으면 별개의 추징 사유가 발생합니다. 장애 말소 후 차량 처리에 관해서는 관할 세무서에 사전 확인하는 것이 안전합니다."
+    },
+    {
+      "q": "지방세 면제(B030)와 이 개별소비세 면제(B031)를 동시에 받을 수 있나요?",
+      "a": "네, 두 가지는 별개의 세금(국세 vs 지방세)이므로 동시에 적용받을 수 있습니다. 승용자동차 구입 시: ①취득세 면제(B030, 지방세특례제한법) + ②개별소비세 면제(B031, 개별소비세법)를 함께 신청하면 됩니다. 취득세는 시·군·구청 세무과, 개별소비세는 딜러를 통해 세무서·세관에 신청합니다."
+    }
+  ],
+  "contact": [
+    {
+      "name": "국세청 세미래 콜센터",
+      "phone": "126",
+      "url": "https://www.nts.go.kr/"
+    },
+    {
+      "name": "국세청 홈택스(Hometax)",
+      "phone": "126",
+      "url": "https://www.hometax.go.kr/"
+    },
+    {
+      "name": "관세청 고객지원센터",
+      "phone": "125",
+      "url": "https://www.customs.go.kr/"
+    },
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "정부24 (장애인용 승용차 개별소비세 세액계산 안내)",
+      "phone": "1588-2188",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/PTR000050480"
+    }
+  ],
+  "sources": [
+    {
+      "title": "개별소비세법 제18조(면세) — 장애인용 승용자동차",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/개별소비세법",
+      "fallback_url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=90459",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제18조 제1항 제1호 나목 본문 및 단서(면제 한도, 5년 추징 조건)",
+        "robots_txt_ok": true,
+        "notes": "면제 한도(500만원) 및 5년 의무 보유 조항 변경 모니터링. 법 개정 시 시행 시기 확인."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "개별소비세법 시행령 (제30조 면세반출 신고, 제35조 추징)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/개별소비세법시행령",
+      "fallback_url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=279307",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제30조(면세 신청 절차) 및 제35조(추징 사유)",
+        "robots_txt_ok": true,
+        "notes": "공동명의 요건 및 추징 사유(5년 이내 양도·사망 등 예외)가 시행령에 위임됨."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "개별소비세법 시행규칙 (제13조 면세 신청 서류)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/개별소비세법시행규칙",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제13조 및 서식",
+        "robots_txt_ok": true,
+        "notes": "면세반출 신고서 서식 변경 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "교육세법 (개별소비세분 교육세 연동 면제)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/교육세법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제5조 세율(개별소비세의 30%)",
+        "robots_txt_ok": true,
+        "notes": "교육세는 개별소비세의 부가세 성격. 개별소비세 면제 시 자동 면제."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인 생활안정 > 세금감면 > 자동차구입 관련 세금 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=4&cciNo=1&cnpClsNo=3",
+      "fallback_url": "https://www.easylaw.go.kr/CSP/CnpClsMainBtr.laf?popMenu=ov&csmSeq=916&ccfNo=4&cciNo=1&cnpClsNo=3",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 — 개별소비세 면제 조항 및 절차 표",
+        "robots_txt_ok": true,
+        "notes": "취득세(B030)와 개별소비세(B031)를 같은 페이지에서 안내. 동시 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "세제혜택 — 장애인정책 — 보건복지부",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010600",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 영역 — 개별소비세 면제 안내",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인용 승용차 개별소비세 세액계산 — 정부24 민원안내",
+      "publisher": "정부24",
+      "publisher_type": "중앙정부",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/PTR000050480",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "민원 안내 본문",
+        "robots_txt_ok": true,
+        "notes": "세액 계산 안내 및 신청 방법 확인용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "개별소비세 면세 안내 — 국세청",
+      "publisher": "국세청",
+      "publisher_type": "중앙정부",
+      "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2282&cntntsId=7737",
+      "fallback_url": "https://www.nts.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 — 장애인 면세 안내 항목",
+        "robots_txt_ok": true,
+        "notes": "국세청 세목별 안내 — 개별소비세 면세 절차 및 서식 링크."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "관세청 — 수입차 개별소비세 면세 안내",
+      "publisher": "관세청",
+      "publisher_type": "중앙정부",
+      "url": "https://www.customs.go.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "수입차 보세구역 면세반출 신고 절차 확인용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "[2025 달라지는 세법] 친환경차 개별소비세 감면 연장 — 정책브리핑",
+      "publisher": "대한민국 정책브리핑",
+      "publisher_type": "중앙정부",
+      "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148938223",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "manual_review",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "친환경차 감면 연장(~2026.12.31) 확인. 장애인 vs 친환경 감면 중복 여부 판단에 활용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "자동차 구입 관련 세금 감면 FAQ — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/OnhunqueansInfoRetrieve.laf?onhunqnaAstSeq=97&targetRow=101&sortType=RECOM&pagingType=large&onhunqueSeq=4805",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "Q&A 형식 보조 확인 페이지."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B030", "B010", "B007"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

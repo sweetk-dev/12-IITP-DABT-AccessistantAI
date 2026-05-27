@@ -1,0 +1,649 @@
+{
+  "id": "B009",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 9,
+  "title": "국공립 공연장 입장료 50% 할인",
+  "short_summary": "국·공립 공연장 50% 할인(심한 장애인은 동행하는 보호자 1인 포함). * 대관공연 제외 (전단지 원문)",
+  "category": "문화·체육",
+  "benefit_type": "할인",
+  "supported_amount": {
+    "rate": "50%",
+    "amount": null,
+    "scope": "국립극장·국립국악원·예술의전당·세종문화회관·정동극장 등 국·공립 공연장의 **자체기획공연** 입장권에 한해 50% 할인 적용. 자체기획공연이란 공연장이 직접 제작·기획하거나 전속·소속 단체(국립창극단·국립무용단·국립국악관현악단·국립합창단·서울시립교향악단 등)가 출연하는 공연을 말함. **외부 단체가 공연장을 빌려 운영하는 대관공연(보통 약 60~70%)은 본 항목 대상이 아니며, 주최측 자체 규정에 따라 할인율 상이(통상 5~30%) 또는 미적용**."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 장애인. 외국인 등록 장애인(「장애인복지법」 제32조의2)도 동일하게 적용.",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "companion_allowed": {
+      "applicable_to": "심한 장애(중증)",
+      "count": 1,
+      "scope": "심한 장애(중증) 등록 장애인을 동행하는 보호자 1인까지 같은 50% 할인 적용. 보호자는 친인척·간병인·활동지원사·자녀 등 누구나 가능. 경증은 본인만 50%. 예매 시 '장애인 우대' 옵션에서 좌석을 본인 + 동반자 2장으로 선택 → 둘 다 50% 결제. 입장 시 본인의 등록증과 함께 동반자가 함께 입장."
+    },
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "전국 시설 공통. 거주지·국적 제한 없음(외국 발급 장애인증은 불가, 대한민국 등록증 필수)."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제30조(경제적 부담의 경감)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행령",
+      "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+    },
+    {
+      "name": "공연법",
+      "article": "공연장 등록·운영 일반 근거",
+      "url": "https://www.law.go.kr/법령/공연법"
+    },
+    {
+      "name": "문화예술진흥법",
+      "article": "제15조의2(장애인 문화예술 활동의 지원)",
+      "url": "https://www.law.go.kr/법령/문화예술진흥법"
+    },
+    {
+      "name": "문화예술진흥법 시행령",
+      "article": "제23조(문화시설의 종류)",
+      "url": "https://www.law.go.kr/법령/문화예술진흥법시행령"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "서울 중구(장충동)",
+      "agency": "국립극장",
+      "lines_or_routes": [
+        "해오름극장(대극장)",
+        "달오름극장(중극장)",
+        "별오름극장(소극장)",
+        "하늘극장(야외)",
+        "전속단체: 국립창극단·국립무용단·국립국악관현악단"
+      ],
+      "apply_channel": "온라인(국립극장 홈페이지·인터파크·예스24)·전화(02-2280-4114)·현장 매표소 예매 시 '장애인' 우대 좌석 선택. 공연 당일 매표소에서 장애인등록증(복지카드) 제시 후 티켓 수령.",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드",
+      "url": "https://www.ntok.go.kr/",
+      "notes": "국립극장 전속단체 공연(자체기획)에 한해 본인 50% + 중증 동반 1인 50%. 대관공연은 주최측 별도 규정. 야외 하늘극장은 무료공연 다수."
+    },
+    {
+      "region": "서울 서초구·부산·진도·남원·전주",
+      "agency": "국립국악원",
+      "lines_or_routes": [
+        "서울 국립국악원(예악당·우면당·풍류사랑방·국악박물관)",
+        "부산국악원",
+        "남도국악원(진도)",
+        "민속국악원(남원)",
+        "국악박물관(전주)",
+        "전속단체: 정악단·민속악단·무용단·창작악단"
+      ],
+      "apply_channel": "온라인(국립국악원 홈페이지·인터파크·예스24)·전화(02-580-3300)·현장 예매. 예매 시 '장애인' 옵션 → 공연 당일 매표소에서 등록증 제시.",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드",
+      "url": "https://www.gugak.go.kr/",
+      "notes": "자체기획공연 50% 할인, 중증 동반 1인 동일. 매주 토요일 정기공연 '토요명품공연'은 일반 20,000원 → 등록 장애인 10,000원."
+    },
+    {
+      "region": "서울 서초구(우면동)",
+      "agency": "예술의전당",
+      "lines_or_routes": [
+        "오페라극장",
+        "CJ토월극장",
+        "콘서트홀",
+        "IBK챔버홀",
+        "리사이틀홀",
+        "자유소극장",
+        "한가람미술관",
+        "한가람디자인미술관",
+        "서예박물관",
+        "상주단체: 코리안심포니오케스트라·서울시오페라단·국립발레단·국립오페라단·국립합창단(일부)"
+      ],
+      "apply_channel": "온라인(예술의전당 SAC티켓·인터파크 위탁판매)·전화(1668-1352)·현장 매표소. '장애인 우대 할인' 옵션 선택, 공연 당일 매표소에서 복지카드 제시 후 티켓 수령.",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드",
+      "url": "https://www.sac.or.kr/site/main/content/useGuide",
+      "notes": "**자체기획공연만 50%** — 중증(舊 1~3급) 본인 + 동반 1인 50%, 경증(舊 4~6급) 본인 50%. **대관공연은 주최측 규정** — 통상 5~30% 또는 미적용. 인터파크가 위탁 판매대행하므로 같은 공연이라도 자체기획/대관 여부에 따라 할인 정책이 다름."
+    },
+    {
+      "region": "서울 종로구(광화문)",
+      "agency": "세종문화회관",
+      "lines_or_routes": [
+        "대극장",
+        "M씨어터",
+        "체임버홀",
+        "S씨어터",
+        "세종미술관",
+        "서울시 9개 예술단(서울시립교향악단·서울시국악관현악단·서울시합창단·서울시뮤지컬단·서울시무용단·서울시극단·서울시오페라단·서울시소년소녀합창단·서울시청소년국악단)"
+      ],
+      "apply_channel": "온라인(세종문화회관 홈페이지·인터파크)·전화(02-399-1000)·현장 매표소. 예매 시 '장애인' 우대 선택 → 공연 당일 매표소에서 복지카드 제시.",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드",
+      "url": "https://www.sejongpac.or.kr/portal/main/contents.do?menuNo=200085",
+      "notes": "**1~3급(중증) 본인 + 동반 1인 50%, 4~6급(경증) 본인 50%**. 자체기획공연만 적용. 대관공연 별도. 서울시 9개 예술단 공연은 자체기획에 해당."
+    },
+    {
+      "region": "서울 중구(정동)",
+      "agency": "정동극장",
+      "lines_or_routes": [
+        "정동극장(서울 중구)",
+        "정동극장 세실(구 세실극장)",
+        "정동극장 경주(경상북도)"
+      ],
+      "apply_channel": "온라인(정동극장 홈페이지·인터파크)·전화(02-751-1500)·현장. 예매 시 '장애인' 우대 옵션 선택.",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드",
+      "url": "https://www.jeongdong.or.kr/",
+      "notes": "전통예술 상설공연 '미소(MISO)' 등 자체기획 50% 할인(본인 + 중증 동반 1인). 정동극장 경주는 신라전통공연 운영."
+    },
+    {
+      "region": "서울 중구(명동)",
+      "agency": "국립정동극단·국립극단 명동예술극장",
+      "lines_or_routes": [
+        "명동예술극장(국립극단)",
+        "백성희장민호극장(국립극단)",
+        "소극장 판(국립극단)"
+      ],
+      "apply_channel": "국립극단 홈페이지(ntck.or.kr)·인터파크 예매. 예매 시 '장애인' 옵션.",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드",
+      "url": "https://www.ntck.or.kr/ko/information/challenged",
+      "notes": "국립극단 자체기획 정극·연극 50% 할인. 본인 + 중증 동반 1인."
+    },
+    {
+      "region": "전국 공립 문화예술회관",
+      "agency": "광역·기초 지자체(시립·도립·구립 예술의전당·문예회관)",
+      "lines_or_routes": [
+        "부산문화회관",
+        "대구문화예술회관·대구오페라하우스",
+        "광주예술의전당",
+        "대전예술의전당",
+        "인천종합문화예술회관",
+        "성남아트센터",
+        "고양아람누리·고양어울림누리",
+        "안양아트센터",
+        "수원SK아트리움",
+        "용인포은아트홀",
+        "익산예술의전당",
+        "전주한국소리문화의전당",
+        "안동문화예술의전당",
+        "포항문화예술회관",
+        "창원성산아트홀",
+        "제주아트센터 등"
+      ],
+      "apply_channel": "각 회관 홈페이지·인터파크·예스24·티켓링크 예매 시 '장애인' 우대 선택. 공연 당일 매표소에서 복지카드 제시.",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드",
+      "url": "https://www.kocaca.or.kr/",
+      "notes": "전국 220여 개 공립 문예회관 — 한국문화예술회관연합회(코카카) 소속. 각 회관의 자체기획공연은 본인 50% + 중증 동반 1인 50%. 대관공연은 주최측 규정."
+    }
+  ],
+  "how_to_use": {
+    "default": "(1) 공연장 홈페이지 또는 위탁 판매대행사(인터파크·예스24·티켓링크 등)에서 예매할 때 좌석 등급 선택 후 **'장애인 우대(또는 장애인 할인)' 옵션**을 선택 → 50% 할인된 금액으로 결제 → (2) 공연 당일 현장 매표소에서 **장애인등록증(복지카드)** 제시 → 티켓 수령. 중증은 본인 + 동반자 2장 모두 50% 결제 후 동반 입장.",
+    "with_card": "**실물 장애인등록증(복지카드)** 또는 **모바일 복지카드(정부24·복지로 앱)** 인정. 모바일 복지카드는 화면 캡처 불가하므로 매표소에서 앱 실시간 인증.",
+    "without_card": "분실·미소지 시 신분증 + 주민센터 발급 '장애인 증명서'로 대체 가능(시설별 정책 상이). 사전에 공연장 매표소에 전화 확인 권장.",
+    "exceptions": "①대관공연(외부 단체 임대)은 본 항목 적용 외 — 주최측 규정에 따라 통상 5~30% 또는 미적용 ②뮤지컬·콘서트 등 일부 인기 공연은 자체기획이라도 할인 제한 좌석(VIP·R석 일부)이 있을 수 있음 ③초청공연·기획전 패키지 상품은 별도 할인율 ④예매 사이트별로 우대 옵션 명칭이 다름('장애인', '장애인 우대', '복지', '동반자 포함' 등)."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "각 공연장 홈페이지",
+        "method": "온라인",
+        "url": null
+      },
+      {
+        "channel": "인터파크 티켓",
+        "method": "온라인",
+        "url": "https://ticket.interpark.com/"
+      },
+      {
+        "channel": "예스24 티켓",
+        "method": "온라인",
+        "url": "https://ticket.yes24.com/"
+      },
+      {
+        "channel": "티켓링크",
+        "method": "온라인",
+        "url": "https://www.ticketlink.co.kr/"
+      },
+      {
+        "channel": "각 공연장 매표소",
+        "method": "방문",
+        "url": null
+      },
+      {
+        "channel": "각 공연장 콜센터",
+        "method": "전화",
+        "url": null
+      }
+    ],
+    "required_documents": [
+      "장애인등록증(복지카드)",
+      "또는 모바일 복지카드(정부24·복지로 앱)",
+      "또는 장애인 증명서(주민센터 발급)",
+      "본인 신분증(매표소에서 본인 확인용)"
+    ],
+    "processing_period": "예매: 즉시. 현장 매표소 수령: 공연 시작 30분 전까지 권장(공연 직전 매표소 혼잡).",
+    "fee": {
+      "default": "정상가의 50%",
+      "exceptions": "대관공연은 주최측 규정에 따라 5~30% 또는 미적용. 일부 인기 공연은 VIP·R석 일부 좌석 할인 제한."
+    },
+    "online_available": true,
+    "proxy_allowed": false
+  },
+  "validity": {
+    "expiry": "장애인등록증 유효기간과 동일.",
+    "renewal": "복지카드 분실·훼손 시 동주민센터 또는 복지로(bokjiro.go.kr) 재발급."
+  },
+  "exceptions_and_caveats": [
+    "**대관공연은 본 항목 적용 외**. 외부 주최측(공연 제작사·기획사·민간 프로모터)의 자체 할인 규정 적용 — 통상 5~30% 또는 미적용. 같은 공연장이라도 자체기획/대관 여부에 따라 정책이 다름.",
+    "예매 시 '장애인 우대' 옵션 선택하지 않고 정상가 결제한 경우 현장 환불·차액 정산이 까다로움 — 예매 단계에서 반드시 옵션 선택.",
+    "중증(舊 1~3급) 동반 1인 50%는 본인과 같은 좌석 등급의 인접 좌석에만 적용되는 게 일반적. 분리 좌석은 불가능할 수 있음.",
+    "공연 당일 매표소에서 본인 확인용 신분증 + 장애인등록증 모두 요구하는 경우 있음 — 둘 다 지참 권장.",
+    "예매 시 본인 명의로 결제해야 함. 보호자 명의 예매 시 매표소에서 거부될 수 있음.",
+    "장애인 우대 좌석은 일반 우대(경로·국가유공자) 좌석과 별도로 운영. 매진 시 우대 좌석 먼저 마감 가능.",
+    "외국인 등록 장애인은 「장애인복지법」 제32조의2에 따라 등록한 경우 동일 적용. 외국 발급 장애인증 불가.",
+    "**휠체어석은 좌석 자체가 별도로 운영**되며 본 할인과 별개 — 휠체어석 예매 시 동반자 1인까지 함께 예매 가능, 좌석 자체 요금이 일반석보다 낮은 경우 많음.",
+    "어린이극·청소년극 등 일부 공연은 정상가가 이미 낮아 할인이 제한될 수 있음.",
+    "할인 적용 후 1만원 미만 금액이 되는 경우 일부 공연장은 최저 결제 금액(예: 5,000원) 적용."
+  ],
+  "penalties_for_misuse": "타인 장애인등록증 도용으로 우대 예매 시 「형법」 제231조(사문서 위조·변조) 위반. 적발 시 차액 추징 및 공연 입장 거부, 공연장에 따라 일정 기간 예매 제한.",
+  "faq": [
+    {
+      "q": "어느 공연장이 50% 할인 대상인가요?",
+      "a": "국·공립 공연장으로, 대표적으로 국립극장(장충동)·국립국악원(서초)·국립극단(명동)·예술의전당(우면동)·세종문화회관(광화문)·정동극장(정동), 그리고 전국 220여 개 공립 문예회관(부산문화회관·대구문화예술회관·광주예술의전당·대전예술의전당·인천종합문화예술회관·성남아트센터 등)이 모두 해당됩니다. 사립·민간 공연장(블루스퀘어·LG아트센터·예술의전당 내 일부 임대 극장·민간 콘서트홀)은 본 항목 대상이 아닙니다."
+    },
+    {
+      "q": "'대관공연 제외'가 정확히 무슨 뜻인가요?",
+      "a": "공연장이 직접 기획·제작하거나 전속·소속 단체가 출연하는 공연(자체기획공연)은 50% 할인 대상입니다. 반면 외부 단체(공연 제작사·기획사·민간 프로모터)가 공연장을 빌려 운영하는 공연(대관공연)은 그 주최측 자체 할인 규정을 따르므로 통상 5~30% 또는 할인이 아예 없을 수 있습니다. 같은 공연장에서 열리는 공연이라도 둘은 다릅니다. 예매 페이지에서 '주관/주최'가 공연장 이름인지, 외부 회사인지 확인하면 됩니다."
+    },
+    {
+      "q": "예매할 때 어떻게 50% 할인을 받나요?",
+      "a": "공연장 홈페이지나 인터파크·예스24·티켓링크 등 위탁 판매대행사에서 좌석을 선택한 후, **'장애인 우대(또는 장애인 할인)' 옵션**을 체크하고 결제합니다. 결제 즉시 50% 할인된 금액으로 결제됩니다. **공연 당일 현장 매표소에서 본인 명의 신분증과 장애인등록증(복지카드)을 제시해야** 티켓을 수령할 수 있습니다."
+    },
+    {
+      "q": "보호자도 50% 할인을 받나요?",
+      "a": "**중증(심한 장애)** 본인을 동반하는 보호자 1인까지 같은 50% 할인이 적용됩니다. 예매 시 본인 + 동반자 2장으로 좌석 선택 후 '장애인 우대' 옵션 → 둘 다 50% 결제. 보호자는 친인척·간병인·활동지원사·자녀 등 누구든 가능, 별도 자격 증빙 필요 없음. **경증은 본인만 50%**."
+    },
+    {
+      "q": "현장 매표소에서 복지카드를 안 가져온 게 발견되면?",
+      "a": "원칙적으로 티켓 수령 거부 또는 차액(50%)을 그 자리에서 추가 결제해야 입장 가능합니다. 모바일 복지카드(정부24·복지로 앱)도 인정되니 미리 앱을 깔아두세요. 도저히 증빙이 없는 경우 가까운 주민센터에서 즉시 발급되는 '장애인 증명서'로 대체 가능(시설별 정책 상이)."
+    },
+    {
+      "q": "외국인도 받을 수 있나요?",
+      "a": "「장애인복지법」 제32조의2에 따라 외국인 등록 후 장애인 등록을 마친 경우 동일 적용. **외국 발급 장애인증(미국 SSI, EU 장애인카드, 일본 신체장애인수첩 등)은 적용 불가** — 대한민국 등록증 필수."
+    },
+    {
+      "q": "휠체어석은 어떻게 예매하나요?",
+      "a": "**휠체어석은 본 50% 할인과 별개**입니다. 좌석 자체가 별도로 운영되며 일반석보다 요금이 낮은 경우가 많습니다. 휠체어석 예매 시 보호자(동반자) 1인까지 인접 좌석을 함께 예매 가능합니다. 휠체어석은 좌석 수가 제한적이라 보통 공연장 홈페이지 또는 전화 예매로만 가능(인터파크 등 위탁사 예매 불가한 경우 있음). 예술의전당·세종문화회관 등은 별도 '장애인·국가유공자 이용안내' 페이지에 휠체어석 안내가 있습니다."
+    },
+    {
+      "q": "VIP석·R석도 50% 할인되나요?",
+      "a": "원칙적으로 모든 좌석 등급에 50% 할인이 적용되지만, 인기 공연의 경우 VIP·R석 일부 좌석을 우대 할인 대상에서 제외하는 경우가 있습니다. 예매 페이지의 좌석 선택 화면에서 '장애인 우대' 옵션 선택 후 가능 좌석이 표시되니 확인하세요."
+    },
+    {
+      "q": "초청공연(무료공연)이나 어린이극도 적용되나요?",
+      "a": "초청공연·무료공연은 이미 무료라 해당 없음. 어린이극·청소년극은 정상가가 이미 낮아 일부 공연장은 50% 할인 대신 정액 할인(예: 2,000원 할인) 또는 미적용일 수 있음. 공연별 안내 페이지에서 확인 권장."
+    },
+    {
+      "q": "온라인 예매 외에 전화·현장 예매도 가능한가요?",
+      "a": "네. 모든 공연장이 전화 예매·현장 예매 모두 받습니다. 예매 단계에서 '장애인 우대'라고 알리면 됩니다. 전화 예매: 국립극장 02-2280-4114, 국립국악원 02-580-3300, 예술의전당 1668-1352, 세종문화회관 02-399-1000, 정동극장 02-751-1500. 현장 예매도 매표소에서 등록증 제시하면 즉시 50% 결제 가능."
+    },
+    {
+      "q": "공연이 매진되면 우대 좌석도 못 잡나요?",
+      "a": "장애인 우대 좌석도 전체 좌석 중 일부로 운영되며, 매진 시 우대 좌석이 먼저 마감될 수 있습니다. 인기 공연은 예매 오픈 첫날·첫 시간에 접속해 우대 옵션으로 예매하는 것이 안전합니다. 대기 예매·취소 좌석 알림 신청은 공연장별 정책 상이."
+    }
+  ],
+  "contact": [
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "국립극장",
+      "phone": "02-2280-4114",
+      "url": "https://www.ntok.go.kr/"
+    },
+    {
+      "name": "국립국악원",
+      "phone": "02-580-3300",
+      "url": "https://www.gugak.go.kr/"
+    },
+    {
+      "name": "예술의전당 안내",
+      "phone": "1668-1352",
+      "url": "https://www.sac.or.kr/"
+    },
+    {
+      "name": "예술의전당 매표소",
+      "phone": "02-580-1300",
+      "url": "https://www.sac.or.kr/"
+    },
+    {
+      "name": "세종문화회관",
+      "phone": "02-399-1000",
+      "url": "https://www.sejongpac.or.kr/"
+    },
+    {
+      "name": "정동극장",
+      "phone": "02-751-1500",
+      "url": "https://www.jeongdong.or.kr/"
+    },
+    {
+      "name": "국립극단",
+      "phone": "1644-2003",
+      "url": "https://www.ntck.or.kr/"
+    },
+    {
+      "name": "한국문화예술회관연합회(코카카)",
+      "phone": "02-585-3838",
+      "url": "https://www.kocaca.or.kr/"
+    },
+    {
+      "name": "인터파크 티켓 고객센터",
+      "phone": "1544-1555",
+      "url": "https://ticket.interpark.com/"
+    },
+    {
+      "name": "예스24 티켓 고객센터",
+      "phone": "1544-6399",
+      "url": "https://ticket.yes24.com/"
+    },
+    {
+      "name": "티켓링크 고객센터",
+      "phone": "1588-7890",
+      "url": "https://www.ticketlink.co.kr/"
+    }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "B001과 공유."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행령 (별표2 공공시설 등의 이용요금 감면 기준)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표2 표 내용",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공연법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/공연법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "공연장 등록·운영 일반 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "문화예술진흥법 / 시행령(제23조 문화시설의 종류)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/문화예술진흥법",
+      "fallback_url": "https://www.law.go.kr/법령/문화예술진흥법시행령",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애인 문화예술 활동 지원 근거(제15조의2)."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "예술의전당 — 장애인·국가유공자 이용할인 안내",
+      "publisher": "예술의전당",
+      "publisher_type": "공기업",
+      "url": "https://www.sac.or.kr/site/main/content/useGuide",
+      "fallback_url": "https://www.sac.or.kr/site/main/content/facilitiesGuide",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "편의서비스 영역",
+        "robots_txt_ok": true,
+        "notes": "1~3급 본인+동반1인 50%, 4~6급 본인 50%. 대관공연 별도 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "세종문화회관 — 티켓 구입방법(우대할인)",
+      "publisher": "세종문화회관",
+      "publisher_type": "광역지자체",
+      "url": "https://www.sejongpac.or.kr/portal/main/contents.do?menuNo=200085",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "예매안내 영역",
+        "robots_txt_ok": true,
+        "notes": "1~3급 동반1인 50%, 4~6급 본인 50%."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국립극장 안내",
+      "publisher": "국립극장",
+      "publisher_type": "중앙정부",
+      "url": "https://www.ntok.go.kr/",
+      "fallback_url": "https://m.ntok.go.kr/TheaterGuide/ConvenientFacilities/CustomerPlace",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "전속단체(창극단·무용단·국악관현악단) 자체기획공연만 50% 적용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국립국악원 — 공연정보",
+      "publisher": "국립국악원",
+      "publisher_type": "중앙정부",
+      "url": "https://www.gugak.go.kr/site/program/performance/detail",
+      "fallback_url": "https://www.gugak.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "토요명품공연 등 정기공연 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국립극단 — 장애인·국가유공자·보훈대상자 이용안내",
+      "publisher": "국립극단",
+      "publisher_type": "중앙정부",
+      "url": "https://www.ntck.or.kr/ko/information/challenged",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "국립극단 자체기획 정극 50% 할인 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "정동극장 안내",
+      "publisher": "정동극장",
+      "publisher_type": "중앙정부",
+      "url": "https://www.jeongdong.or.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "전통예술 상설공연 '미소' 등 자체기획."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "한국문화예술회관연합회(KoCACA)",
+      "publisher": "한국문화예술회관연합회",
+      "publisher_type": "공기업",
+      "url": "https://www.kocaca.or.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "전국 220여 개 공립 문예회관 통합 정보."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "공공요금 감면 — 보건복지부 장애인정책",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010500",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공시설 이용요금 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=4&cciNo=2&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    }
+  ],
+  "related_items": [
+    "B008",
+    "B014"
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

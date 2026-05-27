@@ -1,0 +1,571 @@
+{
+  "id": "B012",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 12,
+  "title": "무주택 세대주(세대구성원) 공동주택 특별공급 알선",
+  "short_summary": "무주택 세대주 공동주택 특별 분양 알선(청약저축 관계없음) (전단지 원문)",
+  "category": "주거",
+  "benefit_type": "우선공급",
+  "supported_amount": {
+    "rate": "건설량의 10% 범위(국민주택), 공공임대주택은 별도 비율(주거약자용 주택 수도권 5%·비수도권 3% 이상). 분양·임대 모두 1세대 1주택 기준 한 차례에 한정.",
+    "amount": null,
+    "scope": "한국토지주택공사(LH)·서울주택도시공사(SH)·지방공기업·민간건설업체가 공급하는 국민주택규모(전용 85㎡ 이하) 분양주택, 공공임대주택, 행복주택, 통합공공임대, 영구임대, 국민임대, 매입임대, 전세임대, 그리고 주거약자 지원에 관한 법률에 따른 '주거약자용 주택'(편의시설이 설치된 주택). 청약저축 가입 의무가 면제되는 점이 본 제도의 핵심 혜택."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 장애인등록증이 발급된 등록 장애인 중 무주택 세대구성원(또는 무주택 세대주). 지적장애인·정신장애인 및 장애정도가 심한 뇌병변장애인의 경우 그 배우자인 세대주를 포함한다(주택공급에 관한 규칙).",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "companion_allowed": null,
+    "income_criteria": "분양주택 기관추천 특별공급은 별도 소득기준이 없는 경우가 많으나, 공공임대(영구·국민·행복·통합공공임대 등)는 유형별로 소득·자산 기준이 다름. 예: 영구임대는 생계·의료급여 수급자 1순위, 국민임대는 도시근로자 가구당 월평균소득 70~100% 이하, 통합공공임대는 기준 중위소득 100~170% 이하. 자산기준은 2026년 적용 기준 부동산(토지+건물) 2.155억원, 자동차 4,542만원 이하(공공임대 기준).",
+    "age_criteria": "만 19세 이상 성년. 미성년자는 원칙적으로 신청 불가(보호자가 신청).",
+    "residency_criteria": "기관추천 특별공급의 경우 추천 기관(광역지자체)에 일정 기간 이상 계속 거주 요건이 있음. 예: 서울시는 입주자모집공고일 현재 서울시에 '계속하여 3개월 이상' 거주. 공급 지역별로 거주기간 요건이 다르며, 일부 수도권 광역단위는 1년~2년 거주를 요구할 수 있음."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제27조(주택의 보급)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "주택공급에 관한 규칙",
+      "article": "제35조(국가, 지방자치단체, 한국토지주택공사 및 지방공사인 사업주체의 국민주택 등의 특별공급) 및 제36조(민영주택의 특별공급)",
+      "url": "https://www.law.go.kr/법령/주택공급에관한규칙"
+    },
+    {
+      "name": "공공주택 특별법",
+      "article": "공공주택의 공급 및 운영 관련 조항",
+      "url": "https://www.law.go.kr/법령/공공주택특별법"
+    },
+    {
+      "name": "공공주택 특별법 시행규칙",
+      "article": "별표(공공임대주택 입주자격 등)",
+      "url": "https://www.law.go.kr/법령/공공주택특별법시행규칙"
+    },
+    {
+      "name": "장애인·고령자 등 주거약자 지원에 관한 법률",
+      "article": "제5조(주거약자용 주택의 의무건설 등) 및 제9조(주거약자용 주택의 안전기준 및 편의시설 설치기준)",
+      "url": "https://www.law.go.kr/법령/장애인ㆍ고령자등주거약자지원에관한법률"
+    },
+    {
+      "name": "장애인·고령자 등 주거약자 지원에 관한 법률 시행령",
+      "article": "주거약자용 주택 의무건설 비율(수도권 5%, 그 밖의 지역 3% 이상)",
+      "url": "https://www.law.go.kr/법령/장애인ㆍ고령자등주거약자지원에관한법률시행령"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국 (공공분양·공공임대)",
+      "agency": "한국토지주택공사(LH)",
+      "lines_or_routes": [
+        "LH 공공분양주택(나눔형·선택형·일반형)",
+        "신혼희망타운",
+        "행복주택",
+        "국민임대",
+        "영구임대",
+        "통합공공임대",
+        "매입임대",
+        "전세임대"
+      ],
+      "apply_channel": "LH청약플러스(apply.lh.or.kr) 온라인 청약 / 일부 매입·전세임대는 거주지 시·군·구 또는 LH 지역본부 접수",
+      "card_or_proof_type": "복지카드(장애인등록증), 주민등록표 등본, 무주택 확인 서류, 소득·자산 증빙",
+      "url": "https://apply.lh.or.kr/lhapply/cm/cntnts/cntntsView.do?mi=1265&cntntsId=1051",
+      "notes": "철거민 및 장애인은 '입주자저축(청약저축) 가입 의무 면제'. 분양은 광역지자체(시·도)의 기관추천을 받은 자가 LH청약플러스에서 청약 → 당첨 시 LH와 분양 계약."
+    },
+    {
+      "region": "서울특별시",
+      "agency": "서울특별시 + 서울주택도시공사(SH)",
+      "lines_or_routes": [
+        "SH 공공분양",
+        "SH 장기전세주택(시프트)",
+        "SH 국민임대·행복주택·재개발임대·매입임대·전세임대",
+        "LH 등 외부 사업자 분양·임대 시 서울시 기관추천 분"
+      ],
+      "apply_channel": "서울복지포털 '장애인 주택 특별공급 알리미'(wis.seoul.go.kr/was/ssd/specialSupplyInfo.do) → 기관추천 신청 → 시 심사·점수 산정 → 추천자 명단 통보 → 사업주체(LH/SH/민간)에 청약 접수",
+      "card_or_proof_type": "장애인등록증, 주민등록등본(서울 거주 3개월 이상 확인), 무주택 증명서류",
+      "url": "https://wis.seoul.go.kr/was/ssd/specialSupplyInfo.do",
+      "notes": "서울시는 매월~분기 단위로 단지별 모집공고를 게시하고, 신청자 중 '배점기준표(장애정도·무주택기간·세대원 중 장애인 수·서울 거주기간 등)' 고득점 순으로 공급량의 약 3배수 추천. 문의: 서울시 장애인자립지원과 02-2133-7478, 02-2133-9613."
+    },
+    {
+      "region": "광역시·도(서울 외)",
+      "agency": "각 광역지자체(부산·인천·대구·대전·광주·울산·경기·강원·충북·충남·전북·전남·경북·경남·제주·세종)",
+      "lines_or_routes": [
+        "해당 지역 LH/지방공사 분양·임대주택",
+        "민간건설사 국민주택규모 분양 시 기관추천 분"
+      ],
+      "apply_channel": "광역지자체별 장애인복지 담당부서 또는 시·군·구 장애인복지팀 → 기관추천 신청 → 지자체별 배점기준 → 사업주체에 청약",
+      "card_or_proof_type": "장애인등록증, 주민등록등본, 무주택 증명",
+      "url": "https://www.myhome.go.kr/",
+      "notes": "지역별 거주기간 요건과 배점 기준에 차이 있음. '마이홈포털(myhome.go.kr)'에서 전국 공공주택 모집공고·소득·자산 자가진단 가능."
+    },
+    {
+      "region": "전국 (정보 통합)",
+      "agency": "국토교통부 마이홈포털",
+      "lines_or_routes": [
+        "전국 공공분양·공공임대·주거약자용 주택 정보 통합 안내"
+      ],
+      "apply_channel": "공급공고·자가진단·소득자산 계산기 제공. 청약은 LH·SH·지방공사 각 사이트에서 접수.",
+      "card_or_proof_type": "해당없음",
+      "url": "https://www.myhome.go.kr/",
+      "notes": "주거복지센터(전국 110여 개소) 안내, 상담전화 1600-1004(LH), 1600-3456(SH)."
+    }
+  ],
+  "how_to_use": {
+    "default": "(A) 광역지자체(서울복지포털 등)에서 '기관추천' 받은 뒤 LH청약플러스 또는 SH인터넷청약시스템에서 해당 단지에 청약 → 당첨 시 사업주체와 분양·임대 계약 체결. (B) 별도 기관추천이 필요 없는 공공임대(영구·국민·행복·매입·전세임대 등)는 사업주체가 자체적으로 입주자모집공고 시 장애인 우선·가점 적용.",
+    "with_card": null,
+    "without_card": null,
+    "exceptions": "분양주택 특별공급은 평생 1회로 한정(주택공급에 관한 규칙). 매입·전세임대 등 일부 임대는 1회 제한이 없거나 재계약 가능. 분양가상한제 적용지역의 전매제한·실거주의무가 동일하게 적용됨."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "서울복지포털 — 장애인 주택 특별공급 알리미(서울 거주자)",
+        "method": "온라인",
+        "url": "https://wis.seoul.go.kr/was/ssd/specialSupplyInfo.do"
+      },
+      {
+        "channel": "거주지 시·군·구청 장애인복지과(서울 외 지역)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "LH청약플러스(분양·임대 청약)",
+        "method": "온라인",
+        "url": "https://apply.lh.or.kr/"
+      },
+      {
+        "channel": "SH인터넷청약시스템(서울 SH 공급)",
+        "method": "온라인",
+        "url": "https://www.i-sh.co.kr/"
+      },
+      {
+        "channel": "마이홈포털(전국 공공주택 통합안내)",
+        "method": "온라인",
+        "url": "https://www.myhome.go.kr/"
+      },
+      {
+        "channel": "청약Home(민영주택 등 일반청약 시스템)",
+        "method": "온라인",
+        "url": "https://www.applyhome.co.kr/"
+      }
+    ],
+    "required_documents": [
+      "장애인 특별공급 기관추천 신청서(소정 양식)",
+      "장애인등록증(복지카드) 사본",
+      "주민등록등본 (거주기간·무주택 세대원 확인)",
+      "가족관계증명서",
+      "무주택 확인서(또는 건축물대장·등기부등본으로 무주택 입증)",
+      "혼인관계증명서(필요 시)",
+      "소득·자산 증빙(공공임대 신청 시): 건강보험료 납부확인서, 근로소득원천징수영수증, 사업소득 증빙, 금융자산 증빙",
+      "재학·재직 증명서(필요 시)",
+      "지적장애·정신장애·심한 뇌병변장애인의 배우자가 신청하는 경우: 장애인과의 가족관계 입증서류"
+    ],
+    "processing_period": "기관추천 심사: 신청 후 약 2~4주. 사업주체 청약 접수: 모집공고일에 맞춰 지정 기간(보통 3~5일). 당첨자 발표: 청약 접수 후 약 1~2주. 분양 계약 체결: 당첨자 발표 후 약 2~4주 이내. 입주: 단지별로 1~3년 후(분양), 임대는 공급공고 입주예정월에 따름.",
+    "fee": {
+      "default": "기관추천 신청 수수료 없음. 청약 신청 수수료는 사업주체별로 무료 또는 소액(예: LH 청약 무료). 분양 계약 시 분양가의 10%(계약금), 잔금은 입주 시 납부. 임대는 임대보증금 + 월 임대료.",
+      "exceptions": "청약저축(주택청약종합저축) 가입 의무가 면제되어, 가입금액·납입회차 부담 없음(전단지 명시)."
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "분양 특별공급은 '평생 1회' 한정. 임대주택은 임대차 계약기간(보통 2년 단위) 동안 유효하며, 입주자격 유지 시 재계약 가능(영구임대는 2년 단위·자격 유지 시 갱신, 국민임대는 최장 30년 등).",
+    "renewal": "임대주택의 경우 재계약 시점에 입주자격(무주택·소득·자산) 재확인. 분양주택은 갱신 개념 없음."
+  },
+  "exceptions_and_caveats": [
+    "특별공급은 평생 1회로 한정됨. 이미 특별공급으로 분양받은 이력이 있으면 재신청 불가(주택공급에 관한 규칙).",
+    "전 세대원이 무주택이어야 함. 단, 분양권·입주권 보유도 주택 보유로 간주될 수 있어 사전 확인 필수.",
+    "지적장애인·정신장애인 및 장애정도가 심한 뇌병변장애인의 경우 그 배우자(무주택 세대주)도 신청 가능.",
+    "청약저축 가입 의무는 면제되나, 공공분양·민영주택의 '일반공급' 또는 다른 특별공급 유형 신청 시에는 청약통장이 필요함.",
+    "기관추천 신청은 '신청 = 추천 확정'이 아님. 광역지자체별 배점기준에 따라 고득점자 순으로 공급량의 약 3배수만 추천되며, 사업주체에서 다시 청약 절차를 거침.",
+    "지역별 거주기간 요건이 다름. 서울은 3개월 이상, 일부 지역(경기·인천 등)은 1년 이상을 요구할 수 있음.",
+    "공공임대 신청 시 자산기준 초과로 탈락하는 경우가 많음. 2026년 기준 부동산 2.155억원, 자동차 4,542만원 한도.",
+    "주거약자용 주택은 일반 임대보다 공급량이 적어 경쟁률이 높을 수 있으나, 휠체어 이용·시각/청각 장애인에게 적합한 편의시설(문턱 1.5cm 이하, 미끄럼방지, 비상콜벨, 핸드레일 등)이 갖춰져 있음.",
+    "분양가상한제 적용 단지는 전매제한 기간(2~10년)과 실거주의무(2~5년)가 동일하게 적용됨.",
+    "매입임대·전세임대 등은 별도 신청 절차(주거지 시·군·구 또는 LH 지역본부)가 적용되며, 본 기관추천 절차와 다름.",
+    "기관추천 신청 시 작성한 서류에 허위 사실이 있으면 추천 취소, 5년간 신청 제한 등의 불이익이 있음."
+  ],
+  "penalties_for_misuse": "허위·부정 신청 시 기관추천 취소, 당첨 취소, 계약 해지, 향후 5년간(혹은 그 이상) 청약 신청 제한. 주택을 부정한 방법으로 공급받은 경우 「주택법」 제101조에 따라 3년 이하의 징역 또는 3천만원 이하의 벌금. 분양권·임대권 양도 시에도 동일 제재 적용.",
+  "faq": [
+    {
+      "q": "청약저축에 가입하지 않아도 신청할 수 있나요?",
+      "a": "네. 장애인 특별공급(기관추천)은 청약저축(주택청약종합저축) 가입 의무가 면제됩니다. 이는 주택공급에 관한 규칙에 명시된 혜택으로, 청약통장 가입금액·납입회차 요건과 관계없이 신청할 수 있습니다. 단, '일반공급'이나 다른 특별공급(생애최초·신혼부부 등)으로 신청하려면 청약통장이 필요합니다."
+    },
+    {
+      "q": "어디서 신청하나요? LH와 SH 중 어느 쪽에 신청해야 하나요?",
+      "a": "신청은 '광역지자체 기관추천' → '사업주체 청약'의 2단계입니다. 1단계: 거주지 광역지자체(서울은 서울복지포털, 그 외 시·도청 장애인복지과)에 기관추천을 신청합니다. 2단계: 추천을 받은 뒤 해당 단지가 LH 공급이면 LH청약플러스(apply.lh.or.kr), SH 공급이면 SH인터넷청약시스템(i-sh.co.kr), 민간이면 청약Home(applyhome.co.kr)에서 청약 접수합니다."
+    },
+    {
+      "q": "무주택 세대구성원이라는 게 정확히 뭔가요? 부모님과 함께 사는데 부모님이 집을 가지고 있어요.",
+      "a": "신청자 본인과 동일한 주민등록표상의 모든 세대원이 주택(분양권·입주권 포함)을 소유하고 있지 않아야 합니다. 부모님과 함께 거주하고 부모님이 주택을 소유한 경우 '무주택 세대구성원'이 아닙니다. 세대분리(별도 주소·세대주 등록)를 하면 본인만의 세대로 신청 가능하지만, 세대분리 시점이 모집공고일 이전이어야 합니다."
+    },
+    {
+      "q": "지적장애인의 가족이 대신 신청할 수 있나요?",
+      "a": "지적장애인·정신장애인·장애정도가 심한 뇌병변장애인의 경우 그 배우자(무주택 세대주)가 본인 이름으로 신청할 수 있습니다(주택공급에 관한 규칙). 그 외 친족(부모·형제자매)이 대신 신청할 수는 없으며, 본인이 만 19세 이상이면 가족이 신청을 보조·대리할 수는 있습니다. 미성년 장애인의 경우 법정대리인(부모)이 신청합니다."
+    },
+    {
+      "q": "한 번 분양받으면 다시 못 받나요?",
+      "a": "특별공급은 평생 1회로 한정됩니다(주택공급에 관한 규칙). 이미 장애인 특별공급 또는 다른 특별공급 유형(신혼부부·노부모부양·다자녀 등)으로 분양받은 이력이 있으면 다시 신청할 수 없습니다. 다만 임대주택(영구·국민·행복·통합공공임대 등)은 1회 제한이 없으며, 입주자격을 유지하는 한 재계약·이주가 가능합니다."
+    },
+    {
+      "q": "기관추천을 받으면 무조건 당첨인가요?",
+      "a": "아닙니다. 기관추천은 '청약할 자격을 부여받는 것'이며, 추천자 명단 안에서 다시 사업주체의 청약 절차(접수·당첨자 발표)를 거칩니다. 광역지자체별로 통상 공급량의 약 3배수까지 추천하며, 그 안에서 사업주체가 다시 무작위 추첨 또는 가점으로 당첨자를 선정합니다."
+    },
+    {
+      "q": "배점은 어떤 기준으로 계산되나요?",
+      "a": "지자체별 배점기준표가 다르나, 공통 항목은 (1) 장애정도(중증 가점), (2) 무주택 기간, (3) 세대원 중 장애인 수, (4) 해당 지역 거주기간, (5) 부양가족 수, (6) 65세 이상 노부모 부양 여부 등입니다. 서울시는 신청자 중 고득점자 순으로 공급량의 약 3배수를 추천합니다. 정확한 배점은 서울복지포털 또는 거주지 지자체 장애인복지부서에 문의해야 합니다."
+    },
+    {
+      "q": "공공임대도 청약저축이 필요 없나요?",
+      "a": "기관추천 특별공급으로 공공임대를 신청하는 경우 청약저축 의무가 면제됩니다. 다만 일반 청약(국민임대·행복주택 등)으로 신청할 때는 일부 유형에서 청약저축 가입 요건이 있을 수 있습니다(예: 일부 공공분양은 24회 이상 납입 필요). 영구임대·매입임대·전세임대 등은 청약저축 없이도 신청 가능합니다."
+    },
+    {
+      "q": "주거약자용 주택은 일반 임대와 뭐가 다른가요?",
+      "a": "주거약자용 주택은 장애인·고령자가 편리하게 생활할 수 있도록 편의시설이 설치된 주택입니다(「장애인·고령자 등 주거약자 지원에 관한 법률」). 출입문 단차 1.5cm 이하, 마루굽틀 3cm 이하, 미끄럼방지 마감재, 욕실·화장실 핸드레일, 비상콜벨, 폭이 넓은 출입문 등이 의무 설치됩니다. 공공임대주택 건설량 중 수도권 5%·비수도권 3% 이상이 주거약자용으로 의무 공급됩니다."
+    },
+    {
+      "q": "소득과 자산 기준은 어떻게 되나요?",
+      "a": "분양은 별도 소득기준이 없는 경우가 많으나, 공공임대는 유형별로 다릅니다. 영구임대는 기초생활수급자(생계·의료급여), 국민임대는 도시근로자 가구당 월평균소득 70~100% 이하, 행복주택은 100~120% 이하, 통합공공임대는 100~170% 이하입니다. 자산기준(2026년 적용)은 공공임대 공통으로 부동산 2.155억원, 자동차 4,542만원 이하입니다. 자세한 기준은 마이홈포털 자가진단으로 확인할 수 있습니다."
+    },
+    {
+      "q": "분양받은 뒤 바로 팔 수 있나요?",
+      "a": "분양가상한제 적용 단지(수도권 대부분의 공공분양)는 전매제한 기간(2~10년)과 실거주의무(2~5년)가 적용됩니다. 이 기간 내에는 매매·증여·전세가 제한되며, 위반 시 LH 우선매입 및 처벌 대상이 됩니다. 단지별 전매제한·실거주의무 기간은 모집공고문에 명시되어 있습니다."
+    },
+    {
+      "q": "신청부터 입주까지 얼마나 걸리나요?",
+      "a": "기관추천 심사 2~4주 → 사업주체 청약 1~2주 → 당첨자 발표 → 계약 2~4주 → (분양의 경우) 공사기간 1~3년 후 입주, (임대의 경우) 공급공고에 명시된 입주예정월(보통 2~6개월 후)에 입주합니다. 매입·전세임대는 LH 보유 매물 매칭 후 약 1~3개월 내 입주 가능."
+    }
+  ],
+  "contact": [
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "LH 청약콜센터",
+      "phone": "1600-1004",
+      "url": "https://apply.lh.or.kr/"
+    },
+    {
+      "name": "SH 마이홈콜센터(서울주택도시공사)",
+      "phone": "1600-3456",
+      "url": "https://www.i-sh.co.kr/"
+    },
+    {
+      "name": "마이홈콜센터(국토교통부)",
+      "phone": "1600-0777",
+      "url": "https://www.myhome.go.kr/"
+    },
+    {
+      "name": "서울특별시 장애인자립지원과",
+      "phone": "02-2133-7478",
+      "url": "https://wis.seoul.go.kr/"
+    },
+    {
+      "name": "서울특별시 다산콜센터",
+      "phone": "120",
+      "url": "https://120dasan.seoul.go.kr/"
+    },
+    {
+      "name": "주택도시보증공사(HUG) 콜센터",
+      "phone": "1566-9009",
+      "url": "https://www.khug.or.kr/"
+    }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법 (제27조 주택의 보급)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=3&cciNo=2&cnpClsNo=1",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 상단 '시행일' 표기",
+        "robots_txt_ok": true,
+        "notes": "B001과 동일 법령. 제27조(주택의 보급) 조문 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "주택공급에 관한 규칙 (제35조·제36조 특별공급)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/주택공급에관한규칙",
+      "fallback_url": "https://law.go.kr/LSW/lsInfoP.do?lsiSeq=197693",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표·시행일",
+        "robots_txt_ok": true,
+        "notes": "특별공급 비율·청약저축 면제 근거. 개정이 잦아 monthly 권장."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공주택 특별법 / 공공주택 특별법 시행규칙",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/공공주택특별법",
+      "fallback_url": "https://www.law.go.kr/법령/공공주택특별법시행규칙",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "공공임대주택 입주자격(소득·자산기준) 별표."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인·고령자 등 주거약자 지원에 관한 법률 / 시행령",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인ㆍ고령자등주거약자지원에관한법률",
+      "fallback_url": "https://www.law.go.kr/법령/장애인ㆍ고령자등주거약자지원에관한법률시행령",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "주거약자용 주택 의무공급 비율(수도권 5%·비수도권 3%) 및 편의시설 설치기준."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "주거지원 — 주택 특별공급 및 입주자 선정 특례 (찾기쉬운 생활법령정보)",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=3&cciNo=2&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 영역",
+        "robots_txt_ok": true,
+        "notes": "장애인 주택 특별공급 요약."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "LH청약플러스 — 분양가이드(특별공급)",
+      "publisher": "한국토지주택공사(LH)",
+      "publisher_type": "공기업",
+      "url": "https://apply.lh.or.kr/lhapply/cm/cntnts/cntntsView.do?mi=1265&cntntsId=1051",
+      "fallback_url": "https://apply.lh.or.kr/lhapply/apply/main.do?mi=1021",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 콘텐츠 영역",
+        "robots_txt_ok": true,
+        "notes": "장애인 특별공급 청약저축 면제 규정 직접 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "LH청약플러스 — 임대가이드(입주자격)",
+      "publisher": "한국토지주택공사(LH)",
+      "publisher_type": "공기업",
+      "url": "https://apply.lh.or.kr/lhapply/cm/cntnts/cntntsView.do?mi=1224&cntntsId=1111",
+      "fallback_url": "https://apply.lh.or.kr/lhapply/cm/cntnts/cntntsView.do?mi=1226&cntntsId=1113",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "공공임대 소득·자산 기준(연단위 갱신)."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "서울복지포털 — 장애인 주택 특별공급 알리미",
+      "publisher": "서울특별시",
+      "publisher_type": "광역지자체",
+      "url": "https://wis.seoul.go.kr/was/ssd/specialSupplyInfo.do",
+      "fallback_url": "https://wis.seoul.go.kr/was/jg/jgInfo.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "weekly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "공고 리스트 영역(table 또는 list)",
+        "robots_txt_ok": true,
+        "notes": "단지별 공고가 수시 게시되므로 weekly 권장. 신청기간 알림용으로 활용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "서울시 — 장애인 특별공급 기관추천 배점기준표 및 신청서류",
+      "publisher": "서울특별시",
+      "publisher_type": "광역지자체",
+      "url": "https://news.seoul.go.kr/welfare/archives/509475",
+      "fallback_url": "https://opengov.seoul.go.kr/sanction/5894495",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "배점표 개정 시 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "마이홈포털 — 공공주택 통합안내",
+      "publisher": "국토교통부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.myhome.go.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "전국 공급공고·소득자산 자가진단."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "SH인터넷청약시스템 — 서울주택도시공사",
+      "publisher": "서울주택도시공사(SH)",
+      "publisher_type": "공기업",
+      "url": "https://www.i-sh.co.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "공고 게시판",
+        "robots_txt_ok": true,
+        "notes": "SH 자체 공급 단지 정보."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "복지뱅크 — 장애인 공동주택 특별공급 알선",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "http://bokjibank.or.kr/bokji/view.php?zipEncode=1Ktm90wDU91DLLMDMetpSfMvWLME",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "에이블뉴스 — 서울시 기관추천 장애인 특별공급 프로세스 해설",
+      "publisher": "에이블뉴스",
+      "publisher_type": "민간",
+      "url": "https://www.ablenews.co.kr/news/articleView.html?idxno=214540",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "manual_review",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "프로세스 흐름 참고용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": [
+    "B013",
+    "B016"
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

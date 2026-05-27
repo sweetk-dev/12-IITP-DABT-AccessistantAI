@@ -1,0 +1,440 @@
+{
+  "id": "B013",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 13,
+  "title": "장애인 보장구(보조기기) 건강보험급여·의료급여 지원",
+  "short_summary": "보장구 건강보험급여(의료급여) 실시. (적용대상품목의 기준액 범위 내에서 구입비 : 건강보험대상자 90%, 의료급여수급권자 100%) (전단지 원문)",
+  "category": "의료",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": "건강보험 가입자 90% / 의료급여 수급권자·차상위 본인부담경감 대상자 100%",
+    "amount": null,
+    "scope": "「국민건강보험법 시행규칙」 별표7과 「장애인보조기기 보험급여 기준 등 세부사항」(보건복지부 고시)에서 정한 9개 유형 88개 품목(수동휠체어, 전동휠체어, 전동스쿠터, 자세보조용구, 욕창예방방석·매트리스, 이동식 전동리프트, 전·후방 보행차, 보청기, 의안, 콘택트렌즈, 안경, 흰지팡이, 의지·보조기, 저시력 보조안경, 돋보기, 망원경 등) 구입비. 기준액·고시금액·실구입금액 중 최저금액(=지급기준금액)을 기준으로 건강보험은 90%, 의료급여는 100% 지원. 일부 품목(전동휠체어·전동스쿠터·자세보조용구·이동식전동리프트·보청기)은 '고시금액' 제도가 추가로 적용되어 제조·수입업체가 등록한 고시금액 한도 내에서 산정. 1인당 내구연한 1주기에 1회 지급이 원칙."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」에 따라 등록된 장애인 중, 해당 보조기기의 처방을 받은 자. 건강보험 가입자(직장·지역 모두 포함)와 그 피부양자, 또는 의료급여 수급권자, 차상위 본인부담경감 대상자(시각·청각·지체·뇌병변·심장 장애 중증).",
+    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "companion_allowed": null,
+    "income_criteria": "건강보험 가입자는 소득 무관. 의료급여 100% 지원은 의료급여 수급권자 또는 차상위 본인부담경감 대상자에 한함.",
+    "age_criteria": "품목별 상이. 예: 전동휠체어·전동스쿠터는 만 6세 이상 신체적·정신적·인지적 조작이 가능한 자로 보행 곤란이 인정되는 경우, 자세보조용구는 만 6세 이상 등록 장애인.",
+    "residency_criteria": null
+  },
+  "legal_basis": [
+    {
+      "name": "국민건강보험법",
+      "article": "제51조(장애인에 대한 특례)",
+      "url": "https://www.law.go.kr/법령/국민건강보험법"
+    },
+    {
+      "name": "국민건강보험법 시행규칙",
+      "article": "제26조(장애인 보조기기에 대한 보험급여기준 등) 및 별표7",
+      "url": "https://www.law.go.kr/법령/국민건강보험법시행규칙"
+    },
+    {
+      "name": "장애인보조기기 보험급여 기준 등 세부사항",
+      "article": "보건복지부 고시 제2023-210호 등(별표1 품목별 지급기준, 별표5 기준액·내구연한)",
+      "url": "https://www.law.go.kr/행정규칙/장애인보조기기%20보험급여%20기준%20등%20세부사항"
+    },
+    {
+      "name": "의료급여법",
+      "article": "제13조 및 동법 시행규칙 제25조(장애인보조기기 급여)",
+      "url": "https://www.law.go.kr/법령/의료급여법"
+    },
+    {
+      "name": "장애인복지법",
+      "article": "제65조(장애인보조기구의 교부 등) 및 제66조",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국 (건강보험)",
+      "agency": "국민건강보험공단",
+      "lines_or_routes": ["보장구 지급 신청·심사·환급"],
+      "apply_channel": "전국 국민건강보험공단 지사 방문, The건강보험 앱 또는 nhis.or.kr 온라인 청구",
+      "card_or_proof_type": "장애인등록증, 건강보험증, 보장구 처방전, 검수확인서, 영수증",
+      "url": "https://www.nhis.or.kr/static/html/wbma/c/wbmac0206_2.html",
+      "notes": "건강보험 가입자는 보조기기 구입 후 공단에 환급청구하는 사후환급 방식이 기본. 일부 품목(전동휠체어 등)은 사전 처방·검수 절차 필수."
+    },
+    {
+      "region": "전국 (의료급여)",
+      "agency": "시·군·구청 장애인복지(의료급여) 담당부서",
+      "lines_or_routes": ["의료급여 수급권자 보조기기 지급"],
+      "apply_channel": "주소지 시·군·구청 또는 읍·면·동 주민센터 방문 신청",
+      "card_or_proof_type": "장애인등록증, 의료급여증, 보장구 처방전, 검수확인서, 영수증",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10708030900",
+      "notes": "의료급여 수급권자는 100% 지원(본인부담 없음). 절차: 처방 → 신청 → 보장기관의 수급자격 여부 판단 → 구입 → 검수 → 구입비용지급청구 → 지급 → 사후점검."
+    },
+    {
+      "region": "전국 (정책·고시)",
+      "agency": "보건복지부",
+      "lines_or_routes": ["품목·기준액·내구연한 고시 운영"],
+      "apply_channel": "고시 개정 공고 및 사업안내",
+      "card_or_proof_type": "",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10708030900",
+      "notes": "보건복지부 고시 '장애인보조기기 보험급여 기준 등 세부사항'을 정기 개정해 품목·기준액·내구연한 조정."
+    },
+    {
+      "region": "전국 (정보·상담)",
+      "agency": "보건복지부 국립재활원 중앙보조기기센터",
+      "lines_or_routes": ["보조기기 정보·상담·교부사업 안내(국가지원)"],
+      "apply_channel": "전화상담(1670-5529), 누리집 검색",
+      "card_or_proof_type": "",
+      "url": "https://www.knat.go.kr/knw/home/knat_DB/assist_detail.php?assist_biz_idx=2",
+      "notes": "보조기기 분류·품목·지원사업·지급기준 통합 안내. 지자체 보조기기센터(권역별)도 운영."
+    }
+  ],
+  "how_to_use": {
+    "default": "① 의사 처방전 발급 → ② (사전승인 품목은 공단/시군구 사전 신청) → ③ 보조기기업소에서 구입 → ④ 의사 검수확인 → ⑤ 영수증 등 서류 첨부해 공단(건강보험) 또는 시·군·구(의료급여)에 청구 → ⑥ 본인부담분만 본인이 부담, 잔여는 공단/지자체에서 지급 또는 사후환급.",
+    "with_card": "건강보험 가입자: 보조기기 구입 후 공단 지사 방문 또는 The건강보험 앱·홈페이지로 보장구 급여비 지급청구. 입금은 신청인 명의 계좌로.",
+    "without_card": "의료급여 수급권자: 처방전과 함께 시·군·구청에 사전 신청해 '수급자격 결정' 후 보조기기 구입. 100% 지원되므로 본인 부담 없음(차상위 본인부담경감 대상자도 동일).",
+    "exceptions": "전동휠체어·전동스쿠터·자세보조용구·이동식 전동리프트·보청기 등 일부 품목은 처방 단계에서 '적합성 검토'와 '고시제품'(제조사가 공단에 등록한 가격 기준) 사용이 필수. 만 19세 미만 소아·아동의 보청기는 별도 기준액 적용. 의안·안경 등은 일부 안경원·전문업체에서만 등록업소 발급."
+  },
+  "application": {
+    "where": [
+      { "channel": "국민건강보험공단 전국 지사(건강보험)", "method": "방문", "url": "https://www.nhis.or.kr/" },
+      { "channel": "The건강보험 모바일 앱(건강보험 보장구 급여비 지급청구)", "method": "모바일 앱", "url": "https://www.nhis.or.kr/" },
+      { "channel": "국민건강보험공단 홈페이지(보장구 급여비 지급청구)", "method": "온라인", "url": "https://www.nhis.or.kr/nhis/minwon/retrieveCsmrAdvssArtfBnft.do" },
+      { "channel": "주소지 시·군·구청(의료급여 담당부서)", "method": "방문", "url": "https://www.mohw.go.kr/" },
+      { "channel": "주소지 읍·면·동 주민센터(의료급여 1차 접수)", "method": "방문", "url": "https://www.gov.kr/" },
+      { "channel": "보건복지상담센터(129) — 일반 상담", "method": "전화", "url": "https://www.129.go.kr/" },
+      { "channel": "국립재활원 중앙보조기기센터(품목·업소 정보)", "method": "전화", "url": "https://www.knat.go.kr/" }
+    ],
+    "required_documents": [
+      "보장구 처방전(전문의 또는 해당 자격 보유 의사 발급)",
+      "보장구 검수확인서(품목에 따라 의사 검수 필요)",
+      "보장구 구입 영수증·세금계산서",
+      "장애인등록증(또는 장애인복지카드) 사본",
+      "건강보험증 사본(건강보험 가입자) 또는 의료급여증 사본(의료급여 수급권자)",
+      "신청인 명의 통장 사본(환급 계좌)",
+      "보장구 사진(품목별 요건에 따라)",
+      "본인확인 신분증",
+      "대리 신청 시: 위임장, 대리인 신분증",
+      "(전동휠체어·전동스쿠터 등) 적합성 검토서·기능적합성 평가서, 사용능력 확인서",
+      "(보청기) 청각장애 진단 자료, 보청기 사용 능력 평가서, 음향 적합성 평가서"
+    ],
+    "processing_period": "공단 접수 후 통상 14일 이내 지급 결정 및 본인 계좌 입금(의료급여는 시군구 처리기간에 따라 다름). 사전승인이 필요한 품목(전동휠체어 등)은 신청 → 승인까지 별도 기간 소요.",
+    "fee": {
+      "default": "신청 수수료는 없음. 본인부담은 건강보험 가입자 10%(지급기준금액 한도), 의료급여 수급권자·차상위 본인부담경감 대상자 0%.",
+      "exceptions": "지급기준금액을 초과하는 부분은 전액 본인 부담. 예) 기준액 100만원 품목을 150만원에 구입한 경우, 건강보험 가입자는 90만원 지원(100만원 × 90%) + 본인부담 60만원."
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "보조기기 유형별로 정한 내구연한 1주기 내 1회 지급이 원칙. 예: 수동휠체어 5년, 전동휠체어·전동스쿠터 6년, 보청기 5년, 의지·보조기 품목별 1~6년 등(고시 별표5 참조).",
+    "renewal": "내구연한 만료 후 재처방·재구입·재청구. 단, 성장기 아동(만 18세 이하) 또는 신체상태 급격한 변화로 사용 불가능한 경우 공단의 사전 승인을 거쳐 내구연한 내 재지급 가능."
+  },
+  "exceptions_and_caveats": [
+    "건강보험 가입자는 지급기준금액의 90%만 지원되며, 기준액을 초과하는 구입금액은 전액 본인 부담.",
+    "의료급여 수급권자·차상위 본인부담경감 대상자(시각·청각·지체·뇌병변·심장 장애 중증)는 100% 지원이지만 기준액 초과분은 본인 부담.",
+    "전동휠체어·전동스쿠터·자세보조용구·이동식 전동리프트·보청기는 '고시제품' 사용이 원칙. 미고시 제품 구입 시 지원 대상에서 제외되거나 감액 적용.",
+    "처방전 발급 의사 자격 요건이 품목별로 다름(예: 보청기는 이비인후과 전문의, 의지·보조기는 재활의학과·정형외과·신경외과 등).",
+    "기관 등록 보조기기업소(공단 등록업체)에서 구입한 경우만 지원. 미등록 업체에서 구입 시 지원 불가.",
+    "내구연한 만료 전 임의 재구입·재청구 시 지원되지 않음(공단 사전승인 필요한 경우 제외).",
+    "공단에서 수령한 보조기기를 타인에게 양도·대여·판매하는 경우 환수 및 형사처벌 대상.",
+    "수입 보장구·해외 구매 보장구는 원칙적으로 지원 대상이 아님(국내 등록 업체 경유 시에만 가능).",
+    "지자체별 추가 지원사업(보조기기 교부사업 등)이 별도로 있으며, 보건복지부 건강보험·의료급여 지원과 중복 신청 시 일부 제한될 수 있음."
+  ],
+  "penalties_for_misuse": "거짓·부정한 방법으로 보장구 급여를 지급받은 경우 「국민건강보험법」 제57조에 따라 지급액 전액 환수, 「의료급여법」 제23조에 따라 부당이득 환수. 추가로 형사고발될 수 있으며, 지급 제한 기간(통상 1~3년) 부과 가능.",
+  "faq": [
+    {
+      "q": "어떤 품목이 지원되나요?",
+      "a": "9개 유형 88개 품목입니다. 대표적으로 수동/전동 휠체어, 전동스쿠터, 자세보조용구, 욕창예방방석·매트리스, 이동식 전동리프트, 전·후방 보행차, 보청기, 의안, 콘택트렌즈, 안경, 흰지팡이, 의지(義肢)·보조기, 저시력 보조안경, 돋보기, 망원경 등이 있습니다. 정확한 품목 목록과 기준액·내구연한은 보건복지부 고시 「장애인보조기기 보험급여 기준 등 세부사항」 별표5에 모두 명시돼 있으며, 국민건강보험공단(nhis.or.kr) 또는 국립재활원 중앙보조기기센터(knat.go.kr)에서 확인 가능합니다."
+    },
+    {
+      "q": "건강보험과 의료급여 지원율 차이는요?",
+      "a": "건강보험 가입자(직장·지역 모두)는 지급기준금액의 90%를 지원받습니다(본인 10% 부담). 의료급여 수급권자와 차상위 본인부담경감 대상자(시각·청각·지체·뇌병변·심장장애 중증)는 100% 지원으로 본인부담이 없습니다. 단, 두 경우 모두 '기준액'을 초과하는 구입금액은 전액 본인 부담입니다."
+    },
+    {
+      "q": "신청 절차는 어떻게 되나요?",
+      "a": "① 의사에게 보장구 처방전을 발급받음 → ② (사전승인 품목은 공단/시군구에 사전 신청) → ③ 공단 등록 보조기기업소에서 구입 → ④ 처방 의사에게 검수 확인을 받음 → ⑤ 영수증·처방전·검수확인서·장애인등록증 사본·통장 사본 등을 첨부해 공단(건강보험) 또는 시·군·구(의료급여)에 지급청구 → ⑥ 통상 14일 이내 본인 계좌로 입금됩니다. The건강보험 앱이나 공단 홈페이지에서도 온라인 청구가 가능합니다."
+    },
+    {
+      "q": "처방전은 누가 발급해 주나요?",
+      "a": "품목별로 다릅니다. 예를 들어 ▲전동휠체어·전동스쿠터는 재활의학과·정형외과·신경외과·신경과·내과·외과·소아청소년과·가정의학과 전문의, ▲보청기는 이비인후과 전문의, ▲의지·보조기는 재활의학과·정형외과·신경외과 전문의, ▲의안은 안과 전문의가 발급합니다. 일부 품목은 일반의(가정의학과 등)도 가능합니다. 처방전과 함께 '검수확인서'가 필요한 품목은 동일 의사가 구입 후 적합 여부를 확인합니다."
+    },
+    {
+      "q": "내구연한 안에 망가지면 어떻게 하나요?",
+      "a": "원칙적으로 내구연한 1주기에 1회만 지급됩니다. 다만 ▲성장기 아동(만 18세 이하)으로 신체발달에 따른 교체 필요, ▲신체 상태가 급격히 변해 사용 불가, ▲천재지변·도난 등 본인 책임 없는 멸실 등의 사유가 있는 경우 공단의 사전 승인을 받아 내구연한 내 재지급이 가능합니다. 보증기간 내 고장은 제조사 A/S로 해결해야 합니다."
+    },
+    {
+      "q": "전동휠체어를 인터넷으로 사도 지원되나요?",
+      "a": "원칙적으로 공단에 등록된 '보조기기업소'에서 구입한 경우에만 지원됩니다. 또한 전동휠체어·전동스쿠터는 보건복지부에서 '고시제품'으로 등록된 제품만 보험급여 대상이므로, 구입 전 반드시 공단 또는 보조기기센터에서 등록 여부를 확인하세요. 해외직구나 미등록 업체 구입은 지원되지 않습니다."
+    },
+    {
+      "q": "보청기는 양쪽 다 지원되나요?",
+      "a": "성인은 원칙적으로 양쪽 청각장애가 모두 인정되는 경우에 한해 양측 보청기를 모두 급여 적용받을 수 있으며, 만 19세 미만 소아·아동은 양측 지원 기준이 더 폭넓습니다. 보청기 기준액·세부 적합성 기준은 「장애인보조기기 보험급여 기준 등 세부사항」 고시에 따라 주기적으로 개정되므로 신청 시점의 최신 기준을 공단에 확인하는 것이 좋습니다."
+    },
+    {
+      "q": "기준액보다 비싼 제품을 사면 어떻게 되나요?",
+      "a": "지원금은 '기준액'을 초과하지 않습니다. 예를 들어 기준액이 100만원인 품목을 150만원에 구입하면, 건강보험 가입자는 100만원 × 90% = 90만원을 환급받고, 차액 60만원(50만원 초과분 + 10만원 본인부담)을 본인이 부담합니다. 의료급여 수급권자는 100만원 × 100% = 100만원을 지원받고 차액 50만원을 본인 부담합니다."
+    },
+    {
+      "q": "신청 후 얼마나 걸리나요?",
+      "a": "건강보험은 청구 서류가 완비된 경우 통상 14일 이내(평균 7~10일) 본인 명의 계좌로 입금됩니다. 의료급여는 시·군·구의 지급 처리기간에 따라 다소 차이가 있으며, 보장구 종류·서류 보완 여부에 따라 지연될 수 있습니다. 사전승인이 필요한 품목(전동휠체어 등)은 승인까지 추가 기간이 필요합니다."
+    },
+    {
+      "q": "지자체에서 별도로 지원하는 보조기기도 있나요?",
+      "a": "네. 보건복지부 '장애인 보조기기 교부사업'(저소득 장애인을 위한 별도 사업)과 각 광역·기초 지자체의 보조기기 지원사업이 있습니다. 지원 품목·금액은 지자체별로 상이하며, 건강보험·의료급여 지원과 중복 신청 시 일부 제한될 수 있습니다. 거주지 시·군·구청 장애인복지과나 보조기기센터에 문의해 중복 가능 여부를 확인하세요."
+    },
+    {
+      "q": "타인 양도·대여하면 어떻게 되나요?",
+      "a": "공단이 지원해 구입한 보조기기를 타인에게 양도·대여·판매하는 행위는 「국민건강보험법」 및 「의료급여법」 위반입니다. 이미 지급된 보험급여비는 전액 환수되며, 경우에 따라 형사 고발과 일정기간(통상 1~3년) 보장구 급여 지급 제한이 부과됩니다."
+    }
+  ],
+  "contact": [
+    { "name": "국민건강보험공단 고객센터", "phone": "1577-1000", "url": "https://www.nhis.or.kr/" },
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr/" },
+    { "name": "국립재활원 중앙보조기기센터", "phone": "1670-5529", "url": "https://www.knat.go.kr/" },
+    { "name": "건강보험심사평가원 고객센터", "phone": "1644-2000", "url": "https://www.hira.or.kr/" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "국민건강보험법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/국민건강보험법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "시행일 표기",
+        "robots_txt_ok": true,
+        "notes": "국가법령 Open API 권장."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국민건강보험법 시행규칙 (제26조 및 별표7 장애인 보조기기 보험급여 기준)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/국민건강보험법시행규칙",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표7 본문",
+        "robots_txt_ok": true,
+        "notes": "별표7이 보장구 보험급여 핵심 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인보조기기 보험급여 기준 등 세부사항(보건복지부 고시)",
+      "publisher": "국가법령정보센터(행정규칙)",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/LSW/admRulLsInfoP.do?admRulSeq=2100000217279",
+      "fallback_url": "https://www.nhis.or.kr/lm/lmxsrv/law/lawFullContent.do?SEQ=87",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "고시 본문 시행일 및 별표 변경",
+        "robots_txt_ok": true,
+        "notes": "별표1(품목별 지급기준)·별표5(기준액·내구연한) 변경이 핵심 모니터링 포인트."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인보조기 보험급여제도 — 품목별 지급기준·기준액·내구연한·절차",
+      "publisher": "국민건강보험공단",
+      "publisher_type": "공기업",
+      "url": "https://www.nhis.or.kr/static/html/wbma/c/wbmac0206_2.html",
+      "fallback_url": "https://www.nhis.or.kr/static/html/wbma/c/wbmac0206_3.html",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "div#content 본문",
+        "robots_txt_ok": true,
+        "notes": "지원율(90%/100%), 품목 표, 절차 도식 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인보조기기 — 보건복지부 기초의료보장 안내",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10708030900",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "의료급여 100% 지원 근거와 사업안내 게시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "의료급여법 / 의료급여법 시행규칙(제25조 장애인보조기기 급여)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/의료급여법",
+      "fallback_url": "https://www.law.go.kr/법령/의료급여법시행규칙",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "의료급여 보장구 100% 지원 법적 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인보조기기 지급사업(건강보험급여, 의료급여) — 중앙보조기기센터",
+      "publisher": "보건복지부 국립재활원",
+      "publisher_type": "중앙정부",
+      "url": "https://www.knat.go.kr/knw/home/knat_DB/assist_detail.php?assist_biz_idx=2",
+      "fallback_url": "https://www.knat.go.kr/knw/home/knat_DB/my.html",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "사업 상세 본문",
+        "robots_txt_ok": true,
+        "notes": "보조기기 사업 통합 안내, 9유형 88품목 정리."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "보조기기에 대한 보험급여 지급 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1003&ccfNo=4&cciNo=2&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "이해 쉬운 법령 해설 및 절차 흐름도 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인 의료비 지원 — 정부24 민원안내",
+      "publisher": "행정안전부 정부24",
+      "publisher_type": "중앙정부",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/SPE000000070",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "민원 신청 양식·필요 서류 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "장애인보장구 급여제도 안내 — 대한보조공학사협회",
+      "publisher": "(사)대한보조공학사협회",
+      "publisher_type": "민간",
+      "url": "https://www.ispokorea.org/data/guide_pay.html",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "현장 실무 절차·서류 보조 참고."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "복지뱅크 — 장애인보조기기 급여비(국민건강보험)",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjibank.or.kr/bokji/view.php?zipEncode=%3Dutn20tB152x3vwA2zspSfMvWLME",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B017"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

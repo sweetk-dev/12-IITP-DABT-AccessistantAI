@@ -1,0 +1,336 @@
+{
+  "id": "B025",
+  "leaflet_section": "심한장애(중증) 전국공통",
+  "leaflet_number": 1,
+  "title": "장기요양보험료 30% 경감(심한 장애인)",
+  "short_summary": "장기요양보험료 경감(심한 장애인 30% 할인) (전단지 원문)",
+  "category": "의료",
+  "benefit_type": "감면",
+  "supported_amount": {
+    "rate": "30%",
+    "amount": null,
+    "scope": "「노인장기요양보험법 시행령」 제5조에 따라 장기요양보험가입자(또는 그 피부양자) 중 등록 중증 장애인으로서 노인장기요양보험 수급자로 결정되지 못한 자의 월별 장기요양보험료에서 30% 차감. 건강보험료 경감(B017)과는 별개 항목으로, 건강보험료가 아닌 장기요양보험료만 별도 경감됨. 직장가입자의 피부양자로 등재된 중증 장애인도 적용 대상."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 장애의 정도가 심한 장애인(중증 장애인)으로서 국민건강보험 가입자(또는 피부양자)이나 노인장기요양보험 수급자로 결정되지 않은 자.",
+    "severity_levels": ["심한 장애(중증)"],
+    "companion_allowed": null,
+    "income_criteria": "소득기준 없음. 장기요양보험 수급자로 결정되지 않은 중증 장애인이면 소득에 관계없이 적용.",
+    "age_criteria": "연령 제한 없음. 단, 만 65세 이상이 되어 장기요양 수급자로 결정되면 해당 경감은 종료되고 장기요양급여 체계로 전환.",
+    "residency_criteria": null
+  },
+  "legal_basis": [
+    {
+      "name": "노인장기요양보험법",
+      "article": "제9조(장기요양보험료의 징수 등)",
+      "url": "https://www.law.go.kr/법령/노인장기요양보험법"
+    },
+    {
+      "name": "노인장기요양보험법 시행령",
+      "article": "제5조(장애인 등에 대한 장기요양보험료의 경감)",
+      "url": "https://www.law.go.kr/법령/노인장기요양보험법시행령"
+    },
+    {
+      "name": "장기요양보험료 경감고시(보건복지부 고시)",
+      "article": "경감 대상·비율·절차",
+      "url": "https://www.nhis.or.kr/lm/lmxsrv/law/lawFullContent.do?SEQ=105&SEQ_HISTORY=79"
+    },
+    {
+      "name": "장애인복지법",
+      "article": "제32조(장애인 등록) — 등록 근거",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "국민건강보험공단(NHIS)",
+      "lines_or_routes": ["장기요양보험료 부과·고지", "중증 장애인 경감 자동 처리 및 조정"],
+      "apply_channel": "전국 국민건강보험공단 지사 방문, 1577-1000 콜센터, nhis.or.kr 또는 The건강보험 앱",
+      "card_or_proof_type": "장애인등록증(장애인복지카드) — 공단 DB와 자동 연계되므로 별도 제출 불요(누락 시 제출)",
+      "url": "https://www.nhis.or.kr/static/html/wbda/c/wbdac05.html",
+      "notes": "보건복지부·행정안전부에서 장애인 등록자료를 정기 제공받아 대상자를 자동 경감 처리. 자동 연계 누락 시 가까운 공단 지사 방문 또는 전화 신청 가능."
+    },
+    {
+      "region": "전국",
+      "agency": "보건복지부",
+      "lines_or_routes": ["장기요양보험료 경감고시 운영", "장애인 등록자료 공단 제공"],
+      "apply_channel": "경감고시 개정 공고",
+      "card_or_proof_type": null,
+      "url": "https://www.mohw.go.kr/",
+      "notes": "보건복지상담센터(129) 안내 가능."
+    }
+  ],
+  "how_to_use": {
+    "default": "별도 신청 없이 **자동 적용**이 원칙. 국민건강보험공단이 보건복지부로부터 장애인 등록 DB를 제공받아 해당 장기요양보험가입자의 보험료에서 자동 30% 차감 처리. 보험료 고지서·납부내역서에서 '경감액' 항목으로 확인 가능.",
+    "with_card": "자동 적용 여부는 국민건강보험 홈페이지(nhis.or.kr)나 The건강보험 앱의 '보험료 조회' 화면, 또는 보험료 고지서에서 '장기요양보험료 경감액' 표기 확인으로 점검 가능.",
+    "without_card": "자동 적용이 누락된 경우, 가까운 국민건강보험공단 지사를 방문하거나 1577-1000으로 전화해 장애인등록증 사본 및 주민등록등본을 제출하고 경감 신청. 경감 사유 발생 월의 다음 달부터 적용(사유 발생일이 매월 1일이면 해당 달부터). 과거 누락분은 소급 이의신청 가능.",
+    "exceptions": "만 65세 이상으로 장기요양 수급자(1~5등급·인지지원등급)로 결정된 경우에는 이 경감이 적용되지 않으며 장기요양급여 체계로 전환. 경증 장애인(장애의 정도가 심하지 않은 장애인)은 본 항목 적용 불가. 건강보험료(B017 항목) 경감과는 별도로 중복 수혜 가능."
+  },
+  "application": {
+    "where": [
+      { "channel": "국민건강보험공단 전국 지사(자동 적용 누락 시 방문)", "method": "방문", "url": "https://www.nhis.or.kr/" },
+      { "channel": "국민건강보험공단 홈페이지(민원여기요)", "method": "온라인", "url": "https://www.nhis.or.kr/nhis/minwon/retrieveCsmrIndvSrhRoadSearch.do" },
+      { "channel": "The건강보험 모바일 앱", "method": "모바일 앱", "url": "https://www.nhis.or.kr/" },
+      { "channel": "국민건강보험공단 고객센터", "method": "전화", "url": "https://www.nhis.or.kr/" },
+      { "channel": "주소지 동주민센터(자료 확인·연계 요청)", "method": "방문", "url": "https://www.gov.kr/" }
+    ],
+    "required_documents": [
+      "장기요양보험료 경감신청서(공단 지사 비치)",
+      "장애인등록증(장애인복지카드) 사본 — 자동 연계 누락 시",
+      "주민등록등본(세대 구성 확인, 피부양자 포함 여부 확인 시)",
+      "대리 신청 시: 위임장, 대리인 신분증"
+    ],
+    "processing_period": "자동 적용의 경우 별도 기간 없음. 신청 후 처리는 보통 신청월 다음 달부터 반영. 소급 환급은 공단 처리 일정에 따라 상이(통상 수 주 이내).",
+    "fee": {
+      "default": "무료",
+      "exceptions": null
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "중증 장애 등록이 유지되고 장기요양 수급자로 결정되지 않는 한 지속 적용. 장애 재판정에서 경증으로 변경되거나 장기요양 수급자가 되면 경감 종료.",
+    "renewal": "별도 갱신 불요. 장애 재판정 결과 변동 시 공단에 자동 반영."
+  },
+  "exceptions_and_caveats": [
+    "경증 장애인(장애의 정도가 심하지 않은 장애인)은 이 항목 적용 불가.",
+    "만 65세 이상으로 장기요양 수급자(1~5등급 또는 인지지원등급)로 결정된 장애인은 경감 대신 장기요양급여 체계로 전환되어 별도 비용 지원 수혜.",
+    "건강보험료 경감(B017)과는 별개 항목. 건강보험료 경감과 장기요양보험료 경감을 동시에 받을 수 있음(단, B017은 지역가입자에 한하며 소득·재산 기준 충족 필요).",
+    "직장가입자의 경우 건강보험료는 경감 불가하나(B017 제외 대상), 장기요양보험료는 중증 장애인이면 직장가입자·피부양자 모두 경감 적용 가능.",
+    "경감은 경감 사유 발생 다음 달부터 적용(발생일이 매월 1일이면 그달부터). 소급 적용은 공단에 이의신청 필요.",
+    "자동 적용이 원칙이나 등록자료 연계 시기 차이로 누락될 수 있으므로 고지서를 정기적으로 확인할 것.",
+    "장기요양보험료는 건강보험료 고지서에 별도 항목으로 함께 고지. 건강보험료와 구별해 경감액 확인 필요.",
+    "희귀난치성질환자(노인장기요양보험법 시행령 별표1)도 같은 경감 조항 적용 대상이나, 본 항목은 장애인에 특화.",
+    "외국인·재외동포 등록 장애인도 건강보험 가입자(직장·지역) 또는 피부양자이면 동일하게 경감 적용 가능."
+  ],
+  "penalties_for_misuse": null,
+  "faq": [
+    {
+      "q": "장기요양보험료가 뭔가요? 건강보험료와 다른 건가요?",
+      "a": "국민건강보험 가입자는 건강보험료와 별도로 노인장기요양보험료를 냅니다. 장기요양보험료는 건강보험료 고지서에 함께 표기되며, 건강보험료의 약 12~13%에 해당하는 금액입니다. 두 보험료는 별도로 고시되어 각각 다른 경감 규정을 적용합니다."
+    },
+    {
+      "q": "자동으로 적용되나요? 따로 신청해야 하나요?",
+      "a": "원칙적으로 자동 적용됩니다. 국민건강보험공단이 보건복지부로부터 장애인 등록자료를 정기적으로 받아 해당 장기요양보험가입자의 보험료에서 자동으로 30% 차감합니다. 다만 자료 연계 시기 차이로 누락될 수 있으니, 보험료 고지서에 경감액이 표시되는지 확인하세요. 누락된 경우 공단 지사 방문 또는 1577-1000으로 신청하면 됩니다."
+    },
+    {
+      "q": "건강보험료 경감(30%)과 중복으로 받을 수 있나요?",
+      "a": "네, 중복 수혜가 가능합니다. 건강보험료 경감(B017)은 지역가입자 중 소득·재산 기준을 충족한 중증 장애인 세대에 적용되고, 장기요양보험료 경감(B025)은 중증 장애인이면 소득기준 없이 적용됩니다. 두 경감은 서로 다른 보험료를 대상으로 하므로 동시에 받을 수 있습니다."
+    },
+    {
+      "q": "직장가입자인데도 장기요양보험료 경감을 받을 수 있나요?",
+      "a": "네. 장기요양보험료 경감은 직장가입자 및 그 피부양자인 중증 장애인도 적용됩니다. 건강보험료 경감(B017)은 지역가입자에게만 적용되는 것과 달리, 장기요양보험료 경감은 가입 유형(직장·지역)에 관계없이 중증 장애인이면 가능합니다."
+    },
+    {
+      "q": "경증 장애인은 이 경감을 받을 수 없나요?",
+      "a": "맞습니다. 장기요양보험료 30% 경감은 '장애의 정도가 심한 장애인(중증 장애인)'에게만 적용됩니다. 경증 장애인(장애의 정도가 심하지 않은 장애인)은 해당 없습니다."
+    },
+    {
+      "q": "65세가 넘으면 이 혜택이 없어지나요?",
+      "a": "만 65세 이상이 되어도 장기요양 수급자(1~5등급 또는 인지지원등급)로 결정되지 않으면 계속 경감이 적용됩니다. 그러나 장기요양 수급자로 결정되면 경감 대신 장기요양급여(재가·시설·특별현금급여)를 받게 되어 이 경감은 종료됩니다."
+    },
+    {
+      "q": "고지서에서 어떻게 확인하나요?",
+      "a": "건강보험료 고지서에 건강보험료와 장기요양보험료가 별도 항목으로 표기됩니다. '장기요양보험료' 옆에 '경감액' 또는 '감면액'이 표기되면 적용된 것입니다. 국민건강보험 홈페이지(nhis.or.kr)나 The건강보험 앱의 '보험료 조회'에서도 확인할 수 있습니다."
+    },
+    {
+      "q": "몇 달 전부터 경감이 누락됐는데 소급 환급을 받을 수 있나요?",
+      "a": "네. 공단 지사에 방문하거나 전화(1577-1000)로 이의신청하면 소급 환급을 받을 수 있습니다. 소급 범위는 경감 사유 발생 시점을 기준으로 공단과 협의하며, 장애 등록 시점부터 소급 가능한 경우가 일반적입니다."
+    },
+    {
+      "q": "장기요양보험료 30% 경감으로 실제로 얼마나 줄어드나요?",
+      "a": "장기요양보험료는 건강보험료의 약 12.95%(2025년 기준)이며, 이의 30%가 경감됩니다. 예를 들어 건강보험료 월 10만원이면 장기요양보험료는 약 12,950원이고, 경감 후에는 약 9,065원이 됩니다. 본인의 건강보험료에 0.1295×0.7을 곱하면 경감 후 장기요양보험료를 산출할 수 있습니다."
+    },
+    {
+      "q": "외국인 등록 장애인도 혜택을 받을 수 있나요?",
+      "a": "「장애인복지법」 제32조의2에 따라 등록된 외국인·재외동포 장애인으로서 국민건강보험 가입자 또는 피부양자이면 동일하게 장기요양보험료 30% 경감을 받을 수 있습니다."
+    }
+  ],
+  "contact": [
+    { "name": "국민건강보험공단 고객센터", "phone": "1577-1000", "url": "https://www.nhis.or.kr/" },
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "노인장기요양보험법 시행령 제5조 — 장애인 등에 대한 장기요양보험료의 경감",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/노인장기요양보험법시행령",
+      "fallback_url": "https://www.nhis.or.kr/lm/lmxsrv/law/lawFullContent.do?SEQ=31&SEQ_HISTORY=27079",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제5조 조문 본문",
+        "robots_txt_ok": true,
+        "notes": "국가법령정보 Open API 우선. 시행령 제5조 개정 시 경감 비율·대상 변경 가능성."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "노인장기요양보험법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/노인장기요양보험법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제9조 본문",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장기요양보험료 경감고시(보건복지부 고시)",
+      "publisher": "국민건강보험공단 법령정보",
+      "publisher_type": "공기업",
+      "url": "https://www.nhis.or.kr/lm/lmxsrv/law/lawFullContent.do?SEQ=105&SEQ_HISTORY=79",
+      "fallback_url": "https://www.nhis.or.kr/lm/lmxsrv/law/twoView.do?SEQ=105&SEQ_HISTORY=79",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "경감 비율·대상자 목록 텍스트",
+        "robots_txt_ok": true,
+        "notes": "고시 개정 시 경감 비율 변경 가능. 연 1~2회 모니터링 권장."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "지역 건강보험료 경감 안내(장기요양보험료 경감 포함)",
+      "publisher": "국민건강보험공단",
+      "publisher_type": "공기업",
+      "url": "https://www.nhis.or.kr/static/html/wbma/b/wbmab0301.html",
+      "fallback_url": "https://www.nhis.or.kr/static/html/wbda/c/wbdac05.html",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "장기요양보험료 경감 안내 영역",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "장애인복지법 (제32조 — 장애인 등록)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인 건강지원 — 건강보험료 경감 및 보험급여(찾기쉬운 생활법령정보)",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1003&ccfNo=4&cciNo=1&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장기요양보험료 경감 설명 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "보건복지부 — 장애아가족양육지원·장애인서비스 정책",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040400",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장기요양보험 관련 정책 안내도 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "복지로 — 장기요양보험료 경감 안내",
+      "publisher": "보건복지부 복지로",
+      "publisher_type": "중앙정부",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00001177",
+      "fallback_url": "https://www.bokjiro.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B017"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

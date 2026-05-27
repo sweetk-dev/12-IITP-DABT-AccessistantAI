@@ -1,0 +1,550 @@
+{
+  "id": "B004",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 4,
+  "title": "연안여객선 운임 감면",
+  "short_summary": "연안여객선운임 장애의 정도가 심한 장애(중증) : 50% 할인. 장애의 정도가 심하지 않은 장애(경증) : 20% 할인. * 선사별, 개별운송약관에 의해 할인율 상이 (전단지 원문)",
+  "category": "교통",
+  "benefit_type": "할인",
+  "supported_amount": {
+    "rate": "중증 50% / 경증 20% (선사별·운송약관에 의해 상이)",
+    "amount": null,
+    "scope": "대한민국 연안여객선 본인 1인 운임에 한함. 인천~제주, 부산~제주, 목포~제주, 인천~백령도·연평도·덕적도, 통영~욕지도, 여수~거문도, 포항~울릉도, 묵호~울릉도 등 한국해운조합 가입 선사 및 일부 비가입 선사가 운영하는 100여 개 항로. 객실 등급에 따라 할인 적용 범위가 다름(통상 3등 객실 기준, 일부 선사는 모든 등급). 차량 운임·식당·면세점 등 부가 비용은 제외. 중증 장애인의 동반 보호자 1인은 동일 할인율 적용."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 장애인",
+    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "companion_allowed": {
+      "applicable_to": "심한 장애(중증)",
+      "count": 1,
+      "scope": "심한 장애(중증) 장애인을 동반하는 보호자 1인에게도 50% 할인 적용(선사별 운송약관에 따라 다르나 대부분 동일 적용). 보호자 좌석·등급은 본인과 동일하게 예매·동시 탑승. 경증 장애인의 동반자는 일반 운임."
+    },
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "거주지 제한 없음. 다만 '가보고 싶은 섬' 50% 할인 이용권 등 일부 한국해운조합·해양수산부 운영 별도 할인 프로모션은 가입·예매 절차가 별도."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제30조(경제적 부담의 경감)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행령",
+      "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+    },
+    {
+      "name": "해운법",
+      "article": "제11조(해상여객운송사업의 면허), 제13조(운임·요금의 신고 등)",
+      "url": "https://www.law.go.kr/법령/해운법"
+    },
+    {
+      "name": "교통약자의 이동편의 증진법",
+      "article": "제3조(이동권), 제17조(이동편의시설의 설치기준)",
+      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "한국해운조합 — 통합 예매(가보고싶은섬)",
+      "lines_or_routes": ["전국 100여 개 연안여객선 항로 통합 예매"],
+      "apply_channel": "'가보고 싶은 섬' 홈페이지(island.haewoon.co.kr / island.theksa.co.kr) 회원가입 후 예매. 일부 선사는 한국해운조합 통합 예매 미연동(선사 홈페이지 직접 예매 필요).",
+      "card_or_proof_type": "장애인등록증(복지카드) 원본. 터미널에서 발권 시 검증.",
+      "url": "https://island.haewoon.co.kr/",
+      "notes": "한국해운조합은 전국 연안여객선의 공식 통합 예매 플랫폼을 운영. '가보고 싶은 섬' 50% 할인 이용권은 별도 정책(섬 활성화 사업)이며 장애인 할인과는 다른 항목. 한국해운조합 경영지원팀(02-6096-2044) 문의."
+    },
+    {
+      "region": "제주 항로 — 인천/목포/완도",
+      "agency": "에이치엘라인해운(HL해운, 구 한일고속해운/씨월드훼리)",
+      "lines_or_routes": ["인천~제주(카훼리)", "완도~제주", "녹동(고흥)~제주"],
+      "apply_channel": "에이치엘라인해운 홈페이지 또는 해당 항만 터미널 매표소. 통합 예매 '가보고싶은섬' 일부 연동.",
+      "card_or_proof_type": "장애인복지카드 원본 + 신분증",
+      "url": "https://www.hlhi.co.kr/",
+      "notes": "장애인 등록자 운임 50% 할인(중증, 보호자 1인 포함) / 20%(경증). 3등 객실 한정인 경우 다수. 차량 운임은 제외."
+    },
+    {
+      "region": "제주 항로 — 목포·진도",
+      "agency": "씨월드고속훼리(주)",
+      "lines_or_routes": ["목포~제주(카훼리/쾌속선)", "진도~제주(카훼리)"],
+      "apply_channel": "씨월드고속훼리 홈페이지(seaferry.co.kr) 회원가입 후 예매 / 모바일 앱 / 터미널 매표소",
+      "card_or_proof_type": "장애인복지카드 원본 + 신분증",
+      "url": "https://www.seaferry.co.kr/",
+      "notes": "장애인 운임 할인(중증 50%, 경증 20% 안내). 헌혈·다자녀·승용차 할인 등 다양한 할인과 중복 적용 여부는 운임 클래스에 따라 다름. 사전 터미널 확인 권장."
+    },
+    {
+      "region": "제주 항로 — 부산",
+      "agency": "남해고속(MS훼리)",
+      "lines_or_routes": ["부산~제주(카훼리)"],
+      "apply_channel": "남해고속 홈페이지(namhaegosok.co.kr) / 부산항·제주항 터미널 매표소",
+      "card_or_proof_type": "장애인복지카드 원본 + 신분증. 미제출 시 정상운임 부과.",
+      "url": "http://www.namhaegosok.co.kr/s2/s2_2.php",
+      "notes": "중증 1~3급 50%(보호자 1인 포함), 경증 4~6급 20%. 3등 객실 한정. 차량 운임 별도."
+    },
+    {
+      "region": "인천 — 백령·연평·덕적·이작도·굴업도(서해5도 포함)",
+      "agency": "고려고속훼리(주) (KEF Ship)",
+      "lines_or_routes": ["인천~백령도", "인천~연평도", "인천~덕적도", "인천~이작도", "인천~굴업도"],
+      "apply_channel": "고려고속훼리 홈페이지(kefship.com) / 인천항 연안여객터미널 매표소 / 가보고싶은섬",
+      "card_or_proof_type": "장애인복지카드 원본 + 신분증",
+      "url": "https://www.kefship.com/",
+      "notes": "장애인 운임 50%(중증·보호자 포함) / 20%(경증). '서해5도 방문 할인'과 별도. 백령·연평은 서해5도 주민·방문객 할인이 추가 적용될 수 있음(중복 불가, 더 큰 할인율 적용)."
+    },
+    {
+      "region": "통영 — 욕지도·연화도·비진도 등",
+      "agency": "통영해운 / 욕지선 외 통영권 선사",
+      "lines_or_routes": ["통영~욕지도", "통영~연화도", "통영~비진도", "통영~매물도", "통영~사량도"],
+      "apply_channel": "각 선사 홈페이지·터미널 매표소 / 가보고싶은섬",
+      "card_or_proof_type": "장애인복지카드 원본 + 신분증",
+      "url": "https://island.haewoon.co.kr/",
+      "notes": "선사별로 50%(중증)·20%(경증) 또는 자율 정책. 일부 단거리 항로는 정액제로 할인 폭 작을 수 있음."
+    },
+    {
+      "region": "여수 — 거문도·손죽도·금오열도",
+      "agency": "여수~거문도 선사 (한림해운 등)",
+      "lines_or_routes": ["여수~거문도", "여수~손죽도", "여수~나로도~거문도"],
+      "apply_channel": "각 선사 홈페이지·터미널 매표소 / 가보고싶은섬",
+      "card_or_proof_type": "장애인복지카드 원본 + 신분증",
+      "url": "https://island.haewoon.co.kr/",
+      "notes": "장거리 노선(여수~거문도 약 2~3시간)이라 할인 효과가 큼. 선사별 운송약관 확인."
+    },
+    {
+      "region": "포항·묵호 — 울릉도",
+      "agency": "대저해운 / 씨플라워(에이치해운) / JH페리 등",
+      "lines_or_routes": ["포항~울릉도", "묵호~울릉도", "후포~울릉도"],
+      "apply_channel": "각 선사 홈페이지·터미널 매표소 / 가보고싶은섬",
+      "card_or_proof_type": "장애인복지카드 원본 + 신분증",
+      "url": "https://island.haewoon.co.kr/",
+      "notes": "울릉도 노선은 장거리·고운임이라 할인 효과가 큼. 중증 50%(보호자 포함), 경증 20%."
+    }
+  ],
+  "how_to_use": {
+    "default": "(A) 한국해운조합 통합 예매 '가보고 싶은 섬'(island.haewoon.co.kr) 또는 각 선사 홈페이지에서 예매 시 '장애인 할인' 선택 → 복지카드 정보 입력 → 결제 → 터미널 매표소에서 발권 시 복지카드 원본 검증. (B) 항만 터미널 매표소에 직접 방문하여 복지카드 + 신분증 제시 후 발권. 어느 경우든 승선 당일 복지카드 원본 지참 필수.",
+    "with_card": "온라인 예매 시 회원가입 후 '장애인 할인' 선택. 일부 선사는 복지카드 사진 첨부 또는 등록번호 입력 필요. 터미널에서 발권 시 복지카드 원본을 직원이 확인. 선사에 따라 모바일 복지카드(정부24·복지로 앱) 인정 여부가 다르므로 원본 지참이 안전.",
+    "without_card": "복지카드 미보유·미지참 시 할인 적용 불가. 정상운임으로 발권. 분실·재발급 대기 중에는 동주민센터의 '장애인 증명서' 또는 '복지카드 발급 확인서'로 일부 선사가 대체 인정하는 경우도 있으나 사전 확인 필요.",
+    "exceptions": "(1) 선사별로 할인율·적용 객실 등급·동반자 정책이 다름 — 선사 운송약관 사전 확인 필수. (2) 차량 운임(카훼리에 자가용 적재)은 본 항목 제외(별도 정책 또는 미적용). (3) 일부 단거리·정액제 노선은 할인 폭이 작거나 없을 수 있음. (4) 성수기(7~8월·명절)·특수 운항 일정에는 할인 좌석 제한 가능. (5) 객실 업그레이드(예: 3등→2등→1등) 시 추가 차액은 정상 부과. (6) 헌혈·다자녀·승용차·서해5도 등 타 할인과 중복 적용 여부는 선사별 운송약관 확인(통상 더 큰 할인율 1개만 적용)."
+  },
+  "application": {
+    "where": [
+      { "channel": "'가보고 싶은 섬' 통합 예매(한국해운조합)", "method": "온라인", "url": "https://island.haewoon.co.kr/" },
+      { "channel": "한국해운조합 통합 예매(보조)", "method": "온라인", "url": "https://island.theksa.co.kr/" },
+      { "channel": "각 선사 홈페이지(에이치엘라인·씨월드·고려고속훼리·남해고속 등)", "method": "온라인", "url": null },
+      { "channel": "선사 모바일 앱", "method": "모바일 앱", "url": null },
+      { "channel": "전국 연안여객터미널 매표소", "method": "방문", "url": null },
+      { "channel": "선사 고객센터", "method": "전화", "url": null },
+      { "channel": "한국해운조합 경영지원팀", "method": "전화", "url": "tel:02-6096-2044" }
+    ],
+    "required_documents": [
+      "장애인등록증(복지카드) 원본 — 발권·승선 시 지참",
+      "본인 신분증(주민등록증·운전면허증·여권 등)",
+      "보호자 동반 시: 보호자 신분증",
+      "외국인 등록 장애인: 외국인등록증",
+      "온라인 예매 시: 복지카드 등록번호·장애 정도(중증/경증). 일부 선사는 카드 사진 첨부 요구."
+    ],
+    "processing_period": "예매·발권 시점 즉시 할인 적용. 별도 사전 등록 절차 없음. 일부 선사 회원가입 시 장애인 정보 사전 등록 가능(예매 시 자동 적용).",
+    "fee": {
+      "default": "예매·발권 자체에 별도 수수료 없음. 환불·취소 위약금은 선사별 운송약관에 따름(통상 출항 전 시점에 따라 0~30%, 출항 후 미환불).",
+      "exceptions": "성수기·명절 특별 운항·전세 선박 등은 환불 위약금이 인상되거나 환불 불가일 수 있음. 천재지변·풍랑·결항 등 선사 귀책 결항 시 100% 환불."
+    },
+    "online_available": true,
+    "proxy_allowed": false
+  },
+  "validity": {
+    "expiry": "복지카드 자체의 유효기간(영구 또는 재판정 기한)에 따름. 별도 선사 인증의 유효기간은 없음(예매 시마다 정보 확인·발권 시 검증).",
+    "renewal": "복지카드 재발급·갱신 시 다음 예매부터 새 등록번호 사용. 선사 회원정보에 등록한 경우 갱신 정보로 수정."
+  },
+  "exceptions_and_caveats": [
+    "**선사별 운송약관에 따라 할인율·적용 객실 등급이 다름** — 전단지 원문에도 '선사별·개별운송약관에 의해 할인율 상이' 명시. 예매 전 선사 약관 확인 필수.",
+    "**객실 등급 제한**: 다수 선사가 3등 객실에 한해 할인 적용. 1·2등 또는 특실 업그레이드 시 차액은 정상 부과.",
+    "**차량 운임 제외**: 카훼리에 자가용을 적재하는 경우 차량 운임은 본 항목 대상 아님(별도 정책 또는 미적용).",
+    "**복지카드 원본 지참 필수**: 발권·승선 시 직원이 확인. 미지참 시 정상운임 부과. 모바일 복지카드 인정 여부는 선사별로 다름.",
+    "**동반자 좌석 동시 발권**: 중증 장애인의 보호자 50% 할인은 본인과 동시 발권·동시 승선이 원칙. 보호자 단독 이용 불가.",
+    "**'가보고 싶은 섬' 50% 할인 이용권과 구별**: 이는 해양수산부·한국해운조합의 섬 활성화 사업으로, 장애인 할인과는 별개 제도. 중복 적용은 통상 불가(더 큰 할인율 1개 적용).",
+    "**서해5도(백령·연평) 주민·방문객 할인**: 별도 정책. 장애인 할인과 중복 불가 — 더 큰 할인율 1개 적용.",
+    "**단거리·정액제 노선**: 통영권·여수권 일부 단거리 노선은 정액 운임 또는 매우 낮은 운임이라 할인 폭이 작거나 없을 수 있음.",
+    "**기상·결항**: 풍랑·결항 시 선사 귀책일 경우 100% 환불 또는 다음 일정 대체. 본인 사유 환불은 운송약관 위약금 적용.",
+    "**부정승선 시 부가운임 추징**: 「해운법」 및 선사 운송약관에 따라 정상운임의 0.5~5배 추징 가능.",
+    "**외국인 등록 장애인**: 「장애인복지법」 제32조의2에 따른 등록을 마친 경우 동일 적용.",
+    "**휠체어 사용자 등 교통약자**: 「교통약자법」에 따라 선사는 승선 보조·이동편의시설 제공 의무. 사전(48시간 전 권장) 선사 통보 시 우선 승선·보조 인력 배치 가능."
+  ],
+  "penalties_for_misuse": "타인 명의 복지카드 사용 또는 본인이 아닌 자가 할인 운임으로 승선할 경우 (1) 즉시 정상운임 차액 청구, (2) 선사 운송약관에 따른 부가운임(통상 정상운임의 0.5~5배) 추징, (3) 「해운법」 및 「형법」(사기·문서 위·변조) 위반 시 형사 처벌, (4) 선사 회원 자격 제한·블랙리스트 등록 가능. 복지카드 도용 사례는 보건복지부에 신고 처리될 수 있음.",
+  "faq": [
+    {
+      "q": "연안여객선 모두 같은 할인율인가요?",
+      "a": "기본 정책은 **중증 50%, 경증 20%**이지만, **선사별·개별 운송약관에 따라 할인율이 다릅니다**. 일부 선사는 정확히 50%/20%를 적용하고, 일부는 객실 등급(예: 3등 객실 한정)·요일 제한 등을 두기도 합니다. 예매 전 해당 선사 홈페이지 또는 한국해운조합 통합 예매(가보고 싶은 섬)에서 적용 조건을 확인하세요."
+    },
+    {
+      "q": "보호자도 같이 할인되나요?",
+      "a": "**중증 장애인의 보호자 1인**은 본인과 동일한 50% 할인을 받습니다(대부분 선사). 경증 장애인의 동반자는 일반 운임입니다. 보호자 좌석은 본인과 동시 발권·동시 승선이 원칙입니다."
+    },
+    {
+      "q": "예매는 어디서 하나요?",
+      "a": "**한국해운조합 통합 예매 '가보고 싶은 섬'**(island.haewoon.co.kr)에서 전국 100여 개 항로를 한 번에 검색·예매할 수 있습니다. 일부 선사는 통합 예매에 연동되지 않아 선사 홈페이지(에이치엘라인해운·씨월드고속훼리·고려고속훼리·남해고속 등)에서 직접 예매해야 합니다. 모바일 앱 또는 터미널 매표소 직접 방문도 가능."
+    },
+    {
+      "q": "어떤 서류가 필요한가요?",
+      "a": "발권·승선 시 **장애인복지카드 원본**과 본인 신분증 제시. 미지참 시 정상운임으로 부과됩니다. 일부 선사는 모바일 복지카드를 인정하지만 다수가 원본을 요구하므로 원본 지참이 안전합니다."
+    },
+    {
+      "q": "객실 등급에 따라 할인이 달라지나요?",
+      "a": "선사에 따라 다릅니다. 다수 선사가 **3등 객실에 한해** 50%/20% 할인을 적용합니다. 1·2등 또는 특실로 업그레이드하는 경우 차액은 정상 부과되거나 일부 선사는 모든 등급에 적용. 운송약관 확인."
+    },
+    {
+      "q": "차량을 싣고 갈 때 차량 운임도 할인되나요?",
+      "a": "**차량 운임은 본 항목 대상이 아닙니다**. 카훼리에 자가용을 적재하는 차량 운임은 일반적으로 별도 정책이거나 미적용입니다. 일부 선사는 자체적으로 장애인 차량 운임 할인 정책을 두기도 하므로 선사에 문의하세요."
+    },
+    {
+      "q": "'가보고 싶은 섬' 50% 할인 이용권과 중복되나요?",
+      "a": "**중복 불가**입니다. '가보고 싶은 섬' 50% 할인 이용권은 해양수산부·한국해운조합이 운영하는 섬 활성화 사업으로 장애인 할인과는 별개입니다. 어느 한 가지 할인(통상 더 큰 할인율)만 선택 적용됩니다."
+    },
+    {
+      "q": "서해5도(백령·연평) 가는 배도 할인되나요?",
+      "a": "네. 인천~백령·연평 항로(고려고속훼리 운영)에서 중증 50%(보호자 1인 포함)·경증 20% 할인이 적용됩니다. 서해5도 주민·방문객 할인이 별도로 있으나 장애인 할인과 중복 적용은 불가능하며 더 큰 할인율 한 가지만 적용됩니다."
+    },
+    {
+      "q": "울릉도 가는 배도 할인되나요?",
+      "a": "포항·묵호·후포에서 출발하는 울릉도 항로(대저해운·씨플라워·JH페리 등)도 동일한 장애인 할인이 적용됩니다. 울릉도는 장거리·고운임 노선이라 할인 효과가 큽니다. 선사별 운임·시간표 확인."
+    },
+    {
+      "q": "결항되면 환불되나요?",
+      "a": "기상·풍랑·항만 사정 등 **선사 귀책 결항**은 100% 환불 또는 다음 일정 대체. 본인 사유 환불은 선사 운송약관에 따라 출항 시점별 위약금(통상 0~30%) 부과. 출항 후 환불은 불가능한 경우가 많습니다."
+    },
+    {
+      "q": "휠체어 사용자도 탈 수 있나요?",
+      "a": "「교통약자의 이동편의 증진법」에 따라 선사는 이동편의시설 제공 의무가 있습니다. 다만 선박마다 시설 수준이 다르므로 **출발 48시간 전까지 선사 고객센터에 사전 통보**하여 휠체어 승선 보조·우선 승선·접근 가능한 객실 배정 등을 요청하는 것이 좋습니다. 인천~제주 등 대형 카훼리는 시설이 잘 갖춰져 있으나, 소형 쾌속선은 휠체어 승선이 제한적일 수 있습니다."
+    },
+    {
+      "q": "다른 사람에게 표를 양도할 수 있나요?",
+      "a": "불가능합니다. 발권·승선 시 복지카드 원본·신분증으로 본인 확인을 합니다. 본인이 아닌 경우 정상운임 차액 청구·부가운임(0.5~5배) 추징·선사 회원 자격 제한 등 페널티가 부과됩니다."
+    },
+    {
+      "q": "외국인 등록 장애인도 할인되나요?",
+      "a": "「장애인복지법」 제32조의2에 따른 등록을 마쳤다면 동일 적용. 복지카드 + 외국인등록증 제시."
+    }
+  ],
+  "contact": [
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
+    { "name": "해양수산부 연안해운과", "phone": "044-200-5736", "url": "https://www.mof.go.kr/" },
+    { "name": "한국해운조합 경영지원팀", "phone": "02-6096-2044", "url": "https://www.haewoon.or.kr/" },
+    { "name": "가보고 싶은 섬(통합 예매)", "phone": "1666-0950", "url": "https://island.haewoon.co.kr/" },
+    { "name": "에이치엘라인해운(HL해운)", "phone": "1577-3567", "url": "https://www.hlhi.co.kr/" },
+    { "name": "씨월드고속훼리", "phone": "1577-3567", "url": "https://www.seaferry.co.kr/" },
+    { "name": "고려고속훼리(서해5도)", "phone": "1577-2891", "url": "https://www.kefship.com/" },
+    { "name": "남해고속(MS훼리·부산~제주)", "phone": "1577-7676", "url": "http://www.namhaegosok.co.kr/" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=5&cciNo=1&cnpClsNo=1",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 상단 '시행일' 표기",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행령 (별표2 공공시설 등의 이용요금 감면 기준)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표2 표 내용",
+        "robots_txt_ok": true,
+        "notes": "연안여객선 운임 감면 비율(중증 50%/경증 20%)이 별표2에 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "해운법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/해운법",
+      "fallback_url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=260127",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "해상여객운송사업 운임·요금 신고제 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "교통약자의 이동편의 증진법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애인의 선박 접근권·이동편의시설 설치 기준 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공요금 감면 — 장애인정책 안내",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010500",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 영역",
+        "robots_txt_ok": true,
+        "notes": "보건복지부 사업안내 책자에서 연안여객선 할인율(중증 50%, 경증 20%) 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공 교통요금 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=5&cciNo=1&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "철도·항공·여객선 통합 감면 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "해양수산부 — 연안여객선 정책",
+      "publisher": "해양수산부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mof.go.kr/doc/ko/selectDoc.do?docSeq=37040&menuSeq=1010&bbsSeq=22",
+      "fallback_url": "https://www.mof.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "연안여객선 현대화 계획·정책 동향."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "가보고 싶은 섬 — 한국해운조합 통합 예매",
+      "publisher": "한국해운조합",
+      "publisher_type": "공기업",
+      "url": "https://island.haewoon.co.kr/",
+      "fallback_url": "https://island.theksa.co.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "장애인 할인 안내 페이지",
+        "robots_txt_ok": true,
+        "notes": "전국 100여 개 항로 통합 예매. 장애인 할인 적용 항로·선사 메타데이터."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "고려고속훼리(서해5도) 안내",
+      "publisher": "고려고속훼리(주)",
+      "publisher_type": "민간",
+      "url": "https://www.kefship.com/",
+      "fallback_url": "https://www.kefship.com/schedule/content7.php",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "백령·연평·덕적도 항로. 서해5도 할인과 장애인 할인 정책."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "씨월드고속훼리(목포·진도~제주)",
+      "publisher": "씨월드고속훼리(주)",
+      "publisher_type": "민간",
+      "url": "https://www.seaferry.co.kr/",
+      "fallback_url": "https://seaferry.seaferry.co.kr/reservation/reservation01.asp",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "목포·진도~제주 항로."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "남해고속(MS훼리, 부산~제주) 운임 안내",
+      "publisher": "남해고속(주)",
+      "publisher_type": "민간",
+      "url": "http://www.namhaegosok.co.kr/s2/s2_2.php",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "장애인 할인 항목 표",
+        "robots_txt_ok": true,
+        "notes": "1~3급 50%, 4~6급 20%, 3등 객실 한정 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "에이치엘라인해운(인천·완도·녹동~제주)",
+      "publisher": "에이치엘라인해운(주)",
+      "publisher_type": "민간",
+      "url": "https://www.hlhi.co.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "인천·완도·녹동(고흥)~제주 카훼리."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "철도·도시철도 요금 감면 (여객선 포함) — 복지뱅크",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjibank.or.kr/bokji/view.php?zipEncode=5eJm90wDU91DLLMDMetpSfMvWLME",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "철도·도시철도·여객선 통합 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "선박 이용 시 장애인 접근권 보장 — 국가인권위원회",
+      "publisher": "국가인권위원회",
+      "publisher_type": "중앙정부",
+      "url": "https://www.humanrights.go.kr/site/program/board/basicboard/view?boardtypeid=24&currentpage=85&menuid=001004002001&pagesize=10&boardid=7601402",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "manual_review",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애인 선박 접근권 권고·해수부 수용 보도자료."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B001", "B002", "B003"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

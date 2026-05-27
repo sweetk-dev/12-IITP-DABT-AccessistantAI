@@ -1,0 +1,536 @@
+{
+  "id": "B008",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 8,
+  "title": "고궁·국공립 박물관·국공립 공원 무료 입장",
+  "short_summary": "고궁, 국·공립 박물관, 국·공립 공원 무료 입장(심한 장애인 동행하는 보호자 1인 포함) (전단지 원문)",
+  "category": "문화·체육",
+  "benefit_type": "면제",
+  "supported_amount": {
+    "rate": "100%",
+    "amount": null,
+    "scope": "①4대궁(경복궁·창덕궁·창경궁·덕수궁)과 종묘·조선왕릉 등 국가유산청 궁능유적본부 관할 시설의 관람료 ②국립중앙박물관·국립민속박물관·국립한글박물관·대한민국역사박물관 등 국립박물관과 국립현대미술관(서울·과천·덕수궁·청주)의 관람료(특별전 포함, 운영기관별 자체 규정 적용) ③환경부 산하 국립공원공단이 관리하는 22개 국립공원(2007년 입장료 폐지) 및 도립·시립·군립공원 중 입장료를 징수하는 곳의 입장료. 단 ⑴유료 특별전(외부 기획)·체험프로그램·주차료 등은 별도 ⑵2023년 5월 4일 이후 65개 사찰의 문화재 관람료(통도사·해인사·법주사·불국사·송광사·범어사 등)는 일반인 포함 전면 폐지로, 별도 절차 없이 사찰 진입 가능."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 장애인. 외국인 등록 장애인(「장애인복지법」 제32조의2)도 동일하게 적용.",
+    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "companion_allowed": {
+      "applicable_to": "심한 장애(중증)",
+      "count": 1,
+      "scope": "심한 장애(중증) 등록 장애인을 동행하는 보호자 1인까지 무료 입장. 보호자는 친인척·간병인·활동지원사·자녀 등 누구나 가능(별도 자격 제한 없음). 경증 장애인은 본인만 무료. 동반 보호자 무임은 입장 시 함께 매표소에서 처리되며, 사전 예약(예: 창덕궁 후원) 시에도 무료 대상자는 별도 예약 없이 증빙 제시 후 현장 입장 가능."
+    },
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "전국 시설 공통 적용. 국적·거주지 제한 없음. 외국 발급 장애인증으로는 적용 불가(대한민국 등록 장애인증 필요)."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제30조(경제적 부담의 경감)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행령",
+      "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+    },
+    {
+      "name": "박물관 및 미술관 진흥법",
+      "article": "제10조(설립과 운영)·제20조(공립박물관 및 공립미술관의 설립·운영)",
+      "url": "https://www.law.go.kr/법령/박물관및미술관진흥법"
+    },
+    {
+      "name": "자연공원법",
+      "article": "제37조(입장료 등의 징수 및 사용)",
+      "url": "https://www.law.go.kr/법령/자연공원법"
+    },
+    {
+      "name": "자연공원법 시행령",
+      "article": "제27조 및 별표(입장료 등의 감면 대상)",
+      "url": "https://www.law.go.kr/법령/자연공원법시행령"
+    },
+    {
+      "name": "국가유산기본법(구 문화재보호법)",
+      "article": "관람료 감면 근거 조항",
+      "url": "https://www.law.go.kr/법령/국가유산기본법"
+    },
+    {
+      "name": "궁·능 관람 등에 관한 규정",
+      "article": "관람료 면제 대상",
+      "url": "https://royal.khs.go.kr/afile/fileDownload/l7Amn"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국 4대궁·종묘·조선왕릉",
+      "agency": "국가유산청 궁능유적본부",
+      "lines_or_routes": [
+        "경복궁", "창덕궁(후원 포함)", "창경궁", "덕수궁", "종묘", "조선왕릉(40기 — 동구릉·서오릉·서삼릉·태릉·강릉·홍릉·유릉·융건릉·헌인릉·선정릉·광릉·사릉·온릉·파주삼릉·영릉·장릉 등)"
+      ],
+      "apply_channel": "현장 매표소에서 장애인등록증(복지카드) 제시. 창덕궁 후원은 사전 예약 정원제이나 무료 대상자(장애인)는 별도 예약 없이 증빙 지참 시 현장 입장 가능(매회 정원 별도 운영).",
+      "card_or_proof_type": "장애인등록증, 복지카드, 모바일 복지카드(정부24·복지로 앱), 장애인 증명서(주민센터 발급)",
+      "url": "https://royal.khs.go.kr/ROYAL/contents/R703000000.do",
+      "notes": "관람요금: 경복궁 3,000원, 창덕궁 3,000원(후원 5,000원 별도), 창경궁 1,000원, 덕수궁 1,000원, 종묘 1,000원, 조선왕릉 1,000원(영월 장릉 2,000원). 등록 장애인 본인 및 중증의 동반 1인은 전액 면제. 통합관람권(궁궐통합권 10,000원)도 면제 적용."
+    },
+    {
+      "region": "전국 국립박물관",
+      "agency": "국립중앙박물관 및 13개 소속관",
+      "lines_or_routes": [
+        "국립중앙박물관(서울)", "국립경주박물관", "국립광주박물관", "국립전주박물관", "국립부여박물관", "국립공주박물관", "국립진주박물관", "국립청주박물관", "국립김해박물관", "국립제주박물관", "국립춘천박물관", "국립나주박물관", "국립익산박물관", "국립금속활자박물관"
+      ],
+      "apply_channel": "상설전시관은 2008년 5월 이후 누구나 무료. 유료 특별전(기획전)의 경우 매표소에서 장애인등록증 제시 시 등록 장애인 본인 무료, 중증은 동반 1인 무료(과거 1~3급 본인 및 동반 1인 무료 기준이 '중증·경증' 체계로 승계).",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드",
+      "url": "https://www.museum.go.kr/MUSEUM/contents/M0101000000.do",
+      "notes": "2026년 현재 국립중앙박물관 상설전시는 무료(2027년 유료화 추진 보도 있으나 미시행). 특별전 관람료는 전시별 상이(보통 5,000~20,000원). 어린이박물관은 별도 예약제이나 입장료 무료."
+    },
+    {
+      "region": "기타 국립박물관(소속 부처별)",
+      "agency": "국립민속박물관·국립한글박물관·대한민국역사박물관·국립고궁박물관·국립과학관 등",
+      "lines_or_routes": [
+        "국립민속박물관(경복궁 內, 문화체육관광부)", "국립한글박물관(용산, 문체부)", "대한민국역사박물관(광화문, 문체부)", "국립고궁박물관(경복궁 內, 국가유산청)", "국립과천과학관(과학기술정보통신부)", "국립중앙과학관(대전, 과기정통부)", "국립어린이과학관", "국립해양박물관(부산, 해양수산부)", "국립일제강제동원역사관(부산, 행정안전부)", "전쟁기념관(용산, 국방부)"
+      ],
+      "apply_channel": "각 기관 매표소에서 장애인등록증 제시. 대다수 상설전시 무료, 특별전·체험관은 등록 장애인 본인 무료, 중증 동반 1인 무료.",
+      "card_or_proof_type": "장애인등록증(복지카드), 모바일 복지카드",
+      "url": "https://www.nfm.go.kr/",
+      "notes": "국립민속박물관·국립한글박물관·대한민국역사박물관·국립고궁박물관은 상설 무료. 국립과천과학관 등 과학관은 통합권 유료(약 4,000원)이며 장애인 무료."
+    },
+    {
+      "region": "전국 국립미술관",
+      "agency": "국립현대미술관(MMCA)",
+      "lines_or_routes": [
+        "국립현대미술관 서울관(소격동)", "국립현대미술관 과천관", "국립현대미술관 덕수궁관", "국립현대미술관 청주관"
+      ],
+      "apply_channel": "매표소에서 장애인등록증 제시 → 등록 장애인 본인 무료, 중증은 동반 1인 추가 무료. 청주관은 무료, 덕수궁관은 덕수궁 입장료에 미술관 관람 포함.",
+      "card_or_proof_type": "장애인등록증, 복지카드, 모바일 복지카드",
+      "url": "https://www.mmca.go.kr/contents.do?menuId=9051001539",
+      "notes": "서울관·과천관 일반 관람료 2,000~4,000원, 기획전 별도. 등록 장애인은 모두 무료. 멤버십(연회비제) 가입은 별개."
+    },
+    {
+      "region": "전국 22개 국립공원",
+      "agency": "환경부 국립공원공단",
+      "lines_or_routes": [
+        "지리산", "경주", "계룡산", "한려해상", "설악산", "속리산", "한라산", "내장산", "가야산", "덕유산", "오대산", "주왕산", "태안해안", "다도해해상", "북한산", "치악산", "월악산", "소백산", "변산반도", "월출산", "무등산", "태백산", "팔공산(2023년 신규 지정)"
+      ],
+      "apply_channel": "2007년 1월 1일부 입장료 자체 전면 폐지(자연공원법 개정) → 모든 국민 무료. 별도 절차 없음. 단, 한라산은 제주특별자치도 조례에 따라 사전 예약(성판악·관음사 코스) 필요(무료지만 예약 필수).",
+      "card_or_proof_type": "장애인등록증(주차료·시설 이용료 감면 시 필요)",
+      "url": "https://www.knps.or.kr/portal/main/contents.do?menuNo=8000377",
+      "notes": "국립공원 입장료는 일반인 포함 무료이므로 본 항목과 별개. 다만 주차료(평일 4,000원·휴일 5,000원 등)·야영장·대피소 이용료는 별도 부과되며, 등록 장애인은 자연공원법 시행령 별표에 따라 주차료 50% 감면(중증은 동반자 차량 포함). 한라산은 별도 사전 예약제(visithalla.jeju.go.kr)."
+    },
+    {
+      "region": "전국 사찰(국립공원·전통사찰)",
+      "agency": "대한불교조계종 등 — 정부 보전관리비 지원",
+      "lines_or_routes": [
+        "통도사", "해인사", "법주사", "불국사", "석굴암", "화엄사", "백양사", "송광사", "선운사", "내장사", "범어사", "동화사", "수덕사", "월정사", "운주사", "전등사", "용주사", "백담사 등 65개 사찰"
+      ],
+      "apply_channel": "2023년 5월 4일부 문화재(국가유산) 관람료 전면 폐지(개정 문화재보호법, 정부 예산 419억원 보전) → 누구나 무료. 별도 증빙 불필요.",
+      "card_or_proof_type": "불필요",
+      "url": "https://www.khan.co.kr/article/202305011106001",
+      "notes": "예외 5곳(시·도 지정 문화재): 보문사(인천 강화), 고란사(충남 부여), 보리암(경남 남해), 백련사(전북 무주), 희방사(경북 영주)는 계속 관람료 징수 — 이 경우 등록 장애인은 사찰 자체 규정 또는 지자체 조례에 따라 감면."
+    },
+    {
+      "region": "도립·시립·군립공원",
+      "agency": "광역·기초 지자체",
+      "lines_or_routes": [
+        "도립공원 30개(금오산·남한산성·문경새재·연인산·천관산 등)", "군립공원 27개(천마산·강천산·고복·고소성·구학산 등)", "시립공원(서울대공원·어린이대공원 등)"
+      ],
+      "apply_channel": "각 지자체 조례에 따라 운영. 대부분 무료이나 일부 도립공원(예: 남한산성, 모악산 일부)·시립공원(서울대공원 동물원·식물원)은 유료. 매표소에서 장애인등록증 제시 시 등록 장애인 본인 무료, 중증 동반 1인 무료.",
+      "card_or_proof_type": "장애인등록증(복지카드)",
+      "url": "https://www.knps.or.kr/portal/main/contents.do?menuNo=8000377",
+      "notes": "서울대공원(과천): 동물원 5,000원·테마가든 2,000원, 등록 장애인 본인 및 중증 동반 1인 무료. 어린이대공원(서울): 전면 무료. 도립공원 입장료는 대부분 1,000~3,000원."
+    }
+  ],
+  "how_to_use": {
+    "default": "(1) 시설 매표소에 줄 서서 장애인등록증(복지카드 또는 모바일 복지카드)을 제시 → (2) 직원이 본인 확인 후 무료 입장권 발급 → (3) 중증인 경우 보호자 1인분 함께 발급. 사전 예약·온라인 예매가 필요한 시설(창덕궁 후원, 한라산 등)도 무료 대상자는 별도 예약 없이 현장 처리 가능(단, 한라산은 인원 통제상 별도 무료 예약 필요).",
+    "with_card": "장애인등록증(실물 복지카드) 또는 정부24·복지로 앱의 '모바일 복지카드'를 매표소 직원에게 제시. 모바일 복지카드는 화면 캡처 불가(보안), 앱에서 직접 실시간 인증으로 제시해야 함.",
+    "without_card": "장애인등록증을 분실·미소지한 경우, 신분증과 함께 주민센터에서 발급받은 '장애인 증명서(또는 장애 정도 결정서)'로 대체 가능. 단, 시설에 따라 거부될 수 있어 사전에 전화 확인 권장.",
+    "exceptions": "①유료 특별전(외부 기획자·민간 주관)은 시설 자체 규정에 따라 별도 할인율 적용될 수 있음(보통 50%) ②체험프로그램·교육프로그램·도슨트(가이드) 투어 유료분은 본 항목 적용 외 ③주차료는 별도(국립공원 주차료는 자연공원법 별표에 따라 등록 장애인 50% 감면) ④창덕궁 후원은 회당 정원이 정해져 있어, 무료 대상자라도 잔여 인원이 없으면 입장 불가."
+  },
+  "application": {
+    "where": [
+      { "channel": "각 시설 현장 매표소", "method": "방문", "url": null },
+      { "channel": "궁능유적본부 통합예약(창덕궁 후원 등)", "method": "온라인", "url": "https://royal.khs.go.kr/" },
+      { "channel": "국립중앙박물관 특별전 예약", "method": "온라인", "url": "https://www.museum.go.kr/MUSEUM/contents/M0104090000.do" },
+      { "channel": "국립현대미술관 예약", "method": "온라인", "url": "https://www.mmca.go.kr/" },
+      { "channel": "한라산 사전 예약(성판악·관음사 코스)", "method": "온라인", "url": "https://visithalla.jeju.go.kr/" }
+    ],
+    "required_documents": [
+      "장애인등록증(복지카드)",
+      "또는 모바일 복지카드(정부24·복지로 앱)",
+      "또는 장애인 증명서(주민센터 발급)",
+      "동반자 신분증(중증 동반자 1인 무료 시 본인 확인용은 아니나 일부 시설 요구)"
+    ],
+    "processing_period": "현장 즉시(매표소에서 확인 후 입장권 발급). 사전 예약이 필요한 시설(창덕궁 후원, 한라산)은 무료 대상자 별도 예약 코스가 있으니 시설별 예약 페이지 참조.",
+    "fee": {
+      "default": "무료(0원)",
+      "exceptions": "유료 특별전·체험프로그램·주차료는 별도. 특별전은 시설 자체 규정에 따라 50% 등 할인."
+    },
+    "online_available": true,
+    "proxy_allowed": false
+  },
+  "validity": {
+    "expiry": "장애인등록증 유효기간과 동일. 영구 판정자는 영구, 재판정 대상자는 재판정 기한까지.",
+    "renewal": "복지카드 분실·훼손·재판정 시 동주민센터 또는 복지로(bokjiro.go.kr)에서 재발급."
+  },
+  "exceptions_and_caveats": [
+    "유료 특별전(외부 기획)·체험프로그램은 시설 자체 규정 적용(보통 등록 장애인 50% 할인, 중증 동반 1인 동일 할인). 100% 면제 아님.",
+    "주차료·야영장·대피소·식당 이용료 등 부대시설 이용료는 별도. 단 국립공원 주차료는 자연공원법 별표에 따라 등록 장애인 50% 감면.",
+    "창덕궁 후원은 회당 정원이 100명으로 제한되어 무료 대상자라도 정원 마감 시 입장 불가. 사전에 잔여 정원 확인 권장.",
+    "한라산 국립공원(성판악·관음사 코스)은 무료지만 제주도 조례에 따라 사전 예약 필수(일 1,500명 제한).",
+    "외국인 등록 장애인은 「장애인복지법」 제32조의2에 따라 등록한 경우 동일 적용. 외국 발급 장애인증(예: 미국 SSI 카드, 일본 신체장애인수첩 등)으로는 적용 불가.",
+    "사찰 문화재 관람료(통도사·해인사 등 65개)는 2023년 5월 4일부 일반인 포함 전면 폐지로 별도 절차 불필요. 단 예외 5곳(보문사·고란사·보리암·백련사·희방사)은 계속 징수.",
+    "보호자 1인 무료는 '심한 장애(중증)'에 한함. 경증은 본인만 무료.",
+    "모바일 복지카드는 화면 캡처가 보안상 차단되어 매표소 직원에게 앱에서 실시간으로 보여줘야 함.",
+    "시설 자체 기획전이 아닌 '대관 전시(외부 단체가 빌려 운영)'는 운영 주체 규정에 따라 다름 — 매표소에서 별도 확인 필요.",
+    "박물관·미술관 일부는 운영 부처(문체부·국가유산청·과기정통부·해수부 등)가 달라 동일한 '국립'이라도 운영 규정 상이."
+  ],
+  "penalties_for_misuse": "타인의 장애인등록증을 도용하여 무료 입장 시 「공공기관의 시설보호 관련 조례」 또는 「형법」 제231조(사문서 위조·변조)·제232조의2(사전자기록위작) 위반으로 처벌 가능. 도용 사실 적발 시 정상 입장료 추징 및 일정 기간 시설 이용 제한.",
+  "faq": [
+    {
+      "q": "경복궁·창덕궁 같은 고궁도 무료인가요?",
+      "a": "네. 4대궁(경복궁·창덕궁·창경궁·덕수궁)과 종묘·조선왕릉 모두 등록 장애인 본인이 무료입니다. 중증(심한 장애)은 동반 보호자 1인까지 함께 무료입니다. 현장 매표소에서 장애인등록증(복지카드)을 제시하면 됩니다."
+    },
+    {
+      "q": "창덕궁 후원도 무료인가요? 후원은 예약제라고 들었습니다.",
+      "a": "후원도 무료 대상입니다. 다만 후원은 회당 정원이 100명으로 제한되는 정해진 시간 입장제(가이드 동반)이기 때문에, 매회 잔여 인원 내에서만 무료 대상자도 입장이 가능합니다. 무료 대상자는 별도 예약 없이 매표소에서 증빙을 제시하면 잔여 인원에 따라 입장권을 받습니다. 후원 입장은 5,000원 별도 요금이지만 등록 장애인은 면제됩니다."
+    },
+    {
+      "q": "국립중앙박물관은 원래 다 무료 아닌가요?",
+      "a": "맞습니다. 국립중앙박물관 상설전시관은 2008년 5월부터 모든 국민에게 무료입니다(2026년 현재). 따라서 장애인도 별도 절차 없이 자유 입장 가능합니다. 다만 유료 '특별전(기획전)'의 경우 5,000~20,000원의 관람료가 있으며, 등록 장애인 본인은 무료, 중증은 동반 1인까지 무료입니다. 매표소에서 등록증을 제시하세요."
+    },
+    {
+      "q": "국립공원 입장료는 폐지된 거 아닌가요?",
+      "a": "맞습니다. 국립공원 입장료는 2007년 1월 1일부 일반인 포함 전면 폐지되었습니다. 22개 국립공원 모두 입장료 자체가 없습니다. 다만 ①주차료는 별도(평일 4,000원·휴일 5,000원 등) — 등록 장애인은 자연공원법 별표에 따라 주차료 50% 감면됩니다 ②한라산은 무료이지만 성판악·관음사 코스는 일 1,500명 제한으로 사전 예약(visithalla.jeju.go.kr)이 필요합니다 ③야영장·대피소·자연해설 프로그램 등은 별도 유료."
+    },
+    {
+      "q": "사찰 입장료(통도사·해인사 등)도 무료인가요?",
+      "a": "네. 2023년 5월 4일부터 통도사·해인사·법주사·불국사·송광사·범어사·화엄사 등 전국 65개 사찰의 '문화재(국가유산) 관람료'가 일반인 포함 전면 폐지되었습니다. 등록 장애인 여부와 관계없이 누구나 무료입니다. 다만 ⑴ 사찰 자체에서 운영하는 박물관·체험관·템플스테이는 별도 유료 ⑵ 예외 5곳(보문사·고란사·보리암·백련사·희방사)은 시·도 지정 문화재로 계속 관람료를 받습니다."
+    },
+    {
+      "q": "보호자도 함께 무료인가요?",
+      "a": "심한 장애(중증)로 등록된 장애인의 경우 동반 보호자 1인까지 무료입니다. 보호자는 친인척·간병인·활동지원사·자녀 등 누구든 가능하며, 별도의 자격 증빙은 필요 없습니다. 심하지 않은 장애(경증)는 본인만 무료이며 보호자는 정상 요금을 냅니다."
+    },
+    {
+      "q": "외국인 장애인도 적용되나요?",
+      "a": "「장애인복지법」 제32조의2에 따라 외국인등록(F계열 비자 등) 후 장애인 등록을 마친 외국인은 동일하게 적용됩니다. 단 외국 발급 장애인증(예: 미국 SSI 카드, 일본 신체장애인수첩, EU 장애인카드 등)으로는 적용되지 않으며, 반드시 대한민국 장애인등록증이 필요합니다. 단기 관광객은 본 항목 대상이 아닙니다."
+    },
+    {
+      "q": "장애인등록증을 집에 두고 왔어요. 본인 신분증만으로 가능한가요?",
+      "a": "원칙적으로 장애인등록증(복지카드)을 제시해야 합니다. 모바일 복지카드(정부24·복지로 앱)도 인정됩니다. 등록증·복지카드·모바일 복지카드 모두 없는 경우, 가까운 주민센터에서 즉시 발급되는 '장애인 증명서'를 챙겨가시면 대부분의 시설에서 인정합니다. 사전에 시설에 전화로 확인하시는 게 안전합니다."
+    },
+    {
+      "q": "특별전이나 외부 기획전도 무료인가요?",
+      "a": "유료 특별전(외부 기획자·민간 주관)의 경우 100% 면제가 아니라 시설 자체 규정에 따라 보통 50% 할인이 적용됩니다. 중증은 동반 보호자 1인까지 같은 할인율. 입장 시 매표소에서 확인하세요. 다만 국립박물관·국립미술관의 자체 기획 특별전은 등록 장애인 본인 무료, 중증 동반 1인 무료 적용이 더 흔합니다."
+    },
+    {
+      "q": "주차료도 면제되나요?",
+      "a": "본 항목은 입장료만 다루며, 주차료는 별도입니다. 다만 ①국립공원·도립공원 주차료는 자연공원법 시행령 별표에 따라 등록 장애인 50% 감면(중증은 동반자 차량 포함) ②국립박물관·미술관·고궁 주차장은 시설별 규정이 다르며 대부분 등록 장애인 50% 감면. 매표 시 장애인등록증 제시 + 차량번호 등록 필요."
+    },
+    {
+      "q": "오프라인 예약(인터파크·예스24)으로 예매한 경우에도 무료 적용되나요?",
+      "a": "예매 단계에서 '장애인 우대' 옵션을 선택해 0원 또는 50%로 결제하고, 입장 시 매표소에서 장애인등록증을 제시하면 됩니다. 옵션 없이 정상가로 결제한 경우 현장 환불·차액 조정이 시설별로 다르므로, 사전에 시설에 전화 문의하는 것이 안전합니다. 무료 대상자는 굳이 사전 예매할 필요 없이 현장 접수만으로 입장 가능한 경우가 대부분입니다."
+    }
+  ],
+  "contact": [
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
+    { "name": "국가유산청 콜센터(궁능유적본부)", "phone": "1600-0064", "url": "https://royal.khs.go.kr/" },
+    { "name": "국립중앙박물관", "phone": "02-2077-9000", "url": "https://www.museum.go.kr/" },
+    { "name": "국립중앙박물관 특별전 안내", "phone": "1644-7169", "url": "https://www.museum.go.kr/" },
+    { "name": "국립현대미술관(MMCA)", "phone": "02-3701-9500", "url": "https://www.mmca.go.kr/" },
+    { "name": "국립공원공단 고객센터", "phone": "1670-9201", "url": "https://www.knps.or.kr/" },
+    { "name": "한라산국립공원 사전예약", "phone": "064-713-9950", "url": "https://visithalla.jeju.go.kr/" },
+    { "name": "국립민속박물관", "phone": "02-3704-3114", "url": "https://www.nfm.go.kr/" },
+    { "name": "대한민국역사박물관", "phone": "02-3703-9200", "url": "https://www.much.go.kr/" },
+    { "name": "국립과천과학관", "phone": "02-3677-1500", "url": "https://www.sciencecenter.go.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=4&cciNo=2&cnpClsNo=1",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 상단 '시행일' 표기",
+        "robots_txt_ok": true,
+        "notes": "B001과 공유."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행령 (별표2 공공시설 등의 이용요금 감면 기준)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표2 표 내용",
+        "robots_txt_ok": true,
+        "notes": "공공시설 무료 입장의 직접 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "박물관 및 미술관 진흥법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/박물관및미술관진흥법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "박물관·미술관 운영 일반 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "자연공원법 / 자연공원법 시행령(별표)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/자연공원법",
+      "fallback_url": "https://www.law.go.kr/법령/자연공원법시행령",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표 입장료 감면 기준",
+        "robots_txt_ok": true,
+        "notes": "2007년 국립공원 입장료 폐지 이후에도 주차료·기타 사용료 감면 규정 존속."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "궁능유적본부 관람요금 — 국가유산청",
+      "publisher": "국가유산청 궁능유적본부",
+      "publisher_type": "중앙정부",
+      "url": "https://royal.khs.go.kr/ROYAL/contents/R703000000.do",
+      "fallback_url": "https://royal.khs.go.kr/afile/fileDownload/l7Amn",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "div#contents 본문 영역",
+        "robots_txt_ok": true,
+        "notes": "구 문화재청 → 2024년 5월 국가유산청 개편. URL은 royal.khs.go.kr로 변경됨."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "궁·능 관람 등에 관한 규정",
+      "publisher": "국가유산청",
+      "publisher_type": "중앙정부",
+      "url": "https://royal.khs.go.kr/afile/fileDownload/l7Amn",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "pdf_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "PDF 파일. 관람료 면제 대상자 규정 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국립중앙박물관 관람 안내",
+      "publisher": "국립중앙박물관",
+      "publisher_type": "중앙정부",
+      "url": "https://www.museum.go.kr/MUSEUM/contents/M0101000000.do",
+      "fallback_url": "https://www.museum.go.kr/MUSEUM/contents/M0104090000.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "관람료·특별전 안내 영역",
+        "robots_txt_ok": true,
+        "notes": "2027년 유료화 추진 보도 있음 → 정책 변동 주의."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국립현대미술관 관람 안내",
+      "publisher": "국립현대미술관(MMCA)",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mmca.go.kr/contents.do?menuId=9051001539",
+      "fallback_url": "https://www.mmca.go.kr/pr/FAQ.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "관람료 안내 영역",
+        "robots_txt_ok": true,
+        "notes": "서울·과천·덕수궁·청주 4관 통합 운영."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국립공원문화 — 국립공원공단",
+      "publisher": "국립공원공단",
+      "publisher_type": "공기업",
+      "url": "https://www.knps.or.kr/portal/main/contents.do?menuNo=8000377",
+      "fallback_url": "https://reservation.knps.or.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "주차료·시설 이용료 감면 안내 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "한라산 탐방 예약시스템 — 제주특별자치도",
+      "publisher": "제주특별자치도",
+      "publisher_type": "광역지자체",
+      "url": "https://visithalla.jeju.go.kr/contents/contents.do?id=49",
+      "fallback_url": "https://visithalla.jeju.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "성판악·관음사 코스 사전 예약(일 1,500명 제한)."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "사찰 문화재 관람료 폐지 보도(2023.5.4 시행)",
+      "publisher": "경향신문/연합뉴스 등",
+      "publisher_type": "민간",
+      "url": "https://www.khan.co.kr/article/202305011106001",
+      "fallback_url": "https://imnews.imbc.com/replay/2023/nwtoday/article/6478142_36207.html",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "manual_review",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "65개 사찰 폐지·예외 5곳 확인. 일회성 보도이므로 모니터링은 on_demand."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "장애인 공공시설 이용요금 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=4&cciNo=2&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "공공시설 이용요금 감면 일반 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공요금 감면 — 보건복지부 장애인정책",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010500",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 영역",
+        "robots_txt_ok": true,
+        "notes": "장애인정책 사업안내 책자(연 1~2회) 함께 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    }
+  ],
+  "related_items": ["B009", "B014"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

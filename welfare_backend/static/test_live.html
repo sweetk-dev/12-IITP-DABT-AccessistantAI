@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>장애인 복지 정책 AI 음성 상담</title>
+  <style>
+    :root {
+      --bg:#f0f4ff; --user-bubble:#dbeafe; --ai-bubble:#dcfce7; --tool-bubble:#fef3c7;
+      --text:#111827; --sub:#4b5563; --error:#dc2626;
+      --male:#2563eb; --female:#db2777;
+      color-scheme: light dark;
+    }
+    body { font-family: -apple-system, "Segoe UI", "Noto Sans KR", sans-serif; max-width: 880px; margin: 16px auto; padding: 0 12px; background: var(--bg); color: var(--text); }
+    h1 { font-size: 1.3rem; margin: 8px 0 12px; }
+
+    /* 상담원 선택 영역 */
+    .agent-pick { display: flex; gap: 12px; margin: 12px 0 16px; }
+    .agent-btn {
+      flex: 1; padding: 14px 18px; font-size: 1rem; font-weight: 600; border-radius: 12px;
+      border: 2px solid transparent; cursor: pointer; transition: transform .08s, box-shadow .15s;
+      color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .agent-btn.male   { background: var(--male); }
+    .agent-btn.female { background: var(--female); }
+    .agent-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.14); }
+    .agent-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .agent-btn .voice-hint { display: block; font-size: 0.72rem; font-weight: 400; opacity: 0.85; margin-top: 2px; }
+
+    /* 종료 버튼 — 상담 중일 때만 보임 */
+    .controls { display: none; gap: 8px; margin: 8px 0; align-items: center; flex-wrap: wrap; }
+    .controls.active { display: flex; }
+    button.endbtn { padding: 8px 16px; font-size: 0.9rem; border-radius: 8px; border: 1px solid #c53030; cursor: pointer; background: #fff; color: #c53030; }
+    button.endbtn:hover { background: #fee2e2; }
+    .agent-badge { font-size: 0.85rem; color: var(--sub); padding: 4px 10px; background: #fff; border-radius: 8px; }
+
+    /* 텍스트 입력 */
+    .text-row { display: flex; gap: 8px; margin: 8px 0; }
+    input[type=text] { flex: 1; padding: 10px; font-size: 1rem; border: 1px solid #ccc; border-radius: 8px; }
+    button.send { padding: 10px 18px; font-size: 0.95rem; border-radius: 8px; border: 1px solid #2b6cb0; cursor: pointer; background: #2b6cb0; color: #fff; }
+    button.send:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* 채팅 영역 */
+    #chat { background: #fff; border-radius: 10px; height: 500px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; border: 1px solid #e2e8f0; }
+    .bubble { max-width: 78%; padding: 10px 14px; border-radius: 14px; line-height: 1.45; font-size: 0.95rem; white-space: pre-wrap; word-break: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.04); }
+    .bubble--user { align-self: flex-end; background: var(--user-bubble); border-bottom-right-radius: 4px; }
+    .bubble--ai { align-self: flex-start; background: var(--ai-bubble); border-bottom-left-radius: 4px; }
+    .bubble--tool { align-self: center; background: var(--tool-bubble); font-size: 0.8rem; color: #92400e; padding: 5px 10px; border-radius: 8px; }
+    .bubble--sys { align-self: center; font-size: 0.78rem; color: var(--sub); font-style: italic; padding: 2px 8px; }
+    .bubble--err { align-self: center; background: #fee2e2; color: var(--error); font-size: 0.85rem; padding: 6px 10px; border-radius: 8px; }
+    .bubble .label { font-size: 0.7rem; color: var(--sub); margin-bottom: 3px; display: block; }
+  </style>
+</head>
+<body>
+  <h1>🦮 장애인 복지 정책 AI 음성 상담</h1>
+
+  <!-- 상담원 선택 = 곧 상담 시작 -->
+  <div class="agent-pick" id="agentPick">
+    <button class="agent-btn male" data-voice="male">
+      🙋‍♂️ 남성 정책상담원
+      <span class="voice-hint">차분하고 안정적인 톤</span>
+    </button>
+    <button class="agent-btn female" data-voice="female">
+      🙋‍♀️ 여성 정책상담원
+      <span class="voice-hint">또렷하고 친절한 톤</span>
+    </button>
+  </div>
+
+  <!-- 상담 중에만 보이는 컨트롤 -->
+  <div class="controls" id="controls">
+    <span class="agent-badge" id="agentBadge"></span>
+    <button class="endbtn" id="endBtn">상담 종료</button>
+  </div>
+
+  <div class="text-row">
+    <input id="textInput" type="text" placeholder="텍스트로 묻기 (예: 지하철 무료인가요?)" disabled />
+    <button class="send" id="sendTextBtn" disabled>전송</button>
+  </div>
+
+  <section id="chat" aria-label="대화 내용" aria-live="polite"></section>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+
+  // 기본 WS URL — 페이지 호스트 기준 자동 구성 (사용자 화면에 노출 안 함)
+  const wsBaseUrl = () => {
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    const host = location.host || "127.0.0.1:8000";
+    return `${proto}//${host}/ws/live-chat`;
+  };
+
+  // ────── 채팅 말풍선 ──────
+  const addBubble = (variant, content) => {
+    const el = document.createElement("div");
+    el.className = `bubble bubble--${variant}`;
+    el.textContent = content;
+    $("chat").appendChild(el);
+    $("chat").scrollTop = $("chat").scrollHeight;
+    return el;
+  };
+
+  // AI 응답이 chunk 단위로 도착할 때 같은 말풍선에 누적
+  let activeAiBubble = null;
+  let activeAiText = "";
+  const appendAiTranscript = (text) => {
+    if (!activeAiBubble) {
+      activeAiBubble = document.createElement("div");
+      activeAiBubble.className = "bubble bubble--ai";
+      const lbl = document.createElement("span");
+      lbl.className = "label";
+      lbl.textContent = "상담원";
+      activeAiBubble.appendChild(lbl);
+      const span = document.createElement("span");
+      activeAiBubble.appendChild(span);
+      activeAiBubble._textNode = span;
+      $("chat").appendChild(activeAiBubble);
+      activeAiText = "";
+    }
+    activeAiText += text;
+    activeAiBubble._textNode.textContent = activeAiText;
+    $("chat").scrollTop = $("chat").scrollHeight;
+  };
+  const finalizeAiBubble = () => { activeAiBubble = null; activeAiText = ""; };
+
+  // 사용자 입력 transcript 도 chunk 단위 가능 — 누적
+  let activeUserBubble = null;
+  let activeUserText = "";
+  const appendUserTranscript = (text) => {
+    if (!activeUserBubble) {
+      activeUserBubble = document.createElement("div");
+      activeUserBubble.className = "bubble bubble--user";
+      const lbl = document.createElement("span");
+      lbl.className = "label";
+      lbl.textContent = "🎤 나";
+      activeUserBubble.appendChild(lbl);
+      const span = document.createElement("span");
+      activeUserBubble.appendChild(span);
+      activeUserBubble._textNode = span;
+      $("chat").appendChild(activeUserBubble);
+      activeUserText = "";
+    }
+    activeUserText += text;
+    activeUserBubble._textNode.textContent = activeUserText;
+    $("chat").scrollTop = $("chat").scrollHeight;
+  };
+  const finalizeUserBubble = () => { activeUserBubble = null; activeUserText = ""; };
+
+  // ────── 상태 ──────
+  let ws = null;
+  let audioCtx = null, playbackCtx = null;
+  let micStream = null, micNode = null, micProcessor = null;
+  let pendingPlayback = Promise.resolve();
+  const activeSources = new Set();
+  let interruptedFlag = false;
+  let selectedVoice = null;  // 'male' | 'female'
+
+  // ────── PCM 변환 ──────
+  const ab2b64 = (buf) => { let b=""; const u=new Uint8Array(buf); for (let i=0;i<u.byteLength;i++) b+=String.fromCharCode(u[i]); return btoa(b); };
+  const b642ab = (b64) => { const bin=atob(b64); const u=new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u.buffer; };
+
+  // ────── 상담원 선택 = 연결 + 마이크 자동 켜기 ──────
+  document.querySelectorAll(".agent-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (ws) return;
+      selectedVoice = btn.dataset.voice;
+      // 상담원 버튼 잠금
+      document.querySelectorAll(".agent-btn").forEach(b => b.disabled = true);
+      const label = selectedVoice === "male" ? "🙋‍♂️ 남성 정책상담원" : "🙋‍♀️ 여성 정책상담원";
+      $("agentBadge").textContent = `상담원: ${label}`;
+      addBubble("sys", `${label} 연결 중...`);
+      await connectWs(selectedVoice);
+    });
+  });
+
+  const connectWs = async (voice) => {
+    const url = `${wsBaseUrl()}?voice=${encodeURIComponent(voice)}`;
+    ws = new WebSocket(url);
+
+    ws.onopen = async () => {
+      $("controls").classList.add("active");
+      $("textInput").disabled = false;
+      $("sendTextBtn").disabled = false;
+      addBubble("sys", "상담 시작");
+      // 마이크 자동 켜기
+      try {
+        await startMic();
+      } catch (err) {
+        addBubble("err", "마이크 권한이 거부되었습니다. 텍스트로만 대화할 수 있습니다.");
+      }
+    };
+
+    ws.onmessage = async (ev) => {
+      let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+      switch (msg.type) {
+        case "user_transcript": appendUserTranscript(msg.content); break;
+        case "ai_transcript":   appendAiTranscript(msg.content); break;
+        case "text":            appendAiTranscript(msg.content); break;
+        case "audio":           await playAudioChunk(msg.data, msg.mime_type); break;
+        case "tool_call":
+          addBubble("tool", `🛠 ${msg.name}`);
+          break;
+        case "grounding":
+          addBubble("tool", `🔍 외부 검색 결과 사용됨`);
+          break;
+        case "turn_complete":
+          finalizeUserBubble();
+          finalizeAiBubble();
+          break;
+        case "interrupted":
+          stopAllPlayback();
+          finalizeAiBubble();
+          break;
+        case "idle_warning":
+          addBubble("sys", `⏱ ${msg.message || "3분간 응답이 없습니다 — 곧 상담이 자동 종료됩니다."}`);
+          break;
+        case "auto_close":
+          addBubble("sys", `⏱ ${msg.message || "응답이 없어 상담이 자동 종료됩니다."}`);
+          break;
+        case "error":
+          addBubble("err", "⚠ " + msg.message);
+          break;
+      }
+    };
+
+    ws.onerror = () => {
+      addBubble("err", "연결 오류가 발생했습니다.");
+    };
+
+    ws.onclose = (e) => {
+      addBubble("sys", `상담 종료${e.reason ? `: ${e.reason}` : ""}`);
+      stopMic();
+      finalizeAiBubble(); finalizeUserBubble();
+      $("textInput").disabled = true;
+      $("sendTextBtn").disabled = true;
+      $("controls").classList.remove("active");
+      document.querySelectorAll(".agent-btn").forEach(b => b.disabled = false);
+      ws = null;
+      selectedVoice = null;
+    };
+  };
+
+  // ────── 마이크 (AudioWorklet) ──────
+  const startMic = async () => {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      }
+    });
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    await audioCtx.audioWorklet.addModule("/static/mic-processor.js");
+
+    micNode = audioCtx.createMediaStreamSource(micStream);
+    micProcessor = new AudioWorkletNode(audioCtx, "mic-processor", {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [1],
+      processorOptions: {
+        targetSampleRate: 16000,
+        chunkFrames: 2048,
+        rmsThreshold: 0.012,
+        voicedRunFrames: 2,
+      },
+    });
+
+    micProcessor.port.onmessage = (e) => {
+      const m = e.data;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (m.type === "pcm") {
+        const u8 = new Uint8Array(m.data);
+        let bin = "";
+        for (let i = 0; i < u8.byteLength; i++) bin += String.fromCharCode(u8[i]);
+        ws.send(JSON.stringify({ type: "audio_chunk", data: btoa(bin) }));
+      }
+    };
+    micNode.connect(micProcessor);
+  };
+
+  const stopMic = () => {
+    if (micProcessor) {
+      try { micProcessor.port.onmessage = null; } catch{}
+      try { micProcessor.disconnect(); } catch{}
+      micProcessor = null;
+    }
+    if (micNode) { try { micNode.disconnect(); } catch{} micNode = null; }
+    if (audioCtx) { try { audioCtx.close(); } catch{} audioCtx = null; }
+    if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  };
+
+  // ────── 텍스트 전송 ──────
+  $("sendTextBtn").onclick = () => {
+    const text = $("textInput").value.trim();
+    if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: "text", content: text }));
+    addBubble("user", text);
+    $("textInput").value = "";
+  };
+  $("textInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("sendTextBtn").click(); });
+
+  // ────── 상담 종료 ──────
+  $("endBtn").onclick = () => {
+    stopMic();
+    if (ws) ws.close();
+  };
+
+  // ────── 응답 오디오 재생 (인터럽션 가능) ──────
+  const playAudioChunk = async (b64, mimeType) => {
+    if (interruptedFlag) return;
+    pendingPlayback = pendingPlayback.then(async () => {
+      if (interruptedFlag) return;
+      try {
+        const buffer = b642ab(b64);
+        const sampleRate = parseInt((mimeType || "audio/pcm;rate=24000").match(/rate=(\d+)/)?.[1] || "24000", 10);
+        if (!playbackCtx || playbackCtx.sampleRate !== sampleRate) {
+          if (playbackCtx) { try { await playbackCtx.close(); } catch{} }
+          playbackCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+        }
+        const int16 = new Int16Array(buffer);
+        const f32 = new Float32Array(int16.length);
+        for (let i=0;i<int16.length;i++) f32[i] = int16[i] / 0x8000;
+        const ab = playbackCtx.createBuffer(1, f32.length, sampleRate);
+        ab.getChannelData(0).set(f32);
+        const src = playbackCtx.createBufferSource();
+        src.buffer = ab; src.connect(playbackCtx.destination);
+        activeSources.add(src);
+        src.onended = () => activeSources.delete(src);
+        src.start();
+        await new Promise((r) => { src.addEventListener("ended", r, { once: true }); });
+      } catch (e) {}
+    });
+  };
+
+  const stopAllPlayback = () => {
+    interruptedFlag = true;
+    for (const src of activeSources) {
+      try { src.stop(0); } catch {}
+      try { src.disconnect(); } catch {}
+    }
+    activeSources.clear();
+    pendingPlayback = Promise.resolve();
+    if (playbackCtx) {
+      try { playbackCtx.close(); } catch {}
+      playbackCtx = null;
+    }
+    setTimeout(() => { interruptedFlag = false; }, 300);
+  };
+
+  addBubble("sys", "원하시는 상담원을 선택해 주세요");
+})();
+</script>
+</body>
+</html>

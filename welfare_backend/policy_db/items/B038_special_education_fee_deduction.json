@@ -1,0 +1,298 @@
+{
+  "id": "B038",
+  "leaflet_section": "기타",
+  "leaflet_number": 3,
+  "title": "장애인 특수교육비 세액공제 (특수교육비 전액의 15%)",
+  "short_summary": "장애인 특수교육비 소득공제 : 특수교육비 전액의 15% 공제",
+  "category": "세제",
+  "benefit_type": "공제",
+  "supported_amount": {
+    "rate": "15%",
+    "amount": null,
+    "scope": "기본공제대상자인 장애인을 위해 지출한 특수교육비 전액에 대해 15% 세액공제. 다른 교육비 공제 한도(대학생 900만원, 초·중·고 300만원 등)와 별도로 한도 없이 전액 적용. 인정 기관: ①대통령령으로 정하는 사회복지시설·비영리법인 ②장애인의 기능향상·행동발달을 위한 발달재활서비스 제공기관(장애아동복지지원법 제21조 제3항 지정 기관) ③이에 준하는 외국 시설·법인."
+  },
+  "eligibility": {
+    "target": "근로소득이 있는 거주자(연말정산) 또는 종합소득세 신고 의무자로서 기본공제대상자인 장애인 본인·부양가족의 특수교육비를 지출한 경우",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "companion_allowed": null,
+    "income_criteria": "특수교육비를 지출한 장애인이 기본공제대상자여야 함(연간 소득금액 100만원 이하). 단, 장애인 본인의 경우 소득·나이 요건 없음. 부양가족의 경우 나이 요건은 없으나 소득금액 100만원 이하 요건 충족 필요.",
+    "age_criteria": "장애인 부양가족은 나이 요건 없음(일반 교육비의 경우 대학생 등 구분 있으나 장애인 특수교육비는 나이 무관).",
+    "residency_criteria": "기본공제대상 부양가족이어야 함. 장애인의 경우 별거 중이더라도 생계를 같이하는 것으로 봄."
+  },
+  "legal_basis": [
+    {
+      "name": "소득세법",
+      "article": "제59조의4 제3항(특별세액공제 — 교육비) 제1호 나목(장애인 특수교육비)",
+      "url": "https://www.law.go.kr/법령/소득세법/제59조의4"
+    },
+    {
+      "name": "소득세법 시행령",
+      "article": "제118조의6(교육비 세액공제 대상 교육비 범위) — 장애인 특수교육비 인정 기관 규정",
+      "url": "https://www.law.go.kr/법령/소득세법시행령"
+    },
+    {
+      "name": "장애아동 복지지원법",
+      "article": "제21조(발달재활서비스 지원) 제3항 — 지방자치단체 지정 발달재활서비스제공기관",
+      "url": "https://www.law.go.kr/법령/장애아동복지지원법"
+    }
+  ],
+  "how_to_use": {
+    "default": "교육비 지급 영수증을 해당 기관(사회복지시설, 발달재활서비스 기관 등)에서 발급받아 보관. 연말정산 시 회사 급여담당자에게 제출하거나, 5월 종합소득세 신고 시 홈택스에서 입력. 홈택스 연말정산 간소화 서비스에서 자동 조회되는 경우도 있으나, 소규모 시설은 직접 영수증 수집 필요.",
+    "with_card": null,
+    "without_card": null,
+    "exceptions": "인정되는 기관(사회복지시설·비영리법인·발달재활서비스 제공기관)에서 지출한 비용만 공제 가능. 일반 사립 학원, 어학원, 인터넷 강의 등은 특수교육비 항목으로 공제 불가. 영수증 보관 필수(제출 요청 시 제시 가능하도록)."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "국세청 홈택스 — 연말정산 간소화 서비스 (교육비 조회)",
+        "method": "온라인",
+        "url": "https://www.hometax.go.kr"
+      },
+      {
+        "channel": "회사 급여담당자 (근로소득자 연말정산)",
+        "method": "방문",
+        "url": null
+      },
+      {
+        "channel": "관할 세무서 (종합소득세 신고)",
+        "method": "방문",
+        "url": "https://www.nts.go.kr"
+      }
+    ],
+    "required_documents": [
+      "특수교육비 납입 영수증 (해당 시설·기관 발행)",
+      "장애인등록증(복지카드) 사본 또는 장애인증명서",
+      "발달재활서비스 이용 증명 서류 (발달재활서비스 대상 장애아동의 경우)",
+      "교육비 납입 명세서 (세무서 신고 시)"
+    ],
+    "processing_period": "연말정산: 1~2월 처리. 종합소득세 신고: 5월 신고 후 6월경 환급.",
+    "fee": {
+      "default": "무료",
+      "exceptions": null
+    },
+    "online_available": true,
+    "proxy_allowed": false
+  },
+  "validity": {
+    "expiry": "매 과세연도(1.1~12.31) 지출분에 대해 해당 연도 신고 시 적용.",
+    "renewal": "매년 연말정산 또는 종합소득세 신고 시 해당 연도 지출 기준으로 재계산."
+  },
+  "exceptions_and_caveats": [
+    "특수교육비로 인정되는 기관: ①사회복지법인 및 대통령령으로 정하는 사회복지시설(장애인 재활원, 장애인 복지관 부설 재활프로그램 등), ②장애아동복지지원법 제21조 제3항에 따라 지방자치단체가 지정한 발달재활서비스제공기관(언어치료, 심리·행동·감각, 미술·음악치료 등), ③이에 준하는 외국 시설·법인. 일반 학원, 어학원, 피아노 학원 등은 인정 안 됨.",
+    "특수교육비 세액공제는 일반 교육비 한도(대학생 900만원, 초·중·고 300만원 등)와 별도로 적용됨. 즉, 장애인 특수교육비는 별도 한도 없이 전액 15% 세액공제.",
+    "기본공제대상자인 장애인에 대해서만 적용되므로, 부양가족의 소득금액이 100만원을 초과하면 공제 불가.",
+    "영수증 보관 필수: 홈택스 연말정산 간소화 서비스에서 조회되지 않는 시설의 경우 직접 영수증을 보관하고 제출 요청 시 제시할 수 있어야 함.",
+    "발달재활서비스 이용 시 장애아동복지지원법에 따른 바우처(국가 지원금)로 결제한 부분은 공제 불가. 본인이 실제로 부담한 본인부담금 부분만 공제.",
+    "발달재활서비스 대상 장애아동은 소득세법 시행령 제107조 개정(2025년 이후)에 따라 장애인공제(B036)도 받을 수 있어 이중 혜택 적용 가능.",
+    "특수교육비 공제는 본인 또는 기본공제대상 부양가족을 위한 지출만 공제 가능. 기본공제 대상이 아닌 가족의 특수교육비는 불가."
+  ],
+  "penalties_for_misuse": "허위 공제 적용 시 가산세(부당과소신고가산세 40%, 납부지연가산세) 및 추징.",
+  "faq": [
+    {
+      "q": "장애인 특수교육비로 인정되는 기관은 어디인가요?",
+      "a": "크게 두 가지 유형의 기관이 인정됩니다. 첫째, 사회복지법인 및 대통령령으로 정하는 사회복지시설(장애인 재활원, 장애인복지관 부설 재활프로그램 운영 기관 등). 둘째, 장애아동복지지원법 제21조 제3항에 따라 지방자치단체가 지정한 발달재활서비스제공기관(언어치료, 심리행동치료, 감각통합치료, 미술·음악치료, 재활운동 등)입니다. 일반 학원이나 어학원은 해당되지 않습니다."
+    },
+    {
+      "q": "언어치료, 미술치료, 심리치료 비용도 공제가 되나요?",
+      "a": "네, 지방자치단체가 지정한 발달재활서비스제공기관에서 지출한 언어치료, 미술치료, 음악치료, 심리·행동치료, 감각통합치료, 재활운동 등의 비용은 장애인 특수교육비로 세액공제를 받을 수 있습니다. 단, 반드시 지정 기관이어야 합니다."
+    },
+    {
+      "q": "특수교육비 공제는 한도가 있나요?",
+      "a": "장애인 특수교육비는 일반 교육비 공제 한도(대학생 900만원, 초·중·고 300만원 등)와 별도로 적용되며, 별도 한도 없이 지출액 전액의 15%를 세액공제받을 수 있습니다."
+    },
+    {
+      "q": "발달재활서비스 바우처로 결제한 금액도 공제가 되나요?",
+      "a": "아닙니다. 국가(지자체)에서 지원하는 바우처(국가 부담금)로 결제한 부분은 공제 대상이 아닙니다. 본인이 실제로 지출한 본인부담금 부분만 공제됩니다."
+    },
+    {
+      "q": "성인 장애인도 특수교육비 공제를 받을 수 있나요?",
+      "a": "네, 나이 제한이 없습니다. 장애인 특수교육비는 아동뿐 아니라 성인 장애인도 기본공제대상자(연간 소득금액 100만원 이하)에 해당하면 공제받을 수 있습니다."
+    },
+    {
+      "q": "일반 사설 치료센터에서 받은 치료비도 공제가 되나요?",
+      "a": "지방자치단체가 지정한 발달재활서비스제공기관이 아닌 일반 사설 센터는 특수교육비로 인정되지 않을 수 있습니다. 반드시 해당 기관이 지자체 지정 기관인지 확인 후 이용하세요. 확인 방법: 보건복지부 복지로(bokjiro.go.kr) 또는 해당 시·군·구 장애인복지과에 문의."
+    },
+    {
+      "q": "홈택스 연말정산 간소화에서 특수교육비가 조회되지 않으면 어떻게 하나요?",
+      "a": "해당 기관에서 직접 교육비 납입 영수증을 발급받아 보관하고, 연말정산 시 회사에 제출하거나 종합소득세 신고 시 첨부하시면 됩니다."
+    },
+    {
+      "q": "장애인 인적공제(200만원)와 특수교육비 세액공제를 동시에 받을 수 있나요?",
+      "a": "네, 두 가지는 별도 항목으로 동시에 적용됩니다. 인적공제(200만원 소득공제)와 특수교육비 세액공제(15%)는 성격이 다른 공제이므로 함께 받을 수 있으며, 의료비 세액공제(B037)도 별도로 병행 적용됩니다."
+    },
+    {
+      "q": "누락한 경우 소급해서 공제받을 수 있나요?",
+      "a": "지출 연도로부터 5년 이내에 경정청구를 통해 소급 환급받을 수 있습니다. 홈택스 또는 관할 세무서에서 신청하세요."
+    },
+    {
+      "q": "외국에 있는 장애인 재활기관 비용도 공제가 되나요?",
+      "a": "소득세법 제59조의4 제3항에 따르면 국내 인정 기관과 유사한 외국 시설·법인에서 지출한 비용도 공제 대상에 포함될 수 있습니다. 단, 홈택스 간소화에서 조회되지 않으므로 직접 영수증을 확보해야 하며, 구체적인 인정 여부는 국세청(126)에 문의하시기 바랍니다."
+    }
+  ],
+  "contact": [
+    {
+      "name": "국세청 국세상담센터",
+      "phone": "126",
+      "url": "https://call.nts.go.kr/"
+    },
+    {
+      "name": "국세청 홈택스",
+      "phone": null,
+      "url": "https://www.hometax.go.kr"
+    },
+    {
+      "name": "관할 세무서",
+      "phone": null,
+      "url": "https://www.nts.go.kr"
+    },
+    {
+      "name": "복지로 (발달재활서비스 제공기관 조회)",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    }
+  ],
+  "sources": [
+    {
+      "title": "소득세법 제59조의4(특별세액공제 — 교육비, 장애인 특수교육비)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/소득세법/제59조의4",
+      "fallback_url": "https://www.law.go.kr/법령/소득세법",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제59조의4 제3항 교육비 세액공제 장애인 특수교육비 항목",
+        "robots_txt_ok": true,
+        "notes": "공제율(15%) 및 인정 기관 범위 변경 여부 연 1회 이상 확인 권장."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "소득세법 시행령 제118조의6(교육비 세액공제 대상 범위 — 장애인 특수교육비)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/소득세법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제118조의6 장애인 특수교육비 인정 기관 목록",
+        "robots_txt_ok": true,
+        "notes": "발달재활서비스 제공기관 포함 등 인정 기관 범위 변경 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애아동 복지지원법 제21조(발달재활서비스 지원)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애아동복지지원법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제21조 발달재활서비스 지정 기관 관련 조문",
+        "robots_txt_ok": true,
+        "notes": "지정 기관 범위 및 서비스 유형 변경 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인 생활안정 > 세금감면 > 소득세 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=4&cciNo=1&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 '특수교육비' 15% 공제 텍스트",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국세청 — 교육비 세액공제 안내",
+      "publisher": "국세청",
+      "publisher_type": "중앙정부",
+      "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=40633&cntntsId=239024",
+      "fallback_url": "https://call.nts.go.kr/call/qna/selectQnaInfo.do?mi=1318&ctgId=CTG11910",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "교육비 세액공제 장애인 특수교육비 항목 설명",
+        "robots_txt_ok": true,
+        "notes": "국세청 공식 안내 페이지. 연간 내용 갱신 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "국세법령정보시스템 — 장애인 특수교육비 질의 회신",
+      "publisher": "국세청",
+      "publisher_type": "중앙정부",
+      "url": "https://taxlaw.nts.go.kr/qt/USEQTA002P.do?ntstDcmId=200000000000010641",
+      "fallback_url": "https://txsi.hometax.go.kr/docs/customer/case/qna_view.jsp",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "국세청 질의회신 — 특수교육비 인정 범위 실무 사례 확인에 유용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": [
+    "B036",
+    "B037"
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

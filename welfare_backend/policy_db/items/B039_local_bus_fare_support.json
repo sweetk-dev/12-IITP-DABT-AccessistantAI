@@ -1,0 +1,881 @@
+{
+  "id": "B039",
+  "leaflet_section": "기타",
+  "leaflet_number": 4,
+  "title": "지자체별 버스 요금 지원 (시내·광역·마을버스)",
+  "short_summary": "지자체별 조례·예산에 따라 장애인 시내·광역·마을버스 요금을 무료 또는 일부 감면. 전국 통일된 중앙정부 정책 없이 광역지자체별 상이.",
+  "category": "교통",
+  "benefit_type": "감면",
+  "supported_amount": {
+    "rate": null,
+    "amount": null,
+    "scope": "지자체별 상이. 서울(2023.8 시행, 2025.8 확대) 월 최대 5만원 환급(중증+보호자 최대 10만원). 충청남도 하루 3회 무료(즉시 지원). 제주 간선·지선·마을버스 100% 면제(제주교통복지카드). 경기도·인천·강원·충북·전북·전남·경북·경남·울산·세종·대전·대구·광주·부산 등 독립적 광역버스 전용 지원 없음(지하철 무임과 별개, 시군구 단위 추가 지원 일부 있음)."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」에 따라 등록된 장애인. 지자체별로 거주지 요건이 있는 경우가 많으므로, 해당 지자체에 주민등록이 되어 있어야 신청 가능한 것이 원칙.",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "companion_allowed": {
+      "applicable_to": "심한 장애(중증)",
+      "count": 1,
+      "scope": "서울시: 중증 장애인의 동반 보호자 1인 버스요금도 지원(월 최대 5만원 추가, 합계 최대 10만원). 충청남도: 중증 장애인 동반 보호자 포함 여부는 개별 확인 필요. 그 외 지자체는 지자체별 조례에 따라 상이하며, 보호자 지원이 없는 경우가 대부분."
+    },
+    "income_criteria": null,
+    "age_criteria": "서울시: 만 6세 이상. 제주: 연령 제한 없음(등록 장애인 전체). 그 외 지자체별 상이.",
+    "residency_criteria": "대부분 해당 광역지자체(또는 시군구)에 주민등록을 두고 있어야 신청 가능. 서울시 기준 서울에 주민등록을 둔 장애인."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제30조(경제적 부담의 경감)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행령",
+      "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+    },
+    {
+      "name": "서울특별시 장애인 등 교통약자 이동편의 증진에 관한 조례",
+      "article": null,
+      "url": "https://www.law.go.kr/ordinSc.do?section=lawNm&query=%EC%84%9C%EC%9A%B8%ED%8A%B9%EB%B3%84%EC%8B%9C+%EC%9E%A5%EC%95%A0%EC%9D%B8+%EB%93%B1+%EA%B5%90%ED%86%B5%EC%95%BD%EC%9E%90+%EC%9D%B4%EB%8F%99%ED%8E%B8%EC%9D%98"
+    },
+    {
+      "name": "충청남도 교통약자 이동편의 증진에 관한 조례 (버스비 지원 근거)",
+      "article": null,
+      "url": "https://transport.chungnam.go.kr/guide/chargeBus.do"
+    },
+    {
+      "name": "제주특별자치도 교통복지카드 운영 조례",
+      "article": null,
+      "url": "https://www.jeju.go.kr/traffic/bus2/card.htm"
+    },
+    {
+      "name": "각 광역지자체 버스 및 여객자동차 운수사업 관련 조례 (지자체별 상이)",
+      "article": null,
+      "url": null
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "서울특별시",
+      "agency": "서울특별시 복지정책실 장애인복지과 (버스요금 지원 운영: 서울시설공단 위탁)",
+      "lines_or_routes": [
+        "서울 시내 간선버스",
+        "지선버스",
+        "광역버스(서울 면허)",
+        "순환버스",
+        "심야버스(올빼미버스)",
+        "마을버스",
+        "수도권(경기·인천) 버스 환승요금",
+        "수도권 광역급행철도(GTX) 환승요금",
+        "한강버스(리버버스)",
+        "단, 시외버스·공항버스 제외"
+      ],
+      "apply_channel": "서울시 426개소 동주민센터(방문) 또는 장애인 버스요금 지원 전용 누리집 온라인 신청(https://news.seoul.go.kr/welfare/dsbus/)",
+      "card_or_proof_type": "별도 전용 카드 불필요. 기존 교통카드(T-money 등) 이용 후 사후 월 단위 계좌이체 환급. 본인계좌 수령 불가 시 서울페이 또는 제3자 계좌로 지급.",
+      "url": "https://news.seoul.go.kr/welfare/dsbus",
+      "notes": "2023년 8월 시행. 월 최대 5만원 환급(중증 장애인은 동반 보호자 1인 포함 최대 10만원). 선결제 후 월 단위 환급 방식. 6세 이상 서울시 등록 장애인 대상. 시외버스·공항버스는 지원 제외. 2025년 지원 확대(수도권 환승요금, GTX, 한강버스 포함). 사전 신청 후 카드 이용 내역을 자동 집계하여 환급."
+    },
+    {
+      "region": "부산광역시",
+      "agency": "부산광역시 도시교통국 교통정책과 / 복지건강국 장애인복지과",
+      "lines_or_routes": [
+        "부산 시내버스(일반, 좌석, 급행)",
+        "마을버스",
+        "단, 장애인 전용 버스 무료화 광역 정책은 부재 — 도시철도(지하철) 무임카드(부산하나로 복지카드)에 버스 유임 후 충전 이용 방식"
+      ],
+      "apply_channel": "주소지 동주민센터(전국호환 장애인복지카드) 또는 부산은행 영업점(부산하나로 복지카드 선불식)",
+      "card_or_proof_type": "부산하나로 복지카드(선불식, 부산은행 발급) — 도시철도 무임 기능 포함, 버스 요금은 충전 후 유임 사용. 전국호환 장애인복지카드로 시내버스 무임 별도 적용 없음.",
+      "url": "https://www.busan.go.kr/depart/ahcard04",
+      "notes": "부산시는 독자적인 광역 버스 무료화 정책 미시행(2026년 5월 기준). 부산하나로 복지카드는 도시철도 무임 전용 기능 포함, 버스는 충전잔액으로 일반 요금 결제. 동백패스(월 4만5천원 환급 한도)는 일반시민 대상 대중교통 통합할인제로 장애인 전용 아님. 시군구 단위 추가 지원 여부는 개별 확인 필요. 공식 확인 권장."
+    },
+    {
+      "region": "대구광역시",
+      "agency": "대구광역시 교통국 대중교통과 / 복지국 장애인복지과",
+      "lines_or_routes": [
+        "대구 시내버스(간선, 지선, 급행, 순환)",
+        "마을버스(달서구·수성구 등 일부 구 단위 운행)"
+      ],
+      "apply_channel": "주소지 읍·면·동 주민센터(전국호환 장애인복지카드) 또는 대구은행 영업점 일부",
+      "card_or_proof_type": "전국호환 장애인복지카드(지하철 무임 전용). 시내버스 무임 전용 별도 카드 없음.",
+      "url": "https://www.daegu.go.kr/welf/index.do?menu_id=00000508",
+      "notes": "대구시는 광역 단위 장애인 시내버스 무료화 정책 미시행(2026년 5월 기준). 지하철(도시철도) 무임과는 별개. 구군별 자체 교통지원 사업이 있을 수 있으며 개별 확인 권장. 공식 확인 권장."
+    },
+    {
+      "region": "인천광역시",
+      "agency": "인천광역시 교통건설국 대중교통과 / 복지국 장애인복지과",
+      "lines_or_routes": [
+        "인천 시내버스(간선, 지선, 광역, 순환)",
+        "마을버스"
+      ],
+      "apply_channel": "주소지 동주민센터(전국호환 장애인복지카드). 서울 버스요금 지원 이용 시 서울시 사업 신청 가능(서울 환승 포함).",
+      "card_or_proof_type": "전국호환 장애인복지카드(지하철 무임 전용). 인천 버스 무임 별도 카드 없음.",
+      "url": "https://www.incheon.go.kr/traffic/TR080101",
+      "notes": "인천시 독자 장애인 버스 무료화 광역 정책 미시행(2026년 5월 기준). 단, 서울시 장애인 버스요금 지원 대상자는 서울 면허 버스와의 환승 요금 포함 수도권 버스 환승요금 지원 혜택 가능. 인천 i-패스(일반시민 교통비 환급)는 장애인 전용 정책 아님. 공식 확인 권장."
+    },
+    {
+      "region": "광주광역시",
+      "agency": "광주광역시 도시철도건설본부 교통정책과 / 복지건강국 장애인복지과",
+      "lines_or_routes": [
+        "광주 시내버스(간선, 지선, 순환)",
+        "마을버스"
+      ],
+      "apply_channel": "주소지 동주민센터(전국호환 장애인복지카드) 또는 광주시내 하나은행 영업점(광주 교통복지카드 — 도시철도 무임 전용)",
+      "card_or_proof_type": "광주 교통복지카드(하나은행 발급, 도시철도 무임 전용). 시내버스 무임 별도 카드 없음.",
+      "url": "https://www.gwangju.go.kr/traffic/contentsView.do?pageId=traffic61",
+      "notes": "광주시 독자 장애인 시내버스 무료화 광역 정책 미시행(2026년 5월 기준). 광주G-패스(2025.1.1. 시행)는 도시철도·시내버스·마을버스 포함 일반시민 교통비 환급 제도로 장애인 전용 정책 아님. 광주 교통복지카드는 도시철도 무임에만 적용. 공식 확인 권장."
+    },
+    {
+      "region": "대전광역시",
+      "agency": "대전광역시 도시철도건설본부 교통정책과 / 복지국 장애인복지과",
+      "lines_or_routes": [
+        "대전 시내버스(간선, 지선, 급행)"
+      ],
+      "apply_channel": "주소지 동주민센터(전국호환 장애인복지카드) 또는 대전 시내 하나은행 영업점(대전 교통복지카드 — 도시철도 무임 전용)",
+      "card_or_proof_type": "대전 교통복지카드(하나은행 발급, 도시철도 무임 전용). 시내버스 무임 별도 카드 없음.",
+      "url": "https://www.daejeon.go.kr/drh/DrhContentsHtmlView.do?menuSeq=7242",
+      "notes": "대전시 독자 장애인 시내버스 무료화 광역 정책 미시행(2026년 5월 기준). 대전 교통복지카드는 대전 도시철도 무임 전용. 어르신(70세 이상) 시내버스 무료 정책(어르신 무료버스 카드)과 혼동 주의 — 이는 어르신 대상이며 장애인 전용 아님. 공식 확인 권장."
+    },
+    {
+      "region": "울산광역시",
+      "agency": "울산광역시 건설교통국 대중교통과 / 복지여성국 장애인복지과",
+      "lines_or_routes": [
+        "울산 시내버스(간선, 지선, 급행, 환승)"
+      ],
+      "apply_channel": "주소지 동주민센터(전국호환 장애인복지카드 — 지하철 없는 지역이므로 버스 무임 별도 경로 없음)",
+      "card_or_proof_type": "전국호환 장애인복지카드(타 지역 지하철 이용 시 무임). 울산 버스 무임 별도 카드 없음.",
+      "url": "https://its.ulsan.kr/route/fare.do",
+      "notes": "울산시는 도시철도(지하철) 미운행 지역. 독자 장애인 버스 무료화 광역 정책 미시행(2026년 5월 기준). 울산 시내버스 이용 시 일반 요금 적용. 일부 구군별 자체 지원 사업 여부는 개별 확인 필요. 공식 확인 권장."
+    },
+    {
+      "region": "세종특별자치시",
+      "agency": "세종특별자치시 교통건설국 대중교통과 / 복지국 장애인복지과",
+      "lines_or_routes": [
+        "세종 BRT(간선급행버스체계)",
+        "세종 시내버스(간선, 지선)"
+      ],
+      "apply_channel": "주소지 읍·면·동 주민센터(전국호환 장애인복지카드)",
+      "card_or_proof_type": "전국호환 장애인복지카드(타 지역 지하철 이용 시 무임). 세종 BRT·버스 무임 별도 카드 없음.",
+      "url": "https://www.sejong.go.kr/",
+      "notes": "세종시는 도시철도(지하철) 미운행 지역(BRT 중심). 독자 장애인 버스 무료화 광역 정책 미시행(2026년 5월 기준). 세종시 BRT는 일반 시내버스와 동일 요금 체계. 공식 확인 권장."
+    },
+    {
+      "region": "경기도",
+      "agency": "경기도 교통국 버스정책과 / 복지국 장애인복지과 (시군별 자체 운영)",
+      "lines_or_routes": [
+        "경기도 시내버스(일반, 좌석, 직행좌석)",
+        "마을버스",
+        "광역버스(M버스) — 광역 단위 장애인 전용 지원 없음",
+        "단, 시군 단위 자체 지원 있는 경우 있음(성남시 등)"
+      ],
+      "apply_channel": "경기도 자체 광역 버스 지원 없음. 시군별 자체 사업의 경우 해당 시군 주민센터 또는 복지관 문의. 서울시 사업 대상(서울 환승)은 서울시 동주민센터 신청.",
+      "card_or_proof_type": "경기도 G-Pass 카드(경기도 우대용 교통카드, 경로·장애인 등 지하철 무임 기능 일부 포함) — 단, 경기도 버스 무임 기능은 미포함. 시군 자체 사업 시 해당 카드 별도.",
+      "url": "https://www.gg.go.kr/contents/contents.do?ciIdx=762&menuId=2538",
+      "notes": "경기도 광역 단위 장애인 버스 무료화 정책 미시행(2026년 5월 기준). 광역버스(M버스 등)는 광역 단위 장애인 전용 지원 없음. 단, 시군별 추가 지원 있음: 성남시 — 연 23만원 이내 버스요금 실비 지원(분기 57,500원, 성남시 자체 교통카드); 수원시·안양시 등 일부 시군도 자체 사업 운영 가능(개별 확인 필요). 서울시 버스요금 지원에서 경기·인천 버스 환승요금도 포함되므로, 서울시 대중교통과 환승 시 서울시 사업 통해 일부 지원 가능."
+    },
+    {
+      "region": "강원특별자치도",
+      "agency": "강원특별자치도 교통항공국 교통정책과 / 복지국 장애인복지과 (시군별 자체 운영)",
+      "lines_or_routes": [
+        "강원 시내버스(읍·면 농어촌버스 포함)",
+        "마을버스",
+        "강원도 광역 단위 장애인 버스 무료화 정책 없음"
+      ],
+      "apply_channel": "시군 단위 자체 지원 여부는 해당 시군 주민센터 또는 복지관 문의",
+      "card_or_proof_type": "전국호환 장애인복지카드(타 지역 지하철 이용 시 무임). 강원 버스 무임 별도 카드 없음.",
+      "url": "https://www.gwd.go.kr/",
+      "notes": "강원도 광역 단위 장애인 버스 무료화 정책 미시행(2026년 5월 기준). 강원도에는 도시철도 없음. 철원·속초·강릉 등 일부 시군에서 자체 조례로 취약계층 교통 지원을 운영하는 경우 있으므로 개별 시군 확인 필요. 공식 확인 권장."
+    },
+    {
+      "region": "충청북도",
+      "agency": "충청북도 건설교통국 교통과 / 복지국 장애인복지과 (시군별 자체 운영)",
+      "lines_or_routes": [
+        "충북 시내버스·농어촌버스",
+        "마을버스",
+        "충북 광역 단위 장애인 버스 무료화 정책 없음"
+      ],
+      "apply_channel": "시군 단위 자체 지원 여부는 해당 시군 주민센터 또는 복지관 문의. 충주시 — 조례 입법예고(2025) 후 2026년 4월부터 장애인 시내버스 무료화 추진(확인 필요)",
+      "card_or_proof_type": "전국호환 장애인복지카드(타 지역 지하철 이용 시 무임). 충북 버스 무임 별도 카드 없음.",
+      "url": "https://www.chungbuk.go.kr/",
+      "notes": "충북 광역 단위 장애인 버스 무료화 정책 미시행(2026년 5월 기준). 충북 도시철도 없음. 충주시에서 2025년 '어르신 등 무임교통 지원 조례안' 입법예고로 장애인 포함 시내버스 무료화를 추진 중이며, 2026년 4월 시행 예정이라는 보도 있음 — 최신 시행 여부 공식 확인 권장."
+    },
+    {
+      "region": "충청남도",
+      "agency": "충청남도 교통국 대중교통과 (충남형 교통카드 운영)",
+      "lines_or_routes": [
+        "충남 시내버스(일반시내, 좌석, 직행좌석)",
+        "농어촌버스",
+        "마을버스",
+        "1일 3회 무료(등록 장애인·65세 이상·국가유공자 대상)"
+      ],
+      "apply_channel": "주소지 읍·면·동 행정복지센터에서 충남형 교통카드 신청·발급",
+      "card_or_proof_type": "충남형 교통카드(충청남도 발급, 무임 기능 내장 — 장애인·어르신·국가유공자 공용)",
+      "url": "https://transport.chungnam.go.kr/guide/chargeBus.do",
+      "notes": "충청남도는 등록 장애인에게 충남 시내·농어촌버스 1일 3회 무료 이용 지원(2025년 1월부터 사후 환급에서 즉시 지원 방식으로 전환). 충남형 교통카드 발급 후 버스 탑승 시 무임 즉시 처리. 충남 버스에서 서울1호선·경기·대전·충북·전북 버스로 환승 시 기본요금 환급(환승 후 45분 이내). 충남 도내 버스에 한하며 타 지역 버스는 해당 지역 정책 적용."
+    },
+    {
+      "region": "전북특별자치도",
+      "agency": "전북특별자치도 교통건설국 대중교통과 / 복지국 장애인복지과 (시군별 자체 운영)",
+      "lines_or_routes": [
+        "전북 시내버스(간선, 지선)",
+        "농어촌버스",
+        "마을버스",
+        "전북 광역 단위 장애인 버스 무료화 정책 없음"
+      ],
+      "apply_channel": "시군 단위 자체 지원 여부는 해당 시군 주민센터 또는 복지관 문의",
+      "card_or_proof_type": "전국호환 장애인복지카드(타 지역 지하철 이용 시 무임). 전북 버스 무임 별도 카드 없음.",
+      "url": "https://www.jeonbuk.go.kr/",
+      "notes": "전북특별자치도 광역 단위 장애인 버스 무료화 정책 미시행(2026년 5월 기준). 전북에는 도시철도 없음. 전주시 등 시군에서 취약계층 대상 대중교통 지원 사업을 자체 운영하는 경우 있으므로 해당 시군 복지부서 확인 권장."
+    },
+    {
+      "region": "전라남도",
+      "agency": "전라남도 건설교통국 교통정책과 / 복지국 장애인복지과 (시군별 자체 운영)",
+      "lines_or_routes": [
+        "전남 시내버스·농어촌버스",
+        "마을버스",
+        "전남 광역 단위 장애인 버스 무료화 정책 없음"
+      ],
+      "apply_channel": "시군 단위 자체 지원 여부는 해당 시군 주민센터 또는 복지관 문의",
+      "card_or_proof_type": "전국호환 장애인복지카드(타 지역 지하철 이용 시 무임). 전남 버스 무임 별도 카드 없음.",
+      "url": "https://www.jeonnam.go.kr/",
+      "notes": "전라남도 광역 단위 장애인 버스 무료화 정책 미시행(2026년 5월 기준). 전남에는 도시철도 없음. 목포·여수·순천 등 시군에서 자체 취약계층 교통 지원 운영 가능하며, 개별 시군 복지부서 확인 권장."
+    },
+    {
+      "region": "경상북도",
+      "agency": "경상북도 건설교통국 교통정책과 / 복지부 장애인복지과 (시군별 자체 운영)",
+      "lines_or_routes": [
+        "경북 시내버스·농어촌버스",
+        "마을버스",
+        "경북 광역 단위 장애인 버스 무료화 정책 없음"
+      ],
+      "apply_channel": "시군 단위 자체 지원 여부는 해당 시군 주민센터 또는 복지관 문의",
+      "card_or_proof_type": "전국호환 장애인복지카드(타 지역 지하철 이용 시 무임). 경북 버스 무임 별도 카드 없음.",
+      "url": "https://www.gb.go.kr/",
+      "notes": "경상북도 광역 단위 장애인 버스 무료화 정책 미시행(2026년 5월 기준). 경북에는 도시철도 없음. 포항·구미·경주 등 시군에서 자체 취약계층 교통 지원 운영 가능하며, 개별 시군 복지부서 확인 권장."
+    },
+    {
+      "region": "경상남도",
+      "agency": "경상남도 건설교통국 교통정책과 (경남도청) / 복지보건국 장애인복지과",
+      "lines_or_routes": [
+        "경남 시내버스(간선, 지선)",
+        "농어촌버스",
+        "마을버스",
+        "경남 광역 단위 장애인 버스 무료화 정책 없음"
+      ],
+      "apply_channel": "시군 단위 자체 지원 여부는 해당 시군 주민센터 또는 복지관 문의. 경남도청 복지보건국 장애인복지과(055-211-5111)에 문의 가능.",
+      "card_or_proof_type": "전국호환 장애인복지카드(타 지역 지하철 이용 시 무임). 경남 버스 무임 별도 카드 없음.",
+      "url": "https://www.gyeongnam.go.kr/index.gyeong?menuCd=DOM_000000111003000000",
+      "notes": "경상남도 광역 단위 장애인 버스 무료화 정책 미시행(2026년 5월 기준). 경남에는 도시철도 없음(창원 경전철 제외). 창원·진주·통영 등 시군에서 자체 취약계층 교통 지원 운영 가능하며, 개별 시군 복지부서 확인 권장."
+    },
+    {
+      "region": "제주특별자치도",
+      "agency": "제주특별자치도 교통항공국 교통정책과 (제주교통복지카드 운영, 농협 발급)",
+      "lines_or_routes": [
+        "제주 간선버스",
+        "지선버스",
+        "관광지순환버스",
+        "마을버스",
+        "단, 급행버스·공항리무진 제외"
+      ],
+      "apply_channel": "도내 농협 모든 영업점에서 제주교통복지카드 신청·발급. 신분증 및 장애인복지카드(또는 국가유공자증 등 자격 확인서) 지참.",
+      "card_or_proof_type": "제주교통복지카드(농협 발급, 버스 무임 기능 내장). 신규 발급비 무료.",
+      "url": "https://www.jeju.go.kr/traffic/bus2/card.htm",
+      "notes": "제주도는 등록 장애인에게 간선·지선·관광지순환·마을버스 100% 요금 면제(즉시 무임 처리). 급행버스·공항리무진은 제외. 제주교통복지카드는 농협 모든 영업점에서 무료 발급. 제주에는 도시철도(지하철) 없음. 행복택시(하루 2회, 1회 최대 1만5천원, 연간 16만8천원 한도) 추가 지원 병행."
+    },
+    {
+      "region": "경기도 성남시",
+      "agency": "성남시 교통과 (장애인 대중교통비 지원시스템 운영, EZL welfare 위탁)",
+      "lines_or_routes": [
+        "성남시 경유 시내버스(좌석·일반·마을버스)",
+        "광역버스(수도권)"
+      ],
+      "apply_channel": "성남시 장애인 대중교통비 지원시스템 온라인 신청(snbus.ezl-welfare.co.kr) 또는 주소지 동 행정복지센터 방문 신청(2월 3일 이후). 우편 배송 또는 현장 발급.",
+      "card_or_proof_type": "성남 희망 패스 카드(EZL welfare 위탁 발급, 편의점 현금 충전 후 사용). 분기별 실사용액 계좌 환급 방식.",
+      "url": "https://snbus.ezl-welfare.co.kr/",
+      "notes": "성남시 등록 장애인 대상 연 23만원 이내(분기 최대 57,500원) 버스요금 실비 지원. 성남 경유 시내·마을·광역버스 이용액 정산 후 분기 말 다음 달 계좌 환급. 70세 이상 어르신 교통비 지원과 중복 수령 불가. 2026년 1월 22일부터 온라인 신청 시작. 최초 시행: 2025년(공식 확인 권장 — 세부 시행일 변경 가능)."
+    },
+    {
+      "region": "경기도 수원시",
+      "agency": "수원시 교통정책과 (새빛 생활비 패키지 — 장애인 무상교통 사업)",
+      "lines_or_routes": [
+        "수원시 경유 시내버스",
+        "수도권 버스 환승요금 포함"
+      ],
+      "apply_channel": "주소지 동 행정복지센터 방문 신청. 신분증·G-Pass 카드·통장 사본 지참. 외국인 등록 장애인도 수원시 거주지 신고 시 신청 가능.",
+      "card_or_proof_type": "경기도 G-Pass 카드(우대용 교통카드)를 이용하여 실사용액 집계 후 환급. 장애인복지카드(금융카드형)와 병행 시 교통카드 기능 하나만 사용 가능.",
+      "url": "https://www.suwon.go.kr/",
+      "notes": "수원시 등록 장애인 대상 연 28만원 이내(분기 최대 7만원) 버스요금 실비 지원. 수도권 버스요금 환급 포함. 2026년 1월 '새빛 생활비 패키지' 발표 이후 시행. 실사용액 기준 분기별 정산 후 다음 분기 첫 월 말일 계좌 환급. 공식 확인 권장."
+    },
+    {
+      "region": "충청북도 충주시",
+      "agency": "충주시 교통과 (어르신 등 무임교통 지원 조례 운영)",
+      "lines_or_routes": [
+        "충주 시내버스",
+        "수요응답형 콜버스(충주DRT)"
+      ],
+      "apply_channel": "주소지 읍·면·동 행정복지센터 방문, 전용 무임교통카드 발급 신청.",
+      "card_or_proof_type": "충주시 전용 무임교통카드(행정복지센터 발급). 카드 분실 시 자부담 발생.",
+      "url": "https://www.chungju.go.kr/",
+      "notes": "충주시는 65세 이상 어르신·장애인·국가유공자·어린이·청소년을 대상으로 시내버스·콜버스 무료 이용 지원. 장애인 등은 월 15회까지 무료(청소년 월 40회). 2026년 시행(정확한 시행일: 2026년 6월 1일 전후로 보도 — 공식 확인 필요). 「충주시 어르신 등 무임교통 지원 조례」 제정. 부정 사용 시 1년 지원 정지."
+    },
+    {
+      "region": "경상북도 문경시",
+      "agency": "문경시 교통과 (시내버스 전면 무료화)",
+      "lines_or_routes": [
+        "문경 시내버스(문경여객자동차(주) 운행 전 노선)"
+      ],
+      "apply_channel": "별도 신청 불필요. 교통카드 태그 없이 탑승 후 무임 이용.",
+      "card_or_proof_type": "카드 불필요. 현금·카드 결제 없이 무료 탑승.",
+      "url": "https://www.gbmg.go.kr/portal/contents.do?mId=0606020700",
+      "notes": "문경시는 연령·지역·횟수 제한 없이 시내버스를 전원(주민·관광객 포함) 무료 운행. 전국 시(市) 단위 최초 전면 무료화 사례. 장애인 포함 모든 이용자 무료. 시행: 2025년 1월. 연간 예산 약 15억원. 공식 페이지에서 운행 노선 확인 필요(시외버스 제외)."
+    },
+    {
+      "region": "경상북도 청송군",
+      "agency": "청송군 교통담당 (시내버스 전면 무료화)",
+      "lines_or_routes": [
+        "청송군 시내버스(청송버스 운행 전 노선)"
+      ],
+      "apply_channel": "별도 신청 불필요. 무임 탑승.",
+      "card_or_proof_type": "카드 불필요.",
+      "url": "https://www.cs.go.kr/",
+      "notes": "청송군은 전국 최초 군(郡) 단위 시내버스 전면 무료화(2023년 1월 시행). 주민·외지인·장애인 포함 모든 이용자 무료. 연간 예산 약 3억 5천만원. 시외버스 제외."
+    },
+    {
+      "region": "경상북도 봉화군",
+      "agency": "봉화군 교통담당 (시내버스 전면 무료화)",
+      "lines_or_routes": [
+        "봉화군 시내버스(관내 운행 전 노선)"
+      ],
+      "apply_channel": "별도 신청 불필요. 무임 탑승.",
+      "card_or_proof_type": "카드 불필요.",
+      "url": "https://www.bonghwa.go.kr/",
+      "notes": "봉화군 시내버스 전면 무료화(2024년 1월 시행). 주민·외지인·장애인 포함 모든 이용자 무료. 연간 예산 약 4억원. 시외버스 제외."
+    },
+    {
+      "region": "경상북도 의성군",
+      "agency": "의성군 교통담당 (시내버스 전면 무료화)",
+      "lines_or_routes": [
+        "의성군 시내버스(관내 운행 전 노선)"
+      ],
+      "apply_channel": "별도 신청 불필요. 무임 탑승.",
+      "card_or_proof_type": "카드 불필요.",
+      "url": "https://www.usc.go.kr/",
+      "notes": "의성군 시내버스 전면 무료화(2025년 시행). 주민·외지인·장애인 포함 모든 이용자 무료. 연간 예산 약 5억 5천만원. 시외버스 제외."
+    }
+  ],
+  "how_to_use": {
+    "default": "지자체별로 두 가지 방식으로 운영됨: (A) 현장 즉시 무임카드 방식 — 지자체 발급 교통복지카드를 버스 단말기에 접촉하면 즉시 무임 처리(충청남도·제주도). (B) 사후 환급 방식 — 일반 교통카드로 선결제 후, 월 단위로 이용 내역을 정산하여 계좌이체 환급(서울시).",
+    "with_card": "즉시 무임 방식(충남·제주): 발급받은 교통복지카드를 버스 단말기에 접촉하면 게이트 또는 단말기에서 즉시 무임 처리. 사후 환급 방식(서울): 기존에 쓰던 T-money 등 일반 교통카드로 버스 이용 후, 월 말 자동 집계된 이용 내역에 따라 등록된 계좌로 다음 달 환급.",
+    "without_card": "사후 환급 방식(서울): 별도 복지카드 불필요. 단, 지원 신청 후 이용한 교통카드를 시스템에 등록해야 이용 내역 집계 가능. 즉시 무임 방식: 별도 교통복지카드가 없으면 이용 불가하므로 사전 발급 필수.",
+    "exceptions": "시외버스·공항버스·광역급행(M버스, 단 서울시 환승요금만 해당)·공항리무진은 대부분 지자체에서 지원 제외. 지자체별로 지원 버스 종류·상한액·환급 주기가 상이하므로 반드시 해당 지자체 공식 안내 확인 필요."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "서울시 동주민센터(426개소) — 서울시 사업 신청",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "서울시 장애인 버스요금 지원 전용 누리집 — 서울시 사업 온라인 신청",
+        "method": "온라인",
+        "url": "https://news.seoul.go.kr/welfare/dsbus/"
+      },
+      {
+        "channel": "충남 읍·면·동 행정복지센터 — 충남형 교통카드 발급",
+        "method": "방문",
+        "url": "https://transport.chungnam.go.kr/guide/chargeBus.do"
+      },
+      {
+        "channel": "제주 농협 영업점 — 제주교통복지카드 발급",
+        "method": "방문",
+        "url": "https://www.jeju.go.kr/traffic/bus2/card.htm"
+      },
+      {
+        "channel": "주소지 읍·면·동 주민센터(기타 지자체) — 전국호환 장애인복지카드 발급",
+        "method": "방문",
+        "url": "https://www.bokjiro.go.kr/"
+      },
+      {
+        "channel": "복지로 홈페이지 — 장애인복지카드 재발급(온라인)",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/"
+      }
+    ],
+    "required_documents": [
+      "신청서(현장 비치 또는 온라인 입력)",
+      "신분증(주민등록증, 운전면허증 등)",
+      "장애인등록증(또는 장애인복지카드)",
+      "계좌 정보(환급 방식 지자체, 예: 서울시)",
+      "대리 신청 시: 위임장, 대리인 신분증"
+    ],
+    "processing_period": "서울시: 신청 후 이용 내역 집계 익월 환급(예: 8월 이용분 → 9월 환급). 충남: 교통카드 발급 후 즉시 사용 가능(카드 시스템 등록 완료 시). 제주: 농협 영업점에서 즉시 또는 수일 내 발급.",
+    "fee": {
+      "default": "발급 수수료 무료(서울·충남·제주 모두 무료 원칙).",
+      "exceptions": "분실·훼손으로 인한 재발급 시 지자체별 수수료 발생 가능(보통 3,000~5,000원 수준). 제주교통복지카드 최초 발급 무료."
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "지자체별 상이. 서울시 사업: 연 1회 이상 이용 기록이 있으면 계속 유효. 충남·제주 교통복지카드: 장애 자격 유효 기간까지(영구 장애인은 별도 만료 없음). 장애 재판정 대상자는 재판정 결과에 따라 카드 갱신 필요.",
+    "renewal": "장애 자격 변경(재판정 결과, 등급 조정 등), 주소지 변경, 카드 분실·훼손 시 재신청 또는 재발급. 서울시 사업은 매년 이용 실적 확인 방식."
+  },
+  "exceptions_and_caveats": [
+    "중앙정부(보건복지부·국토교통부) 차원의 전국 통일 장애인 시내버스 무료화 정책은 존재하지 않음. 지하철·전철 100% 무임(B001)과 달리, 버스는 지자체 조례와 예산에 전적으로 의존.",
+    "지원 여부·지원 방식·지원 금액·대상 버스 종류·연령 제한이 광역지자체마다 다르며, 심지어 같은 광역 안에서도 시군구별로 상이한 경우 있음.",
+    "서울시 사업(월 최대 5만원 환급)은 사후 환급 방식이므로 이용 후 익월에 지원금이 지급됨. 즉시 무임 아님.",
+    "시외버스·공항버스·관광버스는 모든 지자체에서 지원 제외.",
+    "급행버스(공항리무진 포함)는 제주에서도 지원 제외.",
+    "서울시 사업에서 수도권(경기·인천) 버스 환승요금도 포함되나, 이는 서울 면허 버스와 연결된 환승에 한함.",
+    "충남형 교통카드는 충남 도내 버스에 한해 무임 적용. 타 지역 버스는 해당 지역 정책 적용.",
+    "경기도·인천·대구·대전·광주·부산·울산·세종·강원·충북·전북·전남·경북·경남은 광역 단위 독자 장애인 버스 무료화 정책이 없으며, 일부 시군구 자체 지원 사업이 있을 수 있음(반드시 개별 확인).",
+    "지하철·전철 무임카드(B001)와 이 항목(B039)은 별개 정책임. 지하철 무임카드로 버스 무임은 되지 않음(지자체별 별도 신청 필요).",
+    "외국인 등록 장애인의 경우, 지자체에 따라 지원 대상에서 제외될 수 있으므로 개별 확인 필요."
+  ],
+  "penalties_for_misuse": "해당 복지카드를 타인에게 양도·대여하거나 부정한 방법으로 사용할 경우, 지자체 조례에 따라 지원금 환수 및 일정 기간 지원 자격 제한 조치 가능. 서울시 사업의 경우 부정수급 확인 시 지원 중단 및 환수 조치.",
+  "faq": [
+    {
+      "q": "버스도 지하철처럼 카드 찍으면 무료인가요?",
+      "a": "지자체에 따라 다릅니다. 충청남도와 제주도는 별도 교통복지카드를 발급받으면 버스 단말기에 접촉 시 즉시 무임 처리됩니다. 서울시는 즉시 무임이 아닌 사후 환급 방식으로, 일반 교통카드로 먼저 결제한 뒤 월 단위로 계좌에 환급됩니다. 경기·인천·부산·대전 등 대부분 다른 시도는 별도 버스 무임 정책이 없으며, 일반 요금을 냅니다."
+    },
+    {
+      "q": "서울에 사는 장애인인데, 버스 요금 지원을 어떻게 받나요?",
+      "a": "서울시 장애인 버스요금 지원 사업에 신청하시면 됩니다. 서울 동주민센터(426개소) 방문 또는 전용 누리집(news.seoul.go.kr/welfare/dsbus)에서 온라인 신청이 가능합니다. 신청 후 기존에 쓰던 교통카드로 버스를 이용하면 이용 내역이 자동 집계되고, 다음 달 등록된 계좌로 환급됩니다. 월 최대 5만원(중증 장애인은 동반 보호자 1인 포함 최대 10만원)."
+    },
+    {
+      "q": "경기도에 살면 버스 요금 지원이 있나요?",
+      "a": "경기도 광역 단위의 장애인 버스 무료화 정책은 없습니다. 단, 일부 시군(예: 성남시 연 23만원 실비 지원)에서 자체 사업을 운영하므로, 거주 시군 복지부서에 문의하세요. 서울 버스와 환승이 포함된 경우 서울시 버스요금 지원 사업 신청 시 환승요금도 일부 지원됩니다."
+    },
+    {
+      "q": "충청남도에 사는데 어떻게 신청하나요?",
+      "a": "주소지 읍·면·동 행정복지센터에서 충남형 교통카드를 신청하면 됩니다. 이 카드를 발급받으면 충남 도내 시내버스·농어촌버스를 하루 3회까지 무료로 이용할 수 있습니다(2025년 1월부터 즉시 지원 방식). 신분증과 장애인복지카드(등록증)를 지참하세요."
+    },
+    {
+      "q": "제주도 버스도 무료인가요?",
+      "a": "네, 제주도에 주민등록을 둔 등록 장애인은 제주교통복지카드를 발급받으면 간선·지선·관광지순환·마을버스 요금이 100% 면제됩니다. 단, 급행버스와 공항리무진은 제외됩니다. 도내 농협 영업점에서 신청하면 무료로 발급됩니다."
+    },
+    {
+      "q": "지하철 무임카드로 버스도 무료로 탈 수 있나요?",
+      "a": "아닙니다. 지하철 무임카드(전국호환 장애인복지카드)로 버스 무임은 되지 않습니다. 버스 무임 또는 환급을 받으려면 해당 지자체의 별도 버스 지원 사업에 신청해야 합니다. 예를 들어 서울 거주자는 서울시 버스요금 지원 사업에 별도 신청이 필요합니다."
+    },
+    {
+      "q": "부산·대구에 사는데 버스 요금 혜택이 있나요?",
+      "a": "부산과 대구는 광역 단위 장애인 버스 무료화 정책이 없습니다. 지하철(도시철도)은 무임이지만 시내버스는 일반 요금을 내야 합니다. 구군 단위 추가 지원이 있을 수 있으니 거주 구청이나 동주민센터에 문의하세요."
+    },
+    {
+      "q": "보호자도 버스 요금 지원을 받을 수 있나요?",
+      "a": "서울시의 경우, 중증 장애인(심한 장애)의 동반 보호자 1인도 버스요금 지원 대상에 포함됩니다(월 최대 5만원 추가, 합계 최대 10만원). 충남·제주 즉시 무임 방식은 보호자 별도 무임 카드 발급이 없으며, 보호자는 일반 요금을 냅니다. 그 외 지자체는 해당 사업 요건을 확인하세요."
+    },
+    {
+      "q": "마을버스도 지원이 되나요?",
+      "a": "서울시 사업은 마을버스 포함. 충남형 교통카드도 마을버스 포함. 제주는 마을버스 포함(급행·리무진 제외). 기타 지자체는 별도 확인이 필요합니다."
+    },
+    {
+      "q": "다른 지역에 가서 버스를 탔는데 지원이 되나요?",
+      "a": "원칙적으로 주민등록 지자체의 지원 사업만 적용됩니다. 서울시 사업은 서울 면허 버스와의 수도권 환승요금도 포함하므로 수도권 내 환승은 일부 포함. 충남형 카드는 충남 도내 버스에 한하며 타 지역 버스는 미적용. 제주 교통복지카드는 제주 도내 버스에 한함."
+    }
+  ],
+  "contact": [
+    {
+      "name": "서울시 다산콜센터 (서울시 버스요금 지원 문의)",
+      "phone": "120",
+      "url": "https://news.seoul.go.kr/welfare/dsbus"
+    },
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    },
+    {
+      "name": "충남 교통비 지원 안내 (충청남도 교통국)",
+      "phone": "041-635-3000",
+      "url": "https://transport.chungnam.go.kr/"
+    },
+    {
+      "name": "제주특별자치도 교통항공국 교통정책과",
+      "phone": "064-710-6651",
+      "url": "https://www.jeju.go.kr/traffic/bus2/card.htm"
+    },
+    {
+      "name": "경기도청 대중교통과",
+      "phone": "031-120",
+      "url": "https://www.gg.go.kr/"
+    },
+    {
+      "name": "경상남도청 복지보건국 장애인복지과",
+      "phone": "055-211-5111",
+      "url": "https://www.gyeongnam.go.kr/index.gyeong?menuCd=DOM_000000111003000000"
+    },
+    {
+      "name": "부산광역시 장애인복지과",
+      "phone": "051-888-3232",
+      "url": "https://www.busan.go.kr/"
+    },
+    {
+      "name": "대구광역시 장애인복지과",
+      "phone": "053-803-3000",
+      "url": "https://www.daegu.go.kr/"
+    },
+    {
+      "name": "광주광역시 장애인복지과",
+      "phone": "062-613-3000",
+      "url": "https://www.gwangju.go.kr/"
+    },
+    {
+      "name": "대전광역시 장애인복지과",
+      "phone": "042-270-3000",
+      "url": "https://www.daejeon.go.kr/"
+    },
+    {
+      "name": "인천광역시 장애인복지과",
+      "phone": "032-120",
+      "url": "https://www.incheon.go.kr/"
+    }
+  ],
+  "sources": [
+    {
+      "title": "서울시 장애인 버스요금 지원 공식 사이트",
+      "publisher": "서울특별시",
+      "publisher_type": "광역지자체",
+      "url": "https://news.seoul.go.kr/welfare/dsbus",
+      "fallback_url": "https://news.seoul.go.kr/welfare/archives/567771",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 지원 금액·대상·신청방법 영역",
+        "robots_txt_ok": true,
+        "notes": "서울시 장애인 버스요금 지원 전용 누리집. 지원 금액 변경·확대 시 업데이트. 월 단위 환급 방식 세부 안내 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "서울시 장애인 버스요금 지원 사업 소개 (지원금 신청 안내)",
+      "publisher": "서울특별시",
+      "publisher_type": "광역지자체",
+      "url": "https://news.seoul.go.kr/welfare/dsbus/ko/conts/view.do?menuId=K_INTRO_SUB",
+      "fallback_url": "https://news.seoul.go.kr/welfare/dsbus/ko/join/index.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 지원 대상·금액 텍스트",
+        "robots_txt_ok": true,
+        "notes": "지원 대상, 지원 버스 종류, 신청 방법 상세 기재."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "충남 교통비 지원 — 버스요금 무료 이용 안내",
+      "publisher": "충청남도",
+      "publisher_type": "광역지자체",
+      "url": "https://transport.chungnam.go.kr/guide/chargeBus.do",
+      "fallback_url": "https://transport.chungnam.go.kr/intro/seniorIntro.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 지원 대상·적용 버스 범위 텍스트",
+        "robots_txt_ok": true,
+        "notes": "충남형 교통카드 발급, 1일 3회 무료 이용, 2025년 즉시 지원 전환 내용 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "제주교통복지카드 안내 (제주특별자치도청)",
+      "publisher": "제주특별자치도",
+      "publisher_type": "광역지자체",
+      "url": "https://www.jeju.go.kr/traffic/bus2/card.htm",
+      "fallback_url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00005261&wlfareInfoReldBztpCd=02",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 지원 대상·버스 종류·카드 발급 안내",
+        "robots_txt_ok": true,
+        "notes": "제주교통복지카드 발급 기관(농협), 대상 버스(급행·리무진 제외), 발급비 무료 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 제30조 (경제적 부담의 경감)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 상단 '시행일' 표기",
+        "robots_txt_ok": true,
+        "notes": "B001과 공유 출처. 지자체 버스 지원 정책의 상위 근거 법령."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공요금 감면 — 장애인정책 안내 (보건복지부)",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010500",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 버스요금 관련 항목",
+        "robots_txt_ok": true,
+        "notes": "B001과 공유 출처. 지자체 버스 정책은 본 사이트에 통합 안내 없음 — 각 지자체 페이지로 유도."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "부산광역시 복지교통카드 안내",
+      "publisher": "부산광역시",
+      "publisher_type": "광역지자체",
+      "url": "https://www.busan.go.kr/depart/ahcard04",
+      "fallback_url": "https://www.busanhanaro.com/hr/hanaroservice/wfcrdUseGude.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "부산하나로 복지카드 — 도시철도 무임 전용, 버스 유임. 동백패스(일반 대중교통 환급제)와 혼동 주의."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "대구광역시 공공요금 면제(감면·할인)",
+      "publisher": "대구광역시",
+      "publisher_type": "광역지자체",
+      "url": "https://www.daegu.go.kr/welf/index.do?menu_id=00000508",
+      "fallback_url": "https://www.daegu.go.kr/tra/index.do?menu_id=00000354&servletPath=/tra",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "대구 장애인 지하철 무임 안내 중심. 시내버스 무임 별도 정책 미확인."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "경상남도 장애인 감면제도 안내",
+      "publisher": "경상남도",
+      "publisher_type": "광역지자체",
+      "url": "https://www.gyeongnam.go.kr/index.gyeong?menuCd=DOM_000000111003000000",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "경남 장애인 복지 감면제도 통합 안내. 버스 무임 별도 정책 미확인(2026년 5월 기준)."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "성남시 장애인 버스카드 신청 시스템(EZL 위탁)",
+      "publisher": "성남시 / EZL Welfare",
+      "publisher_type": "기초지자체",
+      "url": "https://snbus.ezl-welfare.co.kr/",
+      "fallback_url": "https://www.seongnam.go.kr/city/1002504/11600/contents.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "성남시 거주 중증 장애인 시내버스 환급 시스템. 신청·잔액 조회 포털."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "성남시 장애인 시내버스 요금 환급 안내",
+      "publisher": "성남시청",
+      "publisher_type": "기초지자체",
+      "url": "https://www.seongnam.go.kr/city/1002504/11600/contents.do",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "성남시 자체 사업 공식 안내(2025년 시행)."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "수원시 새빛 생활비 패키지 — 장애인 시내버스 환급",
+      "publisher": "수원시청",
+      "publisher_type": "기초지자체",
+      "url": "https://www.suwon.go.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "수원시 2026.1 시행. G-Pass 카드 연계. 전용 페이지 미확정 — 동주민센터 확인 권장."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "충주시 시내버스 무료화 조례 입법예고",
+      "publisher": "국민참여입법센터(법제처)",
+      "publisher_type": "중앙정부",
+      "url": "https://opinion.lawmaking.go.kr/gcom/sgLmPp/301035",
+      "fallback_url": "https://www.cj100.net/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "충주시 시내버스·콜버스 무료화(장애인 포함) 조례 입법예고(2025.6). 2026년 시행."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "문경시 시내버스 무료 운영 안내",
+      "publisher": "문경시청",
+      "publisher_type": "기초지자체",
+      "url": "https://www.gbmg.go.kr/portal/contents.do?mId=0606020700",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "2025.1 시행. 전 노선·전 이용자 무료(장애인 자동 포함). 시외버스 제외."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "경북 시군 시내버스 전면 무료화 흐름(청송·봉화·의성·문경)",
+      "publisher": "경북일보",
+      "publisher_type": "민간",
+      "url": "https://www.kyongbuk.co.kr/news/articleView.html?idxno=4028362",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "manual_review",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "청송(2023.1), 봉화(2024.1), 의성(2025~), 문경(2025.1) 무료화 사례 비교 보도. 후속 시군 확장 동향 추적."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": [
+    "B001"
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.1.0"
+}

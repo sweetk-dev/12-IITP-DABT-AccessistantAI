@@ -1,0 +1,386 @@
+{
+  "id": "B017",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 17,
+  "title": "장애인 지역가입자 건강보험료 경감(중증 30%/경증 20%)",
+  "short_summary": "건강보험료 심한 장애 30%, 심하지 않은 장애 20% 경감(소득기준 제한있음) (전단지 원문)",
+  "category": "의료",
+  "benefit_type": "감면",
+  "supported_amount": {
+    "rate": "중증(심한 장애) 30% 경감 / 경증(심하지 않은 장애) 20% 경감",
+    "amount": null,
+    "scope": "「국민건강보험법」 제75조 및 「국민건강보험 보험료 경감고시」(보건복지부 고시) 별표2에 따른 지역가입자 보험료 경감. 등록 장애인 본인 또는 그 세대원 중 등록 장애인이 있는 지역가입자 세대의 월별 보험료에서 위 비율만큼 차감. 동일 세대에 다수 경감 사유(자동이체·종이고지 미발급·섬·벽지 등)가 있어도 중복 경감 한도 내에서 합산 적용."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」에 따라 등록된 장애인이 있는 국민건강보험 **지역가입자** 세대.",
+    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "companion_allowed": null,
+    "income_criteria": "**소득 360만원 이하** 및 **재산 과세표준액 1억 3,500만원 이하** 동시 충족(상한 변동 가능 — 보험료 경감고시 별표2 확인). 두 기준을 동시에 만족해야 경감 적용. 소득·재산 어느 한쪽이라도 초과하면 경감 미적용.",
+    "age_criteria": null,
+    "residency_criteria": null
+  },
+  "legal_basis": [
+    {
+      "name": "국민건강보험법",
+      "article": "제75조(보험료의 경감 등)",
+      "url": "https://www.law.go.kr/법령/국민건강보험법"
+    },
+    {
+      "name": "국민건강보험법 시행령",
+      "article": "제45조(보험료 경감의 종류 및 기준)",
+      "url": "https://www.law.go.kr/법령/국민건강보험법시행령"
+    },
+    {
+      "name": "국민건강보험 보험료 경감고시(보건복지부 고시)",
+      "article": "별표2 — 장애인이 있는 세대의 보험료 경감 기준(중증 30%, 경증 20%, 소득·재산 상한)",
+      "url": "https://www.law.go.kr/행정규칙/국민건강보험보험료경감고시"
+    },
+    {
+      "name": "장애인복지법",
+      "article": "제30조(경제적 부담의 경감)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "국민건강보험공단(NHIS)",
+      "lines_or_routes": ["지역가입자 보험료 부과·고지", "장애인 세대 경감 자동 적용 및 조정"],
+      "apply_channel": "전국 국민건강보험공단 지사 방문, 1577-1000 콜센터, nhis.or.kr 또는 The건강보험 앱 민원",
+      "card_or_proof_type": "장애인등록증, 주민등록등본(세대 구성 확인용)",
+      "url": "https://www.nhis.or.kr/static/html/wbma/b/wbmab0301.html",
+      "notes": "행정안전부 및 보건복지부로부터 장애인 등록자료를 정기적으로 받아 **자동 적용**되는 것이 원칙. 별도 신청 없이 적용되지만, 누락된 경우 본인이 공단 지사에 신청·이의신청 가능."
+    },
+    {
+      "region": "전국",
+      "agency": "보건복지부",
+      "lines_or_routes": ["보험료 경감고시 운영", "장애인 등록자료 제공"],
+      "apply_channel": "고시 개정 공고",
+      "card_or_proof_type": "",
+      "url": "https://www.mohw.go.kr/",
+      "notes": "고시 별표2 소득·재산 상한 주기적 개정. 보건복지상담센터(129)에서 안내."
+    }
+  ],
+  "how_to_use": {
+    "default": "별도 신청 없이 **자동 적용**되는 것이 원칙. 국민건강보험공단이 보건복지부·행정안전부로부터 장애인 등록자료를 받아 해당 세대의 지역가입자 보험료에서 자동 차감 처리.",
+    "with_card": "보험료 고지서·환산내역서에서 '장애인 경감액' 항목으로 표시되는지 확인. 미적용 시 장애인등록증과 주민등록등본을 가지고 가까운 공단 지사에 방문해 등록 일치 여부와 소득·재산 기준 충족 여부를 확인 후 적용 신청.",
+    "without_card": "자료 연계에 시간이 걸려 미적용된 경우 공단에 직접 신청해 소급 적용 가능. 통상 신청일 또는 자격취득일 중 늦은 날부터 소급되며, 과거 잘못 부과된 보험료는 환급 신청.",
+    "exceptions": "**직장가입자(피부양자 포함)는 본 경감 항목 적용 불가**. 직장가입자의 보험료는 보수월액 기준으로 산정되며 별도 장애인 경감 조항이 없음. 단, 직장가입자라도 지역가입자에 해당하는 종합소득(임대·이자·배당 등)에 대한 소득월액보험료가 별도로 부과되는 경우, 그 부분은 본 경감과 무관함."
+  },
+  "application": {
+    "where": [
+      { "channel": "국민건강보험공단 전국 지사", "method": "방문", "url": "https://www.nhis.or.kr/" },
+      { "channel": "국민건강보험공단 홈페이지(민원여기요)", "method": "온라인", "url": "https://www.nhis.or.kr/nhis/minwon/retrieveCsmrIndvSrhRoadSearch.do" },
+      { "channel": "The건강보험 모바일 앱", "method": "모바일 앱", "url": "https://www.nhis.or.kr/" },
+      { "channel": "국민건강보험공단 고객센터", "method": "전화", "url": "https://www.nhis.or.kr/" },
+      { "channel": "주소지 동주민센터(자료 확인·연계)", "method": "방문", "url": "https://www.gov.kr/" }
+    ],
+    "required_documents": [
+      "장애인등록증(또는 장애인복지카드) 사본",
+      "주민등록등본(세대 구성·거주관계 확인)",
+      "본인 신분증",
+      "(이의신청 시) 소득·재산 자료 — 자료 자체는 공단이 행정자료로 자동 조회",
+      "대리 신청 시: 위임장, 대리인 신분증"
+    ],
+    "processing_period": "공단 접수 후 통상 7~14일 이내 보험료 재산정·반영. 자동 적용 누락분에 대한 소급 환급은 처리 후 1~2개월 내 본인 계좌 입금.",
+    "fee": {
+      "default": "신청 수수료 없음. 경감은 매월 보험료 고지액에서 차감.",
+      "exceptions": null
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "장애 자격 유지 + 소득·재산 기준 충족 기간 동안 매월 자동 적용. 재산세 부과(매년 6·9월), 종합소득세 신고(매년 5월) 자료가 매년 11월 보험료 정기 산정에 반영되어 갱신.",
+    "renewal": "별도 갱신 신청 불필요. 다만 ▲장애 등급 변경 ▲세대 분리·합가 ▲소득·재산 변동 등 신고 사항이 발생하면 공단에 변경 신고."
+  },
+  "exceptions_and_caveats": [
+    "**직장가입자(피부양자 포함)는 본 경감 적용 대상이 아님.** 지역가입자 한정.",
+    "소득 360만원, 재산 1억 3,500만원 기준은 **두 조건 모두 충족**해야 적용(어느 한쪽만 초과해도 미적용). 정확한 상한은 「보험료 경감고시」 별표2 최신본 확인.",
+    "재산 기준은 '재산세 과세표준액' 기준이며, 시가가 아닌 공시지가·과세표준 기준. 보유 주택·토지·건물·전월세 보증금 등이 합산.",
+    "동일 세대에 다수 장애인 등록자가 있어도 경감율은 그중 가장 높은 등급(중증) 30% 적용. 중복 가산되지 않음.",
+    "장애인 경감 외에도 ▲자동이체 200원 감액 ▲전자고지 200원 감액 ▲섬·벽지 거주 50% 경감 ▲한부모·다자녀 등 별도 경감이 존재하며, 일부는 합산 적용 가능.",
+    "지역가입자 보험료 산정 시 장애인이 있는 세대는 '성·연령 가산점' 산정에서 기본 1구간이 적용되어 일반 세대보다 부과점수 자체가 낮아지는 효과도 있음(이는 경감과 별개의 산정 우대).",
+    "행정자료 연계 지연으로 경감 누락 사례가 종종 발생 → 매년 11월 정기조정 후 고지서에서 '장애인 경감' 표시 확인 권장.",
+    "장애 등록 말소·등급 변경·세대 변동 시 공단에 변경 신고하지 않으면 부정수령 환수 대상이 될 수 있음.",
+    "본 경감은 '의료비'가 아닌 '보험료' 자체를 줄이는 제도. 진료비 본인부담금 경감은 별도 항목(차상위 본인부담경감, 장애인 의료비 지원 등)."
+  ],
+  "penalties_for_misuse": "장애 등록 말소·세대 변동 후에도 신고하지 않고 경감을 받은 경우 부당이득으로 환수(「국민건강보험법」 제57조). 허위 등록 등 위법 행위가 있으면 형사고발 가능.",
+  "faq": [
+    {
+      "q": "장애인이면 누구나 건강보험료가 깎이나요?",
+      "a": "아닙니다. **지역가입자**이면서 ▲소득 360만원 이하 ▲재산 과세표준 1억 3,500만원 이하 **두 기준을 동시에 충족**하는 등록 장애인 세대에만 적용됩니다. 직장가입자(피부양자 포함)는 본 경감 적용 대상이 아니며, 보수월액 기준의 일반 보험료를 그대로 냅니다."
+    },
+    {
+      "q": "얼마나 경감되나요?",
+      "a": "**중증(심한 장애) 세대 30%**, **경증(심하지 않은 장애) 세대 20%**가 매월 보험료에서 차감됩니다. 예를 들어 월 보험료가 10만원인 중증 장애인 세대는 3만원이 경감되어 7만원만 납부합니다."
+    },
+    {
+      "q": "신청을 따로 해야 하나요?",
+      "a": "원칙적으로 **자동 적용**됩니다. 국민건강보험공단이 보건복지부·행정안전부로부터 장애인 등록자료를 받아 해당 세대 보험료에서 자동 차감합니다. 다만 자료 연계 지연으로 누락되는 경우가 있어, 보험료 고지서에 '장애인 경감액'이 표시되지 않으면 공단(1577-1000)에 확인·신청해야 합니다."
+    },
+    {
+      "q": "직장가입자도 경감을 받나요?",
+      "a": "아닙니다. 본 경감은 **지역가입자에 한정**됩니다. 직장가입자는 보수월액 기준으로 보험료가 부과되며 별도 장애인 경감 조항이 없습니다. 단, 직장가입자가 종합소득(임대·이자·배당 등)에 대해 별도로 소득월액보험료를 내는 경우, 그 부분도 본 경감 대상은 아닙니다."
+    },
+    {
+      "q": "소득·재산 기준은 정확히 얼마인가요?",
+      "a": "현재 기준은 **연 소득 360만원 이하** 및 **재산 과세표준액 1억 3,500만원 이하** 동시 충족입니다. 다만 이 기준은 「보험료 경감고시」 별표2에 따라 보건복지부가 주기적으로 개정하므로, 신청 시점의 최신 기준은 공단(1577-1000) 또는 [지역 건강보험료 경감 안내](https://www.nhis.or.kr/static/html/wbma/b/wbmab0301.html)에서 확인하세요."
+    },
+    {
+      "q": "재산 기준은 시가 기준인가요?",
+      "a": "아닙니다. 시가가 아닌 **재산세 과세표준액**(공시지가·과세표준) 기준입니다. 보유 주택·토지·건물·전월세 보증금 등이 모두 합산되며, 실제 시가보다는 낮은 금액으로 산정되는 경우가 많습니다. 본인 세대의 정확한 과세표준은 매년 7~9월 발송되는 재산세 고지서에서 확인 가능합니다."
+    },
+    {
+      "q": "동일 세대에 장애인이 2명 있으면 경감이 2배가 되나요?",
+      "a": "아닙니다. 동일 세대에 다수의 장애인 등록자가 있어도 그중 가장 높은 등급(중증)의 경감율(30%)만 적용됩니다. 중복 가산되지 않습니다."
+    },
+    {
+      "q": "다른 경감(자동이체·전자고지 등)과 함께 받을 수 있나요?",
+      "a": "네. 자동이체 200원 감액, 전자고지 200원 감액, 섬·벽지 거주 50% 경감, 한부모·다자녀 등 다른 경감 중 일부는 합산 적용됩니다. 단, 「국민건강보험법 시행령」 제45조의 합산 한도 규정에 따라 일부 항목은 중복 제한이 있을 수 있습니다."
+    },
+    {
+      "q": "고지서에 경감이 안 적용되어 있어요. 어떻게 하나요?",
+      "a": "장애인등록증과 주민등록등본을 가지고 가까운 **국민건강보험공단 지사**에 방문하거나, **1577-1000** 콜센터에 문의하세요. 자료 연계 누락이 확인되면 공단이 재산정해 다음 달 고지서부터 반영하고, 과거 잘못 부과된 보험료는 **소급 환급**됩니다. 환급은 처리 후 1~2개월 이내 본인 계좌로 입금됩니다."
+    },
+    {
+      "q": "장애 재판정으로 등급이 바뀌면 어떻게 되나요?",
+      "a": "장애 등급이 중증↔경증으로 바뀌면 경감율도 30%↔20%로 자동 조정됩니다. 등록 자체가 말소되면 경감도 해당 시점부터 종료됩니다. 정기 재판정 결과는 공단이 자동 반영하지만, 본인이 적극적으로 신고해두는 것이 누락을 줄입니다."
+    },
+    {
+      "q": "보험료 외에 의료비도 깎이나요?",
+      "a": "본 항목(B017)은 **보험료 자체**를 줄이는 제도입니다. 진료비 본인부담금(병원 외래·입원비) 경감은 별도 제도로, ▲차상위 본인부담경감 대상자 ▲의료급여 1·2종 ▲장애인 의료비 지원 등이 있습니다. 본인이 어떤 제도에 해당하는지 공단 또는 시·군·구청 의료급여 담당부서에 문의하세요."
+    }
+  ],
+  "contact": [
+    { "name": "국민건강보험공단 고객센터", "phone": "1577-1000", "url": "https://www.nhis.or.kr/" },
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr/" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
+    { "name": "건강보험심사평가원 고객센터", "phone": "1644-2000", "url": "https://www.hira.or.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "국민건강보험법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/국민건강보험법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제75조 본문",
+        "robots_txt_ok": true,
+        "notes": "제75조(보험료의 경감) 변경 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국민건강보험법 시행령 (제45조 보험료 경감의 종류 및 기준)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/국민건강보험법시행령",
+      "fallback_url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=273649",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제45조 본문",
+        "robots_txt_ok": true,
+        "notes": "보험료 경감 종류 별도 규정."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국민건강보험 보험료 경감고시(보건복지부 고시) — 별표2 경감기준",
+      "publisher": "국가법령정보센터(행정규칙)",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/행정규칙/국민건강보험보험료경감고시",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표2 본문",
+        "robots_txt_ok": true,
+        "notes": "장애인 경감율·소득·재산 상한 핵심 근거. 개정 잦음."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "지역 건강보험료 경감 — 국민건강보험공단",
+      "publisher": "국민건강보험공단",
+      "publisher_type": "공기업",
+      "url": "https://www.nhis.or.kr/static/html/wbma/b/wbmab0301.html",
+      "fallback_url": "https://www.nhis.or.kr/nhis/policy/wbhada02000m01.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 영역",
+        "robots_txt_ok": true,
+        "notes": "장애인 경감율·소득재산 기준 안내. 공단 공식 페이지."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "건강보험료 경감 및 보험급여 지급 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1003&ccfNo=4&cciNo=1&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애인 보험료 경감의 법령 해설."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "지역가입자 보험료 경감 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1141&ccfNo=4&cciNo=1&cnpClsNo=2",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "경감 종류(자동이체·전자고지·섬벽지·장애인 등) 총괄."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "지역가입자 건강보험료 경감 — 구로구청",
+      "publisher": "서울특별시 구로구",
+      "publisher_type": "기초지자체",
+      "url": "https://www.guro.go.kr/www/contents.do?key=2305",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애인 경감율·소득재산 기준 시민안내 사례."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "장애인 지역가입자 보험료 경감 — 진천군",
+      "publisher": "충청북도 진천군",
+      "publisher_type": "기초지자체",
+      "url": "https://www.jincheon.go.kr/site/welfare/sub.do?menukey=2718",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애인 30%/20% 경감 기준 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "장애인 보험료 경감 — 성동구",
+      "publisher": "서울특별시 성동구",
+      "publisher_type": "기초지자체",
+      "url": "https://www.sd.go.kr/main/contents.do?key=1571",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "건강 보험 지역가입자의 보험료 경감 — 복지뱅크",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjibank.or.kr/bokji/view.php?zipEncode=XaJm90wDU91DLLMDMetpSfMvWLME",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B013"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

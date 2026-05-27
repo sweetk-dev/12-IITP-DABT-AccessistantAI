@@ -1,0 +1,405 @@
+{
+  "id": "B015",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 15,
+  "title": "시·청각 장애인 TV 수신료 전액 면제",
+  "short_summary": "시·청각 장애인 TV 수신료 면제 (전단지 원문)",
+  "category": "통신",
+  "benefit_type": "면제",
+  "supported_amount": {
+    "rate": "100%",
+    "amount": "월 2,500원(KBS TV 수상기 수신료) 전액",
+    "scope": "「방송법」 제64조 및 동법 시행령 제44조에 따른 KBS 텔레비전방송 수신료 전액. 시각장애인 또는 청각장애인이 거주하는 가정의 주거전용 주택 안에 설치된 TV 수상기 1대 또는 그 이상에 대해 면제. 면제는 신청일이 속한 달부터 적용됨(소급 적용 불가가 원칙이지만, 3개월 이내 환불 또는 KBS 콜센터 상담을 통한 처리 가능)."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」에 따라 등록된 시각장애인 또는 청각장애인이 거주하는 세대(주거전용 주택에 한함).",
+    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "companion_allowed": null,
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "주거전용 주택에 설치된 수상기에 한함. 사업장(점포·사무실·숙박업소 등) 수상기는 면제 대상이 아님. 시·청각 장애인의 '가정' 기준이므로 본인 거주가 핵심."
+  },
+  "legal_basis": [
+    {
+      "name": "방송법",
+      "article": "제64조(텔레비전수상기의 등록과 수신료 납부의무) 및 제65조(수신료의 결정)",
+      "url": "https://www.law.go.kr/법령/방송법"
+    },
+    {
+      "name": "방송법 시행령",
+      "article": "제44조(수신료 면제) 제1항 — 국가유공자·시각장애인·청각장애인·기초생활수급자 등이 거주하는 주거전용 주택의 수상기",
+      "url": "https://www.law.go.kr/법령/방송법시행령"
+    },
+    {
+      "name": "장애인복지법",
+      "article": "제30조(경제적 부담의 경감)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "방송법 시행령 제43조(수신료 분리고지·분리납부 등)",
+      "article": "2023.7.12. 개정·시행 — 수신료를 전기요금과 분리해 별도 납부 가능",
+      "url": "https://www.law.go.kr/법령/방송법시행령"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국 (수상기 등록·수신료 부과)",
+      "agency": "KBS(한국방송공사) 수신료국",
+      "lines_or_routes": ["TV 수상기 등록·해지·면제 처리", "수신료 콜센터 운영"],
+      "apply_channel": "KBS 수신료 콜센터(1588-1801), 우편, 팩스 또는 KBS 영업소 방문",
+      "card_or_proof_type": "장애인등록증(복지카드) 사본 또는 장애인증명서",
+      "url": "https://office.kbs.co.kr/susinlyo/",
+      "notes": "분리징수 시행(2024.7.) 이후에도 면제 신청 창구는 KBS·한전 양쪽 모두 유지. 통상 전기요금에 합산되어 부과되던 경우는 한전이, 분리고지를 신청한 경우는 KBS가 직접 처리."
+    },
+    {
+      "region": "전국 (수신료 합산 징수)",
+      "agency": "한국전력공사(KEPCO)",
+      "lines_or_routes": ["전기요금에 통합 부과되는 수신료 면제 처리(아파트 등 단체계약 포함)"],
+      "apply_channel": "한전 고객센터 국번없이 123, 또는 한전ON(online.kepco.co.kr) 인터넷 신청, 한전사업소 방문",
+      "card_or_proof_type": "장애인등록증 사본 또는 장애인증명서",
+      "url": "https://online.kepco.co.kr/",
+      "notes": "2024.7. 분리징수 시행 이후에도 한전을 통한 면제 신청·해지가 가능. 전기요금 고지서에 수신료가 합산되어 부과되던 경우 면제 처리도 한전이 담당. 3개월 이내 환불은 한전이 처리, 3개월 초과 환불은 KBS(1588-1801)."
+    },
+    {
+      "region": "전국 (행정 안내)",
+      "agency": "방송미디어통신위원회(구 방송통신위원회)",
+      "lines_or_routes": ["수신료 정책 일반 안내, 분리징수 정책 운영"],
+      "apply_channel": "정책 보도자료·민원",
+      "card_or_proof_type": "",
+      "url": "https://www.kmcc.go.kr/",
+      "notes": "수신료 분리고지·분리납부 정책의 주관 부처. 면제 신청은 KBS·한전이 처리."
+    },
+    {
+      "region": "전국 (참고)",
+      "agency": "한국전파진흥협회 — 시·청각장애인용 TV 보급사업",
+      "lines_or_routes": ["연 1회 시각·청각장애인 대상 TV 무상/유상 보급"],
+      "apply_channel": "연 1회 공고(통상 4~6월), 신청서 우편·온라인 접수",
+      "card_or_proof_type": "장애인등록증, 주민등록등본 등",
+      "url": "https://www.korea.kr/multi/mediaNewsView.do?newsId=148941832",
+      "notes": "수신료 면제와는 별개 사업이지만 자주 함께 안내됨. 2025년 기준 무상 보급(4.21.~5.9.), 유상 보급 본인부담 5만원(6.9.~6.27.)."
+    }
+  ],
+  "how_to_use": {
+    "default": "본인이 직접 KBS 수신료 콜센터(1588-1801) 또는 한전 고객센터(국번없이 123)로 전화해 면제 신청. 장애인등록증 사본을 팩스·우편·온라인 업로드 등으로 제출하면 신청일이 속한 달부터 면제 적용.",
+    "with_card": "장애인등록증(복지카드)·장애인증명서 사본 제출이 기본. 아파트는 관리사무소가 입주민 대신 일괄 신청·관리 가능.",
+    "without_card": "복지카드가 없는 등록 직후라면 시·군·구청 또는 동주민센터에서 발급한 '장애인증명서'로 대체 가능.",
+    "exceptions": "면제는 '신청일이 속한 달'부터 적용되며 신청 이전 기간은 원칙적 소급 환불 불가. 다만 한전 처리 기준 3개월 이내 분은 환불 가능하며, 3개월 초과분은 KBS(1588-1801) 상담을 통해 별도 환불 신청. 사업장(점포·사무실)은 면제 대상이 아님. 분리징수(2024.7. 시행) 이후 KBS와 한전에서 모두 신청 가능."
+  },
+  "application": {
+    "where": [
+      { "channel": "KBS 수신료 콜센터", "method": "전화", "url": "https://office.kbs.co.kr/susinlyo/" },
+      { "channel": "한국전력공사 고객센터(국번없이 123)", "method": "전화", "url": "https://online.kepco.co.kr/" },
+      { "channel": "한전ON(인터넷 신청)", "method": "온라인", "url": "https://online.kepco.co.kr/" },
+      { "channel": "KBS 영업소(전국)", "method": "방문", "url": "https://office.kbs.co.kr/susinlyo/" },
+      { "channel": "관리사무소(공동주택의 경우 대행 신청)", "method": "방문", "url": null },
+      { "channel": "주소지 동주민센터(공공요금 일괄 안내·연계)", "method": "방문", "url": "https://www.gov.kr/" }
+    ],
+    "required_documents": [
+      "장애인등록증(또는 장애인복지카드) 사본",
+      "또는 장애인증명서(동주민센터 발급)",
+      "신청서(KBS·한전 양식, 콜센터 안내)",
+      "전기요금 고객번호(한전 신청 시) — 고지서 또는 한전ON에서 확인",
+      "주민등록등본(필요 시, 거주관계 확인용)",
+      "아파트 단체 신청 시: 관리사무소 일괄 신청 양식"
+    ],
+    "processing_period": "신청일이 속한 달부터 즉시 면제 적용. 전화 신청 시 통상 당일 처리, 우편·온라인 신청은 1~3영업일 이내 반영.",
+    "fee": {
+      "default": "신청 수수료 없음.",
+      "exceptions": null
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "장애 자격이 유지되는 한 영구. 장애 재판정 결과 등급 변동 또는 등록 말소 시 면제 자격 상실. 거주지 이전·세대 분리 시 재신고 권장.",
+    "renewal": "별도 갱신 불필요. 단, 주소 이전 시 신주소지에서 면제가 자동 연계되지 않으면 KBS 또는 한전에 재신청 필요. 등록 장애인이 사망·이주한 경우 면제 해지 신고."
+  },
+  "exceptions_and_caveats": [
+    "면제 대상은 '주거전용 주택'의 수상기에 한정. 사업장(점포·사무실·숙박업소·식당 등)의 TV 수상기는 면제 불가.",
+    "면제는 '신청일이 속한 달'부터 적용되며, 신청 이전 기간 수신료는 원칙적으로 소급 환불 불가. 단, 한전 기준 최근 3개월 이내분은 환불 가능, 3개월 초과분은 KBS(1588-1801)에 별도 상담.",
+    "장애인 본인이 직접 거주해야 하며, 등록 장애인이 가족 명의 주택에 거주하는 경우에도 신청 가능(거주 관계 입증 서류 필요할 수 있음).",
+    "2024년 7월부터 KBS 수신료가 전기요금과 분리징수되었지만, 면제 신청·해지는 KBS와 한전 양쪽 모두 가능. 일부 가구는 KBS가 직접 우편 고지하는 형태로 변경됨.",
+    "아파트의 경우 관리사무소가 입주민의 면제·해지 신청을 일괄 처리할 수 있음. 다만 일부 단지는 단체계약 형태로 묶여 있어 면제 적용 방식이 다를 수 있음.",
+    "위성·케이블 등 유선방송 가입자도 KBS 수신료는 별도이며, 시·청각 장애인 면제는 KBS 수신료에만 적용됨. 유선방송 요금 감면은 별도 통신 항목(③번 이동통신·시내전화·인터넷 등)에 해당함.",
+    "면제 신청 시 KBS 또는 한전이 사실관계를 확인할 수 있으며, 허위 신고 시 추징 및 과태료 부과 가능."
+  ],
+  "penalties_for_misuse": "허위·부정 신고로 수신료를 면제받은 경우, KBS는 면제 기간 동안의 수신료 전액과 가산금을 추징할 수 있음. 「방송법」 제66조에 따라 수신료 체납 시 국세 체납처분 절차에 따라 강제징수 가능.",
+  "faq": [
+    {
+      "q": "시·청각 장애인이면 누구나 면제되나요?",
+      "a": "「장애인복지법」에 따라 시각장애인 또는 청각장애인으로 등록된 사람이 거주하는 '주거전용 주택' 안의 TV 수상기는 등급(중증·경증)에 관계없이 모두 면제됩니다. 사업장(점포·사무실·식당 등)의 수상기는 면제 대상이 아닙니다."
+    },
+    {
+      "q": "수신료가 얼마인데 면제되나요?",
+      "a": "KBS TV 수신료는 월 **2,500원**(연 30,000원)입니다. 「방송법 시행령」 제44조에 따라 시·청각 장애인 가구는 이 금액이 전액 면제됩니다. 면제 효과는 신청일이 속한 달부터 발생합니다."
+    },
+    {
+      "q": "어디로 전화하면 되나요?",
+      "a": "두 곳 중 어디든 가능합니다. ▲**KBS 수신료 콜센터: 1588-1801**, ▲**한전 고객센터: 국번없이 123**. 전기요금에 합산되어 부과되던 경우는 한전이 처리하는 경우가 빠르고, KBS가 직접 분리고지하는 경우는 KBS로 연락하는 것이 좋습니다."
+    },
+    {
+      "q": "필요한 서류는 뭔가요?",
+      "a": "기본은 **장애인등록증(또는 복지카드) 사본**입니다. 없으면 동주민센터에서 발급한 **장애인증명서**로 대체 가능합니다. 한전에 신청할 때는 전기요금 고지서의 '고객번호'가 함께 필요합니다. 별도의 신청서는 콜센터·한전ON·KBS 홈페이지에서 안내받을 수 있습니다."
+    },
+    {
+      "q": "온라인으로도 신청 가능한가요?",
+      "a": "**한전ON(online.kepco.co.kr)** 인터넷 신청이 가능하며, KBS는 콜센터(1588-1801)·우편·팩스가 일반적입니다. 아파트는 관리사무소에 위임해 일괄 처리할 수도 있습니다."
+    },
+    {
+      "q": "지난달부터 면제 받을 수 있나요? 소급되나요?",
+      "a": "원칙적으로 **신청일이 속한 달부터** 면제됩니다. 즉 신청 이전 기간은 소급되지 않습니다. 다만 한전 기준 최근 **3개월 이내** 납부분은 환불 처리될 수 있으며, **3개월을 초과한 환불**은 KBS 수신료 콜센터(1588-1801) 상담을 통해 별도 신청 가능합니다."
+    },
+    {
+      "q": "2024년 7월 분리징수 이후에는 어떻게 달라졌나요?",
+      "a": "2023.7.12. 방송법 시행령 개정으로 수신료를 전기요금과 분리해 별도 납부할 수 있게 되었고, KBS는 2024년 7월부터 본격 분리징수를 시행했습니다. 그러나 **면제 신청·해지 창구는 변동 없이 KBS(1588-1801)와 한전(123) 양쪽 모두 가능**합니다. 다만 가구에 따라 KBS가 직접 우편·계좌이체로 고지하는 경우와, 여전히 전기요금 합산 부과되는 경우가 혼재하므로 본인이 받는 고지서 형태를 확인해 그쪽으로 신청하는 것이 빠릅니다."
+    },
+    {
+      "q": "아파트 거주자는 어떻게 하나요?",
+      "a": "아파트의 경우 **관리사무소**가 입주민 대신 일괄 면제 신청을 처리할 수 있습니다. 관리사무소에 장애인등록증 사본을 제출하면 다음 달 관리비 고지서부터 수신료가 면제되어 표시됩니다. 일부 단지는 단체계약 형태라 적용 방식이 다를 수 있으므로 관리사무소·KBS·한전에 동시 문의를 권장합니다."
+    },
+    {
+      "q": "수신료 외에 TV 자체를 받을 수 있는 사업도 있나요?",
+      "a": "네. 별도 사업으로 한국전파진흥협회에서 **시·청각장애인용 TV 보급사업**을 매년 운영합니다. 2025년 기준 무상 보급(2025.4.21.~5.9.)과 유상 보급(본인부담 5만원, 2025.6.9.~6.27.)으로 진행되었습니다. 수신료 면제와는 별개 사업이며 매년 공고를 확인해야 합니다."
+    },
+    {
+      "q": "이사 가면 다시 신청해야 하나요?",
+      "a": "거주지가 바뀌면 신주소지에서 자동 연계되지 않을 수 있으므로 **이사 후 KBS 또는 한전에 재신고**하는 것이 안전합니다. 또한 등록 장애인이 사망하거나 다른 곳으로 이주하면 면제 해지 신고를 해야 부정수령 문제를 피할 수 있습니다."
+    },
+    {
+      "q": "다른 장애 유형(예: 지체·뇌병변)도 면제되나요?",
+      "a": "이 항목(B015)은 **'시각장애인 또는 청각장애인'**에 한정됩니다. 다른 장애 유형은 본 면제 대상이 아니며, 별도로 ▲기초생활수급자(생계·의료·주거·교육급여 수급 가구)는 동일 시행령에 따라 면제, ▲국가유공자·독립유공자는 별도 규정에 따라 면제됩니다. 본인 가구가 다른 면제 조건에 해당하는지는 KBS·한전 상담에서 함께 확인 가능합니다."
+    }
+  ],
+  "contact": [
+    { "name": "KBS 수신료 콜센터", "phone": "1588-1801", "url": "https://office.kbs.co.kr/susinlyo/" },
+    { "name": "한국전력공사 고객센터", "phone": "123", "url": "https://online.kepco.co.kr/" },
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr/" },
+    { "name": "방송미디어통신위원회 민원실", "phone": "02-2110-1234", "url": "https://www.kmcc.go.kr/" },
+    { "name": "한국전파진흥협회(시·청각장애인용 TV 보급)", "phone": "02-317-6125", "url": "https://www.rapa.or.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "방송법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/방송법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 시행일",
+        "robots_txt_ok": true,
+        "notes": "제64~66조(수신료) 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "방송법 시행령 (제44조 수신료 면제, 제43조 분리고지)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/방송법시행령",
+      "fallback_url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lspttninfSeq=112316&chrClsCd=010202",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제44조 본문",
+        "robots_txt_ok": true,
+        "notes": "수신료 면제 핵심 근거. 2023.7.12. 분리고지 개정 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 (제30조 경제적 부담의 경감)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "TV 수신료 면제 — 찾기쉬운 생활법령정보(통신료 및 TV수신료 감면)",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=5&cciNo=2&cnpClsNo=2",
+      "fallback_url": "https://www.easylaw.go.kr/CSP/CnpClsMainBtr.laf?popMenu=ov&csmSeq=916&ccfNo=5&cciNo=2&cnpClsNo=2",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "시·청각 장애인 면제 절차·전화번호 상세."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "KBS 수신료 안내(영업소·면제 신청)",
+      "publisher": "한국방송공사(KBS) 수신료국",
+      "publisher_type": "공기업",
+      "url": "https://office.kbs.co.kr/susinlyo/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "면제 절차·연락처 공식 안내. 분리징수 정책 변경 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "한전ON — TV 수신료 면제·해지 안내",
+      "publisher": "한국전력공사",
+      "publisher_type": "공기업",
+      "url": "https://online.kepco.co.kr/QRL001D00",
+      "fallback_url": "https://online.kepco.co.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "전기요금 합산 시 면제 신청 채널."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "‘TV 수신료 분리징수’ 관련 참고자료 — 방송미디어통신위원회 보도자료",
+      "publisher": "방송미디어통신위원회",
+      "publisher_type": "중앙정부",
+      "url": "https://www.kmcc.go.kr/user.do?boardId=1113&page=A05030000&dc=K00000200&boardSeq=56159&mode=view",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "2023~2024 분리고지·분리징수 정책 변경 출처."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "2025년 시각·청각장애인용 TV 보급사업 신청안내",
+      "publisher": "대한민국 정책브리핑(문화체육관광부)",
+      "publisher_type": "중앙정부",
+      "url": "https://www.korea.kr/multi/mediaNewsView.do?newsId=148941832",
+      "fallback_url": "https://www.rapa.or.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "수신료 면제와 별개의 보급사업. 매년 공고."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "TV수신료면제 — 영등포구청 장애인 복지 할인제도 안내",
+      "publisher": "서울특별시 영등포구",
+      "publisher_type": "기초지자체",
+      "url": "https://www.ydp.go.kr/www/contents.do?key=3860",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "지자체 가이드 — 신청처·필요서류 정리."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "복지뱅크 — 시·청각 장애인 TV 수신료 면제",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "http://bokjibank.or.kr/bokji/view.php?zipEncode=YiJm90wDU91DLLMDMetpSfMvWLME",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": [],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

@@ -1,0 +1,417 @@
+{
+  "id": "B021",
+  "leaflet_section": "심한장애(중증) 전국공통",
+  "leaflet_number": 21,
+  "title": "발달장애인 부모 심리상담 서비스 및 가족휴식 지원",
+  "short_summary": "발달장애인 부모 심리상담 서비스 및 가족휴식 지원(전국가구평균소득 150% 이하) (전단지 원문)",
+  "category": "활동지원",
+  "benefit_type": "서비스제공",
+  "supported_amount": {
+    "rate": "[부모상담] 월 16만원 바우처 / [가족휴식] 가구당 연 1회 캠프·테마·자율여행 비용 지원",
+    "amount": "(1) 발달장애인 부모상담: 월 160,000원 상당 바우처(회당 50~100분, 월 3~4회 이상, 기본 12개월, 1회 12개월 연장 가능). 소득별 본인부담금: 기초생활수급자(가형) 면제, 차상위(나형) 월 20,000원, 기준 중위소득 65~120%(다형) 월 40,000원, 120~150%(라형) 월 60,000원 내외(연도별 사업안내 기준). (2) 발달장애인 가족휴식: 가구당 연 1회 힐링캠프(1박 2일~)·테마여행·자율여행 비용 지원. 자율여행은 가구당 300,000~600,000원 한도 실비 지원(권역별 상이).",
+    "scope": "부모상담은 발달장애 자녀 양육 스트레스·우울·소진(burnout) 대응 심리상담(개인·집단 상담, 부부 상담 포함). 가족휴식은 휴양림·관광·체험·휴식형 단체 캠프 또는 자율여행 비용(숙박·교통·식사 일부)."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」상 지적·자폐성(발달장애) 등록 장애인의 부모(친권자) 또는 보호자. 부모상담은 부모 본인이 상담 받음. 가족휴식은 발달장애인 본인 + 그 가족이 함께 이용.",
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
+    "companion_allowed": null,
+    "income_criteria": "기준 중위소득 150% 이하(전국가구평균소득 150% 이하와 사실상 동일). 2026년 가구 규모별 기준: 1인 가구 약 3,481,000원, 2인 가구 약 5,762,000원, 3인 가구 약 7,401,000원, 4인 가구 약 9,741,000원, 5인 가구 약 11,385,000원. 소득 산정은 건강보험료 납부확인서 기준. 단, 발달장애인 자녀가 만 6세 미만이고 등록 전인 경우 의사소견서로 일시 대체 가능.",
+    "age_criteria": "자녀(발달장애인)의 연령 제한 없음 — 영유아부터 성인까지 가능. 부모상담은 부모 본인이 받는 서비스.",
+    "residency_criteria": "전국 공통. 가족휴식은 광역별 발달장애인지원센터·복지관 권역별 모집 일정에 따름."
+  },
+  "legal_basis": [
+    {
+      "name": "발달장애인 권리보장 및 지원에 관한 법률",
+      "article": "제24조(가족지원) — 발달장애인 가족의 휴식·상담·교육 지원",
+      "url": "https://www.law.go.kr/법령/발달장애인권리보장및지원에관한법률"
+    },
+    {
+      "name": "사회서비스 이용 및 이용권 관리에 관한 법률",
+      "article": "제3조, 제5조",
+      "url": "https://www.law.go.kr/법령/사회서비스이용및이용권관리에관한법률"
+    },
+    {
+      "name": "장애인복지법",
+      "article": "제35조 자녀교육비 지원 관련",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "보건복지부 장애인복지시설 사업안내 / 장애아동가족지원 사업안내(연도별)",
+      "article": "부모상담 단가·가족휴식 권역별 모집 기준",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040500"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국(중앙)",
+      "agency": "보건복지부 장애인서비스과",
+      "lines_or_routes": [],
+      "apply_channel": "연도별 사업안내 고시로 전국 단가·소득기준·운영기준 확정",
+      "card_or_proof_type": null,
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040500",
+      "notes": "2026년 부모상담 바우처 월 160,000원. 가족휴식 자율여행 30~60만원 한도."
+    },
+    {
+      "region": "전국(운영·관리)",
+      "agency": "중앙장애아동·발달장애인지원센터(한국장애인개발원 위탁, broso.or.kr)",
+      "lines_or_routes": [],
+      "apply_channel": "광역·기초 발달장애인지원센터 운영 관리, 가족휴식 권역별 모집공고 총괄",
+      "card_or_proof_type": null,
+      "url": "https://www.broso.or.kr/",
+      "notes": "중앙센터 전화: 02-3433-0600 / 1800-5921. 광역별 모집공고 홈페이지에 게시."
+    },
+    {
+      "region": "서울",
+      "agency": "서울특별시 발달장애인지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "부모상담: 주소지 동주민센터 방문. 가족휴식: 서울센터 모집공고 신청",
+      "card_or_proof_type": "국민행복카드(부모상담)",
+      "url": "https://www.broso.or.kr/seoul/mainPage.do",
+      "notes": "서울시 내 부모상담 지정 제공기관 안내, 가족휴식 모집공고 게시."
+    },
+    {
+      "region": "경기",
+      "agency": "경기도 발달장애인지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "부모상담: 주소지 동주민센터 방문. 가족휴식: 경기센터 모집공고 신청",
+      "card_or_proof_type": "국민행복카드(부모상담)",
+      "url": "https://www.broso.or.kr/gyeonggi/mainPage.do",
+      "notes": "경기도 권역 가족휴식 모집공고는 경기도 발달장애인지원센터 공지사항 확인."
+    },
+    {
+      "region": "부산",
+      "agency": "부산광역시 발달장애인지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "부모상담: 주소지 동주민센터 방문. 가족휴식: 부산센터 모집공고 신청",
+      "card_or_proof_type": "국민행복카드(부모상담)",
+      "url": "https://www.broso.or.kr/busan/mainPage.do",
+      "notes": "부산 권역 가족휴식 힐링캠프·테마여행·자율여행 모집 일정 확인."
+    },
+    {
+      "region": "광주",
+      "agency": "광주광역시 발달장애인지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "부모상담: 주소지 동주민센터 방문. 가족휴식: 광주센터 모집공고 신청",
+      "card_or_proof_type": "국민행복카드(부모상담)",
+      "url": "https://www.broso.or.kr/gwangju/mainPage.do",
+      "notes": "광주 권역 가족휴식 일정 별도 공고."
+    },
+    {
+      "region": "대전",
+      "agency": "대전광역시 발달장애인지원센터",
+      "lines_or_routes": [],
+      "apply_channel": "부모상담: 주소지 동주민센터 방문. 가족휴식: 대전센터 모집공고 신청",
+      "card_or_proof_type": "국민행복카드(부모상담)",
+      "url": "https://www.broso.or.kr/daejeon/mainPage.do",
+      "notes": "전화 042-719-1085."
+    }
+  ],
+  "how_to_use": {
+    "default": "(1) 부모상담: 동주민센터에 신청 → 자격·소득 심사 → 국민행복카드 발급 → 사회서비스 전자바우처에서 지정 상담기관 선택 → 본인부담금 납부 후 이용. (2) 가족휴식: 지역별 발달장애인지원센터·장애인종합복지관이 매년 봄~여름에 모집공고 → 신청서 제출 → 추첨·심사 → 선정 후 캠프 참여 또는 자율여행 후 영수증 첨부 환급.",
+    "with_card": "부모상담은 국민행복카드로 지정 상담기관 단말기에 결제. 본인부담금 선납 후 카드 결제로 정부지원금 자동 차감. 가족휴식은 사후 정산(영수증 제출).",
+    "without_card": "가족휴식은 카드 없이 이용 가능(현장 결제 후 영수증 정산). 부모상담은 국민행복카드 필수.",
+    "exceptions": "부모상담은 12개월 기본, 1회 12개월 연장 가능(소득·심리상태 재평가). 가족휴식은 가구당 연 1회 원칙(권역별 상이). 부모 양쪽 모두 신청하는 경우 각자 별도 자격 신청 필요(부부 동시 이용은 별도 카드 필요)."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "(부모상담) 주소지 동주민센터(행정복지센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "(부모상담) 복지로 — 발달장애인 부모상담지원",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/"
+      },
+      {
+        "channel": "(부모상담) 정부24 — 사회서비스 바우처 신청",
+        "method": "온라인",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "(가족휴식) 광역별 발달장애인지원센터(broso.or.kr 지역센터)",
+        "method": "온라인",
+        "url": "https://www.broso.or.kr/"
+      },
+      {
+        "channel": "(가족휴식) 지역 장애인종합복지관·시·군·구청 공고",
+        "method": "방문",
+        "url": "https://www.koddi.or.kr/"
+      },
+      {
+        "channel": "(공통) 사회서비스 전자바우처 포털(부모상담 제공기관 검색)",
+        "method": "온라인",
+        "url": "https://www.socialservice.or.kr/"
+      }
+    ],
+    "required_documents": [
+      "사회복지서비스 및 급여 제공(변경) 신청서(현장 비치)",
+      "발달장애인 자녀의 장애인복지카드 사본",
+      "가족관계증명서(부모·자녀 관계 확인)",
+      "건강보험료 납부확인서(최근 3개월치, 소득 심사용)",
+      "신청인 신분증(주민등록증·운전면허증 등)",
+      "(부모상담) 국민행복카드 발급 신청서(은행·카드사)",
+      "(가족휴식) 모집공고별 신청서·서약서·여행 일정 계획서(자율여행 시)",
+      "(가족휴식) 여행 후 영수증·지출증빙서류(숙박·교통·식사)",
+      "소득 특례 증명서(기초생활수급자·차상위계층 확인서 — 해당 시)",
+      "대리 신청 시 위임장·대리인 신분증"
+    ],
+    "processing_period": "(부모상담) 매월 1일~말일 신청, 익월 1일 개시. 자격 결정 약 14일. (가족휴식) 권역별 모집공고 후 1~2개월 내 선정·통보.",
+    "fee": {
+      "default": "신청 무료. 부모상담 본인부담금은 소득별 차등(가형 면제, 나형 2만원, 다형 4만원, 라형 6만원 내외). 가족휴식은 가구 자부담(여행경비 중 일부) 있을 수 있음.",
+      "exceptions": "자율여행 한도(30~60만원) 초과분은 자부담."
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "부모상담은 12개월 단위. 가족휴식은 매년 권역 모집공고에 따라 연 1회.",
+    "renewal": "부모상담은 자격 유지 시 1회 12개월 연장 가능(소득·심리상태 재평가). 가족휴식은 매년 재신청."
+  },
+  "exceptions_and_caveats": [
+    "발달장애 = 지적장애 + 자폐성장애. 뇌병변·언어·시청각 등 다른 장애는 본 사업 대상 아님(별도 사업 이용).",
+    "자녀가 만 6세 미만이고 장애인등록 전이면 의사소견서로 대체 신청 가능.",
+    "기준 중위소득 150% 초과 가구는 신청 불가.",
+    "부모상담은 부모 1인 단독 또는 부부 동시 이용 가능(부부 동시 시 각자 별도 자격 신청·별도 카드 필요).",
+    "가족휴식 캠프·테마여행은 정원 제한 → 추첨 또는 우선순위(저소득·중증·다자녀 등) 적용.",
+    "가족휴식 자율여행은 사후 영수증 정산이 원칙 — 영수증 미제출·허위 시 환수 및 향후 사업 참여 제한.",
+    "두 사업(부모상담·가족휴식)은 별도 사업으로 병용 가능.",
+    "소득 재조사 결과 기준 중위소득 150% 초과 시 부모상담 자격 즉시 종료.",
+    "부모상담 지정 제공기관은 사회서비스 전자바우처 포털(socialservice.or.kr)에서 검색 가능 — 비지정 기관 이용 시 지원 불가.",
+    "발달재활서비스(B020)·활동지원(별도 항목)과는 중복 이용 가능."
+  ],
+  "penalties_for_misuse": "「사회서비스 이용 및 이용권 관리에 관한 법률」 제27조: 거짓·부정한 방법으로 이용권을 사용한 자는 3년 이하 징역 또는 3천만원 이하 벌금. 가족휴식 허위 영수증 제출 시 환수 및 향후 사업 참여 제한.",
+  "faq": [
+    {
+      "q": "이 사업은 누가 받는 건가요? 자녀가 받는 건가요?",
+      "a": "부모(또는 보호자)가 받는 사업입니다. 발달장애 자녀를 양육하는 과정에서 부모가 겪는 심리적 부담·우울·소진을 덜기 위한 부모 심리상담과, 가족 전체가 함께 휴식할 수 있도록 캠프·여행 비용을 지원하는 가족휴식 두 가지로 구성됩니다."
+    },
+    {
+      "q": "어떤 장애가 '발달장애'에 해당되나요?",
+      "a": "「장애인복지법」상 지적장애와 자폐성장애 두 가지를 합쳐 발달장애라고 합니다. 뇌병변·언어·시청각 등 다른 장애는 본 사업 대상이 아닙니다(별도 사업 이용)."
+    },
+    {
+      "q": "부모 심리상담은 얼마나 받을 수 있나요?",
+      "a": "월 160,000원 상당 바우처로 회당 50~100분, 월 3~4회 이상 상담을 받을 수 있으며 기본 12개월 지원됩니다. 자격 유지 시 1회에 한해 12개월 연장 가능합니다(소득·심리상태 재평가)."
+    },
+    {
+      "q": "본인부담금은 얼마인가요?",
+      "a": "소득별 차등 부과됩니다. 기초생활수급자(가형) 면제, 차상위(나형) 월 20,000원, 기준 중위소득 65~120%(다형) 월 40,000원, 120~150%(라형) 월 60,000원 내외. 정확한 금액은 매년 보건복지부 사업안내 고시 기준으로 확인 필요합니다."
+    },
+    {
+      "q": "가족휴식은 어떤 형태인가요?",
+      "a": "(A) 힐링캠프(주최 측 기획 1박 2일~), (B) 테마여행(주최 측 기획 일정·장소), (C) 자율여행(가족이 직접 일정·장소·프로그램 결정) 세 가지 중 선택. 자율여행은 가구당 300,000~600,000원 한도 실비 정산(권역별 상이)."
+    },
+    {
+      "q": "신청은 어디서 하나요?",
+      "a": "부모상담은 주소지 동주민센터 방문 또는 복지로·정부24에서 신청합니다. 가족휴식은 광역별 발달장애인지원센터(broso.or.kr) 또는 지역 장애인종합복지관 모집공고를 통해 매년 봄~여름에 신청합니다."
+    },
+    {
+      "q": "소득 기준은요? 건강보험료로 어떻게 확인하나요?",
+      "a": "기준 중위소득 150% 이하입니다. 2026년 4인 가구 기준 약 974만 원 수준. 소득 산정은 건강보험료 납부확인서(최근 3개월치)를 기준으로 하며, 담당 공무원이 사회보장정보시스템으로 소득 분위를 조회합니다."
+    },
+    {
+      "q": "두 사업을 같이 받을 수 있나요?",
+      "a": "네, 부모상담과 가족휴식은 별도 사업으로 병용 가능합니다. 또한 발달재활서비스(B020)나 활동지원(다른 항목)과도 중복되지 않으므로 함께 받을 수 있습니다."
+    },
+    {
+      "q": "신청 시기·발표는 언제인가요?",
+      "a": "부모상담은 상시 신청(매월 말일까지 신청 시 익월 1일 개시). 가족휴식은 권역별 모집공고에 따르며 일반적으로 4~6월 모집, 5~10월 진행. 서울·경기·경남 등 권역별로 일정 차이가 있습니다."
+    },
+    {
+      "q": "부부 두 명 다 상담을 받을 수 있나요?",
+      "a": "네, 부모 양쪽 모두 각자 별도로 신청해 상담을 받을 수 있습니다. 단, 각자 별도의 국민행복카드로 결제해야 하며 소득 심사도 각각 진행됩니다. 부부가 함께 부부 상담 형태로 1개 자격을 이용할 수도 있습니다."
+    },
+    {
+      "q": "허위로 영수증을 내면 어떻게 되나요?",
+      "a": "「사회서비스 이용 및 이용권 관리에 관한 법률」 제27조에 따라 3년 이하 징역 또는 3천만원 이하 벌금. 부당이득 전액 환수 및 향후 사업 참여 제한됩니다."
+    },
+    {
+      "q": "가족휴식 자율여행 한도가 권역별로 다른데 어떻게 되나요?",
+      "a": "가족휴식 자율여행 지원 한도는 권역(서울·경기·인천, 충청, 호남, 영남, 강원·제주 등)별로 상이합니다. 구체적인 지원 한도와 이용 가능 시설은 한국장애인개발원 또는 시·군·구청에 문의하시기 바랍니다."
+    }
+  ],
+  "sources": [
+    {
+      "title": "중앙장애아동·발달장애인지원센터",
+      "publisher": "한국장애인개발원",
+      "publisher_type": "공기업",
+      "url": "https://www.broso.or.kr/",
+      "fallback_url": "https://www.koddi.or.kr/service/children.jsp",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "발달장애인 권리보장 및 지원에 관한 법률",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/발달장애인권리보장및지원에관한법률",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "사회서비스 이용 및 이용권 관리에 관한 법률",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/사회서비스이용및이용권관리에관한법률",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "복지서비스 상세 — 발달장애인 가족휴식지원사업",
+      "publisher": "보건복지부 복지로",
+      "publisher_type": "중앙정부",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00001150",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "발달장애인 부모상담지원 — 보건복지부",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040500",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 사업안내 영역",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "발달장애인 가족휴식지원 — 보건복지부",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040600",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "한국장애인개발원 — 중앙장애아동지원",
+      "publisher": "한국장애인개발원",
+      "publisher_type": "공기업",
+      "url": "https://www.koddi.or.kr/service/children.jsp",
+      "fallback_url": "https://www.koddi.or.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "발달장애인 부모 심리상담 서비스 매뉴얼",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/board.es?mid=a10411010200&bid=0019&act=view&list_no=337125",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "사업안내·매뉴얼 책자 갱신 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    }
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

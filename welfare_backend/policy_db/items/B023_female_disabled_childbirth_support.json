@@ -1,0 +1,375 @@
+{
+  "id": "B023",
+  "leaflet_section": "기타",
+  "leaflet_number": 23,
+  "title": "여성장애인 출산비용 지원",
+  "short_summary": "여성장애인 출산비용 지원(출산 태아 1인 기준, 유산·사산 포함) (전단지 원문)",
+  "category": "소득지원",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": "정액",
+    "amount": "태아 1인당 1,000,000원(100만원)",
+    "scope": "「장애인복지법」 제32조에 따른 등록 여성장애인 본인의 출산 또는 임신 4개월 이상 태아의 유산·사산 1건당 100만원. 쌍둥이(쌍태아) 출산은 2,000,000원, 세쌍둥이는 3,000,000원으로 태아 수에 비례하여 지급. 인공임신중절수술에 의한 유산은 지원 대상에서 제외(다만 「모자보건법」 제14조제1항의 인공임신중절수술 허용 사유에 해당하는 경우는 지원). 별도 일자리·소득지원이 아닌 일시금(One-time payment) 현금지급."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록한 여성장애인으로서 ① 출산한 자(출산일 기준) 또는 ② 임신 4개월(임신 16주) 이상의 태아를 유산·사산한 자",
+    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "companion_allowed": null,
+    "income_criteria": "소득기준 없음(전 소득계층 대상). 별도 소득·재산 조사 없음.",
+    "age_criteria": "여성장애인 본인의 연령 제한 없음. 단, 미성년자(만 19세 미만) 신청 시 친권자/법정대리인이 대리신청.",
+    "residency_criteria": "대한민국 내 주민등록을 가진 등록 여성장애인. 재외동포·외국인 여성장애인의 경우 「장애인복지법」 제32조의2에 따른 등록을 완료한 경우 해당."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제7조(여성장애인의 권익보호 등), 제9조제2항(국가와 지방자치단체의 책임), 제32조(장애인 등록)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행령",
+      "article": "여성장애인 출산비용 지원사업 근거 규정",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+    },
+    {
+      "name": "모자보건법",
+      "article": "제14조제1항(인공임신중절수술의 허용한계) — 예외 인정 조항",
+      "url": "https://www.law.go.kr/법령/모자보건법"
+    },
+    {
+      "name": "2026년 장애인복지사업안내(보건복지부 사업지침)",
+      "article": "Ⅱ. 여성장애인 출산비용 지원사업",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710060800"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "보건복지부 장애인서비스과(정책 총괄)",
+      "lines_or_routes": [],
+      "apply_channel": "정책 기획·예산 편성·지자체 보조금 교부 총괄",
+      "card_or_proof_type": "해당없음",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710060800",
+      "notes": "사업안내(2026년 장애인복지사업안내) 책자에 세부 기준 명시. 예산은 국비 50% + 지방비 50%(서울 30% + 70%) 매칭."
+    },
+    {
+      "region": "전국",
+      "agency": "시·군·구 보건복지국(장애인복지 담당)",
+      "lines_or_routes": [],
+      "apply_channel": "지자체별 접수·심사·지급 실무",
+      "card_or_proof_type": "해당없음",
+      "url": "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/GMW000000260",
+      "notes": "전국 공통 사업이며 지자체별 추가 출산장려금(별도 사업)과는 분리 운영. 일부 지자체(예: 서울 일부 자치구, 광역시 단위)에서는 자체 예산으로 추가 지원금을 얹어주는 곳도 있음(지자체 확인 필요)."
+    },
+    {
+      "region": "전국",
+      "agency": "주소지 읍·면·동 주민센터(행정복지센터)",
+      "lines_or_routes": [],
+      "apply_channel": "1차 접수창구 — 신청서 작성, 서류 접수, 시·군·구로 송부",
+      "card_or_proof_type": "해당없음",
+      "url": "https://www.gov.kr/",
+      "notes": "행복출산 원스톱 서비스(정부24/주민센터)로 출생신고·양육수당·여성장애인 출산비용 지원 등 출산 관련 8~10개 사업을 한 번에 신청 가능."
+    }
+  ],
+  "how_to_use": {
+    "default": "출산(또는 임신 4개월 이상 유산·사산) 후, 본인 명의 통장사본과 증빙서류를 가지고 주소지 읍·면·동 주민센터에 신청 → 시·군·구 심사 → 본인 계좌로 100만원(태아 수 비례) 일시 입금.",
+    "with_card": null,
+    "without_card": null,
+    "exceptions": "① 출산 전 사망: 임신 4개월 미만 자연유산은 지원 대상 아님. ② 출산 후 장애등록: 출산 시점에는 비장애인이었으나 출산 후 장애등록을 한 경우, 출산일과 장애등록일 모두 사업기간 내에 있고 신청기한이 경과하지 않았다면 지원 가능(보건복지상담센터 129 FAQ에서 명시). ③ 사산 진단서 미발급(임신 4개월 미만이거나 의료기관 미경유): 지원 불가. ④ 인공임신중절(중도 임신중지): 모자보건법 제14조 제1항 예외 사유에 해당하지 않는 한 지원 불가."
+  },
+  "application": {
+    "where": [
+      { "channel": "주소지 읍·면·동 주민센터(행정복지센터)", "method": "방문", "url": "https://www.gov.kr/" },
+      { "channel": "복지로 온라인 신청", "method": "온라인", "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003278" },
+      { "channel": "정부24(행복출산 원스톱)", "method": "온라인", "url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=17410000001" }
+    ],
+    "required_documents": [
+      "여성장애인 출산비용 지원 신청서(주민센터 비치)",
+      "본인 명의 통장사본(여성장애인 본인 명의 필수)",
+      "신분증(주민등록증, 운전면허증 등)",
+      "장애인등록증(또는 복지카드) — 시스템 조회로 갈음 가능",
+      "출산 입증서류 중 1부: (a) 출생증명서, (b) 출생사실이 기재된 주민등록등본 또는 가족관계등록부",
+      "유산·사산의 경우: 의료기관 발행 '사산(死産)진단서' 또는 '사태(死胎)진단서' (임신 4개월 이상 입증)",
+      "쌍태아·다태아: 태아 수가 확인되는 출생증명서 또는 의무기록 사본",
+      "대리 신청 시: 위임장, 대리인 신분증, 가족관계 입증서류"
+    ],
+    "processing_period": "신청 후 통상 14~30일 내 본인 계좌 입금. 시·군·구별로 매월 정기 지급일 운영(예: 매월 25일). 행복출산 원스톱으로 신청한 경우에도 동일 절차로 심사 → 입금.",
+    "fee": {
+      "default": "신청 수수료 없음(무료)",
+      "exceptions": "사산·사태진단서 발급 비용(의료기관별 1~3만원 수준)은 본인 부담."
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "출산일(또는 유산·사산일)부터 일정 기한 내 신청. 보건복지부 사업안내(2026년)에서는 별도 신청기한을 명시하지 않으나 실무상 출산일이 속한 회계연도 말일 또는 출생일로부터 1년 이내 신청을 권장. 정확한 기한은 주소지 시·군·구별 운영지침 확인 필요.",
+    "renewal": "출산·유산·사산 사건마다 1회 신청. 동일 임신 건에 대해서는 재지급 없음."
+  },
+  "exceptions_and_caveats": [
+    "임신 4개월(16주) 미만의 자연유산은 지원 대상이 아님.",
+    "인공임신중절수술에 의한 유산은 원칙적으로 지원 불가(모자보건법 제14조 제1항의 허용사유 — 본인 또는 배우자의 우생학적·유전학적 정신장애·신체질환, 전염성 질환, 강간·준강간, 혈족·인척 간 임신, 모체 건강 위험 — 에 해당하는 경우는 예외적으로 지원).",
+    "출산일에 장애가 등록되지 않은 상태였더라도, 출산 후 장애등록을 마치고 신청기한이 경과하지 않았다면 지원 가능.",
+    "쌍둥이·세쌍둥이 등 다태아 출산은 태아 수에 비례하여 지급(쌍둥이 200만원, 세쌍둥이 300만원).",
+    "여성장애인 본인 명의 통장으로만 입금되며, 배우자·가족 명의 통장으로는 입금 불가.",
+    "지자체별 추가 출산축하금/장려금과 중복 수급 가능(별도 사업이므로 차감되지 않음).",
+    "기초생활수급자·차상위 가구도 동일하게 100만원 수령(생계급여 등 다른 급여와 무관, 소득 산정에서 제외).",
+    "한 번의 출산으로 신생아가 2명 이상이면 모든 신생아 수만큼 합산 지급.",
+    "재외동포·외국인 여성장애인도 「장애인복지법」 제32조의2에 따른 등록을 마쳤다면 동일 적용.",
+    "출산을 위한 의료비 환급이 아니라 별도 위로·지원금 성격이므로, 건강보험 임신·출산진료비(국민행복카드, 100만원/태아 1인 — '바우처')와 별도로 지급됨(두 제도 모두 동시 신청 가능)."
+  ],
+  "penalties_for_misuse": "허위 사실로 지원금을 받은 경우 「장애인복지법」 또는 「사회보장급여의 이용·제공 및 수급권자 발굴에 관한 법률」에 따라 지원금 전액 환수, 부당이득 반환, 형사 고발(사기죄) 가능. 위·변조 진단서로 신청 시 「의료법」·「형법」(사문서 위조)에 따라 별도 처벌.",
+  "faq": [
+    {
+      "q": "여성장애인 출산비용 지원금은 얼마인가요?",
+      "a": "태아 1인당 100만원입니다. 쌍둥이 출산은 200만원, 세쌍둥이는 300만원으로 태아 수에 비례하여 지급됩니다. 임신 4개월(16주) 이상의 유산·사산도 동일하게 100만원이 지급됩니다."
+    },
+    {
+      "q": "신청 자격은 어떻게 되나요? 소득기준이 있나요?",
+      "a": "「장애인복지법」 제32조에 따라 등록된 여성장애인이라면 누구나 신청 가능합니다. 장애 정도(중증·경증)와 소득·재산에 관계없이 지원되며, 별도 소득·재산 조사가 없습니다."
+    },
+    {
+      "q": "어디에서 신청하나요?",
+      "a": "주소지 읍·면·동 주민센터(행정복지센터)에 방문 신청하거나, 복지로(bokjiro.go.kr) 또는 정부24(gov.kr)에서 온라인 신청도 가능합니다. 정부24의 '행복출산 원스톱 서비스'를 이용하면 출생신고와 함께 한 번에 신청할 수 있습니다."
+    },
+    {
+      "q": "어떤 서류가 필요한가요?",
+      "a": "(1) 신청서(현장 비치), (2) 여성장애인 본인 명의 통장사본, (3) 신분증, (4) 출산 입증서류(출생증명서 또는 출생사실 기재된 주민등록등본·가족관계등록부 중 1부), (5) 유산·사산의 경우 의료기관 발행 사산진단서(또는 사태진단서, 임신 4개월 이상 입증)가 필요합니다."
+    },
+    {
+      "q": "출산 후 얼마 안에 신청해야 하나요?",
+      "a": "보건복지부 사업안내에는 별도의 신청기한이 명시되어 있지 않으나, 실무상 출산일이 속한 회계연도 내 또는 출생일로부터 1년 이내 신청을 권장합니다. 정확한 기한은 거주지 시·군·구 장애인복지 담당부서 또는 보건복지상담센터(129)에 확인하세요."
+    },
+    {
+      "q": "임신 중 유산·사산했는데 받을 수 있나요?",
+      "a": "임신 4개월(16주) 이상의 태아를 유산·사산한 경우 100만원이 지급됩니다. 임신 4개월 미만의 자연유산은 지원 대상이 아닙니다. 인공임신중절수술에 의한 유산도 원칙적으로 지원 불가이지만, 「모자보건법」 제14조제1항의 허용사유(우생학적·유전학적 사유, 강간 등)에 해당하는 경우는 예외적으로 지원됩니다."
+    },
+    {
+      "q": "쌍둥이 출산은 얼마인가요?",
+      "a": "태아 수에 비례하여 지급되므로, 쌍둥이는 200만원(100만원 × 2), 세쌍둥이는 300만원(100만원 × 3)을 받습니다."
+    },
+    {
+      "q": "출산할 때는 장애가 없었는데 출산 후 장애등록을 했어요. 받을 수 있나요?",
+      "a": "출산일과 장애등록일 모두 사업기간 내(현재 진행 중인 사업연도)에 있고 신청기한이 경과하지 않았다면 받을 수 있습니다. 보건복지상담센터(129)에 사전 확인을 권장합니다."
+    },
+    {
+      "q": "건강보험에서 주는 임신·출산 진료비(국민행복카드 100만원)와 중복으로 받을 수 있나요?",
+      "a": "네. 건강보험공단의 '임신·출산 진료비 지원(국민행복카드 바우처)' 100만원은 의료비 사용 한정 바우처이고, 여성장애인 출산비용 지원 100만원은 현금 일시금이므로 별개의 제도입니다. 두 가지 모두 신청·수령 가능합니다."
+    },
+    {
+      "q": "지자체에서 주는 출산축하금과 중복으로 받을 수 있나요?",
+      "a": "네. 시·군·구 또는 시·도가 자체 예산으로 운영하는 출산축하금·출산장려금은 본 사업과 별개이므로 중복 수령 가능합니다. 지자체별로 50만원~수백만원까지 추가 지원이 있으니 주소지 주민센터에서 함께 확인하세요."
+    },
+    {
+      "q": "기초생활수급자인데 받으면 생계급여가 깎이나요?",
+      "a": "아닙니다. 여성장애인 출산비용 지원금은 출산에 따른 일시적 지원금으로 「국민기초생활보장법」상 소득 산정에서 제외되므로 생계급여·의료급여 등 다른 급여에 영향을 주지 않습니다."
+    }
+  ],
+  "contact": [
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
+    { "name": "보건복지부 장애인서비스과", "phone": "044-202-3361", "url": "https://www.mohw.go.kr/menu.es?mid=a10710060800" },
+    { "name": "주소지 읍·면·동 주민센터", "phone": "지역별 상이", "url": "https://www.gov.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?csmSeq=735&ccfNo=3&cciNo=2&cnpClsNo=2",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 상단 '시행일' 표기",
+        "robots_txt_ok": true,
+        "notes": "제7조·제9조·제32조 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "모자보건법 (제14조 인공임신중절수술의 허용한계)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/모자보건법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "예외사유 조항 확인용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "여성장애인 출산비용 지원 — 보건복지부 정책안내",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710060800",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 영역 (div#contents 등)",
+        "robots_txt_ok": true,
+        "notes": "사업안내 책자(연 1회 갱신, 매년 1~2월) PDF 함께 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "복지서비스 상세 — 여성장애인 출산비용지원",
+      "publisher": "한국사회보장정보원 복지로",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003278",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "복지로 — 사업 변경 시 가장 빠르게 반영."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "여성장애인 지원 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://www.easylaw.go.kr/CSP/CnpClsMain.laf?csmSeq=735&ccfNo=3&cciNo=2&cnpClsNo=2",
+      "fallback_url": "https://m.easylaw.go.kr/MOB/CsmInfoRetrieve.laf?csmSeq=735&ccfNo=3&cciNo=2&cnpClsNo=2",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "법령 + 사업안내 통합 정리."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "여성장애인 출산비용 지원 — 정부24 민원안내",
+      "publisher": "행정안전부 정부24",
+      "publisher_type": "중앙정부",
+      "url": "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/GMW000000260",
+      "fallback_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=17410000001",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "행복출산 원스톱 서비스 통합 안내 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "여성장애인 출산지원금 신청하세요!",
+      "publisher": "국립재활원 장애인 건강 및 재활 정보포털",
+      "publisher_type": "중앙정부",
+      "url": "https://www.nrc.go.kr/portal/board/boardView.do?no=18579&fno=39&board_id=NRC_NOTICE_BOARD&bn=newsView&menu_cd=10_01",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "국립재활원 — 장애인 건강 분야 보조 정보."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "출산 이후 장애등록을 해도 여성장애인 출산비용 지원이 가능한가요? — 보건복지상담센터 FAQ",
+      "publisher": "보건복지상담센터",
+      "publisher_type": "공기업",
+      "url": "http://129.go.kr/faq/faq05_view.jsp?n=5476",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "출산 후 장애등록 case에 대한 공식 답변."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "임신·출산 지원 — 보건복지부 출산정책",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10711020100",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "임신·출산 지원사업 전반(국민행복카드 등) 인접 사업 함께 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": [],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

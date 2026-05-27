@@ -1,0 +1,636 @@
+{
+  "id": "B001",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 1,
+  "title": "지하철·전철(도시철도) 요금 100% 면제",
+  "short_summary": "지하철, 전철 요금 100% (전단지 원문)",
+  "category": "교통",
+  "benefit_type": "면제",
+  "supported_amount": {
+    "rate": "100%",
+    "amount": null,
+    "scope": "전국 도시철도(지하철)·광역철도(전철) 본인 1인 운임 전액. 노선별 부가운임(신분당선·공항철도 일반열차 별도운임 등)도 동일하게 면제됨. 단, 일반철도(KTX·새마을·무궁화·통근), 시내·광역버스, 공항철도 직통열차(AREX 직통), ITX-청춘 등 일반열차는 본 항목이 아닌 ② 철도요금 감면 항목 적용(50%/30%)."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」에 따라 등록된 장애인",
+    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "companion_allowed": {
+      "applicable_to": "심한 장애(중증)",
+      "count": 1,
+      "scope": "심한 장애를 가진 등록 장애인을 동반하는 보호자 1인까지 함께 무임. 본인은 본인용 카드 또는 등록증 제시로, 보호자는 같은 게이트에서 2회 태그(또는 우대용 1회권 동반자용 발권) 방식으로 처리됨. 경증 장애인은 본인만 무임."
+    },
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "전국 도시철도 전부 적용. 단, 일부 지역(대전·광주·대구 등)에서 발급하는 '지역 한정 무임카드'는 해당 지자체 거주자만 신청 가능하며 그 카드로는 타 지역 도시철도에서 무임이 안 됨. '전국호환 장애인복지카드(2023년 4월 도입)'는 거주지에 관계없이 전국 도시철도에서 무임 사용 가능."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제30조(경제적 부담의 경감)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행령",
+      "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+    },
+    {
+      "name": "도시철도법",
+      "article": "운임 등에 관한 무임수송 근거 조항",
+      "url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=94620"
+    },
+    {
+      "name": "도시철도법 시행령",
+      "article": "무임수송 대상자 규정 (별표)",
+      "url": "https://www.law.go.kr/LSW//lsInfoP.do?lsiSeq=267695&chrClsCd=010202&urlMode=lsInfoP&efYd=20241231&ancYnChk="
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "수도권",
+      "agency": "서울교통공사",
+      "lines_or_routes": ["서울 지하철 1호선(서울 구간)", "2호선", "3호선", "4호선", "5호선", "6호선", "7호선", "8호선"],
+      "apply_channel": "주소지 동주민센터(전국호환 장애인복지카드) / 서울 거주자는 서울시내 모든 동주민센터에서 단순무임카드 발급 가능",
+      "card_or_proof_type": "전국호환 장애인복지카드, 우대용 단순무임카드, 장애인 통합복지 신한카드(신용/체크), 또는 역사 매표소 발권 우대용 1회권",
+      "url": "http://www.seoulmetro.co.kr/kr/page.do?menuIdx=355",
+      "notes": "수도권 도시철도 게이트는 우대카드 접촉 시 '삑삑' 소리(일반카드는 '삐')로 구분. 부정승차 시 30배 추징·1년 발급 제한."
+    },
+    {
+      "region": "수도권",
+      "agency": "한국철도공사(코레일) 광역철도",
+      "lines_or_routes": ["1호선(코레일 구간)", "수인분당선", "경의중앙선", "경춘선", "경강선", "동해선 광역전철", "대구권 광역전철", "서해선 일부", "공항철도 일반열차(코레일 직결 구간 포함)"],
+      "apply_channel": "동주민센터에서 전국호환 장애인복지카드 발급. 카드 미소지 시 역사 매표창구에서 장애인등록증 제시 → 우대용 1회권 발급",
+      "card_or_proof_type": "전국호환 장애인복지카드 / 우대용 1회권(발매당일 유효, 개표 후 5시간)",
+      "url": "https://info.korail.com/crosseditor_u/binary/files/000001/korail_metro_policy_250623.pdf",
+      "notes": "광역철도 여객운송 약관 PDF에 무임 대상·동반자 규정 명시. 코레일 일반철도(KTX·새마을·무궁화·ITX)는 이 항목이 아닌 전단지 ② 철도요금 감면 적용."
+    },
+    {
+      "region": "수도권",
+      "agency": "서울시메트로9호선/SR(9호선)",
+      "lines_or_routes": ["9호선(개화~중앙보훈병원 전 구간)"],
+      "apply_channel": "동일한 우대용 교통카드/등록증 인정",
+      "card_or_proof_type": "전국호환 장애인복지카드, 우대용 1회권",
+      "url": "https://news.seoul.go.kr/traffic/archives/1791",
+      "notes": "수도권 통합환승할인제도에 포함. 일반 노선과 동일하게 무임."
+    },
+    {
+      "region": "수도권",
+      "agency": "(주)신분당선",
+      "lines_or_routes": ["신분당선(신사~광교)"],
+      "apply_channel": "동일한 우대용 교통카드/등록증 인정",
+      "card_or_proof_type": "전국호환 장애인복지카드, 우대용 1회권",
+      "url": "https://www.shinbundang.co.kr/dxline/dxline4_1.jsp",
+      "notes": "신분당선은 기본운임 외 별도운임(구간별 700~2,200원)이 있으나, 등록 장애인은 별도운임 포함 전액 무임."
+    },
+    {
+      "region": "수도권",
+      "agency": "공항철도(AREX) — 일반열차",
+      "lines_or_routes": ["서울역~인천공항2터미널 일반열차"],
+      "apply_channel": "동일한 우대용 교통카드/등록증 인정",
+      "card_or_proof_type": "전국호환 장애인복지카드, 우대용 1회권",
+      "url": "https://www.arex.or.kr/content.do?menuNo=MN201503300000000003&clientLocale=ko_KR&clientDevice=Normal",
+      "notes": "일반열차(통근형)는 도시철도 무임 적용. 단, 모든 역 정차하는 일반열차에 한함."
+    },
+    {
+      "region": "수도권",
+      "agency": "공항철도(AREX) — 직통열차",
+      "lines_or_routes": ["서울역↔인천공항 직통열차"],
+      "apply_channel": "공항철도 모바일 앱 발권 불가 → 서울역/인천공항1터미널역/인천공항2터미널역 매표창구에서 장애인등록증 제시 후 발권",
+      "card_or_proof_type": "장애인등록증(복지카드) 제시 필수, 지정좌석제 발권",
+      "url": "https://www.airportrailroad.com/co/steUsfGud.do",
+      "notes": "직통열차는 본 항목(100% 면제) 대상이 아니며, 사회적 할인(장애인·경로·아동)에 따른 50% 등 별도 할인운임 적용. 즉 '지하철·전철'이라는 명칭에도 불구하고 직통열차는 무임 아님."
+    },
+    {
+      "region": "수도권",
+      "agency": "기타 수도권 노선",
+      "lines_or_routes": ["우이신설선(서울교통공사 위탁/우이신설경전철㈜)", "신림선", "김포골드라인", "용인경전철(에버라인)", "의정부경전철"],
+      "apply_channel": "수도권 통합환승체계에 포함, 동일한 우대용 카드/등록증 인정",
+      "card_or_proof_type": "전국호환 장애인복지카드, 우대용 1회권",
+      "url": "https://news.seoul.go.kr/traffic/archives/1791",
+      "notes": "민자 경전철도 도시철도법 적용을 받아 동일하게 무임."
+    },
+    {
+      "region": "부산권",
+      "agency": "부산교통공사",
+      "lines_or_routes": ["부산 도시철도 1·2·3·4호선"],
+      "apply_channel": "주소지 동주민센터에서 전국호환 장애인복지카드(한국조폐공사 발급) 신청 또는 부산은행 영업점에서 부산지역 선불식 장애인 복지교통카드 발급",
+      "card_or_proof_type": "전국호환 장애인복지카드, 부산하나로 복지카드(선불), 마이비 복지카드, 우대용 1회권",
+      "url": "https://www.humetro.busan.kr/homepage/chs/page/subLocation.do?menu_no=1001010501",
+      "notes": "부산지역 선불식 카드는 만 14세 미만·신용불량자에게 발급. 그 외는 전국호환 카드 사용. 신청서·주민등록증·장애인등록증 필요, 1~3급(현 중증)은 대리접수 가능, 신청 14일 후 수령."
+    },
+    {
+      "region": "부산·김해",
+      "agency": "부산-김해경전철",
+      "lines_or_routes": ["부산-김해경전철 전 구간"],
+      "apply_channel": "동일한 우대용 교통카드/등록증 인정",
+      "card_or_proof_type": "전국호환 장애인복지카드, 우대용 1회권",
+      "url": "https://www.bglrt.com/",
+      "notes": "민자 노선이나 도시철도법 적용으로 무임 동일."
+    },
+    {
+      "region": "대구권",
+      "agency": "대구교통공사",
+      "lines_or_routes": ["대구 도시철도 1·2·3호선"],
+      "apply_channel": "거주지 관할 읍·면·동 주민센터에서 신청 (한국조폐공사 발급)",
+      "card_or_proof_type": "장애인 무임교통카드(전국호환)",
+      "url": "https://www.daegu.go.kr/tra/index.do?menu_id=00000354&servletPath=/tra",
+      "notes": "대구·경산·영천 거주자는 별도 대구권 한정 카드도 운영되나, 전국호환 카드 발급 권장."
+    },
+    {
+      "region": "광주권",
+      "agency": "광주교통공사",
+      "lines_or_routes": ["광주 도시철도 1호선"],
+      "apply_channel": "광주 거주자는 광주시내 하나은행 지점에서 광주 한정 카드 발급, 또는 동주민센터에서 전국호환 카드 발급",
+      "card_or_proof_type": "광주 교통복지카드(하나은행) / 전국호환 장애인복지카드",
+      "url": "https://welfare.gwangju.go.kr/main/board/4/1/category20/download/10932/3274",
+      "notes": "광주 한정 카드는 광주 도시철도에 한해 무임. 타 지역 사용 시 전국호환 카드 필요."
+    },
+    {
+      "region": "대전권",
+      "agency": "대전교통공사",
+      "lines_or_routes": ["대전 도시철도 1호선"],
+      "apply_channel": "대전 거주자는 대전 시내 하나은행 지점에서 대전 한정 카드 발급, 또는 동주민센터에서 전국호환 카드 발급",
+      "card_or_proof_type": "대전 교통복지카드(하나은행) / 전국호환 장애인복지카드",
+      "url": "https://www.daejeon.go.kr/drh/DrhContentsHtmlView.do?menuSeq=7242",
+      "notes": "대전 한정 카드는 대전 도시철도에서만 무임. 전국 이용은 전국호환 카드."
+    },
+    {
+      "region": "인천권",
+      "agency": "인천교통공사",
+      "lines_or_routes": ["인천 도시철도 1·2호선"],
+      "apply_channel": "동일한 우대용 카드/등록증 인정",
+      "card_or_proof_type": "전국호환 장애인복지카드, 우대용 1회권",
+      "url": "https://www.ictr.or.kr/",
+      "notes": "수도권 통합환승체계에 포함."
+    }
+  ],
+  "how_to_use": {
+    "default": "(A) 우대용 교통카드를 발급받아 게이트 단말기에 접촉, 또는 (B) 매번 역사 매표창구에서 장애인등록증/복지카드를 제시하고 우대용 1회권을 받아 사용.",
+    "with_card": "발급받은 우대용 교통카드를 일반 교통카드처럼 게이트 단말기에 태그. 우대카드는 일반카드와 구별되는 '삑삑' 소리로 처리. 중증장애인은 보호자 1인분에 대해 같은 카드로 1회 더 태그(2회 태그) 또는 매표창구에서 동반자 우대권을 추가 발권받아 함께 이용.",
+    "without_card": "역사 매표창구·자동발매기에서 장애인등록증(복지카드)을 제시하면 직원이 우대용 1회권을 발권해 줌. 발매 당일·개표 후 5시간 유효(코레일 광역철도 약관 기준).",
+    "exceptions": "공항철도 직통열차(AREX 직통)는 무임 아님(별도 할인운임 50% 적용, 매표소 발권 필수). 코레일 일반철도(KTX·새마을·무궁화·ITX-청춘 등)는 본 항목 아님 → 전단지 ②번 철도요금 감면 적용. 환승 처리: 지하철(무임) → 버스(유임) 단방향 이용 시 버스 요금 전액 부과(환승할인 미적용). 버스(유임)→지하철(무임)→버스(유임) 이용 시에는 '버스-버스 간' 환승할인 적용."
+  },
+  "application": {
+    "where": [
+      { "channel": "주소지 동주민센터(행정복지센터)", "method": "방문", "url": "https://www.gov.kr/" },
+      { "channel": "복지로 홈페이지(기존 등록자 재발급)", "method": "온라인", "url": "https://www.bokjiro.go.kr/" },
+      { "channel": "신한은행 영업점(서울 우대용 신용/체크카드)", "method": "방문", "url": "https://www.shinhancard.com/" },
+      { "channel": "부산은행 영업점(부산 지역카드)", "method": "방문", "url": "https://www.busanbank.co.kr/" },
+      { "channel": "하나은행 영업점(대전·광주 지역카드)", "method": "방문", "url": "https://www.kebhana.com/" },
+      { "channel": "관할 보훈(지)청(국가유공자 겸 장애인의 경우)", "method": "방문", "url": "https://www.mpva.go.kr/" }
+    ],
+    "required_documents": [
+      "신청서(현장 비치)",
+      "신분증(주민등록증/운전면허증 등)",
+      "장애인등록증(또는 장애인복지카드, 기존 보유자)",
+      "체크카드 신청 시: 통장 사본(우체국 또는 신한은행 등 해당 은행)",
+      "대리 신청 시: 위임장, 대리인 신분증",
+      "사진(증명사진 1매, 카드 종류에 따라 필요)"
+    ],
+    "processing_period": "전국호환 장애인복지카드는 신청 후 약 2~3주(한국조폐공사 발급). 서울 단순무임카드는 보통 발급 후 약 3일 경과 후 사용 가능(시스템 등록 익일 새벽 단말기 반영). 신한카드(신용/체크) 우대용 교통카드는 발급 즉시 사용 가능. 부산은행 지역카드는 신청 후 14일 후 신청기관에서 수령.",
+    "fee": {
+      "default": "신규 발급은 원칙적으로 무료(B형 통합복지카드). 단순무임카드 분실·훼손에 따른 재발급은 3,000원.",
+      "exceptions": "고속도로 통행료 감면 기능이 포함된 A형(통합복지카드 A형) 재발급 시 약 4,200원."
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "원칙적으로 영구. 단, 장애 재판정 대상자는 카드 표면에 재판정 기한이 표시되며 그 기한 만료 시 재판정 후 갱신 필요.",
+    "renewal": "분실·훼손·기재사항(주소·성명) 변경·기능 추가(예: 신용 기능 추가) 시 재발급. 복지로 홈페이지 온라인 재발급 가능(금융인증서 또는 간편인증)."
+  },
+  "exceptions_and_caveats": [
+    "공항철도 직통열차(AREX 직통)는 무임 적용 불가, 사회적 할인(약 50%) 적용. 모바일 앱 발권 불가하므로 매표소에서 직접 발권 필요.",
+    "코레일 일반철도(KTX·새마을호·무궁화호·통근열차·ITX-청춘)는 본 항목 아님 → 전단지 ②번 '철도요금 감면' 적용(중증 50%, 경증 30% — 단 KTX·새마을호의 경증 30% 감면은 토·일·공휴일 제외 주중에 한함).",
+    "신분당선·공항철도 일반열차의 별도운임도 등록 장애인은 전액 면제.",
+    "지하철(무임)→버스(유임) 단방향 이용 시 버스 요금 전액 부과, 환승할인 미적용.",
+    "타인에게 카드 양도·대여 시 부정사용자에게 운임의 30배 추징, 양도자는 1년간 카드 사용·재발급 제한.",
+    "지역 한정 무임카드(대전·광주 등 하나은행 발급)는 해당 지자체 도시철도에서만 무임. 전국 이용은 전국호환 장애인복지카드 필요.",
+    "광역버스(M버스), 시내버스, 마을버스 요금은 본 항목 아님(별도 지자체 정책에 따름).",
+    "보호자 동반 1인 무임은 '심한 장애(중증)'에 한하며, 경증 장애인은 본인만 무임.",
+    "단순무임카드(선불)는 잔액 환불 불가(분실 시), 소액 충전 권장."
+  ],
+  "penalties_for_misuse": "타인 양도·대여 시 부정사용자에게 승차구간 여객운임과 그 운임의 30배 추징. 양도·대여자는 1년간 사용 및 재발급 제한. 도난·분실 후 타인 부정사용 시에도 우대용 교통카드 발급이 1년간 제한되므로 즉시 신고 필요(주민센터 또는 신한은행).",
+  "faq": [
+    {
+      "q": "지하철 요금을 한 번 내고 나중에 환급받는 건가요?",
+      "a": "아닙니다. 현장에서 즉시 무임 처리됩니다. 우대용 교통카드를 단말기에 접촉하면 게이트가 바로 열리고, 카드가 없으면 매표창구에서 장애인등록증을 제시해 우대용 1회권을 발급받아 사용합니다. 사후 환급 절차는 없습니다."
+    },
+    {
+      "q": "전용 카드가 따로 있나요? 일반 복지카드만 있어도 되나요?",
+      "a": "현재(2023년 4월 이후) 도입된 '전국호환 장애인복지카드'는 일반 복지카드 안에 교통 무임 기능이 포함되어 있어 별도 카드 없이 그대로 게이트에서 사용할 수 있습니다. 2023년 4월 이전에 발급받은 기존 복지카드 소지자는 교통 기능이 없을 수 있으므로, 동주민센터에서 '교통 기능 추가' 또는 '재발급'을 신청해야 합니다. 서울 거주자는 신한카드 우대용 신용/체크카드, 단순무임카드(선불) 중 선택할 수 있습니다."
+    },
+    {
+      "q": "어디에서 신청하나요?",
+      "a": "주소지 동주민센터(행정복지센터)가 기본 신청처입니다. 신분증과 (있다면) 기존 장애인등록증을 가져가면 됩니다. 서울 거주자는 거주 동과 무관하게 서울시내 모든 동주민센터에서 단순무임카드 발급이 가능합니다. 부산 거주자는 부산은행, 대전·광주 거주자는 하나은행에서 지역 카드 발급도 가능합니다. 재발급은 복지로(bokjiro.go.kr)에서 온라인으로도 가능합니다."
+    },
+    {
+      "q": "발급에 시간이 얼마나 걸리나요? 비용은요?",
+      "a": "전국호환 장애인복지카드는 한국조폐공사 발급으로 약 2~3주가 소요됩니다. 서울 단순무임카드는 약 3일 후 사용 가능합니다. 신한카드(신용/체크)는 발급 즉시 사용 가능합니다. 신규 발급 비용은 무료(B형 기준)이며, 단순무임카드 분실·훼손 재발급은 3,000원, 통합복지카드 A형 재발급은 약 4,200원입니다."
+    },
+    {
+      "q": "유효기간은 있나요?",
+      "a": "장애 자체의 유효기간이 없는 경우(영구 판정) 카드 유효기간도 따로 없습니다. 다만 장애 재판정 대상이라면 카드에 재판정 기한이 표시되며, 기한 만료 시 재판정을 받고 카드를 갱신해야 합니다. 또한 분실·훼손, 주소·성명 변경 시에는 재발급이 필요합니다."
+    },
+    {
+      "q": "보호자도 같이 무료로 이용할 수 있나요?",
+      "a": "심한 장애(중증)로 등록된 장애인의 경우 동반하는 보호자 1인까지 무임입니다. 게이트에서는 본인 카드를 2회 태그하거나, 매표창구에서 동반자 우대권을 별도 발권받아 함께 통과합니다. 보호자에게 별도의 무임 카드가 발급되지는 않습니다. 심하지 않은 장애(경증)는 본인만 무임이며 보호자는 일반 요금을 냅니다."
+    },
+    {
+      "q": "공항철도나 신분당선도 무료인가요? 추가 요금이 있다고 들었는데요.",
+      "a": "공항철도의 '일반열차'와 신분당선은 등록 장애인이 무임 대상이며, 신분당선의 별도운임(700~2,200원)과 공항철도 일반열차의 부가운임도 함께 면제됩니다. 그러나 공항철도 '직통열차(AREX 직통)'는 100% 면제가 아닌 약 50%의 사회적 할인이 적용되며, 직통열차 승차권은 모바일 앱이 아닌 매표창구에서 장애인등록증을 제시해 발권해야 합니다."
+    },
+    {
+      "q": "KTX·새마을호·무궁화호도 같은 카드로 무임인가요?",
+      "a": "아닙니다. 일반철도(KTX·새마을·무궁화·통근·ITX-청춘)는 전단지 ② '철도요금' 항목으로, 중증은 50%, 경증은 30% 할인입니다(경증은 KTX·새마을의 경우 토·일·공휴일 제외 주중에 한함). 코레일 광역철도(수도권전철·동해선·경춘선 등)만 본 항목으로 100% 무임입니다."
+    },
+    {
+      "q": "지하철에서 버스로 환승할 때도 무료인가요?",
+      "a": "지하철(무임)→버스(유임) 단방향 환승 시에는 버스 요금이 전액 부과되며 환승할인이 적용되지 않습니다. 반대로 버스(유임)→지하철(무임)→버스(유임)처럼 버스가 양 끝에 있는 경우에는 '버스-버스 간' 환승할인이 적용됩니다. 시내·광역버스 자체의 장애인 요금 감면은 지자체별 정책에 따라 다릅니다(서울시는 별도의 '장애인 버스요금 지원' 제도 운영)."
+    },
+    {
+      "q": "분실하면 어떻게 하나요?",
+      "a": "즉시 신고해야 합니다. 단순무임카드는 주민센터 또는 신한은행 콜센터(1544-8000), 신용/체크 우대용 신한카드는 신한카드 상담센터(1544-7000/7200)에 신고합니다. 도난·분실 후 타인 부정사용 시 1년간 발급이 제한될 수 있습니다. 선불카드의 잔액은 환불되지 않으므로 소액 충전을 권장합니다."
+    },
+    {
+      "q": "카드 없이 등록증만으로도 탈 수 있나요?",
+      "a": "네. 역사 매표창구에 장애인등록증(또는 복지카드)을 제시하면 직원이 '우대용 1회권'을 발권해 줍니다. 발매 당일에만 유효하고 개표 후 5시간까지 이용 가능합니다(코레일 광역철도 약관 기준). 단, 매번 발권을 받아야 하는 번거로움이 있어 교통 기능이 포함된 복지카드를 받아 두는 것이 편리합니다."
+    },
+    {
+      "q": "외국인 등록 장애인도 같은 혜택을 받나요?",
+      "a": "「장애인복지법」 제32조의2에 따른 등록을 마친 재외동포·외국인 장애인이라면 동일하게 적용됩니다. 다만 외국인등록증 등 신분 확인이 필요할 수 있습니다."
+    }
+  ],
+  "contact": [
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
+    { "name": "서울교통공사 고객센터", "phone": "1577-1234", "url": "http://www.seoulmetro.co.kr/" },
+    { "name": "한국철도공사(코레일) 고객센터", "phone": "1544-7788", "url": "https://www.korail.com/" },
+    { "name": "신한카드 상담센터(우대용 신용/체크)", "phone": "1544-7000", "url": "https://www.shinhancard.com/" },
+    { "name": "신한은행 단순무임카드 콜센터", "phone": "1544-8000", "url": "https://www.shinhan.com/" },
+    { "name": "부산교통공사", "phone": "1577-7445", "url": "https://www.humetro.busan.kr/" },
+    { "name": "대구교통공사", "phone": "1688-3650", "url": "https://www.dtro.or.kr/" },
+    { "name": "광주교통공사", "phone": "062-604-8000", "url": "https://www.gwangjusubway.co.kr/" },
+    { "name": "대전교통공사", "phone": "042-539-3114", "url": "https://www.djet.co.kr/" },
+    { "name": "인천교통공사", "phone": "1899-5600", "url": "https://www.ictr.or.kr/" },
+    { "name": "공항철도(AREX) 고객센터", "phone": "1599-7788", "url": "https://www.arex.or.kr/" },
+    { "name": "신분당선 고객센터", "phone": "031-8018-7777", "url": "https://www.shinbundang.co.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=5&cciNo=1&cnpClsNo=1",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 상단 '시행일' 표기",
+        "robots_txt_ok": true,
+        "notes": "국가법령정보 Open API 신청 시 안정적으로 변경 모니터링 가능."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행령 (별표2 공공시설 등의 이용요금 감면 기준)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표2 표 내용",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "도시철도법 / 도시철도법 시행령",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=94620",
+      "fallback_url": "https://www.law.go.kr/LSW//lsInfoP.do?lsiSeq=267695&chrClsCd=010202&urlMode=lsInfoP&efYd=20241231&ancYnChk=",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "현행 2026.01.02. 시행본 기준."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공요금 감면 — 장애인정책 안내",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010500",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 영역 (div#contents 등)",
+        "robots_txt_ok": true,
+        "notes": "보건복지부 사업안내 책자(연 1~2회 갱신) 다운로드 링크도 함께 모니터링 권장."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공 교통요금 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=5&cciNo=1&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "우대용 교통카드(서울)",
+      "publisher": "서울특별시 교통기획관 교통정책과",
+      "publisher_type": "광역지자체",
+      "url": "https://news.seoul.go.kr/traffic/archives/1791",
+      "fallback_url": "https://mediahub.seoul.go.kr/archives/172656",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "css_selector_text",
+        "css_selector_hint": "본문 '수정일' 표시 / 본문 텍스트 해시",
+        "robots_txt_ok": true,
+        "notes": "이 페이지에 '수정일' 메타가 노출되므로 그 값을 키로 변경 감지 가능. 페이지 내부에 카드 종류·발급 절차·수수료가 상세 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "코레일 광역철도 여객운송 약관(PDF)",
+      "publisher": "한국철도공사(코레일)",
+      "publisher_type": "공기업",
+      "url": "https://info.korail.com/crosseditor_u/binary/files/000001/korail_metro_policy_250623.pdf",
+      "fallback_url": "https://info.korail.com/info/contents.do?key=1446",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "pdf_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "PDF 파일 해시(SHA-256)로 변경 감지. 약관 변경 시 파일명에 날짜가 포함되는 경향(예: 250623)."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "서울교통공사 승차권 안내",
+      "publisher": "서울교통공사",
+      "publisher_type": "공기업",
+      "url": "http://www.seoulmetro.co.kr/kr/page.do?menuIdx=355",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "복지교통카드(부산) 안내",
+      "publisher": "부산광역시",
+      "publisher_type": "광역지자체",
+      "url": "https://www.busan.go.kr/depart/ahcard04",
+      "fallback_url": "https://www.busanhanaro.com/hr/hanaroservice/wfcrdUseGude.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "대전 교통복지카드 안내",
+      "publisher": "대전광역시",
+      "publisher_type": "광역지자체",
+      "url": "https://www.daejeon.go.kr/drh/DrhContentsHtmlView.do?menuSeq=7242",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "공공요금 면제(감면·할인) — 대구광역시",
+      "publisher": "대구광역시",
+      "publisher_type": "광역지자체",
+      "url": "https://www.daegu.go.kr/welf/index.do?menu_id=00000508",
+      "fallback_url": "https://www.daegu.go.kr/tra/index.do?menu_id=00000354&servletPath=/tra",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "신분당선 운임 안내",
+      "publisher": "(주)신분당선",
+      "publisher_type": "민간",
+      "url": "https://www.shinbundang.co.kr/dxline/dxline4_1.jsp",
+      "fallback_url": "https://www.shinbundang.co.kr/dxline/dxline4_1_faq.jsp",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "공항철도(AREX) 직통열차 이용안내",
+      "publisher": "공항철도㈜",
+      "publisher_type": "민간",
+      "url": "https://www.airportrailroad.com/co/steUsfGud.do",
+      "fallback_url": "https://www.arex.or.kr/content.do?menuNo=MN201503300000000003&clientLocale=ko_KR&clientDevice=Normal",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "직통열차 할인 운임 변경 모니터링 필요."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "철도/도시철도 요금 감면 안내",
+      "publisher": "한국사회보장정보원 복지뱅크",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjibank.or.kr/bokji/view.php?zipEncode=5eJm90wDU91DLLMDMetpSfMvWLME",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "복지로 — 장애인 교통복지카드 발급 안내(블로그)",
+      "publisher": "보건복지부 복지로",
+      "publisher_type": "중앙정부",
+      "url": "https://blog.bokjiro.go.kr/1333",
+      "fallback_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=14600000110",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "정부24의 '장애인등록증(장애인복지카드) 재발급 신청' 민원안내도 함께 추적 권장."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "전국도시철도노선정보표 / 전국교통약자이동지원센터정보 표준데이터",
+      "publisher": "공공데이터포털",
+      "publisher_type": "공공데이터포털",
+      "url": "https://www.data.go.kr/data/15013203/standard.do",
+      "fallback_url": "https://www.data.go.kr/data/15028207/standard.do",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://api.odcloud.kr/api",
+        "auth_required": true,
+        "docs_url": "https://www.data.go.kr/"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "노선·운영기관 메타데이터 보완용. 정책 본문은 아님."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B002"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

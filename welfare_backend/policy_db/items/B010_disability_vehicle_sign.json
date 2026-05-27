@@ -1,0 +1,626 @@
+{
+  "id": "B010",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 10,
+  "title": "장애인 자동차 표지 발급",
+  "short_summary": "장애인 자동차 표지 발급(지방 자치단체별 조례에 의거 공영주차장 주차요금 감면 등) (전단지 원문)",
+  "category": "교통",
+  "benefit_type": "서비스제공",
+  "supported_amount": {
+    "rate": "해당없음(표지 무료 발급)",
+    "amount": null,
+    "scope": "표지 그 자체는 무료(또는 소액)로 발급되는 공식 식별 증표이며, 이 표지의 부착·소지를 전제로 (1) 지자체별 공영주차장 주차요금 감면(서울 80%, 부산 1시간 무료+초과시 50%, 대구 2시간 무료+초과시 50% 등), (2) 장애인전용주차구역 합법 주차(주차가능 표지에 한함), (3) 고속도로 통행료 50% 감면(B007 연계), (4) 일부 공항·항만 시설 우대주차 등 다수 혜택의 선결 요건이 됨."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 장애인 본인 또는 장애인과 세대별 주민등록표상 같이 기재되어 있으면서 함께 거주하는 직계존비속·배우자·형제자매·직계비속의 배우자·형제자매의 배우자 및 자녀(모계혈족 포함) 명의로 등록한 자동차로서, 주로 장애인이 사용하는 차량 1대.",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "companion_allowed": null,
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "전국. 단, 표지를 통한 공영주차장 감면율은 지자체 조례에 따라 다름. 신청은 거주지 동주민센터(읍·면·동 행정복지센터)에서만 가능."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제39조(장애인 사용 자동차 등에 대한 지원)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행규칙",
+      "article": "제26조(장애인 사용 자동차 등 표지의 발급대상) 및 별표",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙"
+    },
+    {
+      "name": "장애인·노인·임산부 등의 편의증진 보장에 관한 법률",
+      "article": "제17조(장애인전용주차구역) 및 동법 시행령·시행규칙",
+      "url": "https://www.law.go.kr/법령/장애인·노인·임산부등의편의증진보장에관한법률"
+    },
+    {
+      "name": "장애정도판정기준 (보건복지부 고시)",
+      "article": "장애유형별 보행상 장애 표준기준표",
+      "url": "https://www.law.go.kr/admRulSc.do?menuId=5&subMenuId=41&tabMenuId=183"
+    },
+    {
+      "name": "각 지방자치단체 주차장 설치 및 관리 조례",
+      "article": "공영주차장 주차요금 감면 규정",
+      "url": "https://www.elis.go.kr/"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "주소지 시·군·구청(읍·면·동 행정복지센터 경유)",
+      "lines_or_routes": [
+        "전국 모든 시·군·구"
+      ],
+      "apply_channel": "거주지 읍·면·동 행정복지센터 방문 또는 정부24 온라인 신청",
+      "card_or_proof_type": "장애인사용자동차등표지(스티커 형태, 자동차 전면 유리 부착)",
+      "url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=14600000270",
+      "notes": "발급기관 직인·홀로그램 스티커 포함. 표지 종류는 자동차 명의·운전자·보행상 장애 유무에 따라 구분."
+    },
+    {
+      "region": "서울",
+      "agency": "서울특별시 자치구청 + 동주민센터",
+      "lines_or_routes": [
+        "서울 25개 자치구 모두 동일"
+      ],
+      "apply_channel": "거주지 동주민센터 방문 또는 정부24",
+      "card_or_proof_type": "장애인사용자동차등표지",
+      "url": "https://rparking.y-sisul.or.kr/Public/Discount",
+      "notes": "서울시 공영주차장은 주차가능 표지 부착 + 본인 탑승 + 등록증 제시 시 **80% 감면**. 영등포구 등 자치구 시설관리공단 공영주차장에서 자동 감면 처리(차량번호 인식)."
+    },
+    {
+      "region": "부산",
+      "agency": "부산광역시 자치구·군청 + 동주민센터",
+      "lines_or_routes": [
+        "부산 16개 구·군"
+      ],
+      "apply_channel": "거주지 동주민센터 또는 정부24",
+      "card_or_proof_type": "장애인사용자동차등표지",
+      "url": "https://bsparking.bisco.or.kr/parkingdiscount",
+      "notes": "부산시설공단 공영주차장: 본인 운전·동승 시 **1시간 무료**, 1시간 초과 또는 1일/월 주차 시 **50% 감면**."
+    },
+    {
+      "region": "대구",
+      "agency": "대구광역시 자치구·군청 + 동주민센터",
+      "lines_or_routes": [
+        "대구 8개 구·군"
+      ],
+      "apply_channel": "거주지 동주민센터 또는 정부24",
+      "card_or_proof_type": "장애인사용자동차등표지",
+      "url": "https://www.daegu.go.kr/tra/index.do?menu_id=00934900&servletPath=/tra",
+      "notes": "대구시 공영주차장: 장애 등록 차량에 대해 **2시간 무료 + 초과시 50% 할인**(자치구별 일부 차이)."
+    },
+    {
+      "region": "광주",
+      "agency": "광주광역시 자치구청 + 동주민센터",
+      "lines_or_routes": [
+        "광주 5개 자치구"
+      ],
+      "apply_channel": "거주지 동주민센터 또는 정부24",
+      "card_or_proof_type": "장애인사용자동차등표지",
+      "url": "https://www.gjcity.go.kr/depart/contents.do?mId=1007010100",
+      "notes": "광주시 공영주차장: 자치구 조례에 따라 **50% 감면**(중증은 일부 시설 80%) — 자치구별 차이."
+    },
+    {
+      "region": "대전",
+      "agency": "대전광역시 자치구청 + 동주민센터",
+      "lines_or_routes": [
+        "대전 5개 자치구"
+      ],
+      "apply_channel": "거주지 동주민센터 또는 정부24",
+      "card_or_proof_type": "장애인사용자동차등표지",
+      "url": "https://www.law.go.kr/LSW/ordinInfoP.do?ordinSeq=1861953",
+      "notes": "대전시 주차장 조례에 따라 공영주차장 **50% 감면**. 자치구별로 일부 무료 시설 운영."
+    },
+    {
+      "region": "인천",
+      "agency": "인천광역시 자치구·군청 + 동주민센터",
+      "lines_or_routes": [
+        "인천 10개 구·군"
+      ],
+      "apply_channel": "거주지 동주민센터 또는 정부24",
+      "card_or_proof_type": "장애인사용자동차등표지",
+      "url": "https://www.incheon.go.kr/IC010101/view?nttNo=8573",
+      "notes": "인천시 공영주차장: 자치구 조례에 따라 **50~80% 감면**. 인천공항 장애인전용주차구역 별도 운영."
+    }
+  ],
+  "how_to_use": {
+    "default": "발급받은 표지를 자동차 전면 유리(운전석 또는 조수석 쪽) 안쪽에 부착하여 외부에서 식별되도록 함. 표지 부착 차량은 (1) 장애인전용주차구역 합법 주차(주차가능 표지에 한해, 본인 탑승 시), (2) 공영주차장 감면, (3) 고속도로 통행료 감면 등 혜택 자동 적용 가능.",
+    "with_card": "통합복지카드 A형과 함께 사용 시: 톨게이트에서 카드 정산 + 표지 시각 확인으로 50% 감면 정산. 공영주차장에서는 차량번호 인식 시스템과 연계되어 자동 감면 처리되는 경우 많음.",
+    "without_card": "표지만 보유한 경우: 일반 톨게이트나 공영주차장 정산소에서 표지 + 장애인등록증을 함께 제시 → 직원이 본인 탑승 확인 후 수동 감면.",
+    "exceptions": "표지가 있어도 (1) 본인 미탑승 시 장애인전용주차구역 주차 불가(과태료 10만원), (2) '주차불가' 표지는 장애인전용주차구역에 주차 불가, (3) 차량 양도·폐차·번호 변경 시 즉시 반납 의무. 위반 시 부정사용 과태료 200만원."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "주소지 읍·면·동 행정복지센터(동주민센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "정부24 온라인 신청",
+        "method": "온라인",
+        "url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=14600000270"
+      }
+    ],
+    "required_documents": [
+      "장애인 등록 및 서비스 신청서(현장 비치 또는 정부24 양식)",
+      "신청인 신분증(주민등록증·운전면허증 등)",
+      "장애인등록증(또는 장애인복지카드)",
+      "자동차등록증 사본(본인 또는 동일 세대 보호자 명의 차량)",
+      "운전면허증 사본(본인 운전용 신청 시)",
+      "주민등록등본(동일 세대 보호자 명의 차량의 경우 — 세대 구성 확인용, 행정정보 공동이용 동의 시 생략)",
+      "1년 이상 임차·대여 차량의 경우: 임대차계약서 사본",
+      "대리 신청 시: 위임장, 대리인 신분증",
+      "재발급(분실·훼손·기재사항 변경): 변경 사실을 증명하는 서류(자동차등록증 변경분 등)"
+    ],
+    "processing_period": "원칙적으로 **즉시 발급**(동주민센터 방문 시 당일). 일부 자치구는 **3~7일** 소요. 정부24 온라인 신청 시 처리완료 후 수령은 동주민센터 방문 또는 등기우편.",
+    "fee": {
+      "default": "**무료**(전국 공통).",
+      "exceptions": "재발급도 원칙적으로 무료. 일부 지자체에서 분실·훼손 재발급 시 실비(수백원~수천원) 청구 사례 있음."
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "원칙적으로 **영구**(장애 자체의 유효기간이 없는 경우). 단, 장애 재판정 대상자는 재판정 기한과 연동. 자동차 양도·증여·교환·폐차·차량번호 변경 시 즉시 효력 상실 → 반납 의무.",
+    "renewal": "다음 경우 재발급 신청: (1) 분실·훼손, (2) 기재사항 변경(주소·성명·차량번호·차종 등), (3) 차량 교체(기존 표지 반납 후 신규 발급). 자동차번호·발급기관 직인·유효기간·홀로그램 스티커 등이 훼손된 표지는 유효기간 내에도 효력 상실."
+  },
+  "exceptions_and_caveats": [
+    "표지는 차량을 주로 사용하는 장애인 1인당 1대만 발급 가능. 차량 변경 시 기존 표지 반납 후 신규 발급.",
+    "표지 종류 4가지 분류 — 운전자 기준: ①본인 운전용(장애인 본인 명의 자동차, 본인이 운전), ②보호자 운전용(장애인 본인 명의 차량이나 미성년·운전면허 미소지로 본인 운전 불가, 또는 보호자 명의 차량). 보행상 장애 기준: ③주차가능 표지(장애정도판정기준 '장애유형별 보행상 장애 표준기준표' 해당자), ④주차불가 표지(해당하지 않는 자).",
+    "**'주차가능' 표지에 한해서만** 장애인전용주차구역 합법 주차 가능. '주차불가' 표지로 장애인전용주차구역에 주차 시 과태료 10만원.",
+    "주차가능 표지가 있어도 **장애인 본인이 탑승하지 않은 차량**으로 장애인전용주차구역에 주차하면 과태료 10만원 부과(「장애인·노인·임산부 등의 편의증진 보장에 관한 법률」).",
+    "주차구역에 물건을 쌓거나 통행을 가로막는 등 주차 방해 행위 시 과태료 **50만원**.",
+    "표지의 **타인 양도·대여, 부당 사용** 시 「장애인복지법」 제86조에 따라 **과태료 200만원**.",
+    "표지 **위조·변조 후 사용** 시 공문서위조 및 위조공문서행사죄로 **10년 이하 징역** 형사처벌.",
+    "자동차 양도·증여·교환·폐차·차량번호 변경 시 즉시 동주민센터에 표지 반납 의무. 무효인 표지를 계속 부착·사용 시 부당 사용 과태료 부과.",
+    "공영주차장 감면율은 지자체 조례에 따라 차이(20%~100%). 통상 50% 또는 80%. 서울 80%, 부산 1시간 무료+50%, 대구 2시간 무료+50% 등.",
+    "민영·사설 주차장은 본 표지 감면 의무 없음. 다만 일부 대형 쇼핑센터·병원·공항은 자체 정책으로 감면 제공.",
+    "표지가 「장애인복지법」에 의한 것이므로, 국가유공자(보훈처 발급 '국가유공자 등 자동차 표지')는 별도 발급 — 관할 보훈(지)청 신청."
+  ],
+  "penalties_for_misuse": "「장애인복지법」 제86조에 따라 표지 부당 사용·양도·대여 시 **과태료 200만원**. 표지 위조·변조 후 행사 시 형법상 공문서위조죄 및 위조공문서행사죄로 **10년 이하 징역**. 무효인 표지(자동차 양도·폐차·번호 변경 후) 계속 사용 시에도 부당 사용으로 동일 처벌. 장애인전용주차구역 위반: 표지 미부착·본인 미탑승 주차 10만원, 주차 방해 행위 50만원.",
+  "faq": [
+    {
+      "q": "표지는 어디서 신청하나요?",
+      "a": "주소지 **읍·면·동 행정복지센터(동주민센터)**에서 신청합니다. 정부24(gov.kr)에서 온라인 신청도 가능합니다. 신분증, 장애인등록증, 자동차등록증 사본, 본인 운전 시 운전면허증 사본을 가져가세요. 비용은 무료, 보통 당일 발급됩니다."
+    },
+    {
+      "q": "표지는 몇 종류가 있나요? 어떤 게 발급되나요?",
+      "a": "표지는 두 가지 기준으로 구분됩니다. (1) **운전자 기준**: '본인 운전용'(장애인 본인 명의 차량 + 본인 운전)과 '보호자 운전용'(보호자 명의 차량 또는 본인이 운전 불가). (2) **보행상 장애 기준**: '주차가능 표지'(보행상 장애가 있어 장애인전용주차구역 이용 가능)와 '주차불가 표지'(보행상 장애 없음, 전용구역 주차 불가). 보행상 장애 판정은 보건복지부 '장애정도판정기준'의 표준기준표에 따릅니다."
+    },
+    {
+      "q": "본인 명의 차량이 아니어도 표지를 받을 수 있나요?",
+      "a": "받을 수 있습니다. **장애인과 같은 세대(주민등록표상 함께 기재)의 보호자** 명의 차량으로도 가능합니다. 보호자란 직계존비속·배우자·형제자매·직계비속의 배우자·형제자매의 배우자·자녀(모계혈족 포함)를 말합니다. 이 경우 '보호자 운전용' 표지가 발급됩니다."
+    },
+    {
+      "q": "표지가 있으면 장애인전용주차구역에 항상 주차할 수 있나요?",
+      "a": "아닙니다. **두 가지 조건이 모두 충족되어야** 합니다. ①'주차가능' 표지일 것(보행상 장애 인정), ②**장애인 본인이 실제로 탑승**할 것. '주차불가' 표지 또는 본인 미탑승 시 주차하면 과태료 10만원이 부과됩니다. 단순히 표지만 부착했다고 합법 주차되는 것이 아닙니다."
+    },
+    {
+      "q": "공영주차장은 얼마나 할인되나요?",
+      "a": "지자체 조례에 따라 다릅니다. **서울 80%**, **부산 1시간 무료 + 초과시 50%**, **대구 2시간 무료 + 초과시 50%**, **광주·대전·인천 50%** 등이 대표적입니다. 본인 탑승 + 등록증 제시 시 적용되며, 일부 자치구는 차량번호 인식으로 자동 처리합니다. 민영·사설 주차장은 의무 감면 대상이 아닙니다."
+    },
+    {
+      "q": "주소를 옮기면 표지는 어떻게 되나요?",
+      "a": "표지 자체는 그대로 유효하지만, **기재사항(주소) 변경**에 해당하므로 새 주소지 동주민센터에서 재발급 신청을 권장합니다. 표지 표면에 주소가 인쇄된 경우 변경 사실 증명 서류(주민등록등본 등)와 함께 신청하면 됩니다. 재발급은 무료가 원칙입니다."
+    },
+    {
+      "q": "차를 바꿨어요. 표지는 어떻게 하나요?",
+      "a": "기존 표지를 **반드시 반납**해야 합니다. 차량 양도·증여·교환·폐차·차량번호 변경 시 표지는 즉시 효력이 상실되며, 무효 표지를 계속 사용하면 부당 사용으로 과태료 200만원이 부과됩니다. 동주민센터에 기존 표지 반납 후 새 자동차등록증을 가지고 신규 발급을 신청하세요."
+    },
+    {
+      "q": "표지를 잃어버렸어요. 재발급은 어떻게 하나요?",
+      "a": "거주지 동주민센터에서 재발급 신청합니다. 신청서, 신분증, 장애인등록증, 자동차등록증 사본을 가져가세요. 분실 사유서를 요구하는 경우도 있습니다. 비용은 원칙적으로 무료(일부 지자체 실비 청구). 정부24에서 온라인 신청도 가능합니다."
+    },
+    {
+      "q": "표지에 적힌 번호와 다른 차에 부착해도 되나요?",
+      "a": "**절대 안 됩니다**. 표지는 발급받은 그 차량 한 대에만 부착 가능합니다. 다른 차량에 옮겨 부착하거나 타인에게 빌려주는 행위는 「장애인복지법」 제86조 위반으로 과태료 200만원. 또한 표지를 위조하거나 변조해 사용하면 공문서위조 및 위조공문서행사죄로 10년 이하 징역의 형사처벌을 받을 수 있습니다."
+    },
+    {
+      "q": "표지가 있으면 고속도로 통행료도 자동으로 할인되나요?",
+      "a": "표지만으로는 자동 할인이 되지 않습니다. 고속도로 통행료 50% 감면(**B007**)을 받으려면 추가로 (1) 동주민센터에서 **통합복지카드 A형**(고속도로 감면 기능 포함)을 발급받거나, (2) 하이패스 감면단말기를 구매·등록해야 합니다. 일반차로에서는 표지 + 카드 + 본인 탑승이 모두 확인되어야 50% 감면 정산됩니다."
+    },
+    {
+      "q": "외국인 등록 장애인도 표지를 받을 수 있나요?",
+      "a": "「장애인복지법」 제32조의2에 따라 등록을 마친 재외동포·외국인 장애인이라면 동일하게 신청 가능합니다. 외국인등록증 등 신분 확인 서류를 추가로 제출해야 할 수 있습니다."
+    },
+    {
+      "q": "국가유공자도 같은 표지를 사용하나요?",
+      "a": "별도입니다. 국가유공자는 관할 보훈(지)청에서 발급하는 '국가유공자 등 자동차 표지'를 사용합니다. 장애인 등록 + 국가유공자 등록을 모두 한 경우 두 표지 중 하나를 선택해 부착할 수 있으며, 혜택 적용 시 각 법령에 따른 조건을 충족해야 합니다."
+    }
+  ],
+  "contact": [
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "정부24(장애인사용자동차등표지 발급 신청)",
+      "phone": "1588-2188",
+      "url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=14600000270"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    },
+    {
+      "name": "서울특별시청 장애인복지정책과",
+      "phone": "02-2133-7470",
+      "url": "https://www.seoul.go.kr/"
+    },
+    {
+      "name": "부산광역시청 장애인복지과",
+      "phone": "051-888-3322",
+      "url": "https://www.busan.go.kr/"
+    },
+    {
+      "name": "대구광역시청 장애인복지과",
+      "phone": "053-803-3360",
+      "url": "https://www.daegu.go.kr/"
+    },
+    {
+      "name": "광주광역시청 장애인복지과",
+      "phone": "062-613-3331",
+      "url": "https://www.gjcity.go.kr/"
+    },
+    {
+      "name": "대전광역시청 장애인복지과",
+      "phone": "042-270-4571",
+      "url": "https://www.daejeon.go.kr/"
+    },
+    {
+      "name": "인천광역시청 장애인복지과",
+      "phone": "032-440-2772",
+      "url": "https://www.incheon.go.kr/"
+    },
+    {
+      "name": "국가보훈부(국가유공자 등 자동차 표지)",
+      "phone": "1577-0606",
+      "url": "https://www.mpva.go.kr/"
+    }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1003&ccfNo=2&cciNo=1&cnpClsNo=1",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제39조·제86조 본문",
+        "robots_txt_ok": true,
+        "notes": "표지 발급 근거(제39조) 및 부당사용 과태료(제86조)."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행규칙 (제26조 장애인사용자동차등표지 발급대상)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙",
+      "fallback_url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=84589",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제26조 및 별표",
+        "robots_txt_ok": true,
+        "notes": "표지 종류·발급 대상의 직접 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인·노인·임산부 등의 편의증진 보장에 관한 법률",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인·노인·임산부등의편의증진보장에관한법률",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1003&ccfNo=2&cciNo=1&cnpClsNo=2",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제17조 장애인전용주차구역 / 과태료 조항",
+        "robots_txt_ok": true,
+        "notes": "전용주차구역 과태료(10만/50만/200만원) 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인사용자동차등표지 발급(재발급) 신청",
+      "publisher": "정부24",
+      "publisher_type": "중앙정부",
+      "url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=14600000270",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "민원안내 본문",
+        "robots_txt_ok": true,
+        "notes": "정부24 표준 민원안내 — 필요 서류·처리 기간 1차 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인사용자동차 표지 발급 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1003&ccfNo=2&cciNo=1&cnpClsNo=1",
+      "fallback_url": "https://m.easylaw.go.kr/MOB/CsmInfoRetrieve.laf?csmSeq=1003&ccfNo=2&cciNo=1&cnpClsNo=1",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인전용주차구역 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1003&ccfNo=2&cciNo=1&cnpClsNo=2",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인편의시설 관련정책",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710020500",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "보건복지부 장애인전용주차구역 정책 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "서울시 자치구 공영주차장 감면사항(영등포구시설관리공단 예)",
+      "publisher": "서울특별시 영등포구시설관리공단",
+      "publisher_type": "기초지자체",
+      "url": "https://rparking.y-sisul.or.kr/Public/Discount",
+      "fallback_url": "https://www.sisul.or.kr/open_content/parking/guidance/walletless_qualification.jsp",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "감면 대상·할인율 표",
+        "robots_txt_ok": true,
+        "notes": "서울시 자치구 시설관리공단의 자동 감면(차량번호 인식) 정책 사례."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "부산시설공단 통합주차포털 — 할인정책",
+      "publisher": "부산시설공단",
+      "publisher_type": "기초지자체",
+      "url": "https://bsparking.bisco.or.kr/parkingdiscount",
+      "fallback_url": "https://www.busan.go.kr/depart/parkinfo0201",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "부산시 공영주차장 감면 — 1시간 무료 + 초과 50%."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "대구시 장애인 및 유공자 교통편의",
+      "publisher": "대구광역시",
+      "publisher_type": "광역지자체",
+      "url": "https://www.daegu.go.kr/tra/index.do?menu_id=00934900&servletPath=/tra",
+      "fallback_url": "https://pis.daegu.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "대구시 공영주차장 감면 — 2시간 무료 + 초과 50%."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "광주광역시 공공요금 지원",
+      "publisher": "광주광역시",
+      "publisher_type": "광역지자체",
+      "url": "https://www.gjcity.go.kr/depart/contents.do?mId=1007010100",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "대전광역시 주차장 조례",
+      "publisher": "국가법령정보센터 자치법규",
+      "publisher_type": "광역지자체",
+      "url": "https://www.law.go.kr/LSW/ordinInfoP.do?ordinSeq=1861953",
+      "fallback_url": "https://www.elis.go.kr/alrpop/locgovAlrPopup?ctpvCd=30&sggCd=000",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "장애인 감면 조항",
+        "robots_txt_ok": true,
+        "notes": "조례 본문에서 공영주차장 감면율 직접 확인."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "인천광역시 장애인편의시설 관련정책",
+      "publisher": "인천광역시",
+      "publisher_type": "광역지자체",
+      "url": "https://www.incheon.go.kr/IC010101/view?nttNo=8573",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "공영주차장 주차요금 감면 — 정부24 통합 민원",
+      "publisher": "정부24",
+      "publisher_type": "중앙정부",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/611000001260",
+      "fallback_url": "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/O00022500001",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "전국 공영주차장 감면 통합 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "자치법규정보시스템(ELIS)",
+      "publisher": "행정안전부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.elis.go.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.elis.go.kr/openapi",
+        "auth_required": true,
+        "docs_url": "https://www.elis.go.kr/"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "manual_review",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "전국 지자체 주차장 조례 일괄 검색·모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": [
+    "B007"
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

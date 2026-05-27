@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>장애인 AI 비서 서비스 — 시스템 아키텍처 & 플로우</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #1a1d27;
+    --panel2: #21263a;
+    --border: #2e3350;
+    --accent: #4f8ef7;
+    --accent2: #34d89a;
+    --accent3: #f7b84f;
+    --danger: #f75f5f;
+    --purple: #a78bfa;
+    --teal: #22d3ee;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --white: #ffffff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    display: flex;
+    gap: 0;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  nav button {
+    flex: 1;
+    padding: 14px 24px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    letter-spacing: .3px;
+  }
+  nav button.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: rgba(79,142,247,.06);
+  }
+  nav button:hover:not(.active) { color: var(--text); background: rgba(255,255,255,.04); }
+
+  .page { display: none; padding: 36px 40px 60px; }
+  .page.active { display: block; }
+
+  h1.page-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+  .page-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .badge-green { background: rgba(52,216,154,.15); color: var(--accent2); border: 1px solid rgba(52,216,154,.3); }
+  .badge-blue  { background: rgba(79,142,247,.15); color: var(--accent);  border: 1px solid rgba(79,142,247,.3); }
+  .badge-yellow{ background: rgba(247,184,79,.15);  color: var(--accent3); border: 1px solid rgba(247,184,79,.3);  }
+  .badge-red   { background: rgba(247,95,95,.15);   color: var(--danger);  border: 1px solid rgba(247,95,95,.3);   }
+
+  /* ══════════════ PAGE 1: ARCHITECTURE ══════════════ */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .arch-layer {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+  }
+  .arch-layer.highlight-blue  { border-color: rgba(79,142,247,.5);  box-shadow: 0 0 0 1px rgba(79,142,247,.15) inset; }
+  .arch-layer.highlight-green { border-color: rgba(52,216,154,.5);  box-shadow: 0 0 0 1px rgba(52,216,154,.15) inset; }
+  .arch-layer.highlight-purple{ border-color: rgba(167,139,250,.5); box-shadow: 0 0 0 1px rgba(167,139,250,.15) inset; }
+  .arch-layer.highlight-teal  { border-color: rgba(34,211,238,.5);  box-shadow: 0 0 0 1px rgba(34,211,238,.15)  inset; }
+  .arch-layer.highlight-yellow{ border-color: rgba(247,184,79,.5);  box-shadow: 0 0 0 1px rgba(247,184,79,.15)  inset; }
+  .arch-layer.highlight-red   { border-color: rgba(247,95,95,.5);   box-shadow: 0 0 0 1px rgba(247,95,95,.15)   inset; }
+
+  .layer-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+  }
+  .layer-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 4px;
+    letter-spacing: .3px;
+  }
+  .layer-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .component-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .component-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .comp-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+  .dot-blue   { background: var(--accent); }
+  .dot-green  { background: var(--accent2); }
+  .dot-yellow { background: var(--accent3); }
+  .dot-red    { background: var(--danger); }
+  .dot-purple { background: var(--purple); }
+  .dot-teal   { background: var(--teal); }
+
+  .comp-name { font-weight: 600; color: var(--text); }
+  .comp-desc { color: var(--muted); }
+
+  /* arrows between layers */
+  .arrow-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 0;
+  }
+  .arrow-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .arrow-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .arrow-svg { opacity: .6; }
+
+  /* full-width backend block */
+  .arch-backend {
+    grid-column: 1 / -1;
+    background: var(--panel);
+    border: 1px solid rgba(79,142,247,.4);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 0 0 1px rgba(79,142,247,.08) inset;
+  }
+  .backend-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .backend-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .backend-card-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .backend-card ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .backend-card li {
+    font-size: 11px;
+    color: var(--muted);
+    padding-left: 12px;
+    position: relative;
+    line-height: 1.5;
+  }
+  .backend-card li::before {
+    content: '·';
+    position: absolute;
+    left: 2px;
+    color: var(--accent);
+  }
+
+  /* three-col bottom */
+  .arch-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+  }
+
+  /* legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 28px;
+    padding: 16px 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .legend-line {
+    width: 28px;
+    height: 2px;
+    border-radius: 1px;
+  }
+  .legend-dash {
+    width: 28px;
+    height: 0;
+    border-top: 2px dashed;
+    border-radius: 1px;
+  }
+
+  /* ══════════════ PAGE 2: FLOW ══════════════ */
+  .flow-container {
+    display: flex;
+    gap: 32px;
+  }
+  .flow-lanes {
+    flex: 1;
+    min-width: 0;
+  }
+  .flow-sidebar {
+    width: 260px;
+    flex-shrink: 0;
+  }
+
+  /* lane headers */
+  .lane-headers {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .lane-header {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: .4px;
+  }
+  .lh-front  { background: rgba(79,142,247,.12); color: var(--accent);  border: 1px solid rgba(79,142,247,.3); }
+  .lh-back   { background: rgba(52,216,154,.12); color: var(--accent2); border: 1px solid rgba(52,216,154,.3); }
+  .lh-data   { background: rgba(167,139,250,.12);color: var(--purple);  border: 1px solid rgba(167,139,250,.3);}
+
+  /* flow steps */
+  .flow-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 8px;
+    align-items: stretch;
+  }
+  .flow-step {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    position: relative;
+    min-height: 60px;
+  }
+  .flow-step.col-front  { border-left: 3px solid var(--accent);  }
+  .flow-step.col-back   { border-left: 3px solid var(--accent2); }
+  .flow-step.col-data   { border-left: 3px solid var(--purple);  }
+  .flow-step.col-warn   { border-left: 3px solid var(--danger);  }
+  .flow-step.col-cron   { border-left: 3px solid var(--accent3); }
+  .flow-step.empty      { background: transparent; border: none; }
+
+  .step-num {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--muted);
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .step-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 3px;
+    line-height: 1.3;
+  }
+  .step-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* connector arrows between rows */
+  .flow-arrows {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .arrow-down {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 20px;
+    color: var(--muted);
+    font-size: 16px;
+  }
+  .arrow-down.skip { visibility: hidden; }
+
+  /* divider between normal flow & fallback */
+  .flow-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0 12px;
+  }
+  .flow-divider-line { flex: 1; height: 1px; background: var(--border); }
+  .flow-divider-label {
+    font-size: 11px;
+    color: var(--danger);
+    font-weight: 700;
+    letter-spacing: .5px;
+    white-space: nowrap;
+  }
+
+  /* Phase 5 callout */
+  .phase5-callout {
+    background: rgba(247,184,79,.06);
+    border: 1px solid rgba(247,184,79,.3);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 16px 0 0;
+  }
+  .phase5-callout h4 {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent3);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .phase5-callout p {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* sidebar info blocks */
+  .info-block {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .info-block h4 {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .info-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 7px;
+    font-size: 11px;
+  }
+  .info-icon { flex-shrink: 0; width: 20px; text-align: center; font-size: 13px; }
+  .info-text { color: var(--muted); line-height: 1.4; }
+  .info-text strong { color: var(--text); }
+
+  .cron-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .cron-table th {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    text-align: left;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .cron-table td {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 5px 0;
+    vertical-align: top;
+    border-bottom: 1px solid rgba(46,51,80,.5);
+  }
+  .cron-table td:first-child { color: var(--text); font-weight: 600; padding-right: 8px; }
+
+  /* phase roadmap */
+  .roadmap {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .roadmap-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding-bottom: 14px;
+    position: relative;
+  }
+  .roadmap-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 28px;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .roadmap-dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .rd-done   { background: rgba(52,216,154,.2); color: var(--accent2); border: 2px solid var(--accent2); }
+  .rd-active { background: rgba(79,142,247,.2); color: var(--accent);  border: 2px solid var(--accent); }
+  .rd-hold   { background: rgba(46,51,80,.5);   color: var(--muted);   border: 2px solid var(--border); }
+  .roadmap-content { flex: 1; }
+  .roadmap-phase { font-size: 11px; font-weight: 700; color: var(--white); margin-bottom: 2px; }
+  .roadmap-desc  { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+  /* ══════════════ PAGE 3: DATA FLYWHEEL ══════════════ */
+  .flywheel-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 28px;
+  }
+
+  .fw-center {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    align-items: center;
+  }
+
+  .fw-cycle {
+    position: relative;
+    width: 460px;
+    height: 460px;
+    margin: 0 auto;
+  }
+  .fw-cycle svg { width: 100%; height: 100%; }
+
+  .fw-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .fw-step {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .fw-step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .fw-step h4 { font-size: 13px; font-weight: 700; color: var(--white); margin-bottom: 3px; }
+  .fw-step p  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+  .kpi-num {
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+  .kpi-label { font-size: 11px; color: var(--muted); }
+
+  .table-issues { width: 100%; border-collapse: collapse; }
+  .table-issues th {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-align: left;
+    padding: 6px 10px;
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+  }
+  .table-issues td {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(46,51,80,.4);
+    vertical-align: top;
+  }
+  .table-issues td:first-child { color: var(--text); font-weight: 600; width: 110px; }
+  .table-issues tr:last-child td { border-bottom: none; }
+
+  /* responsive tweaks */
+  @media (max-width: 1100px) {
+    .arch-grid { grid-template-columns: 1fr; }
+    .backend-grid { grid-template-columns: 1fr 1fr; }
+    .flow-container { flex-direction: column; }
+    .flow-sidebar { width: 100%; }
+    .flywheel-layout { grid-template-columns: 1fr; }
+    .fw-cycle { width: 100%; height: 300px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <button class="active" onclick="showPage('arch')">🏗 전체 시스템 아키텍처</button>
+  <button onclick="showPage('flow')">🔄 음성 대화 플로우</button>
+  <button onclick="showPage('flywheel')">🌀 데이터 플라이휠 (Phase 5-A)</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 1: ARCHITECTURE
+═══════════════════════════════════════════ -->
+<div id="page-arch" class="page active">
+  <h1 class="page-title">복지 정책 음성 안내 시스템 — 전체 아키텍처 <span class="badge badge-blue">Phase 5-A</span></h1>
+  <p class="page-sub">한국 장애인 복지 정책 음성 AI 비서 · PostgreSQL+pgvector · Gemini Live API · 데이터 플라이휠</p>
+
+  <!-- Top row: User → Frontend → (arrows) → Backend ← DB -->
+  <div style="display:grid; grid-template-columns: 180px 60px 1fr 60px 220px; gap:12px; align-items:center; margin-bottom:16px;">
+
+    <!-- USER -->
+    <div class="arch-layer highlight-teal" style="text-align:center;">
+      <div class="layer-icon">♿</div>
+      <div class="layer-title">① 사용자</div>
+      <div class="layer-sub">시·청각 장애인 등 복지 대상자</div>
+      <ul class="component-list" style="text-align:left;">
+        <li><span class="comp-dot dot-teal"></span><div><span class="comp-name">음성 발화</span><br><span class="comp-desc">마이크 입력</span></div></li>
+        <li><span class="comp-dot dot-teal"></span><div><span class="comp-name">음성 응답 수신</span><br><span class="comp-desc">실시간 스트리밍</span></div></li>
+      </ul>
+    </div>
+
+    <!-- arrow1 -->
+    <div class="arrow-col">
+      <div class="arrow-line">
+        <svg class="arrow-svg" width="40" height="24" viewBox="0 0 40 24"><path d="M2 12 L34 12" stroke="#4f8ef7" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/><polygon points="34,8 40,12 34,16" fill="#4f8ef7"/></svg>
+        <span class="arrow-label">PCM</span>
+      </div>
+      <div style="height:6px;"></div>
+      <div class="arrow-line">
+        <svg class="arrow-svg" width="40" height="24" viewBox="0 0 40 24"><path d="M38 12 L6 12" stroke="#f7b84f" stroke-width="1.5" fill="none"/><polygon points="6,8 0,12 6,16" fill="#f7b84f"/></svg>
+        <span class="arrow-label">음성응답</span>
+      </div>
+    </div>
+
+    <!-- FRONTEND -->
+    <div class="arch-layer highlight-blue">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <div>
+          <div class="layer-icon" style="margin-bottom:0; display:inline;">🖥</div>
+          <span class="layer-title" style="margin-left:8px;">② 프론트엔드</span>
+        </div>
+        <span class="badge badge-blue">Browser</span>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+        <div>
+          <div style="font-size:11px; font-weight:700; color:var(--accent); margin-bottom:6px;">test_live.html</div>
+          <ul class="component-list">
+            <li><span class="comp-dot dot-blue"></span><div><span class="comp-desc">채팅 말풍선 UI</span></div></li>
+            <li><span class="comp-dot dot-blue"></span><div><span class="comp-desc">마이크 권한 요청</span></div></li>
+            <li><span class="comp-dot dot-blue"></span><div><span class="comp-desc">Barge-in 인터럽션 처리</span></div></li>
+            <li><span class="comp-dot dot-blue"></span><div><span class="comp-desc">WebSocket 송수신</span></div></li>
+          </ul>
+        </div>
+        <div>
+          <div style="font-size:11px; font-weight:700; color:var(--accent); margin-bottom:6px;">mic-processor.js</div>
+          <ul class="component-list">
+            <li><span class="comp-dot dot-blue"></span><div><span class="comp-desc">AudioWorklet (PCM 16kHz)</span></div></li>
+            <li><span class="comp-dot dot-blue"></span><div><span class="comp-desc">노이즈 게이트</span></div></li>
+            <li><span class="comp-dot dot-blue"></span><div><span class="comp-desc">VAD 제3안 (항상 전송)</span></div></li>
+            <li><span class="comp-dot dot-blue"></span><div><span class="comp-desc">voice_state UI 표시</span></div></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- arrow2 -->
+    <div class="arrow-col">
+      <div class="arrow-line">
+        <svg class="arrow-svg" width="40" height="24" viewBox="0 0 40 24"><path d="M2 12 L34 12" stroke="#4f8ef7" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/><polygon points="34,8 40,12 34,16" fill="#4f8ef7"/></svg>
+        <span class="arrow-label">WS Base64</span>
+      </div>
+      <div style="height:6px;"></div>
+      <div class="arrow-line">
+        <svg class="arrow-svg" width="40" height="24" viewBox="0 0 40 24"><path d="M38 12 L6 12" stroke="#f7b84f" stroke-width="1.5" fill="none"/><polygon points="6,8 0,12 6,16" fill="#f7b84f"/></svg>
+        <span class="arrow-label">WS 스트림</span>
+      </div>
+    </div>
+
+    <!-- EXTERNAL APIs (right side) -->
+    <div class="arch-layer highlight-purple" style="text-align:center;">
+      <div class="layer-icon">☁️</div>
+      <div class="layer-title">외부 API</div>
+      <div class="layer-sub" style="margin-bottom:10px;"></div>
+      <ul class="component-list" style="text-align:left;">
+        <li><span class="comp-dot dot-purple"></span><div><span class="comp-name">Gemini Live API</span><br><span class="comp-desc">음성↔텍스트 + 추론</span></div></li>
+        <li><span class="comp-dot dot-purple"></span><div><span class="comp-name">Gemini Embed</span><br><span class="comp-desc">768차원 임베딩 생성</span></div></li>
+        <li><span class="comp-dot dot-teal"></span><div><span class="comp-name">Google Search</span><br><span class="comp-desc">DB 미검색 폴백</span></div></li>
+        <li><span class="comp-dot dot-yellow"></span><div><span class="comp-name">Anthropic Claude</span><br><span class="comp-desc">크롤러 LLM + 리포트</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- BACKEND full width -->
+  <div class="arch-backend" style="margin-bottom:16px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <span style="font-size:20px;">⚙️</span>
+      <div>
+        <div style="font-size:14px; font-weight:700; color:var(--white);">③ 백엔드 — FastAPI (welfare_backend/)</div>
+        <div style="font-size:12px; color:var(--muted);">Python 3.11 · asyncpg · SQLAlchemy · 내부망 VPN</div>
+      </div>
+      <span class="badge badge-green" style="margin-left:auto;">Running</span>
+    </div>
+    <div class="backend-grid">
+      <div class="backend-card" style="border-color:rgba(79,142,247,.4);">
+        <div class="backend-card-title"><span style="color:var(--accent);">🌉</span> live_bridge.py</div>
+        <ul>
+          <li>Gemini Live ↔ WebSocket 브릿지</li>
+          <li>AutomaticActivityDetection 설정</li>
+          <li>Barge-in 인터럽션 처리</li>
+          <li>_safe_send_json (race fix)</li>
+          <li><strong style="color:var(--accent3);">TurnTracker hook (Phase 5-A)</strong></li>
+          <li>session_id 발급 + 5곳 이벤트</li>
+        </ul>
+      </div>
+      <div class="backend-card" style="border-color:rgba(52,216,154,.4);">
+        <div class="backend-card-title"><span style="color:var(--accent2);">🔧</span> tool_handlers.py</div>
+        <ul>
+          <li>search_policies_by_metadata</li>
+          <li>search_by_keyword (벡터)</li>
+          <li>get_policy_details</li>
+          <li>check_eligibility_criteria</li>
+          <li>find_operating_agencies</li>
+          <li>→ 5종 Function Calling 도구</li>
+        </ul>
+      </div>
+      <div class="backend-card" style="border-color:rgba(247,184,79,.5);">
+        <div class="backend-card-title"><span style="color:var(--accent3);">📝</span> unresolved_logger.py <span class="badge badge-yellow" style="font-size:9px;">Phase 5-A</span></div>
+        <ul>
+          <li>TurnTracker — 대화 추적</li>
+          <li>PII 스크러빙 (전화·주민·카드)</li>
+          <li>폴백 3종 분류 자동 감지</li>
+          <li>비동기 fire-and-forget INSERT</li>
+          <li>schemas.py — Pydantic 스키마</li>
+        </ul>
+      </div>
+      <div class="backend-card" style="border-color:rgba(167,139,250,.4);">
+        <div class="backend-card-title"><span style="color:var(--purple);">🗃</span> models.py / database.py</div>
+        <ul>
+          <li>welfare_policies (적재된 정책 항목)</li>
+          <li>UnresolvedQuery 모델</li>
+          <li>FallbackReason Enum</li>
+          <li>SQLAlchemy async 세션</li>
+          <li>asyncpg 드라이버</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom row: DB + Crawler + Cron -->
+  <div class="arch-bottom">
+    <!-- DB -->
+    <div class="arch-layer highlight-green">
+      <div class="layer-icon">🗄</div>
+      <div class="layer-title">④ 데이터베이스</div>
+      <div class="layer-sub">PostgreSQL 13 + pgvector · <DB_HOST> · 내부망</div>
+      <ul class="component-list">
+        <li><span class="comp-dot dot-green"></span><div><span class="comp-name">welfare_policies</span><br><span class="comp-desc">적재 정책 · 768차원 벡터</span></div></li>
+        <li><span class="comp-dot dot-yellow"></span><div><span class="comp-name">unresolved_queries</span><span class="badge badge-yellow" style="font-size:9px; margin-left:4px;">NEW</span><br><span class="comp-desc">미해결 질의 적재 · 7개 인덱스</span></div></li>
+        <li><span class="comp-dot dot-green"></span><div><span class="comp-name">HNSW partial vector index</span><br><span class="comp-desc">embedding IS NOT NULL 대상</span></div></li>
+      </ul>
+    </div>
+
+    <!-- CRAWLER -->
+    <div class="arch-layer highlight-yellow">
+      <div class="layer-icon">🔍</div>
+      <div class="layer-title">⑤ 정책 DB 갱신 파이프라인</div>
+      <div class="layer-sub">policy_db/crawler/ · 크롤 대상 인덱스</div>
+      <ul class="component-list">
+        <li><span class="comp-dot dot-yellow"></span><div><span class="comp-name">crawler.py</span><br><span class="comp-desc">변경 감지 (httpx + trafilatura)</span></div></li>
+        <li><span class="comp-dot dot-yellow"></span><div><span class="comp-name">claude_updater.py</span><br><span class="comp-desc">LLM 갱신안 생성 · PDF 추출</span></div></li>
+        <li><span class="comp-dot dot-yellow"></span><div><span class="comp-name">confirm_apply.py</span><br><span class="comp-desc">사용자 검토 → 반영</span></div></li>
+        <li><span class="comp-dot dot-green"></span><div><span class="comp-name">ingest_sync.py</span><br><span class="comp-desc">PostgreSQL 재적재</span></div></li>
+      </ul>
+    </div>
+
+    <!-- CRON -->
+    <div class="arch-layer highlight-red">
+      <div class="layer-icon">⏰</div>
+      <div class="layer-title">⑥ 운영 Cron 3종 <span class="badge badge-yellow" style="font-size:9px;">Phase 5-A</span></div>
+      <div class="layer-sub">scripts/ · Windows 작업 스케줄러 / Linux cron</div>
+      <ul class="component-list">
+        <li><span class="comp-dot dot-red"></span><div><span class="comp-name">backfill_embeddings.py</span><br><span class="comp-desc">매일 23:00 · embedding NULL 행 채움</span></div></li>
+        <li><span class="comp-dot dot-red"></span><div><span class="comp-name">weekly_report.py</span><br><span class="comp-desc">매주 월 06:00 · Claude 클러스터링</span></div></li>
+        <li><span class="comp-dot dot-red"></span><div><span class="comp-name">purge_old_queries.py</span><br><span class="comp-desc">매일 03:30 · 90일 이전 자동 파기</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-line" style="background:var(--accent);"></div>
+      정방향 요청 흐름 (음성 → DB)
+    </div>
+    <div class="legend-item">
+      <div class="legend-line" style="background:var(--accent3);"></div>
+      음성 응답 회신 (백엔드 → 사용자)
+    </div>
+    <div class="legend-item">
+      <div class="legend-dash" style="border-color:var(--danger);"></div>
+      폴백 분기 (DB 미검색 → Google Search)
+    </div>
+    <div class="legend-item">
+      <div class="legend-line" style="background:var(--yellow);background:var(--accent3);"></div>
+      Phase 5-A 신규 구성요소
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 2: VOICE FLOW
+═══════════════════════════════════════════ -->
+<div id="page-flow" class="page">
+  <h1 class="page-title">음성 대화 플로우 — 입력부터 응답까지 <span class="badge badge-green">실시간</span></h1>
+  <p class="page-sub">사용자 발화 → AudioWorklet → Gemini Live → Function Calling → DB 검색 → TurnTracker → 응답 + 미해결 적재</p>
+
+  <div class="flow-container">
+    <div class="flow-lanes">
+
+      <!-- Lane headers -->
+      <div class="lane-headers">
+        <div class="lane-header lh-front">🖥 프론트엔드</div>
+        <div class="lane-header lh-back">⚙️ 백엔드 / Gemini</div>
+        <div class="lane-header lh-data">🗄 데이터 / 응답</div>
+      </div>
+
+      <!-- STEP 1 -->
+      <div class="flow-row">
+        <div class="flow-step col-front">
+          <div class="step-num">STEP 01</div>
+          <div class="step-title">사용자 음성 입력</div>
+          <div class="step-desc">시·청각 장애인 등 발화. getUserMedia()로 마이크 스트림 획득</div>
+        </div>
+        <div class="flow-step empty"></div>
+        <div class="flow-step empty"></div>
+      </div>
+      <div class="flow-arrows">
+        <div class="arrow-down">↓</div>
+        <div class="arrow-down skip"></div>
+        <div class="arrow-down skip"></div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="flow-row">
+        <div class="flow-step col-front">
+          <div class="step-num">STEP 02</div>
+          <div class="step-title">AudioWorklet 전처리</div>
+          <div class="step-desc">mic-processor.js · PCM 16kHz 변환 · 노이즈 게이트 · VAD 제3안 (항상 전송)</div>
+        </div>
+        <div class="flow-step empty"></div>
+        <div class="flow-step empty"></div>
+      </div>
+      <div class="flow-arrows">
+        <div class="arrow-down">↓</div>
+        <div class="arrow-down skip"></div>
+        <div class="arrow-down skip"></div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="flow-row">
+        <div class="flow-step col-front">
+          <div class="step-num">STEP 03</div>
+          <div class="step-title">WebSocket 송신</div>
+          <div class="step-desc">PCM Base64 인코딩 후 live_bridge.py 로 전송</div>
+        </div>
+        <div class="flow-step col-back">
+          <div class="step-num">STEP 04</div>
+          <div class="step-title">live_bridge.py 수신</div>
+          <div class="step-desc">WS 메시지 처리 · Barge-in 감지 · TurnTracker 세션 시작 · session_id 발급</div>
+        </div>
+        <div class="flow-step empty"></div>
+      </div>
+      <div class="flow-arrows">
+        <div class="arrow-down skip"></div>
+        <div class="arrow-down">↓</div>
+        <div class="arrow-down skip"></div>
+      </div>
+
+      <!-- STEP 5 -->
+      <div class="flow-row">
+        <div class="flow-step empty"></div>
+        <div class="flow-step col-back">
+          <div class="step-num">STEP 05</div>
+          <div class="step-title">Gemini Live API 호출</div>
+          <div class="step-desc">음성→텍스트 transcription · AutomaticActivityDetection · System Instruction 적용</div>
+        </div>
+        <div class="flow-step empty"></div>
+      </div>
+      <div class="flow-arrows">
+        <div class="arrow-down skip"></div>
+        <div class="arrow-down">↓</div>
+        <div class="arrow-down skip"></div>
+      </div>
+
+      <!-- STEP 6 -->
+      <div class="flow-row">
+        <div class="flow-step empty"></div>
+        <div class="flow-step col-back">
+          <div class="step-num">STEP 06</div>
+          <div class="step-title">라우팅 결정</div>
+          <div class="step-desc"><strong>DB 우선 원칙</strong> — DB에 정보 있으면 Function Calling · 없으면 google_search 폴백</div>
+        </div>
+        <div class="flow-step empty"></div>
+      </div>
+      <div class="flow-arrows">
+        <div class="arrow-down skip"></div>
+        <div class="arrow-down">↓</div>
+        <div class="arrow-down skip"></div>
+      </div>
+
+      <!-- STEP 7 -->
+      <div class="flow-row">
+        <div class="flow-step empty"></div>
+        <div class="flow-step col-back">
+          <div class="step-num">STEP 07</div>
+          <div class="step-title">Function Calling</div>
+          <div class="step-desc">tool_handlers.py · 5종 도구 실행 · search_by_keyword (pgvector 코사인 유사도)</div>
+        </div>
+        <div class="flow-step col-data">
+          <div class="step-num">STEP 08</div>
+          <div class="step-title">PostgreSQL 벡터 검색</div>
+          <div class="step-desc">welfare_policies · 768차원 HNSW · 코사인 유사도 → Top-K 반환</div>
+        </div>
+      </div>
+      <div class="flow-arrows">
+        <div class="arrow-down skip"></div>
+        <div class="arrow-down">↓</div>
+        <div class="arrow-down skip"></div>
+      </div>
+
+      <!-- STEP 9 -->
+      <div class="flow-row">
+        <div class="flow-step empty"></div>
+        <div class="flow-step col-back">
+          <div class="step-num">STEP 09</div>
+          <div class="step-title">Gemini 음성 합성</div>
+          <div class="step-desc">검색 결과 → 자연어 답변 생성 → TTS 음성 스트리밍 (legal_basis + contact 만 출처 사용)</div>
+        </div>
+        <div class="flow-step col-data">
+          <div class="step-num">STEP 10</div>
+          <div class="step-title">TurnTracker 이벤트 기록</div>
+          <div class="step-desc">도구 호출 결과 수집 · 빈 결과 감지 · 세션 완료 마킹 <span class="badge badge-yellow" style="font-size:9px;">Phase 5-A</span></div>
+        </div>
+      </div>
+      <div class="flow-arrows">
+        <div class="arrow-down">↓</div>
+        <div class="arrow-down skip"></div>
+        <div class="arrow-down skip"></div>
+      </div>
+
+      <!-- STEP 11 -->
+      <div class="flow-row">
+        <div class="flow-step col-front">
+          <div class="step-num">STEP 11</div>
+          <div class="step-title">사용자에게 응답</div>
+          <div class="step-desc">WebSocket 스트리밍 · 채팅 말풍선 표시 · 음성 재생</div>
+        </div>
+        <div class="flow-step empty"></div>
+        <div class="flow-step empty"></div>
+      </div>
+
+      <!-- FALLBACK DIVIDER -->
+      <div class="flow-divider">
+        <div class="flow-divider-line"></div>
+        <div class="flow-divider-label">⚠ 폴백 분기 (DB 검색 실패 시)</div>
+        <div class="flow-divider-line"></div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-step empty"></div>
+        <div class="flow-step col-warn">
+          <div class="step-num">FALLBACK A</div>
+          <div class="step-title">google_search 외부 폴백</div>
+          <div class="step-desc">DB에 없는 질의 → Gemini 내장 Google Search 사용 → 결과 없으면 폴백 분류</div>
+        </div>
+        <div class="flow-step col-warn" style="border-left-color:var(--accent3);">
+          <div class="step-num">FALLBACK B · Phase 5-A</div>
+          <div class="step-title">unresolved_queries 적재</div>
+          <div class="step-desc">PII 스크러빙 → FallbackReason 분류 → 비동기 INSERT → 백필 cron 큐</div>
+        </div>
+      </div>
+
+      <!-- Phase 5 callout -->
+      <div class="phase5-callout">
+        <h4>⭐ Phase 5-A 데이터 플라이휠 — 미해결 질의 자동 적재</h4>
+        <p>폴백 발생 시 unresolved_queries 테이블에 질의 내용·폴백 이유·session_id가 자동 기록됩니다. 매주 <strong>weekly_report --use-llm</strong>으로 Claude가 클러스터링 분석을 수행하고, 빈도 높은 미해결 패턴이 식별되면 정책 DB 확충 또는 Track B(지식 그래프) 진입 근거가 됩니다.</p>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="flow-sidebar">
+
+      <!-- 5종 도구 -->
+      <div class="info-block">
+        <h4>🔧 5종 Function Calling 도구</h4>
+        <div class="info-row"><div class="info-icon">1</div><div class="info-text"><strong>search_policies_by_metadata</strong> — 장애유형·급여종류 필터</div></div>
+        <div class="info-row"><div class="info-icon">2</div><div class="info-text"><strong>search_by_keyword</strong> — 자연어 벡터 검색 (pgvector)</div></div>
+        <div class="info-row"><div class="info-icon">3</div><div class="info-text"><strong>get_policy_details</strong> — 정책 전체 내용 조회</div></div>
+        <div class="info-row"><div class="info-icon">4</div><div class="info-text"><strong>check_eligibility_criteria</strong> — 자격 요건 판정</div></div>
+        <div class="info-row"><div class="info-icon">5</div><div class="info-text"><strong>find_operating_agencies</strong> — 지역·기관 검색</div></div>
+      </div>
+
+      <!-- Cron -->
+      <div class="info-block">
+        <h4>⏰ 운영 Cron 스케줄 <span class="badge badge-yellow" style="font-size:9px;">Phase 5-A</span></h4>
+        <table class="cron-table">
+          <thead><tr><th>스크립트</th><th>일정</th></tr></thead>
+          <tbody>
+            <tr><td>backfill_embeddings</td><td>매일 23:00<br><span style="color:var(--muted); font-size:10px;">NULL 행 embedding 채움</span></td></tr>
+            <tr><td>purge_old_queries</td><td>매일 03:30<br><span style="color:var(--muted); font-size:10px;">90일 이전 자동 파기</span></td></tr>
+            <tr><td>weekly_report</td><td>매주 월 06:00<br><span style="color:var(--muted); font-size:10px;">Claude 클러스터링 분석</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Design principles -->
+      <div class="info-block">
+        <h4>🛡 핵심 설계 원칙</h4>
+        <div class="info-row"><div class="info-icon">①</div><div class="info-text"><strong>DB 기반 답변 우선</strong> — Gemini 자체 지식으로 정책 사실 생성 금지</div></div>
+        <div class="info-row"><div class="info-icon">②</div><div class="info-text"><strong>출처 멘트 객관화</strong> — legal_basis + contact 만 사용</div></div>
+        <div class="info-row"><div class="info-icon">③</div><div class="info-text"><strong>LLM 자동 재적재 금지</strong> — staging → confirm → 반영</div></div>
+        <div class="info-row"><div class="info-icon">④</div><div class="info-text"><strong>PII 최소화</strong> — 음성 원본 저장 금지, 90일 자동 파기</div></div>
+        <div class="info-row"><div class="info-icon">⑤</div><div class="info-text"><strong>hot path 외부 API 차단</strong> — embedding은 비동기 백필 분리</div></div>
+      </div>
+
+      <!-- Phase Roadmap -->
+      <div class="info-block">
+        <h4>🗺 Phase 로드맵</h4>
+        <div class="roadmap">
+          <div class="roadmap-item">
+            <div class="roadmap-dot rd-done">1·2</div>
+            <div class="roadmap-content">
+              <div class="roadmap-phase">PostgreSQL + 정책 항목 적재</div>
+              <div class="roadmap-desc">pgvector 인프라 구축</div>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot rd-done">3</div>
+            <div class="roadmap-content">
+              <div class="roadmap-phase">FastAPI 5종 도구 + Gemini Live</div>
+              <div class="roadmap-desc">음성 챗봇 MVP</div>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot rd-done">4</div>
+            <div class="roadmap-content">
+              <div class="roadmap-phase">AudioWorklet + 크롤러 + VAD</div>
+              <div class="roadmap-desc">Phase 4.5 운영 패치 포함</div>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot rd-active">5A</div>
+            <div class="roadmap-content">
+              <div class="roadmap-phase">데이터 플라이휠 인프라 ✅</div>
+              <div class="roadmap-desc" style="color:var(--accent);">현재 단계 — 1~2개월 데이터 축적</div>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot rd-hold">5B</div>
+            <div class="roadmap-content">
+              <div class="roadmap-phase">지식 그래프</div>
+              <div class="roadmap-desc">KPI 기반 결정 대기</div>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot rd-hold">5C</div>
+            <div class="roadmap-content">
+              <div class="roadmap-phase">온프레미스 Gemma</div>
+              <div class="roadmap-desc">예산·인프라 결정 대기</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 3: DATA FLYWHEEL
+═══════════════════════════════════════════ -->
+<div id="page-flywheel" class="page">
+  <h1 class="page-title">데이터 플라이휠 — Phase 5-A <span class="badge badge-yellow">진행 중</span></h1>
+  <p class="page-sub">미해결 질의 자동 적재 → 임베딩 백필 → 주간 클러스터링 → 정책 DB 확충 → 더 나은 응답</p>
+
+  <div class="flywheel-layout">
+    <div>
+      <!-- Cycle SVG -->
+      <div class="fw-cycle">
+        <svg viewBox="0 0 460 460" xmlns="http://www.w3.org/2000/svg">
+          <!-- Background circle -->
+          <circle cx="230" cy="230" r="185" fill="none" stroke="#2e3350" stroke-width="2" stroke-dasharray="6,4"/>
+
+          <!-- Arc segments (each ~72deg = 5 steps) -->
+          <!-- Step 1: 음성 대화 발생 (top, 270deg start) -->
+          <path d="M230,230 L230,50 A180,180 0 0,1 401,159 Z" fill="rgba(79,142,247,0.12)" stroke="rgba(79,142,247,0.5)" stroke-width="1.5"/>
+          <!-- Step 2: 폴백 감지 -->
+          <path d="M230,230 L401,159 A180,180 0 0,1 401,301 Z" fill="rgba(247,95,95,0.10)" stroke="rgba(247,95,95,0.4)" stroke-width="1.5"/>
+          <!-- Step 3: 미해결 적재 -->
+          <path d="M230,230 L401,301 A180,180 0 0,1 230,410 Z" fill="rgba(247,184,79,0.12)" stroke="rgba(247,184,79,0.4)" stroke-width="1.5"/>
+          <!-- Step 4: 임베딩 백필 -->
+          <path d="M230,230 L230,410 A180,180 0 0,1 59,301 Z" fill="rgba(52,216,154,0.10)" stroke="rgba(52,216,154,0.4)" stroke-width="1.5"/>
+          <!-- Step 5: 클러스터링 → 확충 -->
+          <path d="M230,230 L59,301 A180,180 0 0,1 230,50 Z" fill="rgba(167,139,250,0.12)" stroke="rgba(167,139,250,0.4)" stroke-width="1.5"/>
+
+          <!-- Center -->
+          <circle cx="230" cy="230" r="70" fill="#1a1d27" stroke="#2e3350" stroke-width="2"/>
+          <text x="230" y="223" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="700">데이터</text>
+          <text x="230" y="241" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="700">플라이휠</text>
+
+          <!-- Labels -->
+          <text x="283" y="108" text-anchor="middle" fill="#4f8ef7" font-size="12" font-weight="700">① 음성 대화</text>
+          <text x="283" y="124" text-anchor="middle" fill="#8892a4" font-size="10">Gemini Live 응답</text>
+
+          <text x="390" y="240" text-anchor="middle" fill="#f75f5f" font-size="12" font-weight="700">② 폴백 감지</text>
+          <text x="390" y="256" text-anchor="middle" fill="#8892a4" font-size="10">TurnTracker</text>
+
+          <text x="334" y="366" text-anchor="middle" fill="#f7b84f" font-size="12" font-weight="700">③ 적재 / PII정제</text>
+          <text x="334" y="382" text-anchor="middle" fill="#8892a4" font-size="10">unresolved_queries</text>
+
+          <text x="112" y="366" text-anchor="middle" fill="#34d89a" font-size="12" font-weight="700">④ 임베딩 백필</text>
+          <text x="112" y="382" text-anchor="middle" fill="#8892a4" font-size="10">매일 23:00 cron</text>
+
+          <text x="60" y="210" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700">⑤ 클러스터링</text>
+          <text x="60" y="226" text-anchor="middle" fill="#8892a4" font-size="10">매주 자동 분석</text>
+          <text x="60" y="242" text-anchor="middle" fill="#8892a4" font-size="10">→ DB 확충</text>
+
+          <!-- Arrows on circle -->
+          <path d="M230,52 A178,178 0 0,1 395,155" fill="none" stroke="#4f8ef7" stroke-width="2" marker-end="url(#arr1)"/>
+          <path d="M397,165 A178,178 0 0,1 397,295" fill="none" stroke="#f75f5f" stroke-width="2" marker-end="url(#arr2)"/>
+          <path d="M393,305 A178,178 0 0,1 242,407" fill="none" stroke="#f7b84f" stroke-width="2" marker-end="url(#arr3)"/>
+          <path d="M218,407 A178,178 0 0,1 65,305" fill="none" stroke="#34d89a" stroke-width="2" marker-end="url(#arr4)"/>
+          <path d="M62,295 A178,178 0 0,1 230,55" fill="none" stroke="#a78bfa" stroke-width="2" marker-end="url(#arr5)"/>
+
+          <defs>
+            <marker id="arr1" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><polygon points="0,0 8,4 0,8" fill="#4f8ef7"/></marker>
+            <marker id="arr2" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><polygon points="0,0 8,4 0,8" fill="#f75f5f"/></marker>
+            <marker id="arr3" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><polygon points="0,0 8,4 0,8" fill="#f7b84f"/></marker>
+            <marker id="arr4" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><polygon points="0,0 8,4 0,8" fill="#34d89a"/></marker>
+            <marker id="arr5" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><polygon points="0,0 8,4 0,8" fill="#a78bfa"/></marker>
+          </defs>
+        </svg>
+      </div>
+
+      <!-- Step cards below -->
+      <div class="fw-steps-list" style="margin-top:24px;">
+        <div class="fw-step">
+          <div class="fw-step-num" style="background:rgba(79,142,247,.2); color:var(--accent); border:2px solid var(--accent);">①</div>
+          <div>
+            <h4>음성 대화 발생 → TurnTracker 세션 시작</h4>
+            <p>live_bridge.py에서 session_id 발급 후 5곳의 이벤트 hook (전사·도구·결과·응답·세션종료)에서 데이터 수집</p>
+          </div>
+        </div>
+        <div class="fw-step">
+          <div class="fw-step-num" style="background:rgba(247,95,95,.2); color:var(--danger); border:2px solid var(--danger);">②</div>
+          <div>
+            <h4>폴백 감지 — FallbackReason 3종 분류</h4>
+            <p>google_search 사용 · 빈 도구 결과 · 복합 감지 → unresolved_logger가 자동으로 폴백 유형 판별</p>
+          </div>
+        </div>
+        <div class="fw-step">
+          <div class="fw-step-num" style="background:rgba(247,184,79,.2); color:var(--accent3); border:2px solid var(--accent3);">③</div>
+          <div>
+            <h4>미해결 질의 적재 + PII 스크러빙</h4>
+            <p>전화·주민·카드번호 정규식 마스킹 후 비동기 fire-and-forget INSERT → hot path 지연 없음</p>
+          </div>
+        </div>
+        <div class="fw-step">
+          <div class="fw-step-num" style="background:rgba(52,216,154,.2); color:var(--accent2); border:2px solid var(--accent2);">④</div>
+          <div>
+            <h4>임베딩 백필 (매일 23:00)</h4>
+            <p>backfill_embeddings.py — embedding IS NULL 행을 batch 처리. Gemini Embed 768차원 생성 후 HNSW 인덱스 업데이트</p>
+          </div>
+        </div>
+        <div class="fw-step">
+          <div class="fw-step-num" style="background:rgba(167,139,250,.2); color:var(--purple); border:2px solid var(--purple);">⑤</div>
+          <div>
+            <h4>주간 클러스터링 분석 → 정책 DB 확충</h4>
+            <p>weekly_report --use-llm — Claude가 미해결 패턴 클러스터링. 고빈도 질의가 Track B(지식 그래프) 또는 신규 정책 항목 추가의 입력 데이터가 됨</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right sidebar -->
+    <div>
+      <!-- Known issues -->
+      <div class="info-block">
+        <h4>⚠️ 알려진 이슈 및 주의사항</h4>
+        <table class="table-issues">
+          <thead><tr><th>영역</th><th>내용</th></tr></thead>
+          <tbody>
+            <tr><td>첫 크롤링</td><td>모든 출처가 "최초 스냅샷" — 다음 회차부터 감지</td></tr>
+            <tr><td>JS 렌더링</td><td>httpx 만으로 미감지 — Playwright 도입 검토</td></tr>
+            <tr><td>이미지 PDF</td><td>pypdf 0자 추출 — OCR 별도 작업 필요</td></tr>
+            <tr><td>Gemini Live</td><td>preview 모델 만료 빈번 — .env 갱신으로 대응</td></tr>
+            <tr><td>폴백 분류</td><td>말로만 "정보 없습니다" 한 케이스는 적재 안 됨 (의도된 동작)</td></tr>
+            <tr><td>임베딩 지연</td><td>cron 미등록 시 embedding NULL 누적</td></tr>
+            <tr><td>PII 마스킹</td><td>이름·주소는 raw 보존 + 90일 파기로 분산</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Next tracks -->
+      <div class="info-block">
+        <h4>🚀 다음 Track 진입 기준</h4>
+        <div class="info-row"><div class="info-icon">🅱</div><div class="info-text"><strong>Track B — 지식 그래프:</strong> 1~2개월 축적 후 다단계 추론 필요 질의 비율이 명확히 높을 때</div></div>
+        <div class="info-row"><div class="info-icon">🅲</div><div class="info-text"><strong>Track C — 온프레미스 Gemma:</strong> 공공망 배포 일정 또는 GPU 서버 예산 확정 시</div></div>
+        <div style="margin-top:10px; padding:10px; background:rgba(52,216,154,.06); border:1px solid rgba(52,216,154,.3); border-radius:6px; font-size:11px; color:var(--muted);">
+          📅 현재 단계: <strong style="color:var(--accent2);">Track A 데이터 축적</strong><br>
+          1~2개월간 음성 챗봇 사용 후 weekly_report로 패턴 관찰
+        </div>
+      </div>
+
+      <!-- Phase 5-A new files -->
+      <div class="info-block">
+        <h4>📁 Phase 5-A 신규 파일</h4>
+        <div class="info-row"><div class="info-icon">📄</div><div class="info-text"><strong>unresolved_logger.py</strong> — TurnTracker + PII 스크러빙</div></div>
+        <div class="info-row"><div class="info-icon">📄</div><div class="info-text"><strong>schemas.py</strong> — Pydantic ToolStep / ToolChain</div></div>
+        <div class="info-row"><div class="info-icon">📄</div><div class="info-text"><strong>models.py</strong> — UnresolvedQuery + FallbackReason</div></div>
+        <div class="info-row"><div class="info-icon">📄</div><div class="info-text"><strong>create_unresolved_table.py</strong> — 1회성 테이블+인덱스 생성</div></div>
+        <div class="info-row"><div class="info-icon">📁</div><div class="info-text"><strong>scripts/</strong> — 운영 cron 3종 + README.md</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

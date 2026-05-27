@@ -1,0 +1,463 @@
+{
+  "id": "B030",
+  "leaflet_section": "심한장애(중증) 전국공통",
+  "leaflet_number": 6,
+  "title": "장애인 차량 지방세(취득세·자동차세) 면제",
+  "short_summary": "지방세(차량취득세, 등록세, 자동차세) 면제: 시각4급 지자체 감면조례에 의함 (배기량 2000cc이하 승용차, 7~10인승 승용차, 승차정원 15인승이하 승합차, 1톤이하 화물차, 이륜자동차 중 1대) (전단지 원문)",
+  "category": "세제",
+  "benefit_type": "면제",
+  "supported_amount": {
+    "rate": "100%",
+    "amount": null,
+    "scope": "취득세 전액 면제(취득가액의 7%, 경차 4%) + 자동차세 전액 면제(연간 세액, 비영업용 기준). 구등록세는 2011년 취득세 통합으로 폐지되었으나 전단지 원문에는 '등록세'로 병기. 환경개선부담금(연 2회, 경유차 등 부과)도 면제 대상에 포함. 면제 기한: 2027년 12월 31일까지(일몰 시한, 2년 단위 연장 관례). 단, 이륜자동차는 자동차세 과세 대상이 아니므로 취득세만 면제."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 심한 장애인(중증) 중, 보철용·생업활동용으로 사용하기 위하여 아래 차량 요건을 충족하는 자동차를 취득하는 자. 본인 명의 또는 동일 세대 보호자와의 공동명의 1대에 한함.",
+    "severity_levels": ["심한 장애(중증)"],
+    "companion_allowed": null,
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "전국 공통. 단, 시각장애인 구 4급(현 경증)의 경우 지방자치단체 감면 조례에 따라 별도 면제가 가능하며, 지자체별로 혜택 여부가 다름. 신청은 차량 등록지 관할 시·군·구청(세무과)에서 처리."
+  },
+  "legal_basis": [
+    {
+      "name": "지방세특례제한법",
+      "article": "제17조(장애인용 자동차에 대한 감면)",
+      "url": "https://www.law.go.kr/법령/지방세특례제한법"
+    },
+    {
+      "name": "지방세특례제한법 시행령",
+      "article": "장애인용 자동차 감면 관련 시행령",
+      "url": "https://www.law.go.kr/법령/지방세특례제한법시행령"
+    },
+    {
+      "name": "지방세법",
+      "article": "제6조(정의), 제7조(납세의무자), 제10조(과세표준) — 취득세 과세 일반 근거",
+      "url": "https://www.law.go.kr/법령/지방세법"
+    },
+    {
+      "name": "지방세법",
+      "article": "제127조 이하 — 자동차세 과세 근거",
+      "url": "https://www.law.go.kr/법령/지방세법"
+    },
+    {
+      "name": "환경개선비용 부담법",
+      "article": "제9조(면제 대상) — 장애인용 자동차 환경개선부담금 면제",
+      "url": "https://www.law.go.kr/법령/환경개선비용부담법"
+    },
+    {
+      "name": "각 지방자치단체 지방세 감면 조례",
+      "article": "시각장애인 구 4급(현 경증) 차량 지방세 감면 규정 (지자체별 상이)",
+      "url": "https://www.elis.go.kr/"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "주소지(차량 등록지) 관할 시·군·구청 세무과",
+      "lines_or_routes": ["전국 모든 시·군·구"],
+      "apply_channel": "거주지(차량 등록지) 관할 시·군·구청 세무과 방문 또는 정부24 온라인 신청",
+      "card_or_proof_type": "감면 신청서, 장애인등록증(복지카드), 자동차등록증, 신분증",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/131200000004",
+      "notes": "취득세 면제는 자동차 취득일(출고일·이전일)로부터 60일 이내 신고·신청. 자동차세 면제는 매년 과세기준일(6월 1일) 이전 신청. 시·군·구청 세무과(취득세 담당) 또는 위택스(wetax.go.kr) 온라인 신청."
+    },
+    {
+      "region": "서울",
+      "agency": "서울특별시 자치구청 세무과(차량 등록지 기준)",
+      "lines_or_routes": ["서울 25개 자치구"],
+      "apply_channel": "거주지 자치구청 세무과 방문 또는 위택스(wetax.go.kr) 온라인",
+      "card_or_proof_type": "감면 신청서, 장애인등록증, 자동차등록증, 신분증",
+      "url": "https://www.seoul.go.kr/main/index.jsp",
+      "notes": "서울시는 자치구별 세무과 담당. 자동차 보유분 자동차세 면제는 6월·12월 납부 시점 전 신청 또는 이미 납부 시 환급 신청 가능."
+    }
+  ],
+  "how_to_use": {
+    "default": "차량 구입(출고) 전 또는 등록 시 관할 시·군·구청 세무과에 감면 신청서와 구비서류를 제출. 취득세는 취득일로부터 60일 이내 신고 시 면제 처리(이미 납부 시 환급), 자동차세는 당해년도 과세기준일(6월 1일) 이전 신청 시 면제 또는 납부 후 환급. 이후 매년 자동 면제 적용(자동차등록 데이터베이스 연계 시).",
+    "with_card": "장애인복지카드(장애인등록증)를 신분 확인 및 장애 등급 확인 서류로 제출. 별도의 우대카드 발급 없음 — 세금 감면이 목적이므로 신청서류 기반 처리.",
+    "without_card": "장애인등록증(복지카드)을 반드시 소지하여 제출해야 함. 미소지 시 시·군·구 장애인 담당 부서에서 등록 사실 확인서를 발급받아 제출 가능.",
+    "exceptions": "이륜자동차(배기량 250cc 이하)는 자동차세 과세 대상이 아니므로 취득세만 면제 적용. 경유 차량의 환경개선부담금은 별도 면제 신청 필요(환경부·한국환경공단 위탁). 시각장애인 구 4급(현 경증)은 본 조항(지방세특례제한법 제17조) 직접 적용 불가 — 거주 지자체 감면 조례 확인 필요."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "거주지(차량 등록지) 관할 시·군·구청 세무과",
+        "method": "방문",
+        "url": "https://www.gov.kr/portal/service/serviceInfo/131200000004"
+      },
+      {
+        "channel": "위택스(Wetax) 온라인 신고",
+        "method": "온라인",
+        "url": "https://www.wetax.go.kr/"
+      },
+      {
+        "channel": "정부24 온라인 신청",
+        "method": "온라인",
+        "url": "https://www.gov.kr/portal/service/serviceInfo/131200000004"
+      }
+    ],
+    "required_documents": [
+      "지방세 감면 신청서(시·군·구청 비치 또는 위택스 양식)",
+      "장애인등록증(장애인복지카드)",
+      "신분증(주민등록증·운전면허증 등)",
+      "자동차등록증(취득 또는 이전 등록한 차량)",
+      "자동차 매매계약서 사본(취득세 신고 시 필요)",
+      "보호자 공동명의 차량의 경우: 세대를 같이 하는 사실을 증명하는 주민등록등본(가족관계증명서, 행정정보 공동이용 동의 시 생략 가능)",
+      "공동명의자 신분증 및 인감(또는 본인서명사실확인서)",
+      "임차 차량의 경우: 임대차계약서 사본(1년 이상 계약)",
+      "대리 신청 시: 위임장, 대리인 신분증"
+    ],
+    "processing_period": "취득세: 신청 당일 면제 처리(방문) 또는 위택스 온라인 신고 후 즉시. 자동차세: 신청 당일 또는 익일. 이미 납부한 경우 환급 신청 후 30일 이내 환급.",
+    "fee": {
+      "default": "무료(면제 신청 자체 수수료 없음).",
+      "exceptions": "자동차 등록·이전 관련 수수료(등록면허세 형식, 수천원 수준)는 별도 납부 대상이 될 수 있으므로 담당 부서에 사전 확인."
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "취득세 면제는 취득 시 1회성(재취득 시 별도 신청). 자동차세 면제는 해당 차량을 보유하는 기간 동안 계속 적용. 법 일몰 기한(현행 2027년 12월 31일)까지 신청 가능하며, 일몰 후 연장 입법 여부에 따라 변경될 수 있음.",
+    "renewal": "차량 교체(양도·폐차 후 신규 취득) 시 새 차량에 대해 다시 감면 신청 필요. 자동차세는 차량 보유 기간 중 자동 유지(세무과 DB 연계)되나, 차량번호 변경·이전 시 담당 부서에 신고 권장."
+  },
+  "exceptions_and_caveats": [
+    "감면 대상 차량 요건(5가지 중 어느 하나): ①배기량 2,000cc 이하 승용자동차, ②승차정원 7명 이상 10명 이하인 승용자동차(배기량 무관), ③승차정원 15명 이하인 승합자동차(배기량 무관), ④최대적재량 1톤 이하인 화물자동차(배기량 무관), ⑤배기량 250cc 이하인 이륜자동차.",
+    "전기차·수소차는 배기량이 없으므로 ①번 조건('배기량 2,000cc 이하') 적용이 어렵지만, 해석상 전기 승용차는 ②~③ 인승 기준 조항이나 별도 해석으로 포함될 수 있음 — 실제 적용 여부는 관할 시·군·구청 세무과에 사전 확인 필수.",
+    "외제차(수입차)도 차량 요건(배기량·인승·적재량)을 충족하면 면제 대상. 단, 배기량 2,000cc 초과 수입 승용차는 제외.",
+    "명의 요건: 장애인 본인 단독 명의 또는 동일 세대 보호자(배우자·직계혈족·형제자매·직계혈족의 배우자·배우자의 직계혈족·형제자매)와의 공동명의. 다른 세대의 친족 명의만으로는 불가.",
+    "1대 한정: 취득세 또는 자동차세 중 어느 하나의 세목에 대해 먼저 감면 신청하는 차량 1대. 동시에 두 대 이상 취득해도 1대만 면제.",
+    "자동차 등록일로부터 1년 이내 소유권 이전(양도) 또는 세대 분가 시 취득세 추징(단, 사망·혼인·해외이민·운전면허취소 등 부득이한 사유 제외).",
+    "시각장애인 구 4급(현 경증)은 지방세특례제한법 제17조 적용 대상이 아님. 그러나 다수 지방자치단체 감면 조례에서 별도로 지원 — 거주지 구청 세무과 또는 자치법규정보시스템(elis.go.kr)에서 해당 조례 확인 필요.",
+    "환경개선부담금: 경유 차량 등에 부과. 장애인용 차량은 「환경개선비용 부담법」에 따라 면제 가능하나 별도 면제 신청 필요(한국환경공단 위탁). 한국환경공단 콜센터 1577-8552.",
+    "이륜자동차(배기량 250cc 이하)는 지방세법상 자동차세 과세 대상이 아니므로 취득세 면제만 해당됨.",
+    "법령 일몰 기한(현행 2027년 12월 31일): 2년 단위 연장이 관례이나, 입법 지연 시 혜택이 중단될 수 있으므로 매년 초 연장 여부 확인 권장."
+  ],
+  "penalties_for_misuse": "자동차 등록일로부터 1년 이내에 부득이한 사유 없이 소유권을 이전하거나 세대를 분가하는 경우 면제받은 취득세 전액 추징(지방세특례제한법 제17조 및 제178조). 허위 신청으로 감면받은 경우 「지방세기본법」에 따라 가산세(신고불성실 20% + 납부지연 일 0.022%) 추가 부과.",
+  "faq": [
+    {
+      "q": "취득세 면제는 차를 산 뒤 언제까지 신청해야 하나요?",
+      "a": "자동차를 취득(출고·이전 등록)한 날로부터 60일 이내에 관할 시·군·구청 세무과에 신청해야 합니다. 60일이 지나면 취득세가 자동 부과되어 면제 신청이 어려워질 수 있으므로, 출고 직후 또는 자동차 판매처와 함께 등록 절차를 진행할 때 동시에 신청하는 것이 좋습니다."
+    },
+    {
+      "q": "자동차를 가족(배우자, 부모님) 명의로 등록해도 세금 면제가 되나요?",
+      "a": "가능합니다. 단, 반드시 '동일 세대'에 속하는 가족이어야 합니다. 주민등록표에 함께 기재된 배우자·직계혈족(부모·자녀·조부모 등)·형제자매·직계혈족의 배우자·배우자의 직계혈족·형제자매 중 1인과 공동명의로 등록하면 됩니다. 다른 집에 살거나 세대가 분리된 가족 단독 명의로는 면제받을 수 없습니다."
+    },
+    {
+      "q": "기아 카니발(7인승)이나 현대 스타리아(9인승)도 면제되나요?",
+      "a": "네. 승차정원 7명 이상 10명 이하인 승용자동차는 배기량에 관계없이 면제 대상입니다. 카니발·스타리아 등 7~10인승 미니밴(승용형 다목적차)이 해당됩니다. 자동차등록증의 '차종'이 '승용'으로 기재된 경우에 적용됩니다."
+    },
+    {
+      "q": "전기차(테슬라, 아이오닉 등)도 면제받을 수 있나요?",
+      "a": "전기차는 배기량이 없어 ①번 조건(배기량 2,000cc 이하)을 직접 적용하기 어렵습니다. 그러나 7~10인승 전기 승용차는 ②번 조건으로 해당되며, 일반 전기 승용차(5인승 등)의 경우 행정안전부 유권해석에 따라 인정 여부가 다를 수 있습니다. 반드시 관할 시·군·구청 세무과에 차량 모델명과 함께 사전 확인을 받는 것이 안전합니다."
+    },
+    {
+      "q": "외제차(수입차)도 해당되나요?",
+      "a": "네. 차량 요건(배기량·승차정원·적재량)을 충족하면 국산·수입 구분 없이 면제됩니다. 예: 배기량 2,000cc 이하 수입 승용차는 면제 대상. 단, 배기량 2,000cc 초과이면서 6인승 이하인 수입 승용차는 면제 대상이 아닙니다."
+    },
+    {
+      "q": "자동차세는 매년 신청해야 하나요?",
+      "a": "처음 한 번 신청하면 이후 해당 차량 보유 기간 동안 계속 적용됩니다. 단, 차량 교체(양도·폐차 후 새 차 구입) 시에는 새 차량에 대해 다시 면제 신청이 필요합니다. 이미 자동차세가 부과된 경우 납부 후 환급 신청도 가능합니다."
+    },
+    {
+      "q": "차를 바꾸면 기존 면제가 그대로 이어지나요?",
+      "a": "아닙니다. 차량을 양도·폐차하고 새 차를 구입하면 새 차에 대해 처음부터 다시 감면 신청해야 합니다. 단, 기존 차량을 취득한 날로부터 1년 이내에 양도(판매)하면 취득세가 추징될 수 있으니 주의하세요."
+    },
+    {
+      "q": "1년 안에 차를 팔면 세금을 토해내야 하나요?",
+      "a": "네. 자동차 등록일로부터 1년 이내에 소유권을 이전(판매·증여 등)하거나 세대를 분가하면 면제받은 취득세 전액이 추징됩니다. 단, 1년 이내라도 사망·혼인·해외이민·운전면허취소 등 부득이한 사유가 있는 경우는 추징에서 제외됩니다."
+    },
+    {
+      "q": "시각장애인 4급(현 경증)인데 저는 해당이 안 되나요?",
+      "a": "지방세특례제한법 제17조는 '심한 장애(중증)'만을 대상으로 합니다. 시각장애 구 4급(현 경증)은 이 법령 직접 적용 대상이 아닙니다. 그러나 많은 지방자치단체가 자체 감면 조례를 통해 경증 장애인에게도 지방세를 감면해 주고 있습니다. 거주지 관할 구청 세무과에 문의하거나 자치법규정보시스템(elis.go.kr)에서 해당 지자체 조례를 검색해 보세요."
+    },
+    {
+      "q": "이륜자동차(오토바이)도 면제되나요? 전기 오토바이는요?",
+      "a": "배기량 250cc 이하인 이륜자동차는 취득세 면제 대상입니다. 단, 이륜자동차는 지방세법상 자동차세 과세 대상이 아니므로 취득세만 면제됩니다. 전기 이륜차의 경우 배기량이 없으므로 관할 시·군·구청 세무과에 사전 확인 후 신청하세요."
+    },
+    {
+      "q": "자동차 딜러(판매 영업사원)가 대신 신청해 줄 수 있나요?",
+      "a": "위임장과 대리인 신분증을 갖추면 대리 신청이 가능합니다. 많은 자동차 판매소에서 출고 시 세금 감면 신청을 대행해 주는 경우가 있으므로, 계약 시 딜러에게 장애인 취득세 면제 신청 대행을 요청할 수 있습니다. 단, 위임장을 반드시 작성해야 합니다."
+    },
+    {
+      "q": "환경개선부담금도 면제되나요? 어디서 신청하나요?",
+      "a": "경유 등 오염유발 연료를 사용하는 차량에 부과되는 환경개선부담금도 장애인용 차량은 면제됩니다(환경개선비용 부담법 적용). 신청은 한국환경공단(콜센터 1577-8552) 또는 관할 시·군·구청 환경 담당 부서에 문의하여 면제 신청서를 제출하면 됩니다."
+    }
+  ],
+  "contact": [
+    {
+      "name": "행정안전부 지방세운영과",
+      "phone": "044-205-3835",
+      "url": "https://www.mois.go.kr/"
+    },
+    {
+      "name": "위택스(Wetax) 지방세 온라인 신고",
+      "phone": "110",
+      "url": "https://www.wetax.go.kr/"
+    },
+    {
+      "name": "정부24 (장애인차량취득세및자동차세감면 안내)",
+      "phone": "1588-2188",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/131200000004"
+    },
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "한국환경공단 (환경개선부담금 면제)",
+      "phone": "1577-8552",
+      "url": "https://www.keco.or.kr/"
+    },
+    {
+      "name": "자치법규정보시스템 ELIS (지자체 감면 조례 검색)",
+      "phone": null,
+      "url": "https://www.elis.go.kr/"
+    }
+  ],
+  "sources": [
+    {
+      "title": "지방세특례제한법 제17조(장애인용 자동차에 대한 감면)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/지방세특례제한법",
+      "fallback_url": "https://www.law.go.kr/LSW//lsLawLinkInfo.do?lsJoLnkSeq=1000178097&lsId=011178&chrClsCd=010202&print=print",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제17조 본문 및 일몰 기한 연도",
+        "robots_txt_ok": true,
+        "notes": "일몰 기한(2027년 12월 31일) 변경 모니터링 필수. 2년마다 연장 입법 관례. 차종 요건(배기량·인승·적재량) 개정 여부도 추적."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "지방세특례제한법 시행령",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/지방세특례제한법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제17조 관련 시행령 조항",
+        "robots_txt_ok": true,
+        "notes": "감면 신청 절차·서류 등 세부 위임 사항."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "지방세법 (취득세·자동차세 과세 일반 근거)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/지방세법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "취득세·자동차세 세율 조항",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "환경개선비용 부담법 (장애인 환경개선부담금 면제)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/환경개선비용부담법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "면제 대상 조항",
+        "robots_txt_ok": true,
+        "notes": "경유차 등 환경개선부담금 면제 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인 생활안정 > 세금감면 > 자동차구입 관련 세금 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=4&cciNo=1&cnpClsNo=3",
+      "fallback_url": "https://www.easylaw.go.kr/CSP/CnpClsMainBtr.laf?popMenu=ov&csmSeq=916&ccfNo=4&cciNo=1&cnpClsNo=3",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 — 취득세·자동차세 면제 요건 표",
+        "robots_txt_ok": true,
+        "notes": "법제처 easylaw는 법 개정 시 본문도 갱신되므로 quarterly 추적 권장."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인차량 취득세 및 자동차세 감면 — 정부24 민원안내",
+      "publisher": "정부24",
+      "publisher_type": "중앙정부",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/131200000004",
+      "fallback_url": "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/131200000004",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "민원 안내 본문 — 대상, 구비서류, 처리기간",
+        "robots_txt_ok": true,
+        "notes": "정부24 민원안내에서 최신 구비서류 목록 확인 권장."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "세제혜택 — 장애인정책 — 보건복지부",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010600",
+      "fallback_url": "https://www.mohw.go.kr/menu.es?mid=a10710010500",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 영역",
+        "robots_txt_ok": true,
+        "notes": "보건복지부 장애인 세제혜택 안내 페이지."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "행정안전부 지방세특례제한법 시행령 개정안",
+      "publisher": "행정안전부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mois.go.kr/cmm/fms/FileDown.do?atchFileId=FILE_000000000014701&fileSn=1",
+      "fallback_url": "https://www.mois.go.kr/frt/bbs/type010/commonSelectBoardArticle.do?bbsId=BBSMSTR_000000000008&nttId=100890",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "manual_review",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "행정안전부 개정 입법예고문 — 일몰 연장·차종 요건 변경 파악용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "위택스(Wetax) — 지방세 신고·납부",
+      "publisher": "행정안전부(위택스)",
+      "publisher_type": "중앙정부",
+      "url": "https://www.wetax.go.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "온라인 감면 신청 채널. 감면 신청 메뉴 경로 변경 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "자치법규정보시스템(ELIS) — 지자체 지방세 감면 조례",
+      "publisher": "행정안전부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.elis.go.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.elis.go.kr/openapi",
+        "auth_required": true,
+        "docs_url": "https://www.elis.go.kr/"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "manual_review",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "시각장애 경증 등 지자체별 추가 감면 조례 모니터링. 전국 243개 지자체 조례 일괄 검색 가능."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "자동차 구입 관련 세금 감면 FAQ — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/OnhunqueansInfoRetrieve.laf?onhunqnaAstSeq=97&targetRow=101&sortType=RECOM&pagingType=large&onhunqueSeq=4805",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "Q&A 형식의 보조 확인용 페이지."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B031", "B010", "B007"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

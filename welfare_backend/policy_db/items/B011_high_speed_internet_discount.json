@@ -1,0 +1,521 @@
+{
+  "id": "B011",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 11,
+  "title": "초고속 인터넷 요금 감면 (기본정보이용료 30~40%)",
+  "short_summary": "초고속 인터넷 요금 할인(기본정보이용료 30~40% 할인 : PC통신사업자에 따라 할인율 상이) (전단지 원문)",
+  "category": "통신",
+  "benefit_type": "감면",
+  "supported_amount": {
+    "rate": "초고속 인터넷 가입자접속 서비스의 기본 정보이용료 30~40% 감면. 기본 30% 감면이 일반적이며, KT의 KORNET Dial-Up(전화접속) 상품에 한해 40% 감면. 일부 사업자는 결합·구간별로 40%까지 적용.",
+    "amount": null,
+    "scope": "초고속 인터넷(FTTH·HFC·xDSL 등 유선 인터넷 가입자접속 서비스)의 월 기본료(정보이용료). 인터넷+TV(IPTV·위성방송) 결합 서비스도 감면 신청 대상이나 결합할인과의 중복 적용 규칙은 사업자별 상이. 단, 단말기 할부금·셋톱박스 임대료·부가서비스(스트리밍 콘텐츠·OTT 추가 요금)는 감면 대상 아님. 종량형 인터넷(KORNET Dial-Up 등)은 40% 감면."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 장애인이 속한 세대(해당 장애인 본인 또는 같은 세대원 명의 회선 모두 가능). 「장애인복지법」에 따른 장애인복지시설·장애인복지단체에 대한 인터넷 요금도 감면 대상.",
+    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "companion_allowed": null,
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "전국 동일. **장애인이 속한 세대 단위 1회선**이 원칙(이동통신과 달리 세대 기준). 가족(부모·배우자 등 같은 세대원) 명의 회선도 신청 가능. 주민등록등본으로 세대 확인."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제30조(경제적 부담의 경감)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행령",
+      "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+    },
+    {
+      "name": "전기통신사업법",
+      "article": "제4조 제3항(보편적 역무 및 사회적 약자 요금감면)",
+      "url": "https://www.law.go.kr/법령/전기통신사업법"
+    },
+    {
+      "name": "전기통신사업법 시행령",
+      "article": "제2조 제1항 제3호 및 제2항 제3호(인터넷 가입자접속 서비스 감면 명시)",
+      "url": "https://www.law.go.kr/법령/전기통신사업법시행령"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "KT",
+      "lines_or_routes": ["KT 기가 인터넷(FTTH/HFC)", "KT 인터넷 100M·500M·1G·2.5G·10G", "KORNET Dial-Up(전화접속)"],
+      "apply_channel": "KT 고객센터(유선 100, 휴대폰 114) / KT플라자·대리점 방문 / KT닷컴 온라인 / 정부24·복지로 일괄신청",
+      "card_or_proof_type": "장애인복지카드 사본 또는 시·군·구청장 발행 장애인등록증·증명서. 행정안전부 주민서비스 통합정보시스템으로 자격 자동조회.",
+      "url": "https://product.kt.com/benefit/membership/web/welfare_sale.html",
+      "notes": "기본 30% 감면. **KORNET Dial-Up(전화접속 종량형)에 한해 40% 감면**. 결합할인-복지할인 우선순위: 장애인·유공자·기초연금 → 결합 우선 후 복지 / 기초생활수급자 → 복지 우선 후 결합. 월 중 신청 시 당월부터 적용."
+    },
+    {
+      "region": "전국",
+      "agency": "SK브로드밴드(B world)",
+      "lines_or_routes": ["B world 기가 인터넷(FTTH)", "B 인터넷 100M·500M·1G", "B 인터넷+B TV 결합 서비스"],
+      "apply_channel": "SKB 고객센터(106) / 대리점 방문(증빙서류 FAX 부담 → 방문 권장) / B world 홈페이지 / 정부24·복지로",
+      "card_or_proof_type": "복지카드(사본), 시군구청장 발행 장애인등록증(사본) 또는 증명서. 인터넷의 경우 주민등본 추가 요구 가능.",
+      "url": "https://www.skbroadband.com/footer/Page.do?retUrl=/footer/PriceReduction",
+      "notes": "기본료 30% 감면(공식 안내). **복지감면과 결합할인은 중복 적용 불가 — 둘 중 큰 1가지 할인만 적용**. 차상위 가구도 30% 별도 운영. 일부 보도에 따라 2017.5.1. 이후 등록건은 43% 감면 사례 안내된 적 있으나 현재 공식 약관은 30% 기준."
+    },
+    {
+      "region": "전국",
+      "agency": "LG U+",
+      "lines_or_routes": ["LG U+ 인터넷(광기가)", "LG U+ 인터넷+TV 결합", "LG U+ 인터넷전화 결합"],
+      "apply_channel": "LG U+ 고객센터(1544-0001) / 복지할인 ARS 1523 / 직영점·대리점 방문 / LG U+ 홈페이지 / 정부24·복지로",
+      "card_or_proof_type": "장애인복지카드 사본.",
+      "url": "https://www.lguplus.com/benefit-uplus/price-discount/B400000008",
+      "notes": "기본료 30% 감면. 결합할인과의 중복·우선 규칙은 약관에 따름. 신청 직후 익월 청구분부터 적용 일반."
+    },
+    {
+      "region": "전국",
+      "agency": "KT SkyLife(위성방송)",
+      "lines_or_routes": ["KT SkyLife 인터넷+위성방송 결합 서비스"],
+      "apply_channel": "KT SkyLife 고객센터(1588-3002) / 대리점",
+      "card_or_proof_type": "장애인복지카드 사본.",
+      "url": "https://www.skylife.co.kr/",
+      "notes": "초고속인터넷과 유료방송(IPTV·위성방송) 결합 서비스에 대한 요금 감면 신청 가능."
+    },
+    {
+      "region": "전국",
+      "agency": "지역 케이블 사업자(딜라이브, LG헬로비전, 현대HCN, CMB, 티브로드 등)",
+      "lines_or_routes": ["지역 케이블 SO의 광 인터넷·HFC 인터넷 서비스"],
+      "apply_channel": "각 케이블사 고객센터·홈페이지·대리점",
+      "card_or_proof_type": "장애인복지카드 사본 또는 정부24 자격증명.",
+      "url": "https://www.smartchoice.or.kr/smc/service/vulnerable.do",
+      "notes": "「전기통신사업법」 제4조에 따라 모든 인터넷 가입자접속 서비스 사업자가 감면 의무. 사업자별 약관 상이. 가입 케이블사 고객센터 사전 문의 권장. 2024년 이후 SK브로드밴드와 결합 운영 사례 많음."
+    }
+  ],
+  "how_to_use": {
+    "default": "통신사에 신청 → 행정안전부 주민서비스 통합정보시스템 또는 통신사 자체 검증으로 자격 확인 → 등록 완료 → 다음 청구분부터 자동 감면(KT는 신청 당월부터). 별도의 사후 환급 절차 없음.",
+    "with_card": "정부24·복지로 일괄신청: 공동인증서·간편인증 로그인 → '요금감면 통합신청' → 인터넷 서비스 사업자 선택 → 행정정보 공동이용 동의 → 자동 자격조회·접수. 통신사 시스템 반영 1~3영업일.",
+    "without_card": "방문 신청: 통신사·케이블사 대리점에 신분증·장애인복지카드·주민등록등본(세대 확인용) 지참, 신청서 작성. 전화 신청: KT 100/114, SKB 106, LGU+ 1544-0001(또는 ARS 1523) → 본인인증 → 신청 → 증빙 FAX·앱 업로드.",
+    "exceptions": "**단말기 할부금·셋톱박스 임대료·OTT/스트리밍 추가 콘텐츠 요금·부가서비스(고정 IP, 보안 옵션 등)는 감면 대상 아님.** 결합상품(인터넷+TV+전화) 가입자는 결합할인과 복지할인의 중복·우선 규칙이 통신사별로 상이 — 특히 SK브로드밴드는 중복 불가, KT는 우선 적용 후 추가. 종량형 인터넷(KT KORNET Dial-Up)은 30%가 아닌 40% 감면. 인터넷전화(070) 결합 시 통화료 감면(B005)과 별개로 인터넷 기본료 감면이 적용됨."
+  },
+  "application": {
+    "where": [
+      { "channel": "정부24 — 요금감면 통합신청", "method": "온라인", "url": "https://www.gov.kr/portal/service/serviceInfo/174100000049" },
+      { "channel": "복지로 — 인터넷요금감면", "method": "온라인", "url": "https://www.bokjiro.go.kr/" },
+      { "channel": "KT 고객센터", "method": "전화", "url": "https://product.kt.com/benefit/membership/web/welfare_sale.html" },
+      { "channel": "SK브로드밴드 고객센터 106", "method": "전화", "url": "https://www.skbroadband.com/footer/Page.do?retUrl=/footer/PriceReduction" },
+      { "channel": "LG U+ 고객센터 1544-0001 / ARS 1523", "method": "전화", "url": "https://www.lguplus.com/benefit-uplus/price-discount/B400000008" },
+      { "channel": "KT SkyLife 고객센터", "method": "전화", "url": "https://www.skylife.co.kr/" },
+      { "channel": "지역 케이블 사업자(딜라이브·LG헬로비전·CMB·HCN 등) 고객센터", "method": "전화", "url": null },
+      { "channel": "KT플라자·SKB 지점·LG U+ 직영점·케이블사 대리점", "method": "방문", "url": null },
+      { "channel": "주소지 동주민센터(행정복지센터)", "method": "방문", "url": "https://www.gov.kr/" }
+    ],
+    "required_documents": [
+      "신청서(통신사 양식 또는 정부24 온라인 양식)",
+      "장애인복지카드(장애인등록증) 또는 사본",
+      "신분증",
+      "주민등록등본(세대원 확인 — 가족 명의 회선 신청 시 필수)",
+      "대리 신청 시: 위임장, 대리인 신분증",
+      "(SKB 등) 증빙서류 FAX 송부분"
+    ],
+    "processing_period": "정부24·복지로 온라인 일괄신청: 자격 자동조회 시 즉시 접수, 통신사 시스템 반영 1~3영업일. KT는 월 중 신청해도 당월 청구분부터 할인 적용. SKB·LGU+·케이블사는 보통 신청월 다음달부터 적용.",
+    "fee": {
+      "default": "신청 자체의 수수료 없음(무료).",
+      "exceptions": null
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "장애 등록 유효기간과 연동. 영구 판정자는 별도 만료 없음. 재판정 대상자는 재판정 기한까지 자동 유지되며 만료 시 자격 재확인 필요.",
+    "renewal": "장애 자격 재판정 후 자격 유지가 확인되면 통신사가 행정정보 공동이용으로 자동 갱신. 자격이 소멸·말소된 경우 그 시점부터 감면 종료. **명의 변경·이사·통신사 변경·결합 변경 시에는 재신청 필수** — 자동 이관 안 됨. 통신사 약관에 따라 1~3년 주기로 자격 재검증 안내(문자·청구서)가 발송됨."
+  },
+  "exceptions_and_caveats": [
+    "**감면 대상은 인터넷 기본료(정보이용료)**. 단말기 할부금·셋톱박스 임대료·OTT/스트리밍 추가 콘텐츠 요금·고정 IP·보안 옵션 등 부가서비스 요금은 감면 대상 아님.",
+    "**결합상품 가입 시 결합할인-복지할인 중복 규칙이 통신사별로 다름**. SK브로드밴드는 중복 불가(둘 중 큰 1가지). KT는 장애인·유공자·기초연금수급자 → 결합 우선 후 복지 추가(기초생활수급자는 복지 우선 후 결합). LGU+는 약관에 따라 차이.",
+    "**종량형/전화접속 인터넷**(KT KORNET Dial-Up 등)은 30%가 아닌 **40% 감면**. 일반 초고속 인터넷은 30%가 기본.",
+    "감면율 표기가 보도자료마다 30%/43%/30~40% 등으로 상이한 사례가 있음. **공식 약관 기준은 30%(일반) / 40%(종량형)이며, 사업자별 프로모션·할인 조합으로 일시 변동될 수 있음** → 가입 시 사업자 공식 안내 확인.",
+    "**장애인이 속한 세대 단위 1회선** 원칙. 한 집에 회선 2개를 모두 감면받기는 일반적으로 불가(사업자 약관에 따름).",
+    "회사·법인 명의 회선은 본 감면 대상 아님(별도 단체 감면 규정 적용).",
+    "장애인복지시설·복지단체 명의 회선은 별도 감면 대상(시설 등록증·사업자등록증 제출).",
+    "신청을 하지 않으면 자동 적용되지 않음. 원칙적으로 소급 적용 불가(통신사별 일부 소급 정책 있음, 보통 신청월 또는 3개월 이내).",
+    "이사·번호이동·통신사 변경·결합 구성 변경 시 감면 자격 재신청 필요.",
+    "인터넷+TV+모바일 결합 시 **인터넷 감면(B011)**과 **이동통신 감면(B006)**, **유선전화 감면(B005)**은 각각 별도로 신청·적용됨(자동 통합 적용 아님). 정부24 일괄신청을 활용하면 한 번에 처리 가능."
+  ],
+  "penalties_for_misuse": "장애인 자격이 아닌 자가 부정으로 감면을 받은 경우 차액 환수(추징) 및 통신사 약관에 따른 서비스 이용 제한. 「전기통신사업법」 사회적 약자 요금감면 부정수급은 통신사 약관·이용자보호기준에 따라 적발 시 감면 자격 1~3년 제한이 부과될 수 있음. 행정안전부 주민서비스 통합정보시스템의 자격 자동 검증으로 자격 상실 후 부정 수령 시 자동 환수 청구.",
+  "faq": [
+    {
+      "q": "정확히 얼마나 할인되나요? 30%인가요 40%인가요?",
+      "a": "일반 초고속 인터넷(광기가·100M·500M·1G 등)은 **기본료 30% 감면**입니다. KT KORNET Dial-Up(전화접속 종량형)은 **40% 감면**. 일부 보도에 따라 사업자별 프로모션·결합 조건에 따라 30~43%까지 변동 사례가 있으나 공식 약관 기준은 30%/40% 입니다. 정확한 할인액은 가입 사업자에 직접 확인하세요."
+    },
+    {
+      "q": "가족(부모·배우자) 명의 인터넷도 감면되나요?",
+      "a": "**가능합니다.** 「전기통신사업법 시행령」은 인터넷 가입자접속 서비스의 경우 '**장애인이 속한 세대**'를 감면 대상으로 규정합니다. 같은 세대원이면 가족 명의 회선도 신청 가능. 주민등록등본으로 세대 확인(정부24 일괄신청 시 자동 확인)."
+    },
+    {
+      "q": "한 집에 인터넷 회선 2개 모두 감면되나요?",
+      "a": "원칙적으로 **세대당 1회선**입니다. 두 회선 모두 받으려면 통신사 사전 문의 필요. 일반적으로 같은 세대의 2개 회선을 동시에 감면받기는 어렵습니다."
+    },
+    {
+      "q": "어디서 가장 빨리 신청할 수 있나요?",
+      "a": "온라인은 **정부24 '요금감면 통합신청'**(www.gov.kr) 또는 **복지로**(www.bokjiro.go.kr)에서 공동인증서·간편인증으로 즉시 신청 가능(통신사 반영 1~3영업일). 전화는 가입 통신사 고객센터(KT 100, SKB 106, LGU+ 1544-0001) 또는 LGU+의 경우 **ARS 1523**(이통3사 공동, 무료)."
+    },
+    {
+      "q": "결합상품(인터넷+TV+전화)을 쓰는데 결합할인+복지할인 둘 다 받을 수 있나요?",
+      "a": "통신사별로 다릅니다.\n- **SK브로드밴드**: 복지감면과 결합할인 **중복 적용 불가** — 둘 중 큰 1가지 할인만 적용.\n- **KT**: 장애인·유공자·기초연금수급자는 **결합할인 우선 적용 후 복지할인 추가**(기초생활수급자는 복지할인 우선 후 결합할인).\n- **LG U+**: 약관에 따라 다름.\n→ 가입 시 고객센터에 상세 시뮬레이션 요청을 권장합니다."
+    },
+    {
+      "q": "셋톱박스 임대료나 OTT 추가 요금도 할인되나요?",
+      "a": "**아닙니다.** 셋톱박스 임대료·단말기 할부금·OTT/스트리밍 추가 콘텐츠 요금·고정 IP·보안 옵션 등 부가서비스 요금은 감면 대상이 아닙니다. **인터넷 기본료(정보이용료)**만 30~40% 감면됩니다."
+    },
+    {
+      "q": "지역 케이블 사업자(딜라이브·LG헬로비전 등)에서 가입한 인터넷도 감면되나요?",
+      "a": "네. 「전기통신사업법」 제4조에 따라 모든 인터넷 가입자접속 서비스 사업자가 감면 의무가 있습니다. 다만 사업자별 약관·신청 절차·서류가 상이하므로 가입 케이블사 고객센터에 사전 문의가 필요합니다."
+    },
+    {
+      "q": "신청 후 언제부터 할인이 적용되나요?",
+      "a": "**KT는 신청 당월** 청구분부터, SKB·LGU+·케이블사는 통상 신청월 **다음달** 청구분부터 적용됩니다. 정부24·복지로 일괄신청은 통신사 시스템 반영까지 1~3영업일 소요."
+    },
+    {
+      "q": "이사 가서 인터넷 회선을 옮겼습니다. 감면이 자동으로 이관되나요?",
+      "a": "**자동 이관 안 됨** → 이사·명의 변경·통신사 변경·결합 구성 변경 시 재신청 필요. 정부24 일괄신청을 다시 이용하면 행정정보 공동이용으로 빠르게 처리됩니다."
+    },
+    {
+      "q": "인터넷+TV+모바일+전화를 모두 쓰는데 한 번에 신청할 수 있나요?",
+      "a": "**정부24 '요금감면 통합신청'**을 이용하면 인터넷(B011)·이동통신(B006)·유선전화(B005)를 **한 번에** 신청 가능합니다. 단 각 서비스의 감면 적용은 사업자별로 별도 처리되므로, 청구서에서 각 항목 감면이 모두 반영됐는지 확인하는 것이 좋습니다."
+    },
+    {
+      "q": "장애인복지시설·복지단체 명의 인터넷도 감면되나요?",
+      "a": "**네.** 「장애인복지법」에 따른 등록된 장애인복지시설·복지단체 명의의 인터넷도 감면 대상입니다. 시설 등록증·단체 등록증·사업자등록증 등을 첨부해 영업창구에서 신청합니다."
+    },
+    {
+      "q": "신청 안 한 기간도 소급해서 환급받을 수 있나요?",
+      "a": "**원칙적으로 소급 적용 불가**입니다. 통신사별로 '신청월 또는 3개월 이내' 등 일부 소급 정책을 운영하는 경우가 있어 가입 통신사 문의 시 일부 환급이 가능할 수 있습니다."
+    },
+    {
+      "q": "외국인 등록 장애인도 같은 혜택을 받나요?",
+      "a": "「장애인복지법」 제32조의2에 따른 등록을 마친 재외동포·외국인 장애인이라면 동일하게 적용됩니다. 외국인등록증·복지카드(사본) 등 신분 확인 서류가 필요합니다."
+    }
+  ],
+  "contact": [
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
+    { "name": "KT 고객센터(유선)", "phone": "100", "url": "https://help.kt.com/" },
+    { "name": "KT 고객센터(휴대폰)", "phone": "114", "url": "https://product.kt.com/benefit/membership/web/welfare_sale.html" },
+    { "name": "SK브로드밴드 고객센터", "phone": "106", "url": "https://www.skbroadband.com/" },
+    { "name": "LG U+ 고객센터", "phone": "1544-0001", "url": "https://www.lguplus.com/" },
+    { "name": "이통3사 공동 ARS(LGU+ 등 연계)", "phone": "1523", "url": "https://www.smartchoice.or.kr/smc/service/vulnerable.do" },
+    { "name": "KT SkyLife", "phone": "1588-3002", "url": "https://www.skylife.co.kr/" },
+    { "name": "스마트초이스(KTOA)", "phone": "02-2015-9100", "url": "https://www.smartchoice.or.kr/" },
+    { "name": "방송통신위원회 이용자보호국", "phone": "1335", "url": "https://www.kcc.go.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=5&cciNo=2&cnpClsNo=1",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 상단 '시행일' 표기",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행령 (별표2 공공시설 등의 이용요금 감면 기준)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표2 표 내용",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "전기통신사업법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/전기통신사업법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "전기통신사업법 시행령 (제2조 제1항 제3호 및 제2항 제3호)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/전기통신사업법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "인터넷 가입자접속 서비스 감면의 직접 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "통신요금 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=5&cciNo=2&cnpClsNo=1",
+      "fallback_url": "https://m.easylaw.go.kr/MOB/CsmInfoRetrieve.laf?csmSeq=916&ccfNo=5&cciNo=2&cnpClsNo=1",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "div.cont_view",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공요금 감면 — 보건복지부 장애인정책",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010500",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "div#contents",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "취약계층 요금감면 — 스마트초이스(KTOA)",
+      "publisher": "한국통신사업자연합회(KTOA)",
+      "publisher_type": "공기업",
+      "url": "https://www.smartchoice.or.kr/smc/service/vulnerable.do",
+      "fallback_url": "https://m.smartchoice.or.kr/smc/service/vulnerable.do?type=m",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 표/카드 텍스트",
+        "robots_txt_ok": true,
+        "notes": "이통3사 + 알뜰폰 + 유선·인터넷 통합 공시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "요금감면일괄신청 — 정부24",
+      "publisher": "행정안전부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/174100000049",
+      "fallback_url": "https://www.gov.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "서비스 안내 본문",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "복지할인 혜택 — KT닷컴",
+      "publisher": "주식회사 케이티(KT)",
+      "publisher_type": "민간",
+      "url": "https://product.kt.com/benefit/membership/web/welfare_sale.html",
+      "fallback_url": "https://help.kt.com/disabledInfo/DisabledProdGuide3.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 표/감면율 텍스트",
+        "robots_txt_ok": true,
+        "notes": "KORNET Dial-Up 40% 감면 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "요금 감면 안내 — SK브로드밴드",
+      "publisher": "SK브로드밴드",
+      "publisher_type": "민간",
+      "url": "https://www.skbroadband.com/footer/Page.do?retUrl=/footer/PriceReduction",
+      "fallback_url": "https://www.bworld.co.kr/footer/page.do?menu_id=F01060000",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 표/감면율 텍스트",
+        "robots_txt_ok": true,
+        "notes": "결합할인-복지할인 중복불가 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "복지할인 — LG U+",
+      "publisher": "엘지유플러스",
+      "publisher_type": "민간",
+      "url": "https://www.lguplus.com/benefit-uplus/price-discount/B400000008",
+      "fallback_url": "https://www.lguplus.com/support/service/notice/2000019766",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "초고속인터넷 요금감면 — 구로구청",
+      "publisher": "서울특별시 구로구청",
+      "publisher_type": "기초지자체",
+      "url": "https://www.guro.go.kr/www/contents.do?key=2301",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "지자체 통합 안내 — 사업자별 감면율 비교 정리."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "초고속인터넷 요금감면 — 진천군",
+      "publisher": "진천군",
+      "publisher_type": "기초지자체",
+      "url": "https://www.jincheon.go.kr/site/welfare/sub.do?menukey=2721",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "방송통신위원회 — 이용자보호 정책자료",
+      "publisher": "방송통신위원회",
+      "publisher_type": "중앙정부",
+      "url": "https://www.kcc.go.kr/ifc/databoard/IFC_databoard_communiinfo04_lst.jsp?dc=K02060203",
+      "fallback_url": "https://www.kcc.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B005", "B006"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

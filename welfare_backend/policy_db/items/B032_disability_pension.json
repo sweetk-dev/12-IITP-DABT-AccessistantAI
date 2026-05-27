@@ -1,0 +1,361 @@
+{
+  "id": "B032",
+  "leaflet_section": "저소득층(기초 및 차상위)",
+  "leaflet_number": 1,
+  "title": "장애인연금",
+  "short_summary": "장애인연금 : 만 18세 이상 장애인연금법상 중증 장애인에게 기초급여, 부가급여 등 지원(소득재산조사 실시 후 지원) (전단지 원문)",
+  "category": "소득지원",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": null,
+    "amount": "기초급여 최대 349,700원/월 + 부가급여 최대 90,000원/월 = 합산 최대 439,700원/월 (2026년 기준). 소득인정액·계층·연령에 따라 차등.",
+    "scope": "기초급여: 근로능력 상실·감소로 인한 소득 보전 목적. 소득인정액이 선정기준액 미만이면 전액(349,700원) 지급하되, 소득인정액이 선정기준액의 일정 범위에 근접한 경우 '초과분 감액'(최저지급액 2만 원)이 적용됨. 부부 모두 수급자이면 각각 기초급여의 20% 감액(부부감액). 부가급여: 장애 추가지출비용 보전 목적으로 부부감액·초과분 감액 미적용. 계층별로 3만~9만 원/월 차등."
+  },
+  "eligibility": {
+    "target": "「장애인연금법」에 따라 중증장애인으로 인정된 만 18세 이상의 등록 장애인으로서 소득인정액이 선정기준액 이하인 사람",
+    "severity_levels": ["심한 장애(중증)"],
+    "companion_allowed": null,
+    "income_criteria": "2026년 선정기준액: 단독가구 월 140만원 이하, 부부가구(두 사람 모두 중증 장애인) 월 224만원 이하. 소득인정액 = 소득평가액 + 재산의 소득환산액. 선정기준액은 매년 보건복지부 장관이 고시로 결정하며 매년 4월 기준으로 조정됨.",
+    "age_criteria": "만 18세 이상(18세가 되는 생일 달의 다음 달부터 적용 가능). 단, 만 18세 ~ 만 20세 이하이면서 학교(초·중·고·특수학교)에 재학 중인 경우에는 해당 학교 졸업·중퇴·휴학 시까지 장애아동수당(B034)을 대신 받을 수 있음.",
+    "residency_criteria": "국내 거주(주민등록 기준). 해외 체류 60일 이상 지속 시 지급 정지."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인연금법",
+      "article": "제1조(목적), 제2조(정의), 제4조(수급권자의 범위), 제5조(소득인정액의 산정), 제6조(기초급여), 제7조(부가급여)",
+      "url": "https://www.law.go.kr/법령/장애인연금법"
+    },
+    {
+      "name": "장애인연금법 시행령",
+      "article": "제2조(중증장애인의 범위), 제3조(소득인정액 산정 세부기준), 제4조(기초급여 감액 기준)",
+      "url": "https://www.law.go.kr/법령/장애인연금법시행령"
+    },
+    {
+      "name": "장애인연금법 시행규칙",
+      "article": "제3조(수급권자 선정기준 고시), 제4조(급여 지급 방법)",
+      "url": "https://www.law.go.kr/법령/장애인연금법시행규칙"
+    },
+    {
+      "name": "장애인연금 수급권자 선정기준 및 기초급여액에 관한 고시(보건복지부 고시)",
+      "article": "2026년 선정기준액(단독 140만원·부부 224만원), 기초급여액(349,700원) 고시",
+      "url": "https://www.law.go.kr/행정규칙/장애인연금수급권자선정기준및기초급여액에관한고시"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "보건복지부 / 시·군·구청(장애인복지과) / 읍·면·동 행정복지센터",
+      "lines_or_routes": ["수급권자 선정 및 급여 결정(시군구장)", "신청 접수 및 조사(읍면동)", "지급(시군구)"],
+      "apply_channel": "주소지 읍면동 행정복지센터 방문 또는 복지로(bokjiro.go.kr) 온라인 신청",
+      "card_or_proof_type": null,
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710030100",
+      "notes": "급여는 매월 20일(공휴일·토요일이면 전날) 신청인 본인 명의 계좌로 입금. 위탁은행: 우리은행."
+    },
+    {
+      "region": "전국",
+      "agency": "국민연금공단 장애인연금 지원센터",
+      "lines_or_routes": ["소득·재산 조사", "중증장애인 심사(중증 여부 확인)", "수급자 관리"],
+      "apply_channel": "국민연금공단 전화(1355) 또는 지사 방문",
+      "card_or_proof_type": null,
+      "url": "https://www.nps.or.kr/",
+      "notes": "국민연금공단이 소득·재산 조사 및 중증장애 여부 확인 업무를 위탁 수행. 심사 결과를 시군구에 통보하면 시군구가 최종 결정."
+    }
+  ],
+  "how_to_use": {
+    "default": "신청 후 소득·재산 조사(약 30일) → 수급 결정 → 매월 20일 신청인 계좌로 자동 입금. 별도 창구 방문 없이 매월 자동 지급.",
+    "with_card": null,
+    "without_card": null,
+    "exceptions": "① 부부감액: 부부 모두 수급자이면 각각 기초급여의 20% 감액(각 부부 기초급여 × 0.8). ② 초과분 감액: 소득인정액이 선정기준액에 근접하면 '기초급여 - (소득인정액 - 선정기준액 × 0.4 구간)' 방식으로 감액되며 최저 지급액은 20,000원. ③ 65세 전환: 65세가 되는 달의 다음 달부터 기초급여는 기초연금으로 전환 지급(별도 신청 필요, 시군구가 65세 1개월 전 안내). 부가급여는 계속 지급. ④ 해외 체류 60일 초과 시 해당 월부터 지급 정지, 귀국 후 재신청."
+  },
+  "application": {
+    "where": [
+      { "channel": "주소지 읍면동 행정복지센터(동주민센터)", "method": "방문", "url": "https://www.gov.kr/" },
+      { "channel": "복지로 홈페이지", "method": "온라인", "url": "https://www.bokjiro.go.kr/" },
+      { "channel": "복지로 모바일 앱", "method": "모바일 앱", "url": "https://www.bokjiro.go.kr/" },
+      { "channel": "국민연금공단 지사(보완 상담)", "method": "방문", "url": "https://www.nps.or.kr/" }
+    ],
+    "required_documents": [
+      "사회보장급여(서비스) 신청서(현장 비치 또는 복지로 다운로드)",
+      "신분증(주민등록증, 운전면허증 등)",
+      "장애인등록증 또는 장애인복지카드(기존 등록 장애인)",
+      "금융정보 제공동의서(소득·재산 조사용)",
+      "통장 사본(본인 명의, 입금 계좌)",
+      "대리 신청 시: 위임장, 대리인 신분증",
+      "(필요 시) 임대차계약서, 사용대차 확인서 등 재산 증빙서류"
+    ],
+    "processing_period": "신청일로부터 약 30일 이내(소득·재산 조사 완료 후 결정). 급여는 수급 결정된 달의 다음 달부터 지급하되, 수급 결정일이 속한 달은 해당 달로 소급 가능.",
+    "fee": {
+      "default": "없음 (수수료·신청 비용 전액 무료)",
+      "exceptions": null
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "수급 자격 유지 기간 동안 계속 지급. 매년 정기적으로 소득·재산 변동 확인(정기조사). 장애 상태 변동(중증→경증 재판정)이나 소득인정액 초과 시 수급 종료.",
+    "renewal": "수급자가 되면 별도 갱신 신청 불필요(자동 지급). 다만 소득·재산 변동 신고는 의무이며, 주소 변경·가구원 변동 시 읍면동에 신고 필요."
+  },
+  "exceptions_and_caveats": [
+    "장애인연금은 「장애인연금법」상 '중증장애인'(종전 1~2급 + 3급 중복 장애에 해당하는 자)만 수급 가능. 경증 장애인은 B033 장애수당 대상.",
+    "중증장애 여부는 「장애인연금법 시행령」 별표에 따라 기존 1·2급(현 심한 장애 중 일부) 및 3급 중복(종전 기준)에 해당하는 사람만 인정. 심한 장애(중증)로 등록되어도 장애인연금법상 중증 기준에 해당하지 않으면 수급 불가.",
+    "65세 이상이 되면 기초급여는 기초연금으로 전환(지급 금액은 기초연금 선정 기준에 따라 달라질 수 있음). 기초연금 신청을 별도로 해야 하며, 기초연금 미신청 시 기초급여도 자동 전환되지 않음.",
+    "기초생활수급자(생계·의료급여)의 경우 장애인연금 기초급여는 소득으로 산정되어 생계급여 등에서 차감될 수 있음. 단 부가급여는 소득으로 보지 않음.",
+    "직역연금(공무원연금·군인연금·사학연금·별정우체국연금) 수급권자 및 그 배우자는 원칙적으로 기초급여 지급 대상에서 제외. 단, 직역연금 수급액이 소액이면 특례 적용 가능.",
+    "보장시설 입소자(생계·의료급여 수급자)는 부가급여가 다르게 적용될 수 있으며, 시설에서 생활비를 지원받는 경우 급여 일부 조정.",
+    "선정기준액 및 기초급여액은 매년 전국소비자물가변동률을 반영하여 1월 1일부터 조정됨(매년 12월 보건복지부 고시). 2026년: 선정기준액 단독 140만원, 기초급여 349,700원.",
+    "소득인정액 조사는 소득평가액(근로소득, 사업소득, 재산소득, 공적이전소득 등)과 재산의 소득환산액(금융재산 포함)을 합산하여 산정.",
+    "기초연금과 장애인연금 기초급여는 동시에 받을 수 없음(65세 미만은 장애인연금, 65세 이상은 기초연금으로 전환)."
+  ],
+  "penalties_for_misuse": "소득·재산 변동 미신고 또는 허위 신고로 수급하면 부당이득 환수(「장애인연금법」 제17조). 거짓이나 그 밖의 부정한 방법으로 수급한 경우 2년 이하 징역 또는 2,000만원 이하 벌금(동법 제20조).",
+  "faq": [
+    {
+      "q": "장애인연금을 받으려면 어떤 장애 등급이어야 하나요?",
+      "a": "「장애인연금법」상 '중증장애인'이어야 합니다. 이는 종전 1·2급과 3급 중복 장애에 해당하는 사람으로, 현행 '심한 장애(중증)' 등록자 중 장애인연금법 시행령 별표의 기준을 충족하는 경우입니다. 경증 장애인은 장애인연금 대상이 아니며 장애수당(B033)을 신청할 수 있습니다."
+    },
+    {
+      "q": "2026년 기준 얼마나 받을 수 있나요?",
+      "a": "2026년 1월~12월 기준 기초급여 최대 349,700원/월에 부가급여를 더하여 지급합니다. 부가급여는 계층에 따라 30,000~90,000원이며, 기초생활수급자(생계·의료) 기준 최대 합산 439,700원/월까지 받을 수 있습니다. 소득인정액이 선정기준액보다 낮을수록 기초급여 전액 지급이며, 근접할수록 감액됩니다."
+    },
+    {
+      "q": "소득인정액 선정기준액이란 무엇인가요?",
+      "a": "장애인연금을 받을 수 있는 소득·재산 기준 상한선입니다. 2026년 기준 단독가구 월 140만원, 부부가구(모두 중증 장애인) 월 224만원입니다. 소득인정액(소득+재산 환산액)이 이 금액 이하여야 수급 가능합니다."
+    },
+    {
+      "q": "부부 모두 장애인이면 어떻게 되나요?",
+      "a": "부부 모두 중증장애인으로 수급 자격이 있으면, 각자 기초급여의 20%가 감액되어 지급됩니다(부부감액). 예를 들어 기초급여가 각 349,700원이면 부부감액 적용 시 각 279,760원이 지급됩니다. 부가급여는 부부감액이 적용되지 않습니다."
+    },
+    {
+      "q": "65세가 되면 어떻게 되나요?",
+      "a": "65세가 되는 달의 다음 달부터 장애인연금 기초급여는 기초연금으로 전환되어 지급됩니다. 별도로 기초연금을 신청해야 하며, 시군구에서 65세 1개월 전에 안내합니다. 부가급여는 기존 계층 기준에 따라 계속 지급됩니다. 단, 기초생활수급자(생계·의료급여)는 기초연금이 생계급여에서 차감될 수 있으므로, 그 감소분을 장애인연금 부가급여에서 보전받을 수 있습니다."
+    },
+    {
+      "q": "기초생활 수급자이면 장애인연금이 줄어드나요?",
+      "a": "기초급여는 기초생활보장 소득으로 산정되어 생계급여 등이 조정될 수 있습니다. 부가급여는 소득에 산입되지 않습니다. 전체적으로 장애인연금 수급이 기초생활보장 총수급액을 크게 낮추지 않도록 부가급여에서 보전하는 장치가 있으며, 구체적인 계산은 주민센터에 문의하세요."
+    },
+    {
+      "q": "신청 후 얼마나 걸리나요?",
+      "a": "신청일로부터 소득·재산 조사 등을 거쳐 약 30일 이내에 결정됩니다. 급여는 수급 결정된 달 또는 다음 달부터 매월 20일에 계좌로 입금됩니다."
+    },
+    {
+      "q": "온라인으로도 신청할 수 있나요?",
+      "a": "네. 복지로(bokjiro.go.kr) 또는 복지로 모바일 앱을 통해 온라인 신청이 가능합니다. 단, 처음 신청 시에는 주민센터 방문이 편리하며, 소득·재산 조사를 위한 금융정보 제공동의서 등 서류 확인이 필요할 수 있습니다."
+    },
+    {
+      "q": "장애인연금과 국민연금을 동시에 받을 수 있나요?",
+      "a": "국민연금(노령연금·장애연금 등)을 받더라도 기본적으로 장애인연금 수급이 가능합니다. 다만 공무원연금·군인연금·사학연금·별정우체국연금 등 직역연금 수급자는 장애인연금 기초급여에서 제외(또는 감액)될 수 있습니다. 소득인정액 산정 시 연금 수령액도 공적이전소득으로 포함되어 선정기준액 초과 여부에 영향을 줄 수 있습니다."
+    },
+    {
+      "q": "수급 중 이사를 하면 어떻게 하나요?",
+      "a": "이사(주소 변경) 시 새로운 주소지 읍면동 행정복지센터에 변경 신고를 해야 합니다. 변경 신고를 하지 않으면 급여가 정지될 수 있습니다."
+    }
+  ],
+  "contact": [
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr/" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
+    { "name": "국민연금공단 콜센터(장애인연금 상담)", "phone": "1355", "url": "https://www.nps.or.kr/" },
+    { "name": "주소지 읍면동 행정복지센터", "phone": null, "url": "https://www.gov.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "장애인연금법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인연금법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제4조(수급권자), 제6조(기초급여), 제7조(부가급여) 본문",
+        "robots_txt_ok": true,
+        "notes": "선정기준액·기초급여액은 법령이 아닌 보건복지부 고시로 결정됨. 고시 모니터링 병행 필요."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인연금법 시행령",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인연금법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표(중증장애인 범위) 본문",
+        "robots_txt_ok": true,
+        "notes": "중증장애인 범위, 소득인정액 산정 세부기준 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인연금 수급권자 선정기준 및 기초급여액에 관한 고시(보건복지부 고시)",
+      "publisher": "국가법령정보센터(행정규칙)",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/행정규칙/장애인연금수급권자선정기준및기초급여액에관한고시",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "선정기준액·기초급여액 표",
+        "robots_txt_ok": true,
+        "notes": "매년 12월 개정 고시, 1월 1일 시행. 가장 중요한 단가 변경 감지 대상."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인연금 개요 — 보건복지부",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710030100",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 급여액 표",
+        "robots_txt_ok": true,
+        "notes": "기초급여·부가급여 현황표 게시. 매년 1월 초 갱신."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "2026년 1월부터 장애인연금 월 최대 43만 9,700원 지급 — 보건복지부 보도자료",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/board.es?mid=a10503000000&bid=0027&list_no=1488505&act=view",
+      "fallback_url": "https://www.korea.kr/news/policyNewsView.do?newsId=148957512",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "2026년 1월 5일 발표 보도자료. 선정기준액 140만원, 기초급여 349,700원, 최대 439,700원 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인연금 — 복지로 서비스 상세",
+      "publisher": "보건복지부 복지로",
+      "publisher_type": "중앙정부",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003265",
+      "fallback_url": "https://www.bokjiro.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "급여 금액, 선정기준액 표시 영역",
+        "robots_txt_ok": true,
+        "notes": "복지로 서비스 상세 페이지. 신청 방법·서류·금액 표기."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "장애인 생활안정 > 장애(인)연금 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=2&cciNo=2&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애인연금 법령 해설 및 수급 기준 설명."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "2025년 장애인연금 사업안내(장애수당 및 장애아동수당 포함) — 보건복지부 사전정보공표",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/board.es?mid=a10107010000&bid=0039&act=view&list_no=1486590",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "pdf_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "보건복지부 사업안내 책자 PDF(연 1회 발간). 2026년 사업안내 발간 시 URL 갱신 필요."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "장애인연금 — 복지뱅크(한국사회보장정보원)",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjibank.or.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애인연금 항목 요약 안내. 보완적 참고."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B033", "B034"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

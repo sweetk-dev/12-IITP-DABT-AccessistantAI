@@ -1,0 +1,855 @@
+{
+  "id": "B041",
+  "leaflet_section": "기타",
+  "leaflet_number": 41,
+  "title": "민간 문화·관광·체육 시설 장애인 할인 (영화관·테마파크·동물원·공연·스키장 등)",
+  "short_summary": "민간이 자율적으로 운영하는 문화·관광·체육 시설(영화관·테마파크·아쿠아리움·민간 공연·스키장 등)의 장애인 우대 요금 통합 안내. 법적 강제 아님, 시설별 자율.",
+  "category": "문화·체육",
+  "benefit_type": "할인",
+  "supported_amount": {
+    "rate": null,
+    "amount": null,
+    "scope": "시설별 자율 적용으로 5%~50% 범위. 영화관 우대 정액(7천~1만 원대), 테마파크 50%, 아쿠아리움 20~61%, 스키장 50%, 민간 공연은 주최 측 결정."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 장애인. 외국인 등록 장애인(「장애인복지법」 제32조의2)도 시설별로 인정. 시설별로 요구 서류·인정 범위 상이.",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "companion_allowed": {
+      "applicable_to": "심한 장애(중증)",
+      "count": 1,
+      "scope": "대부분의 민간 시설에서 중증(심한 장애) 등록 장애인을 동행하는 보호자 1인까지 같은 할인 적용. 경증(심하지 않은 장애)은 본인만 할인. 단 시설별 정책에 따라 동반자 할인 여부·범위가 다를 수 있음(예: 씨라이프 코엑스 아쿠아리움은 본인 정가, 보호자 61% 할인 구조)."
+    },
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "전국 시설 공통. 거주지 제한 없음. 단 대한민국 장애인등록증(복지카드) 필수. 외국 발급 장애인증은 시설 재량."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제30조(경제적 부담의 경감) — 국가·지방자치단체는 장애인이 공공시설을 이용하는 데에 필요한 경비를 감면하도록 노력하여야 한다. 민간 시설에 대한 법적 강제 규정 아님. 권고(노력 의무).",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "문화예술진흥법",
+      "article": "제15조의2(장애인 문화예술 활동의 지원) — 국가·지자체가 운영하는 문화시설 중심. 민간 시설에 대한 강제 규정 아님. 권고.",
+      "url": "https://www.law.go.kr/법령/문화예술진흥법"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "CGV",
+      "lines_or_routes": [],
+      "apply_channel": "온라인(cgv.co.kr) 예매 시 '우대' 옵션 선택 후 결제. 공연 당일 현장 매표소에서 복지카드 제시 후 티켓 수령. 매표소 직접 현장 구매도 가능.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://www.cgv.co.kr/discount/",
+      "notes": "일반(2D) 약 7,000원. IMAX·4DX·ScreenX 등 특수관 미적용 또는 별도 요금. 중증: 본인+동반1인 우대. 경증: 본인만. 고객센터 1544-1122."
+    },
+    {
+      "region": "전국",
+      "agency": "롯데시네마",
+      "lines_or_routes": [],
+      "apply_channel": "온라인(lottecinema.co.kr) 예매 또는 현장 매표소 직접 구매.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://www.lottecinema.co.kr/NLCHS/Ticketing/DiscountGuide",
+      "notes": "일반(2D) 약 5,000원, 3D 약 8,000원(공식 홈피 최신 확인 권장). 중증: 동반1인 할인, 경증: 본인만. 고객센터 1544-8855."
+    },
+    {
+      "region": "전국",
+      "agency": "메가박스",
+      "lines_or_routes": [],
+      "apply_channel": "온라인(megabox.co.kr) 앱·홈페이지 예매 또는 현장 매표소 구매. 방문 전 앱·홈페이지에서 지점별 요금 확인 필수.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://www.megabox.co.kr",
+      "notes": "통합 우대 요금 구간(65세 이상·장애인·국가유공자·군경 등). 지점마다 요금 상이. 중증: 동반 가능, 경증: 본인만. 고객센터 1544-0070."
+    },
+    {
+      "region": "전국",
+      "agency": "에버랜드",
+      "lines_or_routes": [],
+      "apply_channel": "앱 직접 구매 불가. 스마트 예약 후 30일 이내 연간이용권 서비스센터 방문 → 복지카드 제시 → 현장 결제.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://www.everland.com/everland/promotion/discount-info",
+      "notes": "중증: 본인+동반1인, 경증: 본인만. 타 할인·프로모션 중복 불가. 고객센터 031-320-5000."
+    },
+    {
+      "region": "전국",
+      "agency": "롯데월드 어드벤처",
+      "lines_or_routes": [],
+      "apply_channel": "카카오톡 지갑으로 복지카드 온라인 등록 후 현장 발권 없이 입장. 또는 현장 매표소 방문.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://adventure.lotteworld.com/kor/usage-guide/service/convenient-facilities/disabled-person/contentsid/393/index.do",
+      "notes": "최대 50% 할인 대상. 탑승예약제(우선 탑승) 운영. 고객센터 1661-2000."
+    },
+    {
+      "region": "전국",
+      "agency": "서울랜드",
+      "lines_or_routes": [],
+      "apply_channel": "현장 매표소 방문. 복지카드 등 증빙 필수.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://seoulland.co.kr/?p=38",
+      "notes": "장애인+동반1인 모두 50% 할인. 어른 52,000→26,000원, 청소년 46,000→23,000원, 어린이 43,000→21,500원(2025~2026 기준). 고객센터 02-509-6000."
+    },
+    {
+      "region": "전국",
+      "agency": "씨라이프 코엑스 아쿠아리움",
+      "lines_or_routes": [],
+      "apply_channel": "현장 매표소만. 정가 결제 후 복지카드 제시 시 보호자 1인 할인 적용.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://www.visitsealife.com/coex-seoul/tickets-passes/book-tickets/promotions/",
+      "notes": "장애인 본인: 정가 결제. 동반 보호자 1인: 입장권 61% 할인. 현장 매표소만 처리. 중복 할인 불가. 고객센터 02-6002-6200."
+    },
+    {
+      "region": "전국",
+      "agency": "아쿠아플라넷 (63·일산·여수·제주, 한화)",
+      "lines_or_routes": [],
+      "apply_channel": "현장 매표소. 복지카드·등록증 지참.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://www.aquaplanet.co.kr",
+      "notes": "본인 입장권 20% 할인. 연간이용권 시 동반 3인까지 50% 할인 등 추가. 고객센터 1833-7001."
+    },
+    {
+      "region": "전국",
+      "agency": "롯데월드 아쿠아리움",
+      "lines_or_routes": [],
+      "apply_channel": "카카오톡 지갑 복지카드 등록 후 간편 인증. 현장 매표소 방문 가능.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://www.lotteworld.com/contents/contents.asp?cmsCd=CM0805",
+      "notes": "장애인 포함 6개 우대 대상 최대 50% 할인. 카카오톡 지갑 등록 후 간편 인증 가능."
+    },
+    {
+      "region": "전국",
+      "agency": "하이원리조트",
+      "lines_or_routes": [],
+      "apply_channel": "현장 매표소. 복지카드·신분증·국가유공자증·경로증 제시.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://www.high1.com/www/contents.do?key=1808",
+      "notes": "스키 리프트권 주중·주말 50%(본인 포함 2인 기준). 렌탈 50%, 운탄고도 케이블카·알파인코스터·우주상영관 50%, 워터월드 50%, 사우나 비수기 50%/성수기 30%. 고객센터 1588-7789."
+    },
+    {
+      "region": "전국",
+      "agency": "용평리조트(모나용평)",
+      "lines_or_routes": [],
+      "apply_channel": "현장 매표소. 복지카드 제출.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://www.yongpyong.co.kr/mobile/kor/event/discountInfo.do",
+      "notes": "장애인 할인 제공. 비수기/성수기 할인율 다름. 특가 기간 미적용. 고객센터 033-335-5757."
+    },
+    {
+      "region": "전국",
+      "agency": "곤지암리조트",
+      "lines_or_routes": [],
+      "apply_channel": "현장 구매만. 복지카드·신분증 지참. 온라인 예약 후 현장 발권 시 할인 적용.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://m.konjiamresort.co.kr/ski/skiInfo.dev",
+      "notes": "현장 매표소에서만 할인 처리. 복지카드·신분증 지참 필수."
+    },
+    {
+      "region": "전국",
+      "agency": "비발디파크·소노호텔앤리조트",
+      "lines_or_routes": [],
+      "apply_channel": "현장 매표소. 복지카드 지참.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://www.sonohotelsresorts.com/skiboard/discount",
+      "notes": "장애인 할인 운영. 시즌·요일별 할인율 변동. 대부분 현장 매표소에서만 할인 적용."
+    },
+    {
+      "region": "전국",
+      "agency": "인터파크티켓(NOL 티켓)",
+      "lines_or_routes": [],
+      "apply_channel": "온라인(tickets.interpark.com) 예매 시 공연별 '장애인 할인' 권종 선택 후 현장 복지카드 제시.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://tickets.interpark.com",
+      "notes": "공연별 '장애인 할인' 권종 별도 표시 시에만 적용. 권종 없는 공연 다수. 현장 증빙 미제시 시 차액 납부 또는 입장 거부."
+    },
+    {
+      "region": "전국",
+      "agency": "예스24 티켓",
+      "lines_or_routes": [],
+      "apply_channel": "온라인(ticket.yes24.com) 예매 시 공연별 '장애인 할인' 권종 선택 후 현장 복지카드 제시.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://ticket.yes24.com",
+      "notes": "공연별 할인 권종 유무 확인 필요. 동반 보호자 할인은 주최 측 정책에 따름."
+    },
+    {
+      "region": "전국",
+      "agency": "멜론티켓",
+      "lines_or_routes": [],
+      "apply_channel": "온라인(ticket.melon.com) 예매 시 공연별 '장애인 할인' 권종 선택 후 현장 복지카드 제시.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://ticket.melon.com",
+      "notes": "공연별 할인 권종 유무 확인 필요. 현장 증빙 미제시 시 입장 거부 가능."
+    },
+    {
+      "region": "전국",
+      "agency": "티켓링크",
+      "lines_or_routes": [],
+      "apply_channel": "온라인(ticketlink.co.kr) 예매 시 공연별 '장애인 할인' 권종 선택 후 현장 복지카드 제시.",
+      "card_or_proof_type": "장애인복지카드",
+      "url": "https://www.ticketlink.co.kr",
+      "notes": "공연별 할인 권종 유무 확인 필요. 동반 보호자 할인은 주최 측 정책에 따름."
+    }
+  ],
+  "how_to_use": {
+    "default": "【영화관】 (1) 온라인 예매(CGV·롯데시네마·메가박스 앱·홈페이지) 또는 현장 매표소 방문 시 '우대' 옵션 선택 후 결제 → (2) 현장 매표소에서 장애인복지카드 제시 후 티켓 수령·입장. 【테마파크·아쿠아리움】 현장 매표소 또는 카카오톡 지갑 복지카드 등록(롯데월드 계열) → 복지카드 제시 → 할인 요금 결제. 에버랜드는 스마트 예약 후 30일 이내 연간이용권 서비스센터 방문 → 현장 결제. 【스키장】 현장 매표소 방문 → 복지카드·신분증 제시 → 리프트권·시설 이용료 할인 결제. 【민간 공연】 예매처(인터파크·예스24·멜론·티켓링크)에서 '장애인 할인' 권종 확인 후 선택 결제 → 현장 복지카드 제시.",
+    "with_card": "실물 장애인등록증(복지카드) 또는 모바일 복지카드(정부24·복지로 앱). 롯데월드·롯데월드 아쿠아리움은 카카오톡 지갑 복지카드 등록으로 온라인 간편 인증 가능.",
+    "without_card": "카드 미소지 시 신분증 + 주민센터 발급 '장애인 증명서'로 대체 가능하나 시설별로 허용 여부 다름. 사전 전화 확인 권장. 모바일 복지카드 앱을 미리 설치해두는 것이 안전.",
+    "exceptions": "①민간 시설이므로 할인이 없거나 중단될 수 있음(법적 의무 아님) ②특수관(IMAX·4DX·ScreenX)은 영화관 할인 미적용 일반적 ③에버랜드는 앱 직접 구매 불가 — 스마트 예약 후 현장 방문 필요 ④씨라이프 코엑스는 본인 정가, 보호자 61% 할인 구조 ⑤스키장은 현장 매표소에서만 할인 가능(온라인 예매 후 현장 할인 적용되는 곳도 있으나 확인 필요) ⑥공연 예매처는 공연별로 '장애인 할인' 권종이 없는 경우 많음."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "CGV 홈페이지·앱",
+        "method": "온라인",
+        "url": "https://www.cgv.co.kr/discount/"
+      },
+      {
+        "channel": "롯데시네마 홈페이지·앱",
+        "method": "온라인",
+        "url": "https://www.lottecinema.co.kr/NLCHS/Ticketing/DiscountGuide"
+      },
+      {
+        "channel": "메가박스 홈페이지·앱",
+        "method": "온라인",
+        "url": "https://www.megabox.co.kr"
+      },
+      {
+        "channel": "롯데월드 어드벤처 (카카오톡 지갑 등록)",
+        "method": "모바일 앱",
+        "url": "https://adventure.lotteworld.com/kor/usage-guide/service/convenient-facilities/disabled-person/contentsid/393/index.do"
+      },
+      {
+        "channel": "인터파크티켓(NOL 티켓)",
+        "method": "온라인",
+        "url": "https://tickets.interpark.com"
+      },
+      {
+        "channel": "예스24 티켓",
+        "method": "온라인",
+        "url": "https://ticket.yes24.com"
+      },
+      {
+        "channel": "멜론티켓",
+        "method": "온라인",
+        "url": "https://ticket.melon.com"
+      },
+      {
+        "channel": "티켓링크",
+        "method": "온라인",
+        "url": "https://www.ticketlink.co.kr"
+      },
+      {
+        "channel": "각 시설 현장 매표소",
+        "method": "방문",
+        "url": null
+      },
+      {
+        "channel": "각 시설 고객센터",
+        "method": "전화",
+        "url": null
+      }
+    ],
+    "required_documents": [
+      "장애인등록증(복지카드)",
+      "또는 모바일 복지카드(정부24·복지로 앱)",
+      "또는 카카오톡 지갑 복지카드(롯데월드 계열)",
+      "본인 신분증(매표소 본인 확인용)",
+      "신분증(스키장의 경우 복지카드+신분증 모두 지참 권장)"
+    ],
+    "processing_period": "현장 매표소: 즉시. 온라인 예매 후 현장 수령: 입장 전까지. 에버랜드는 스마트 예약 후 30일 이내 서비스센터 방문 처리.",
+    "fee": {
+      "default": "시설별 상이 (5%~50% 할인). 영화관: 일반 약 5,000~7,000원대 우대 정액. 테마파크: 정상가의 50%. 아쿠아리움: 20~61%. 스키장: 50%.",
+      "exceptions": "민간 자율 적용이므로 시즌·요일·이벤트 기간에 따라 변동. 특가 기간은 할인 미적용."
+    },
+    "online_available": true,
+    "proxy_allowed": false
+  },
+  "validity": {
+    "expiry": "장애인등록증 유효기간과 동일. 시설별 이용 시마다 복지카드 제시.",
+    "renewal": "복지카드 분실·훼손 시 동주민센터 또는 복지로(bokjiro.go.kr) 재발급."
+  },
+  "exceptions_and_caveats": [
+    "**민간 자율 원칙** — 본 항목 시설들의 장애인 할인은 법적 의무 아님. 「장애인복지법」 제30조는 노력 규정(권고)이며 민간 시설에는 강제되지 않음. 소규모 민간 시설은 할인 없을 수 있음.",
+    "특별 이벤트·프로모션 기간 할인과 장애인 우대 요금 **중복 적용 불가** — 더 낮은 가격 하나만 적용(에버랜드 등 명시).",
+    "**시즌·요일별 할인율 변동** — 스키장·테마파크는 비수기/성수기, 주중/주말에 따라 할인율이 달라지거나 미적용될 수 있음.",
+    "**IMAX·4DX·ScreenX·씨네앤포레 등 특수 포맷관은 영화관 우대 요금 미적용** 일반적. 방문 또는 예매 전 해당 시설에 확인 필요.",
+    "**본인만 할인 vs 동반자 포함** — 시설별 상이. CGV·롯데시네마·메가박스·에버랜드·롯데월드 어드벤처·서울랜드·하이원은 중증 동반 1인 포함. 씨라이프 코엑스는 본인 정가+보호자 61% 구조. 용평·곤지암은 사전 확인 필요.",
+    "**등록증 위조·도용 시 처벌** — 「장애인복지법」 위반 및 「형법」상 사기죄 적용 가능. 차액 추징 및 향후 이용 제한.",
+    "**온라인 예매 후 현장 미인증 시 차액 납부** — 영화관·공연의 경우 예매 시 장애인 우대를 선택했더라도 현장에서 복지카드를 제시하지 못하면 차액을 그 자리에서 납부해야 입장 가능.",
+    "**요금 수시 변동** — 영화관 정상가 인상 시 우대 정액도 함께 인상될 수 있음. 이용 전 홈페이지에서 최신 요금 확인 권장.",
+    "**카카오톡 지갑 복지카드 등록 방법** — 롯데월드 어드벤처·롯데월드 아쿠아리움은 카카오톡 지갑에 복지카드를 등록하면 현장 발권 없이 입장 처리 가능. 등록 방법 사전 숙지 권장.",
+    "**에버랜드 앱 직접 구매 불가** — 연간이용권 서비스센터에서만 장애인 우대 처리 가능. 예약 후 30일 이내 센터 방문 필요.",
+    "**공연 예매처는 주최 측 정책을 중계할 뿐** — 인터파크·예스24·멜론·티켓링크에서 '장애인 할인' 권종이 표시된 공연만 해당. 권종이 없는 공연은 할인 불가. 권종 있어도 동반 보호자 할인은 주최 측 정책에 따라 별도.",
+    "**아쿠아리움별 구조 차이** — 씨라이프 코엑스는 본인 정가+보호자 61%. 아쿠아플라넷은 본인 20%. 롯데월드 아쿠아리움은 최대 50%. 시설마다 다름.",
+    "**스키장 현장 매표소에서만 할인 적용** — 대부분의 민간 스키장(하이원·용평·곤지암·소노) 현장 매표소에서만 장애인 할인 처리. 온라인 선결제 후 현장 차액 정산 또는 환불 불가 정책 있을 수 있음."
+  ],
+  "penalties_for_misuse": "타인 장애인등록증·복지카드 도용 사용 시 「장애인복지법」 위반 및 「형법」 제347조(사기죄) 적용 가능. 차액 추징, 해당 시설 이용 제한.",
+  "faq": [
+    {
+      "q": "CGV 장애인 할인 요금이 얼마인가요?",
+      "a": "일반(2D) 우대 요금 약 7,000원입니다(정상가 1만 5천 원대 대비 할인). IMAX·4DX·ScreenX 등 특수관은 우대 미적용 또는 별도 요금이므로 방문 전 CGV 홈페이지(cgv.co.kr/discount/) 또는 고객센터(1544-1122)에서 확인하세요."
+    },
+    {
+      "q": "영화관에서 동반자도 할인이 되나요?",
+      "a": "중증(심한 장애) 등록 장애인의 경우 본인+동반자 1인까지 우대 요금 적용됩니다. 경증(심하지 않은 장애)은 본인만 할인됩니다. CGV·롯데시네마·메가박스 모두 동일한 원칙을 적용하고 있습니다."
+    },
+    {
+      "q": "롯데월드 어드벤처 장애인 할인은 얼마인가요?",
+      "a": "최대 50% 할인 대상입니다. 카카오톡 지갑에 복지카드를 등록하면 현장 발권 없이 온라인으로 간편하게 입장할 수 있습니다. 탑승예약제(우선 탑승)도 별도로 운영합니다. 자세한 사항은 공식 홈페이지 또는 고객센터(1661-2000)에서 확인하세요."
+    },
+    {
+      "q": "서울랜드 장애인 할인은 어떻게 되나요?",
+      "a": "장애인 본인과 동반자 1인 모두 자유이용권 50% 할인됩니다. 어른 기준 52,000원 → 26,000원(2025~2026 기준). 복지카드 등 증빙이 필수이며 현장 매표소에서만 처리됩니다. 고객센터 02-509-6000."
+    },
+    {
+      "q": "콘서트·뮤지컬 예매 시 장애인 할인을 받을 수 있나요?",
+      "a": "인터파크·예스24·멜론티켓·티켓링크 등 예매처에서 해당 공연의 '장애인 할인' 권종이 별도 표시된 경우에만 선택 후 할인가로 결제하고, 현장에서 복지카드를 제시하면 됩니다. 모든 공연에 장애인 할인 권종이 있는 것은 아닙니다. 민간 공연은 주최 측이 개별 정책을 결정하므로 사전에 예매처 또는 주최 측에 확인하세요."
+    },
+    {
+      "q": "모든 민간 시설에서 장애인 할인이 의무인가요?",
+      "a": "아닙니다. 「장애인복지법」 제30조는 노력 규정(권고)으로, 민간 시설에는 법적 강제 의무가 없습니다. 각 시설이 자율적으로 운영하는 할인 정책입니다. 소규모 민간 시설은 할인이 없을 수 있으니 방문 전 확인이 필요합니다."
+    },
+    {
+      "q": "아쿠아플라넷 장애인 할인은 얼마인가요?",
+      "a": "장애인 본인 입장권 20% 할인이 적용됩니다. 복지카드 또는 장애인등록증을 지참해야 합니다. 연간이용권 보유 시 동반 3인까지 50% 할인 등 추가 혜택이 있을 수 있습니다. 고객센터 1833-7001."
+    },
+    {
+      "q": "하이원리조트 스키장 장애인 할인은 얼마인가요?",
+      "a": "스키 리프트권 주중·주말 50% 할인이 적용됩니다(본인 포함 2인 기준). 렌탈·케이블카·알파인코스터 등도 50% 할인. 복지카드와 신분증을 현장 매표소에서 제시하면 됩니다. 고객센터 1588-7789."
+    },
+    {
+      "q": "씨라이프 코엑스 아쿠아리움에서 보호자 할인이 되나요?",
+      "a": "장애인 본인은 정가로 결제한 후 현장 매표소에서 복지카드를 제시하면 동반 보호자 1인의 입장권이 61% 할인됩니다. 현장 매표소에서만 처리되며 중복 할인은 불가합니다. 고객센터 02-6002-6200."
+    },
+    {
+      "q": "IMAX·4DX에서도 영화관 장애인 할인이 적용되나요?",
+      "a": "일반적으로 IMAX·4DX·ScreenX 등 특수 포맷관에는 장애인 우대 요금이 미적용되거나 별도 요금이 적용됩니다. 이용 전 해당 영화관 홈페이지 또는 고객센터에서 확인하세요."
+    },
+    {
+      "q": "에버랜드 장애인 할인을 앱으로 구매할 수 있나요?",
+      "a": "앱 직접 구매는 불가합니다. 스마트 예약 후 30일 이내에 에버랜드 연간이용권 서비스센터를 방문하여 복지카드를 제시하고 현장에서 결제해야 합니다. 고객센터 031-320-5000."
+    },
+    {
+      "q": "공연 예매 후 복지카드 없이 현장에 가면 어떻게 되나요?",
+      "a": "현장에서 복지카드(또는 모바일 복지카드)를 제시하지 못하면 할인가와 정상가의 차액을 추가로 납부해야 입장 가능하거나, 입장이 거부될 수 있습니다. 모바일 복지카드(정부24·복지로 앱)를 미리 설치해두면 긴급 상황에 활용할 수 있습니다."
+    },
+    {
+      "q": "특별 할인 이벤트 기간과 장애인 우대를 중복 적용할 수 있나요?",
+      "a": "대부분 불가합니다. 특별 프로모션 가격과 장애인 우대 요금은 중복 적용이 되지 않으며, 더 낮은 요금 하나만 적용됩니다. 각 시설의 약관·홈페이지에서 확인하세요."
+    },
+    {
+      "q": "장애인등록증(복지카드)을 위조하거나 타인 것을 사용하면?",
+      "a": "「장애인복지법」 위반 및 「형법」 제347조 사기죄가 적용될 수 있습니다. 차액 추징과 해당 시설 이용 제한, 형사 처벌을 받을 수 있습니다."
+    }
+  ],
+  "contact": [
+    {
+      "name": "CGV 고객센터",
+      "phone": "1544-1122",
+      "url": "https://www.cgv.co.kr/discount/"
+    },
+    {
+      "name": "롯데시네마 고객센터",
+      "phone": "1544-8855",
+      "url": "https://www.lottecinema.co.kr/NLCHS/Ticketing/DiscountGuide"
+    },
+    {
+      "name": "메가박스 고객센터",
+      "phone": "1544-0070",
+      "url": "https://www.megabox.co.kr"
+    },
+    {
+      "name": "에버랜드 고객센터",
+      "phone": "031-320-5000",
+      "url": "https://www.everland.com/everland/promotion/discount-info"
+    },
+    {
+      "name": "롯데월드 어드벤처 고객센터",
+      "phone": "1661-2000",
+      "url": "https://adventure.lotteworld.com/kor/usage-guide/service/convenient-facilities/disabled-person/contentsid/393/index.do"
+    },
+    {
+      "name": "서울랜드 고객센터",
+      "phone": "02-509-6000",
+      "url": "https://seoulland.co.kr/?p=38"
+    },
+    {
+      "name": "하이원리조트 고객센터",
+      "phone": "1588-7789",
+      "url": "https://www.high1.com/www/contents.do?key=1808"
+    },
+    {
+      "name": "용평리조트 고객센터",
+      "phone": "033-335-5757",
+      "url": "https://www.yongpyong.co.kr/mobile/kor/event/discountInfo.do"
+    },
+    {
+      "name": "씨라이프 코엑스 아쿠아리움",
+      "phone": "02-6002-6200",
+      "url": "https://www.visitsealife.com/coex-seoul/tickets-passes/book-tickets/promotions/"
+    },
+    {
+      "name": "아쿠아플라넷 고객센터",
+      "phone": "1833-7001",
+      "url": "https://www.aquaplanet.co.kr"
+    },
+    {
+      "name": "보건복지부 콜센터",
+      "phone": "129",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010500"
+    },
+    {
+      "name": "문화체육관광부",
+      "phone": "1330",
+      "url": "https://www.mcst.go.kr/"
+    }
+  ],
+  "sources": [
+    {
+      "title": "국가법령정보센터 — 장애인복지법 제30조",
+      "publisher": "법제처",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "제30조(경제적 부담의 경감) — 민간 시설에 대한 법적 강제 규정 없음(권고)."
+      },
+      "accessed": "2026-05-22",
+      "priority": "primary"
+    },
+    {
+      "title": "국가법령정보센터 — 문화예술진흥법",
+      "publisher": "법제처",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/문화예술진흥법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "제15조의2(장애인 문화예술 활동의 지원) — 국가·지자체 시설 대상, 권고."
+      },
+      "accessed": "2026-05-22",
+      "priority": "primary"
+    },
+    {
+      "title": "CGV 할인 안내",
+      "publisher": "CJ CGV",
+      "publisher_type": "민간",
+      "url": "https://www.cgv.co.kr/discount/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "장애인 우대 요금 안내 영역",
+        "robots_txt_ok": true,
+        "notes": "일반(2D) 약 7,000원. 특수관 미적용."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "롯데시네마 할인 안내",
+      "publisher": "롯데시네마",
+      "publisher_type": "민간",
+      "url": "https://www.lottecinema.co.kr/NLCHS/Ticketing/DiscountGuide",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "일반(2D) 약 5,000원, 3D 약 8,000원."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "메가박스",
+      "publisher": "메가박스",
+      "publisher_type": "민간",
+      "url": "https://www.megabox.co.kr",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "통합 우대 요금 구간. 지점별 요금 상이."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "에버랜드 할인·프로모션 안내",
+      "publisher": "에버랜드",
+      "publisher_type": "민간",
+      "url": "https://www.everland.com/everland/promotion/discount-info",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "앱 직접 구매 불가. 서비스센터 방문 필요."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "롯데월드 어드벤처 장애인 편의제도",
+      "publisher": "롯데월드",
+      "publisher_type": "민간",
+      "url": "https://adventure.lotteworld.com/kor/usage-guide/service/convenient-facilities/disabled-person/contentsid/393/index.do",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "카카오톡 지갑 복지카드 등록 후 입장. 최대 50% 할인."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "서울랜드 티켓요금",
+      "publisher": "서울랜드",
+      "publisher_type": "민간",
+      "url": "https://seoulland.co.kr/?p=38",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애인+동반1인 50%. 어른 52,000→26,000원."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "씨라이프 코엑스 아쿠아리움 프로모션",
+      "publisher": "Merlin Entertainments",
+      "publisher_type": "민간",
+      "url": "https://www.visitsealife.com/coex-seoul/tickets-passes/book-tickets/promotions/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "본인 정가 결제 후 현장 복지카드 제시 → 보호자 1인 61% 할인. 현장만."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "아쿠아플라넷 일산 우대할인",
+      "publisher": "한화 아쿠아플라넷",
+      "publisher_type": "민간",
+      "url": "https://m.aquaplanet.co.kr/ilsan/guide/affiliate-cards/affiliated.do?category=S",
+      "fallback_url": "https://www.aquaplanet.co.kr",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "본인 20% 할인. 복지카드 지참."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "롯데월드 아쿠아리움 장애인 편의제도",
+      "publisher": "롯데월드",
+      "publisher_type": "민간",
+      "url": "https://www.lotteworld.com/contents/contents.asp?cmsCd=CM0805",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "최대 50% 할인. 카카오톡 지갑 등록 후 간편 인증."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "하이원리조트 할인 안내",
+      "publisher": "하이원리조트",
+      "publisher_type": "민간",
+      "url": "https://www.high1.com/www/contents.do?key=1808",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "리프트권 50%, 렌탈 50%, 케이블카 50%, 워터월드 50%."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "용평리조트 할인 안내",
+      "publisher": "모나용평",
+      "publisher_type": "민간",
+      "url": "https://www.yongpyong.co.kr/mobile/kor/event/discountInfo.do",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "비수기/성수기 할인율 다름. 특가 기간 미적용."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "곤지암리조트 스키 요금 안내",
+      "publisher": "곤지암리조트",
+      "publisher_type": "민간",
+      "url": "https://m.konjiamresort.co.kr/ski/skiInfo.dev",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "현장 구매만. 복지카드·신분증 지참."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "소노호텔앤리조트 스키·보드 할인",
+      "publisher": "소노인터내셔널",
+      "publisher_type": "민간",
+      "url": "https://www.sonohotelsresorts.com/skiboard/discount",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "비발디파크 포함 소노 계열 스키장 장애인 할인."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "NOL 티켓(인터파크) 예매 안내",
+      "publisher": "인터파크",
+      "publisher_type": "민간",
+      "url": "https://tickets.interpark.com",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "공연별 '장애인 할인' 권종 표시 시에만 적용."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "예스24 티켓",
+      "publisher": "예스24",
+      "publisher_type": "민간",
+      "url": "https://ticket.yes24.com",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "공연별 할인 권종 유무 사전 확인 필요."
+      },
+      "accessed": "2026-05-22",
+      "priority": "secondary"
+    },
+    {
+      "title": "에이블뉴스 — 영화관 장애인 온라인 예매",
+      "publisher": "에이블뉴스",
+      "publisher_type": "민간",
+      "url": "https://www.beminor.com/news/articleView.html?idxno=7453",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "영화관 장애인 온라인 예매 방법 실태 보도."
+      },
+      "accessed": "2026-05-22",
+      "priority": "supplementary"
+    },
+    {
+      "title": "보건복지부 — 공공요금 감면(장애인정책)",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010500",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "공공시설 중심 안내. 민간 시설 할인 개요 보조 참고."
+      },
+      "accessed": "2026-05-22",
+      "priority": "supplementary"
+    },
+    {
+      "title": "한국장애인단체총연맹 영화관 예매 할인 안내",
+      "publisher": "한국장애인단체총연맹",
+      "publisher_type": "민간",
+      "url": "https://kofdo.kr/영화관-예매-할인-적용하라/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애인단체 관점의 영화관 할인 적용 현황 및 개선 요구 내용."
+      },
+      "accessed": "2026-05-22",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B008", "B009", "B014", "B042"],
+  "last_verified": "2026-05-22",
+  "version": "1.0.0"
+}

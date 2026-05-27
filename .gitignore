@@ -1,0 +1,54 @@
+# 환경/시크릿
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# 빌드 산출물
+build/
+dist/
+*.spec
+
+# 런타임 로그
+welfare_backend/.health_stdout.log
+welfare_backend/.health_stderr.log
+welfare_backend/backfill_out.log
+welfare_backend/reports/unresolved/*.log
+*.log
+
+# 백업/임시
+*.bak
+*.broken.bak
+*.tmp
+*.swp
+
+# 데스크톱 데모 컴포넌트 (별도 보관)
+launcher.py
+server.py
+build.bat
+policy_data.txt
+requirements.txt
+disability_voice_qa.html
+
+# 데모 빌드 산출물
+장애인 AI 비서 서비스 개발/
+*.exe
+*.zip
+
+# 대용량 원본 자료
+정책데이터/
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

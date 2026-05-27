@@ -1,0 +1,676 @@
+{
+  "id": "B024",
+  "leaflet_section": "기타",
+  "leaflet_number": 24,
+  "title": "장애인활동지원서비스",
+  "short_summary": "장애인활동지원서비스(만 6세~65세 미만의 등록 장애인) (전단지 원문)",
+  "category": "활동지원",
+  "benefit_type": "서비스제공",
+  "supported_amount": {
+    "rate": "월 60~480시간 + 추가급여",
+    "amount": "2026년 시간당 단가 17,270원(전년 16,620원 대비 3.9% 인상). 활동지원기관의 사회서비스이용권(전자바우처)으로 지급되며 본인부담금(소득별 차등) 차감 후 잔액을 정부가 부담.",
+    "scope": "① 기본급여 — 서비스지원 종합조사 결과에 따라 1~15구간으로 산정. 1구간 월 480시간(하루 약 16시간), 2구간 450시간, … 15구간 60시간(하루 2시간) — 각 구간 30시간 차이. ② 추가급여 — 1인가구·취약가구, 출산, 자립준비, 학교·직장생활, 보호자 일시부재 등 생활환경에 따라 최대 약 270시간/월 추가. ③ 가산급여 — 최중증(독거·취약가구 등) 활동지원사에게 시간당 추가 수당(2026년 최대 3,000~3,300원/시간) 별도 지급 — 2026년 가산급여 인정시간 205→258시간으로 확대. 급여는 본인이 선택한 활동지원기관을 통해 활동지원사가 직접 방문 제공(신체활동·가사활동·사회활동 동행)."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록한 장애인으로서 혼자서 일상생활 및 사회생활을 하기 어려운 사람",
+    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "companion_allowed": null,
+    "income_criteria": "소득기준 없음 — 신청 단계에서는 소득 무관. 단, 본인부담금이 기준중위소득에 따라 차등 부과(70% 이하 4%, 120% 이하 6%, 180% 이하 8%, 180% 초과 10% — 1~15구간 및 특례별 차등).",
+    "age_criteria": "만 6세 이상 ~ 만 65세 미만이 원칙. ① 만 65세 도달 시 노인장기요양보험으로 이관되나, 장기요양 수급자가 되지 못한 경우 활동지원 신청 가능. ② 65세 도달로 장기요양으로 전환되었으나 급여량이 활동지원 최저구간(15구간) 이상 감소한 경우 활동지원과 장기요양 병용 가능. ③ 65세 미만이라도 노인성 질병(치매·뇌혈관질환 등)으로 장기요양 수급 중이면 종전에는 활동지원 신청 불가였으나, 「장애인활동 지원에 관한 법률」 제5조 개정으로 신청 가능(병용·선택).",
+    "residency_criteria": "대한민국 내 주민등록자. 시설(거주시설·요양병원 등) 입소자는 원칙적으로 제외. 외국인·재외동포는 「장애인복지법」 제32조의2 등록자로서 일부 제한적 적용."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인활동 지원에 관한 법률",
+      "article": "제5조(신청자격), 제6조(신청), 제13조(활동지원급여의 종류), 제14조(급여비용), 제16조(본인부담금), 제20조(활동지원기관 지정), 제30조(부정수급 환수)",
+      "url": "https://www.law.go.kr/법령/장애인활동지원에관한법률"
+    },
+    {
+      "name": "장애인활동 지원에 관한 법률 시행령",
+      "article": "수급자격·종합조사·본인부담금·기관 지정 등 세부사항",
+      "url": "https://www.law.go.kr/법령/장애인활동지원에관한법률시행령"
+    },
+    {
+      "name": "장애인활동 지원에 관한 법률 시행규칙",
+      "article": "신청서식·활동지원기관 지정서식(별지 제6·7호) 등",
+      "url": "https://www.law.go.kr/법령/장애인활동지원에관한법률시행규칙"
+    },
+    {
+      "name": "장애인복지법",
+      "article": "제32조(장애인 등록) — 등록 장애인 자격 근거",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "노인장기요양보험법",
+      "article": "제2조(정의), 제15조(등급판정) — 65세 도달 시 이관 근거",
+      "url": "https://www.law.go.kr/법령/노인장기요양보험법"
+    },
+    {
+      "name": "장애인 서비스 지원 종합조사의 내용 및 점수 산정 방법에 관한 고시",
+      "article": "보건복지부 고시(현행본) — 3개 영역 29개 항목, 종합점수 산식",
+      "url": "https://www.law.go.kr/LSW/admRulInfoP.do?admRulSeq=2100000179821"
+    },
+    {
+      "name": "장애인활동지원 급여비용 등에 관한 고시",
+      "article": "보건복지부 고시 — 연도별 시간당 단가·가산급여·본인부담률",
+      "url": "https://www.law.go.kr/행정규칙/장애인활동지원급여비용등에관한고시"
+    },
+    {
+      "name": "장애인활동지원기관 등의 지정에 관한 고시",
+      "article": "보건복지부 고시 제2020-140호 외 — 활동지원기관 지정 기준·절차",
+      "url": "https://www.law.go.kr/LSW/admRulLsInfoP.do?admRulSeq=2100000191347"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "보건복지부 장애인서비스과(주무 부처)",
+      "lines_or_routes": [],
+      "apply_channel": "정책·예산·고시 총괄",
+      "card_or_proof_type": "해당없음",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040700",
+      "notes": "사업안내(매년 1월), 단가 고시, 종합조사표 고시 발령."
+    },
+    {
+      "region": "전국",
+      "agency": "한국사회보장정보원(사회서비스원) — 사회서비스 전자바우처 운영",
+      "lines_or_routes": [],
+      "apply_channel": "전자바우처(사회서비스이용권) 결제·정산 시스템 운영, 활동지원사·이용자 카드 발급, 부정수급 모니터링",
+      "card_or_proof_type": "전자바우처 카드(이용자용/제공인력용) — 농협·BC카드 등",
+      "url": "https://www.socialservice.or.kr",
+      "notes": "이용자카드 결제·제공인력카드 결제(서비스 시작·종료 태그) 시스템. 중복 결제·실태 점검 자동 모니터링."
+    },
+    {
+      "region": "전국",
+      "agency": "국민연금공단(서비스지원 종합조사 위탁기관)",
+      "lines_or_routes": [],
+      "apply_channel": "전문조사원이 신청자 가정 방문 → 서비스지원 종합조사 → 종합점수 산출 → 시·군·구로 통보",
+      "card_or_proof_type": "해당없음",
+      "url": "https://www.nps.or.kr",
+      "notes": "3개 영역 29개 항목 조사. 성인은 종합점수=(0.01225·X₁+0.05583·X₂+C·X₃)×30 산식 적용."
+    },
+    {
+      "region": "전국",
+      "agency": "한국장애인개발원 등 — 정책 연구·종합조사 도구 개발 지원",
+      "lines_or_routes": [],
+      "apply_channel": "정책 연구 및 종합조사 도구·매뉴얼 개발",
+      "card_or_proof_type": "해당없음",
+      "url": "https://www.koddi.or.kr",
+      "notes": "장애등급제 폐지 이후 종합조사 도구 개발·운영 자문."
+    },
+    {
+      "region": "전국",
+      "agency": "시·군·구 장애인복지 담당부서 — 수급자격 결정·바우처 생성",
+      "lines_or_routes": [],
+      "apply_channel": "수급자격심의위원회 운영, 활동지원등급·구간·월 시간 결정 통지, 바우처 생성",
+      "card_or_proof_type": "수급자증(통지서)",
+      "url": "https://www.gov.kr/",
+      "notes": "수급자격심의위원회 의결로 등급·구간 확정. 이의신청은 결정 통지 후 90일 이내."
+    },
+    {
+      "region": "전국",
+      "agency": "활동지원기관 — 활동지원사 매칭·관리",
+      "lines_or_routes": [],
+      "apply_channel": "수급자가 선택한 활동지원기관이 활동지원사 매칭, 서비스 계약, 급여 청구",
+      "card_or_proof_type": "활동지원기관 지정서, 서비스 계약서",
+      "url": "https://www.socialservice.or.kr",
+      "notes": "보건복지부 고시 따른 시·도지사 또는 시장·군수·구청장의 지정. 2026년 기준 전국 약 1,400여개 기관. 사회서비스 전자바우처 사이트에서 지역별 검색 가능."
+    },
+    {
+      "region": "전국",
+      "agency": "활동지원사(개인) — 표준교육 40시간 + 실습 10시간 이수자",
+      "lines_or_routes": [],
+      "apply_channel": "활동지원사 자격증 취득 후 활동지원기관 소속으로 활동",
+      "card_or_proof_type": "활동지원사 자격증, 제공인력카드(전자바우처)",
+      "url": "https://www.ableservice.or.kr",
+      "notes": "표준과정 40시간(5일×8시간) 또는 전문과정 32시간(요양보호사·사회복지사·간호사·간호조무사 등 자격증 소지자) + 실습 10시간. 가족(배우자·직계혈족·형제자매 등)은 원칙 불가, 예외(도서벽지·감염병·천재지변 등) 인정."
+    }
+  ],
+  "how_to_use": {
+    "default": "(1) 주소지 읍·면·동 주민센터 또는 국민연금공단 지사에 신청 → (2) 국민연금공단 방문조사(서비스지원 종합조사) → (3) 시·군·구 수급자격심의위원회 결정(활동지원등급·월 시간) → (4) 수급자가 활동지원기관 선택·계약 → (5) 활동지원사 매칭 → (6) 활동지원사가 가정 방문, 전자바우처 카드로 서비스 시작·종료 태그 → (7) 한국사회보장정보원이 단가 정산, 본인부담금은 매월 가상계좌·CMS 등으로 본인이 납부.",
+    "with_card": "수급자는 이용자카드(전자바우처)를, 활동지원사는 제공인력카드를 보유. 서비스 시작 시 활동지원사가 자신의 카드를 단말기(또는 모바일 앱)에 태그(시작 결제), 종료 시 다시 태그(종료 결제)하여 실제 제공시간 기록. 동일 시간에 다른 수급자에게는 결제 불가(중복 결제 차단).",
+    "without_card": "예외적으로 단말기 장애·통신 장애 등 부득이한 경우 종이 결제(수기 결제)가 일부 허용되지만, 사후 정상 결제로 갈음·증빙 보고 의무. 무단 수기 결제는 부정수급 사유.",
+    "exceptions": "① 65세 도달월의 다음 달부터 활동지원 종료가 원칙(노인장기요양으로 이관). 단, 장기요양 미수급자 또는 급여량이 활동지원 최저구간 이상 감소한 자는 활동지원 신청·병용 가능. ② 의료기관 입원 또는 거주시설 입소 기간은 활동지원 사용 불가(외출·외박 시 제한적 허용). ③ 동일 시간대 가사간병·노인맞춤돌봄 등 다른 사회서비스와 중복 사용 불가."
+  },
+  "application": {
+    "where": [
+      { "channel": "주소지 읍·면·동 주민센터(행정복지센터)", "method": "방문", "url": "https://www.gov.kr/portal/service/serviceInfo/VOU000000020" },
+      { "channel": "국민연금공단 전국 지사(신청 접수 가능)", "method": "방문", "url": "https://www.nps.or.kr" },
+      { "channel": "복지로 온라인 신청", "method": "온라인", "url": "https://www.bokjiro.go.kr/" },
+      { "channel": "정부24 — 장애인 활동지원 신청", "method": "온라인", "url": "https://www.gov.kr/portal/service/serviceInfo/VOU000000020" }
+    ],
+    "required_documents": [
+      "사회보장급여(사회서비스이용권) 신청(변경)서",
+      "건강보험증 사본(소득 산정용)",
+      "장애인등록증(또는 복지카드, 시스템 조회 가능)",
+      "본인 명의 통장사본(본인부담금 자동이체용)",
+      "위임장 + 대리인 신분증(대리신청 시)",
+      "임대차계약서·진단서 등(추가급여(자립준비·출산·보호자 일시부재 등) 신청 시 사유 입증서류)",
+      "65세 도달자 신청 시: 노인장기요양 등급외 판정 통지서 또는 급여량 비교 자료"
+    ],
+    "processing_period": "신청 후 종합조사(국민연금공단 방문) → 시·군·구 수급자격심의위원회 결정까지 통상 **30~60일** 소요. 결정 통지 후 활동지원기관 선택·계약·바우처 생성에 추가 5~10일. 총 약 1.5~2개월. 결정 통지 후 90일 내 이의신청 가능.",
+    "fee": {
+      "default": "신청 자체 무료. 본인부담금만 매월 납부(2026년 상한 216,200원, 종전 인정조사 수급자는 154,400원).",
+      "exceptions": "기초생활수급자(생계·의료급여)는 본인부담금 면제. 차상위 계층은 정액(소액) 부담."
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "원칙적으로 1~2년 단위 갱신(수급자격 재심사). 종합조사 결과에 따른 등급은 보통 **2년**(또는 3년) 유효 → 만료 전 재신청 필요. 장애 상태 변화 시 중간 변경신청 가능.",
+    "renewal": "수급자격 유효기간 만료 전 1~3개월 시점에 갱신 신청(주민센터). 종합조사 재실시. 65세 도달 시 자동 종료(다음 달 1일자), 노인장기요양 신청으로 전환."
+  },
+  "exceptions_and_caveats": [
+    "활동지원사로 가족(배우자, 직계 혈족 및 형제·자매, 직계 혈족의 배우자, 배우자의 직계 혈족 및 형제·자매)은 원칙 불가. 예외: 수급자가 도서·벽지·농어촌 거주, 감염병 위험, 천재지변, 그 외 보건복지부 장관이 인정하는 경우.",
+    "1일 동일 활동지원사에 의한 서비스 제공은 8시간 이내가 원칙. 8시간 초과 시 단가 차감 또는 지급 제한. 심야(22시~06시)·공휴일은 시간당 가산수당(2,250~4,950원) 별도 지급.",
+    "동일 수급자에게 동일 시간대 2명의 활동지원사가 동시 제공 불가(예외: 신변처리·이동지원 등 특수 상황의 보건복지부 인정).",
+    "활동지원사가 자신의 가족(수급자가 아닌 자)의 일을 하는 동안 결제하는 행위, 이용자 카드를 활동지원사가 소지·결제하는 행위, 실제 미제공 시간에 결제하는 행위 모두 부정수급에 해당.",
+    "활동지원 서비스 시간 중에는 활동지원사가 다른 직장 업무·개인 사업 등을 병행할 수 없음.",
+    "65세 도달월의 다음 달부터 노인장기요양보험으로 자동 이관. 장기요양 1~5등급을 받지 못한 경우 활동지원 신청 가능. 장기요양 등급을 받았어도 급여량이 활동지원 최저구간 이상 감소한 경우 활동지원 신청 가능(2021년 개정).",
+    "65세 미만 노인성 질병(치매·뇌혈관질환·파킨슨병 등)으로 장기요양 수급 중인 자도 「장애인활동지원에관한법률」 제5조 개정으로 활동지원 신청 가능.",
+    "기초생활수급자(생계·의료) 본인부담금 면제, 차상위 계층은 정액 부담, 일반 가구는 기준중위소득 구간별 4~10% 부담(상한 2026년 216,200원).",
+    "활동지원기관과 활동지원사는 계약 변경 가능. 본인이 마음에 들지 않으면 기관 변경 신청(주민센터 또는 사회서비스 전자바우처 사이트).",
+    "보호자 일시부재(직업적 출장·입원 등) 시 최대 일정 기간 추가급여 신청 가능 — 사유 발생일로부터 7일 이내 신청.",
+    "출산·자립준비 추가급여는 사유 발생일로부터 6개월 이내 신청.",
+    "거주시설 입소자, 입원 중인 자(요양병원 등), 군 복무 중인 자, 해외 체류자는 활동지원 사용 정지(잔여 시간 이월 불가).",
+    "산정특례 — 종합조사 재심사 결과 급여량이 감소하더라도 기존 급여량을 일정 기간 유지(2021년 도입). 갱신 충격 완화 장치."
+  ],
+  "penalties_for_misuse": "허위·부당 청구 적발 시 ① 부정수급액 전액 환수, ② 같은 액수의 추가 징수, ③ 수급자 자격 6개월~1년 정지 또는 영구 박탈, ④ 활동지원기관 지정 취소 또는 업무정지, ⑤ 활동지원사 자격 정지 또는 취소, ⑥ 형사 고발(사기죄·사회보장급여법 위반). 시스템 모니터링·현장 점검·내부 신고로 적발. 복지부정 신고는 1398(국번 없이) 또는 정부합동 부패·공익신고센터.",
+  "faq": [
+    {
+      "q": "장애인활동지원서비스가 뭔가요?",
+      "a": "혼자서 일상생활과 사회생활을 하기 어려운 등록 장애인에게 활동지원사가 가정을 방문하여 신체활동(목욕·식사·이동·배변 등), 가사활동(청소·세탁·조리 등), 사회활동(외출·동행·학교·직장 동행) 등을 도와주는 서비스입니다. 시간당 단가의 사회서비스이용권(전자바우처)으로 제공되며, 본인부담금(소득별 차등)을 제외한 비용은 정부가 부담합니다."
+    },
+    {
+      "q": "누가 받을 수 있나요?",
+      "a": "「장애인복지법」 제32조에 따라 등록된 만 6세 이상 65세 미만 장애인이라면 누구나 신청 가능합니다. 장애 유형·정도, 소득에 관계없이 신청할 수 있으며, 서비스지원 종합조사 결과 **종합점수 42점 이상**이면 수급자로 결정됩니다."
+    },
+    {
+      "q": "어디서 신청하나요?",
+      "a": "**주소지 읍·면·동 주민센터** 또는 **국민연금공단 전국 지사**에 신청. 복지로(bokjiro.go.kr)·정부24(gov.kr)에서 온라인 신청도 가능합니다. 신청 후 국민연금공단 조사원이 가정을 방문해 서비스지원 종합조사를 실시합니다."
+    },
+    {
+      "q": "신청부터 사용까지 얼마나 걸리나요?",
+      "a": "신청 → 종합조사(국민연금공단 방문) → 시·군·구 수급자격심의위원회 결정 → 통지 → 활동지원기관 선택·계약·바우처 생성까지 통상 **1.5~2개월** 정도. 갱신 신청은 유효기간 만료 1~3개월 전에 미리 하시는 것이 좋습니다."
+    },
+    {
+      "q": "한 달에 몇 시간이나 받을 수 있나요?",
+      "a": "**서비스지원 종합조사 결과 1~15구간**으로 결정되며, 1구간은 월 480시간(하루 약 16시간), 15구간은 월 60시간(하루 2시간)입니다. 각 구간 30시간 차이. 여기에 1인가구, 출산, 자립준비, 학교·직장생활, 보호자 일시부재 등 생활환경에 따른 **추가급여**가 최대 약 270시간까지 더해질 수 있습니다."
+    },
+    {
+      "q": "본인부담금은 얼마인가요?",
+      "a": "**기준중위소득**에 따라 ① 70% 이하 4%, ② 120% 이하 6%, ③ 180% 이하 8%, ④ 180% 초과 10%로 차등. 1~15구간별로 금액 차이가 있으며 **2026년 상한액 216,200원**(국민연금 A값 7%). 종전 인정조사 수급자의 기본급여는 상한 154,400원(A값 5%). **기초생활수급자(생계·의료)는 면제**, 차상위 계층은 정액 부담."
+    },
+    {
+      "q": "2026년 시간당 단가는 얼마인가요?",
+      "a": "**시간당 17,270원**(전년 16,620원 대비 3.9% 인상)입니다. 활동지원사에게는 단가의 75% 이상이 인건비로 지급되도록 의무화되어 있어 활동지원사 시급은 약 12,952원 이상 수준. 가산급여(최중증 돌봄)는 시간당 약 3,000~3,300원이 별도 가산되며, 2026년 가산급여 인정시간이 205시간에서 258시간으로 확대되었습니다. 심야(22~06시)·공휴일은 시간당 2,250~4,950원 별도 가산."
+    },
+    {
+      "q": "활동지원사는 무엇을 해주나요?",
+      "a": "① **신체활동지원** — 목욕·세면·식사·배변·이동·체위변경 등. ② **가사활동지원** — 청소·세탁·조리·장보기 등. ③ **사회활동지원** — 등·하교 및 출퇴근 동행, 외출·병원 동행, 자조모임·여가활동 동행 등. 단, 가족 전체의 가사 대행, 활동지원사의 사적 업무 병행, 가족(수급자 외) 부양은 불가."
+    },
+    {
+      "q": "활동지원사는 어떻게 구하나요?",
+      "a": "**활동지원기관**을 먼저 선택하고 기관에서 매칭해 줍니다. 사회서비스 전자바우처 홈페이지(socialservice.or.kr)나 거주지 주민센터·복지관에서 지역별 기관 정보를 얻을 수 있습니다. 본인이 직접 활동지원사를 추천(아는 사람)하여 기관을 통해 등록·계약하는 방식도 일반적입니다."
+    },
+    {
+      "q": "가족이 활동지원사를 할 수 있나요?",
+      "a": "**원칙적으로 불가**합니다. 배우자, 직계 혈족 및 형제·자매, 직계 혈족의 배우자, 배우자의 직계 혈족 및 형제·자매는 활동지원사가 될 수 없습니다. **예외**: 수급자가 도서·벽지·농어촌 거주, 감염병 위험, 천재지변, 그 외 보건복지부 장관이 인정하는 사유가 있는 경우 한시적으로 인정. 2026년 5월 현재 가족 돌봄 인정 기간을 2년 연장하는 법 개정안이 논의 중."
+    },
+    {
+      "q": "활동지원사 자격은 어떻게 따나요?",
+      "a": "**표준교육 40시간(5일×8시간) + 실습 10시간** 이수. 요양보호사·사회복지사·간호사·간호조무사 자격증 소지자 또는 정부 재정 돌봄사업 경력 1년 360시간 이상자는 **전문과정 32시간(4일×8시간) + 실습 10시간**으로 단축. 시·도 지정 양성기관에서 교육 이수 후 자격증 발급."
+    },
+    {
+      "q": "65세가 되면 어떻게 되나요?",
+      "a": "원칙적으로 **65세 도달월의 다음 달부터 노인장기요양보험으로 이관**되며 활동지원은 종료됩니다. 단, **장기요양 1~5등급을 받지 못하면(등급외)** 활동지원을 다시 신청할 수 있습니다. 또한 장기요양 등급을 받았어도 **급여량이 활동지원 최저구간(15구간) 이상 감소한 경우** 활동지원과 장기요양을 **병용**할 수 있습니다(2021년 제도 개선)."
+    },
+    {
+      "q": "65세 미만인데 치매 진단을 받았어요. 활동지원 받을 수 있나요?",
+      "a": "**받을 수 있습니다.** 종전에는 65세 미만 노인성 질병(치매·뇌혈관질환 등) 장기요양 수급자는 활동지원 신청이 불가했으나, 「장애인활동지원에관한법률」 제5조 개정으로 신청 가능해졌습니다. 헌법재판소 위헌 결정(2017헌가22)이 계기."
+    },
+    {
+      "q": "본인부담금은 어떻게 내나요?",
+      "a": "매월 한국사회보장정보원이 산정한 본인부담금 고지서가 발급되며, **가상계좌·CMS 자동이체·신용카드** 등으로 납부합니다. 미납이 누적되면 서비스 제공이 중단될 수 있습니다."
+    },
+    {
+      "q": "활동지원기관이 마음에 안 들면 바꿀 수 있나요?",
+      "a": "**네.** 주소지 주민센터에 변경 신청하거나 사회서비스 전자바우처 사이트에서 변경 절차를 진행할 수 있습니다. 변경 시 인수인계·서비스 공백이 최소화되도록 사전 협의가 필요합니다."
+    },
+    {
+      "q": "추가급여는 무엇인가요?",
+      "a": "기본급여 외에 생활환경에 따라 더 받는 시간입니다. ① **1인가구·취약가구**(독거 등), ② **출산** — 사유 발생일로부터 6개월 이내 신청, ③ **자립준비**(시설 퇴소·자립생활) — 6개월 이내, ④ **학교·직장생활**, ⑤ **보호자 일시부재**(보호자 입원·출장 등) — 7일 이내 신청 등의 사유별로 일정 시간 추가."
+    },
+    {
+      "q": "가산급여는 무엇인가요?",
+      "a": "**최중증 장애인을 돌보는 활동지원사**에게 시간당 추가 수당(2026년 약 3,000~3,300원/시간)이 별도 지급되는 제도. 활동지원사 인력 확보를 위한 인센티브. **2026년 가산급여 인정 시간이 205시간 → 258시간**으로 53시간 확대되었습니다. 수급자에게 직접 지급되는 것이 아니라 활동지원사의 시급에 가산되는 형태."
+    },
+    {
+      "q": "심야·공휴일에도 이용할 수 있나요?",
+      "a": "**가능합니다.** 단, **22시~06시 심야·공휴일**에는 활동지원사 인건비에 가산수당이 붙어(시간당 2,250~4,950원 추가) 본인부담금도 일부 증가할 수 있습니다. 1일 동일 활동지원사 8시간 초과는 단가 차감 또는 지급 제한."
+    },
+    {
+      "q": "부정수급은 어떻게 처벌되나요?",
+      "a": "① 부정수급액 전액 환수 + 동액 추가 징수, ② 수급자격 6개월~1년 정지/영구 박탈, ③ 활동지원기관 지정 취소 또는 업무정지, ④ 활동지원사 자격 정지 또는 취소, ⑤ 형사 고발(사기죄). 전자바우처 시스템이 결제 시간·동선을 자동 모니터링하며, 복지부정 신고는 **1398**(국번없이)."
+    },
+    {
+      "q": "병원에 입원하면 활동지원을 받을 수 있나요?",
+      "a": "원칙적으로 **입원 기간 중에는 활동지원 사용 불가**(병원에서는 간병인 등 별도 서비스). 단, 입원 시 보호자 일시부재로 인한 추가급여를 신청해 퇴원 후 일정 기간 가중 지원받을 수 있습니다."
+    },
+    {
+      "q": "거주시설에 들어가면 어떻게 되나요?",
+      "a": "**거주시설 입소자는 활동지원 대상에서 제외**됩니다(시설 내 직원이 돌봄을 담당). 퇴소 후에는 자립준비 추가급여 등을 활용해 다시 신청·이용할 수 있습니다."
+    }
+  ],
+  "contact": [
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
+    { "name": "보건복지부 장애인서비스과", "phone": "044-202-3344", "url": "https://www.mohw.go.kr/menu.es?mid=a10710040700" },
+    { "name": "한국사회보장정보원 사회서비스 전자바우처", "phone": "1566-3232", "url": "https://www.socialservice.or.kr" },
+    { "name": "국민연금공단(서비스지원 종합조사)", "phone": "1355", "url": "https://www.nps.or.kr" },
+    { "name": "한국장애인개발원", "phone": "02-3433-0700", "url": "https://www.koddi.or.kr" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
+    { "name": "장애인활동지원 (정보포털)", "phone": null, "url": "https://www.ableservice.or.kr" },
+    { "name": "복지부정 신고센터", "phone": "1398", "url": "https://www.acrc.go.kr" }
+  ],
+  "sources": [
+    {
+      "title": "장애인활동 지원에 관한 법률",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인활동지원에관한법률",
+      "fallback_url": "https://law.go.kr/LSW/lsInfoP.do?lsiSeq=140934",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 상단 '시행일' 표기",
+        "robots_txt_ok": true,
+        "notes": "제5조(신청자격)·제16조(본인부담금) 변경 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인활동 지원에 관한 법률 시행령",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인활동지원에관한법률시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "본인부담금 비율, 활동지원기관 지정 기준 등 세부 규정."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인활동 지원에 관한 법률 시행규칙",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인활동지원에관한법률시행규칙",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "신청 서식·활동지원기관 지정 서식."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "노인장기요양보험법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/노인장기요양보험법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "65세 이관 근거 및 노인성 질병 정의."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인 서비스 지원 종합조사의 내용 및 점수 산정 방법에 관한 고시",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.law.go.kr/LSW/admRulInfoP.do?admRulSeq=2100000179821",
+      "fallback_url": "https://www.mohw.go.kr/board.es?mid=a10409020000&bid=0026&tag=&act=view&list_no=360564",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "3개 영역 29개 항목 + 종합점수 산식. 등급·구간 결정 핵심 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인활동지원 급여비용 등에 관한 고시",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.law.go.kr/행정규칙/장애인활동지원급여비용등에관한고시",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "연도별 시간당 단가, 가산급여, 본인부담금 상한 — 매년 12월~1월 개정."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인활동지원기관 등의 지정에 관한 고시",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.law.go.kr/LSW/admRulLsInfoP.do?admRulSeq=2100000191347",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "활동지원기관 지정 기준."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인활동지원 — 보건복지부 정책안내",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040700",
+      "fallback_url": "https://www.mohw.go.kr/menu.es?mid=a10710040800",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 영역",
+        "robots_txt_ok": true,
+        "notes": "사업안내 책자(매년 1월) 및 보도자료 함께 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인활동지원 정보포털",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "https://www.ableservice.or.kr",
+      "fallback_url": "https://www.ableservice.or.kr/regm/info/getOHGC0005M0.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 영역",
+        "robots_txt_ok": true,
+        "notes": "신청자격·등급판정도구·급여종류·금액 페이지 별도 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "사회서비스 전자바우처",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "https://www.socialservice.or.kr",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "공지사항·서비스 안내",
+        "robots_txt_ok": true,
+        "notes": "전자바우처 결제 시스템·기관 검색·부정수급 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인활동지원 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1003&ccfNo=2&cciNo=3&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "법령 + 사업 통합 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인 활동지원 — 정부24 민원안내",
+      "publisher": "행정안전부 정부24",
+      "publisher_type": "중앙정부",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/VOU000000020",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "온라인 신청 채널."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "복지서비스 상세 — 장애인활동지원",
+      "publisher": "한국사회보장정보원 복지로",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003265",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "복지로 사업 상세."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국민연금공단 — 서비스지원 종합조사",
+      "publisher": "국민연금공단",
+      "publisher_type": "공기업",
+      "url": "https://www.nps.or.kr",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "방문조사 위탁기관."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "65세 이후에도 장애인 활동지원 서비스를 받을 수 있습니다 (보건복지부 보도자료)",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/board.es?mid=a10503010100&bid=0027&act=view&list_no=362314",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "65세 이관 제도 개선 안내. 향후 추가 개선 시 보도자료 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "헌법재판소 2017헌가22, 2019헌가8(병합) — 활동지원법 위헌 결정",
+      "publisher": "헌법재판소",
+      "publisher_type": "중앙정부",
+      "url": "https://casenote.kr/헌법재판소/2017헌가22",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "manual_review",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "65세 미만 노인성 질병 활동지원 신청 가능 근거. 향후 추가 위헌 결정 시 수동 검토."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "한국장애인개발원 — 장애등급제 폐지 FAQ",
+      "publisher": "한국장애인개발원",
+      "publisher_type": "공기업",
+      "url": "https://www.koddi.or.kr/service/rating_faq.jsp?selBrdTp=RTFAQ02",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애등급제 폐지 이후 종합조사·활동지원 변화 정리."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "2026년 활동지원 및 가산급여 단가 (보조 정보)",
+      "publisher": "엔젤시터",
+      "publisher_type": "민간",
+      "url": "https://angelsitter.co.kr/board.view.php?board=bbs2&no=602",
+      "fallback_url": "https://angelsitter.co.kr/contents.php?cname=wage3",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "민간 정보지만 매년 단가 인상 가장 빠르게 정리. 공식 고시 발령 전 모니터링용 보조 참고."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": [],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

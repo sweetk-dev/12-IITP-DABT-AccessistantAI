@@ -1,0 +1,514 @@
+{
+  "id": "B003",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 3,
+  "title": "국내선 항공요금 감면",
+  "short_summary": "국내선 항공요금 대한항공 50%(심한 장애), 30%(심하지 않은 장애). 아시아나항공(공통) 50%. * 심한 장애인은 동행하는 보호자 1인 포함 (전단지 원문)",
+  "category": "교통",
+  "benefit_type": "할인",
+  "supported_amount": {
+    "rate": "항공사별 상이. 대한항공: 중증 50% / 경증 30%. 아시아나항공: 중증·경증 공통 50%(단 최근 정책 변동, 항공사 확인 필수). 저비용항공사(LCC): 진에어·제주항공 40%, 에어부산·티웨이 50%, 에어서울 1~4급 40%·5~6급은 공항이용료만 50% 등 항공사별로 차이 큼.",
+    "amount": null,
+    "scope": "대한민국 국내선(김포·인천·제주·김해·청주·대구·광주·여수·울산·포항·양양·무안·원주·사천 등 출발/도착) 항공편 본인 1인 운임에 한함. 국제선·환승 국제선은 본 항목 대상 아님(국제선은 항공사별 자율 정책, 통상 5~30% 또는 미적용). 운임에만 적용되며 공항이용료(국내선 약 4,000원)·유류할증료·항공보안료 등 부가 비용에는 항공사별로 적용 여부 다름. 동반 보호자 1인은 중증 장애인에 한해 동일 할인율 적용."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 장애인",
+    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "companion_allowed": {
+      "applicable_to": "심한 장애(중증)",
+      "count": 1,
+      "scope": "심한 장애(중증) 장애인을 동반하는 보호자 1인에게도 본인과 동일한 할인율 적용(대한항공 50%, 아시아나 50%, LCC는 항공사별로 동반자 할인 여부·할인율 상이). 보호자 좌석은 본인과 함께 예매·동시 탑승해야 적용. 경증 장애인의 동반자는 일반 운임."
+    },
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "거주지 제한 없음. 다만 외국인의 경우 「장애인복지법」 제32조의2에 따른 등록을 마친 경우에 한함."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제30조(경제적 부담의 경감)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행령",
+      "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준) — 권고적 성격",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+    },
+    {
+      "name": "항공사업법",
+      "article": "제2조 및 제62조(국내항공운송 사업자의 운임·요금 신고)",
+      "url": "https://www.law.go.kr/법령/항공사업법"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국(국내선)",
+      "agency": "대한항공(Korean Air, KE)",
+      "lines_or_routes": ["김포~제주", "김포~김해(부산)", "김포~울산", "김포~여수·사천·포항", "김포~광주·대구", "인천~제주", "제주~김해(부산)·청주·대구·광주·여수·울산"],
+      "apply_channel": "대한항공 홈페이지(koreanair.com) 예약 시 '개인 할인 → 장애인 할인' 선택 / 모바일 앱 / 고객센터(1588-2001) / 공항 카운터",
+      "card_or_proof_type": "장애인등록증(복지카드) 원본. 탑승 수속 시 제시 필수.",
+      "url": "https://www.koreanair.com/contents/booking/reservation-guide/fares/domestic",
+      "notes": "중증 50%(본인 + 동반 보호자 1인), 경증 30%. 운임에만 적용. 운임 미부과 고객(무료/제로 운임)의 동반보호자 할인은 불가. 휠체어 이용 승객은 사전 예약(48시간 전) 권장."
+    },
+    {
+      "region": "전국(국내선)",
+      "agency": "아시아나항공(Asiana Airlines, OZ)",
+      "lines_or_routes": ["김포~제주", "김포~김해(부산)", "김포~청주·대구·광주·여수", "인천~제주", "제주~김해"],
+      "apply_channel": "아시아나 홈페이지(flyasiana.com) 예약 시 '장애인 할인' 선택 / 모바일 앱 / 고객센터(1588-8000) / 공항 카운터",
+      "card_or_proof_type": "장애인등록증(복지카드) 원본",
+      "url": "https://flyasiana.com/C/KR/KO/contents/reservation-information",
+      "notes": "전단지 원문은 '아시아나(공통) 50%' — 즉 중증·경증 모두 50%로 명시. 다만 최근 항공사 자율 정책 변경 동향이 있으므로 예약 전 항공사 공식 페이지 또는 고객센터로 확인 필수. 중증의 동반 보호자 1인은 50% 동일. 휠체어 사용자는 무료 위탁수하물 추가 10kg 허용."
+    },
+    {
+      "region": "전국(국내선)",
+      "agency": "제주항공(Jeju Air, 7C)",
+      "lines_or_routes": ["김포~제주", "김포~김해", "김포~여수·울산", "인천~제주", "청주~제주", "대구~제주", "광주~제주" ],
+      "apply_channel": "제주항공 홈페이지(jejuair.net) / 모바일 앱 / 고객센터(1599-1500). 일부 할인 운임은 공항 카운터·고객센터 발권만 가능한 경우 있음.",
+      "card_or_proof_type": "장애인등록증(복지카드) 원본",
+      "url": "https://www.jejuair.net/jejuair/ko/help/faq.do",
+      "notes": "중증·경증 공통 40% 할인 운영. 동반 보호자 1인(중증) 동일 40%. 항공사 자율 정책이라 변경 가능."
+    },
+    {
+      "region": "전국(국내선)",
+      "agency": "진에어(Jin Air, LJ)",
+      "lines_or_routes": ["김포~제주", "김포~김해(부산)", "김포~울산", "인천~제주", "청주~제주", "제주~김해"],
+      "apply_channel": "진에어 홈페이지(jinair.com) → 예약 → '신분할인 선택' 메뉴 / 고객센터(1600-6200)",
+      "card_or_proof_type": "장애인등록증(복지카드) 원본. 공항 카운터에서 검증.",
+      "url": "https://www.jinair.com/discount/identify?snsLang=ko_KR&ctrCd=KOR",
+      "notes": "중증장애인 및 기존 1~4급 40% 할인. 중증의 동반 보호자 1인 포함. 경증은 별도 할인 없음(또는 제한적). 공항이용료 등은 별도."
+    },
+    {
+      "region": "전국(국내선)",
+      "agency": "티웨이항공(T'way Air, TW)",
+      "lines_or_routes": ["김포~제주", "김포~광주·대구·울산·사천", "인천~제주", "청주~제주", "대구~제주", "광주~제주"],
+      "apply_channel": "티웨이 홈페이지(twayair.com) / 모바일 앱 / 고객센터(1688-8686)",
+      "card_or_proof_type": "장애인등록증(복지카드) 원본",
+      "url": "https://m.twayair.com/service/serviceInfo.do?menuSeq=277",
+      "notes": "장애인 50% 할인 운영. 동반 보호자(중증) 1인 포함. 공항 카운터 발권만 가능한 운임 클래스 존재."
+    },
+    {
+      "region": "전국(국내선)",
+      "agency": "에어부산(Air Busan, BX)",
+      "lines_or_routes": ["부산(김해)~김포·제주", "김포~제주·울산", "울산~제주", "대구~제주" ],
+      "apply_channel": "에어부산 홈페이지(airbusan.com) / 모바일 앱 / 고객센터(1666-3060)",
+      "card_or_proof_type": "장애인등록증(복지카드) 원본",
+      "url": "https://www.airbusan.com/content/individual/service/serviceCustomerInfo",
+      "notes": "중증장애인 국내선 50% 할인. 동반 보호자 1인 포함. 운항 노선은 부산-김포·제주, 김포-제주·울산, 울산-제주, 대구-제주 등 6개 노선 중심."
+    },
+    {
+      "region": "전국(국내선)",
+      "agency": "에어서울(Air Seoul, RS)",
+      "lines_or_routes": ["김포~제주"],
+      "apply_channel": "에어서울 홈페이지(flyairseoul.com) / 고객센터(1800-8100)",
+      "card_or_proof_type": "장애인등록증(복지카드) 원본",
+      "url": "https://flyairseoul.com/CW/ko/terms07.do",
+      "notes": "1~4급(중증 포함) 40% 할인. 5~6급(경증)은 운임 할인 없이 공항이용료만 50% 할인. 국내선은 김포-제주 단일 노선 운항. 정책이 매우 제한적."
+    }
+  ],
+  "how_to_use": {
+    "default": "(A) 항공사 홈페이지·모바일 앱에서 예약 진행 시 '개인 할인 → 장애인 할인'(또는 '신분 할인') 옵션을 선택하고 복지카드 정보(등록번호·등급)를 입력 → 결제 → 모바일 항공권 발급 → 탑승 수속(체크인) 시 복지카드 원본 제시. (B) 항공사 고객센터 또는 공항 카운터에서 직접 발권 — 이때 복지카드 원본을 제시. 어느 경우든 탑승 당일 복지카드 원본 지참 필수.",
+    "with_card": "홈페이지·모바일 앱에서 예약 시 장애인 할인을 선택하고 복지카드 정보를 입력. 항공사에 따라 보호자 좌석을 함께 선택할 수 있음. 모바일 복지카드(정부24·복지로 앱 발급)는 일부 항공사에서 인정하나, 다수 항공사는 여전히 원본 카드 검증을 요구하므로 원본 지참이 안전.",
+    "without_card": "복지카드 미보유 시 할인 적용 불가. 분실·재발급 대기 중인 경우 동주민센터에서 발급한 '장애인 증명서' 임시 제시로 일부 항공사가 인정하는 경우도 있으나 사전 항공사 확인 필요. 검표 시 미제시 시 정상 운임 차액 청구.",
+    "exceptions": "(1) 국제선은 본 항목 대상 아님 — 항공사별 자율 정책, 통상 0~30% 또는 미적용. (2) 일부 할인 운임 클래스(특가·이벤트·번들 운임)는 장애인 할인 중복 적용 불가. (3) 마일리지 항공권은 할인 적용 불가. (4) 운임 미부과 항공권(무료 좌석·보상 좌석)의 동반자 할인은 적용 불가(대한항공 명시). (5) 휠체어 사용자 등은 출발 48시간 전까지 항공사에 사전 통보해야 보조 서비스(휠체어 운반·동반자 좌석 우선 배정 등)를 받을 수 있음. (6) 한국공항공사 관리 공항의 국내선 공항이용료는 항공사별로 별도 할인 정책(에어서울처럼 5~6급 50% 할인하는 경우 존재)."
+  },
+  "application": {
+    "where": [
+      { "channel": "대한항공 홈페이지/앱", "method": "온라인", "url": "https://www.koreanair.com/" },
+      { "channel": "아시아나항공 홈페이지/앱", "method": "온라인", "url": "https://flyasiana.com/" },
+      { "channel": "제주항공 홈페이지/앱", "method": "온라인", "url": "https://www.jejuair.net/" },
+      { "channel": "진에어 홈페이지/앱", "method": "온라인", "url": "https://www.jinair.com/" },
+      { "channel": "티웨이항공 홈페이지/앱", "method": "온라인", "url": "https://www.twayair.com/" },
+      { "channel": "에어부산 홈페이지/앱", "method": "온라인", "url": "https://www.airbusan.com/" },
+      { "channel": "에어서울 홈페이지/앱", "method": "온라인", "url": "https://flyairseoul.com/" },
+      { "channel": "각 항공사 고객센터", "method": "전화", "url": null },
+      { "channel": "공항 카운터", "method": "방문", "url": null }
+    ],
+    "required_documents": [
+      "장애인등록증(복지카드) 원본 — 탑승 당일 지참 필수",
+      "본인 신분증(주민등록증·운전면허증·여권 등)",
+      "보호자 동반 시: 보호자 신분증",
+      "외국인 등록 장애인: 외국인등록증",
+      "온라인 예약 시: 복지카드 등록번호·장애 정도(중증/경증)"
+    ],
+    "processing_period": "예약·발권 즉시 할인 적용(예약 시점). 별도 사전 등록·승인 절차는 없음. 다만 탑승 당일 복지카드 검증 시 진위가 확인되지 않으면 정상 운임 차액이 청구됨.",
+    "fee": {
+      "default": "예약·발권 자체에 별도 수수료 없음. 환불·변경 위약금은 항공사별 운임 규정(일반 운임 환불 정책)에 따름.",
+      "exceptions": "특가·번들·이벤트 운임은 환불 불가 또는 높은 위약금이 적용되는 경우 있음. 장애인 할인 운임이 일반 정상 운임에 적용된 경우는 정상 환불 규정 적용."
+    },
+    "online_available": true,
+    "proxy_allowed": false
+  },
+  "validity": {
+    "expiry": "복지카드 자체의 유효기간(영구 또는 재판정 기한)에 따름. 별도 항공 할인 인증의 유효기간은 없음(예약 시마다 복지카드 정보 입력 또는 카드 검증).",
+    "renewal": "복지카드 재발급·갱신 시 새 등록번호를 다음 예약부터 사용. 별도 항공사 등록 절차는 없으나 일부 항공사는 회원정보에 복지카드 등록 기능 제공."
+  },
+  "exceptions_and_caveats": [
+    "**항공사 자율 정책**: 장애인복지법은 '항공운임 등을 감면하는 정책을 강구하여야 한다'고만 규정. 항공사의 의무가 아닌 자율 정책이므로 할인율·적용 운임이 항공사별로 크게 다름.",
+    "**국제선 제외**: 본 항목은 국내선에 한함. 국제선은 항공사별 자율 정책이며 일반적으로 미적용 또는 매우 제한적.",
+    "**LCC 할인율 차이**: 진에어·제주항공 40%, 에어부산·티웨이 50%, 에어서울 1~4급 40%·5~6급은 공항이용료만 50% — 단순히 '국내선 항공 모두 50%'로 가정하면 안 됨.",
+    "**특가·번들 운임 제외**: 항공사 특가·이벤트·기내식 포함 번들·셔틀번들 등 일부 운임 클래스는 장애인 할인 중복 적용 불가.",
+    "**마일리지·보상 항공권 제외**: 마일리지로 발권한 항공권에는 장애인 할인이 적용되지 않음. 운임 미부과 고객의 동반자 할인도 불가(대한항공 명시).",
+    "**탑승 당일 복지카드 원본 지참 필수**: 미지참 시 정상 운임 차액이 카운터에서 청구. 모바일 복지카드는 일부 항공사만 인정.",
+    "**동반자 좌석 동시 발권**: 중증 장애인의 보호자 50% 할인은 본인과 동시 예매·동시 탑승이 원칙. 보호자 단독 이용 불가.",
+    "**휠체어·의료 동반 서비스**: 출발 48시간 전(가급적 72시간 전)까지 항공사 사전 통보 필요. 휠체어 운반·산소호흡기·의료동행 등은 별도 절차.",
+    "**공항이용료(국내선 약 4,000원)·유류할증료·항공보안료**: 항공사별로 할인 적용 여부 다름. 에어서울은 경증의 공항이용료만 50% 할인.",
+    "**경증 장애인의 일부 LCC 미적용**: 진에어·에어서울은 경증(5~6급 또는 심하지 않은 장애)에게 운임 할인을 제공하지 않거나 제한적.",
+    "**중복 할인 불가**: 어린이·청소년 할인·시니어 할인 등 다른 할인과 중복 적용 불가(일부 항공사 명시).",
+    "**환불·변경**: 일반 항공권과 동일한 환불·변경 규정. 특가 운임 환불 불가 조건이 그대로 적용됨."
+  ],
+  "penalties_for_misuse": "타인 명의 복지카드로 예약하거나 본인이 아닌 자가 할인 운임으로 탑승할 경우 부정 이용으로 간주되어 (1) 즉시 정상 운임 차액 청구, (2) 항공사 약관에 따른 추가 페널티 부과(블랙리스트 등록·향후 할인 예매 제한), (3) 사안이 중대한 경우 「항공사업법」·「형법」(사기·문서 위·변조)에 따른 형사 처벌 가능. 복지카드 도용 사례 적발 시 보건복지부에 신고 처리될 수 있음.",
+  "faq": [
+    {
+      "q": "국내선 항공은 모두 50% 할인인가요?",
+      "a": "그렇지 않습니다. **항공사별로 할인율이 다릅니다.** 대한항공은 중증 50%·경증 30%, 아시아나항공은 전단지상 공통 50%(다만 최근 정책 변경 동향 있어 사전 확인 필요), LCC는 진에어·제주항공 40%, 에어부산·티웨이 50%, 에어서울은 1~4급 40%·5~6급은 공항이용료만 50% 등 큰 차이가 있습니다. 예약 전 해당 항공사 공식 홈페이지에서 확인하세요."
+    },
+    {
+      "q": "보호자도 같이 할인되나요?",
+      "a": "**중증 장애인의 보호자 1인**은 본인과 동일한 할인율을 받습니다(대부분 항공사). 경증 장애인의 동반자는 일반 운임입니다. 보호자 좌석은 본인과 동시에 예매·동시 탑승해야 하며, 보호자 단독 발권·이용은 불가합니다."
+    },
+    {
+      "q": "예약은 어디서 하나요? 온라인으로 되나요?",
+      "a": "대부분의 항공사가 **홈페이지·모바일 앱**에서 장애인 할인 예약을 지원합니다. 예약 단계에서 '개인 할인 → 장애인 할인'(대한항공·아시아나)·'신분 할인'(진에어 등)을 선택하고 복지카드 등록번호·장애 정도를 입력합니다. 일부 특가 운임은 공항 카운터·고객센터 발권만 가능한 경우가 있어 사전에 항공사에 확인하세요. 탑승 당일 복지카드 원본을 반드시 지참해야 합니다."
+    },
+    {
+      "q": "어떤 서류가 필요한가요?",
+      "a": "탑승 당일 **장애인등록증(복지카드) 원본**과 본인 신분증을 카운터에서 제시해야 합니다. 모바일 복지카드(정부24·복지로 앱)는 일부 항공사만 인정하므로 원본 지참이 안전합니다. 보호자 동반 시 보호자 신분증, 외국인 등록 장애인은 외국인등록증을 추가 제시."
+    },
+    {
+      "q": "국제선도 할인되나요?",
+      "a": "본 항목은 **국내선 한정**입니다. 국제선은 항공사별 자율 정책이며 일반적으로 미적용 또는 매우 제한적입니다(일부 운임에 5~30% 적용). 국제선 휠체어 서비스·의료 동반은 별도이며, 출발 48~72시간 전 사전 통보가 필요합니다. 국제선 할인 여부는 해당 항공사에 직접 문의."
+    },
+    {
+      "q": "특가·이벤트 항공권도 장애인 할인이 적용되나요?",
+      "a": "**대부분 적용 불가**입니다. 항공사 특가·기내식 번들·이벤트 운임은 장애인 할인 중복 적용이 안 됩니다. 또한 마일리지·보상 항공권도 할인 대상이 아닙니다. 정상 운임 또는 일부 일반 할인 운임에만 장애인 할인이 적용됩니다."
+    },
+    {
+      "q": "휠체어를 사용하는데 어떻게 예약하나요?",
+      "a": "예약 시 또는 발권 후 **항공사 고객센터에 출발 48~72시간 전까지 휠체어 동반 서비스를 요청**하세요. 휠체어는 위탁수하물로 무료 운반되며(아시아나의 경우 추가 10kg 무료 수하물 허용), 공항 내 휠체어 이동 보조·우선 탑승·기내 좌석 선호도(통로 측·앞쪽) 배정 등을 받을 수 있습니다. 산소호흡기·의료 동반이 필요한 경우 별도 의료 진단서 제출이 필요할 수 있습니다."
+    },
+    {
+      "q": "환불 위약금은 어떻게 적용되나요?",
+      "a": "장애인 할인 운임도 항공사의 일반 환불·변경 규정을 따릅니다. 특가 운임은 환불 불가 또는 높은 위약금이 적용될 수 있습니다. 의료적 사유(입원·진단서)로 인한 환불은 항공사별 의료 환불 정책에 따라 위약금 면제 가능하므로 진단서를 제출하고 항공사에 문의하세요."
+    },
+    {
+      "q": "공항이용료도 할인되나요?",
+      "a": "공항이용료(국내선 약 4,000원)는 한국공항공사가 징수하는 별도 비용으로, **항공사별로 할인 정책이 다릅니다**. 에어서울은 5~6급(경증)의 공항이용료를 50% 할인합니다. 다른 항공사는 운임에만 할인을 적용하고 공항이용료는 정상 부과하는 경우가 많습니다."
+    },
+    {
+      "q": "마일리지 적립은 가능한가요?",
+      "a": "장애인 할인 운임은 항공사 마일리지 프로그램의 적립 기준에 따라 적립률이 정해집니다. 일반적으로 정상 운임 대비 낮은 적립률(예: 50% 적립) 또는 일부 운임은 적립 불가일 수 있습니다. 항공사별로 적립 정책을 확인하세요."
+    },
+    {
+      "q": "다른 사람에게 표를 양도할 수 있나요?",
+      "a": "**불가능**합니다. 장애인 할인 항공권은 본인 전용이며, 탑승 당일 복지카드 원본과 신분증을 카운터에서 검증합니다. 본인이 아닐 경우 정상 운임 차액이 즉시 청구되고 항공사 약관에 따라 추가 페널티가 부과될 수 있습니다."
+    },
+    {
+      "q": "외국인 등록 장애인도 할인되나요?",
+      "a": "「장애인복지법」 제32조의2에 따라 한국에서 장애인 등록을 마친 재외동포·외국인은 동일한 할인을 받을 수 있습니다. 등록 시 받은 복지카드와 외국인등록증을 함께 제시하면 됩니다."
+    }
+  ],
+  "contact": [
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
+    { "name": "대한항공 고객센터", "phone": "1588-2001", "url": "https://www.koreanair.com/" },
+    { "name": "아시아나항공 고객센터", "phone": "1588-8000", "url": "https://flyasiana.com/" },
+    { "name": "제주항공 고객센터", "phone": "1599-1500", "url": "https://www.jejuair.net/" },
+    { "name": "진에어 고객센터", "phone": "1600-6200", "url": "https://www.jinair.com/" },
+    { "name": "티웨이항공 고객센터", "phone": "1688-8686", "url": "https://www.twayair.com/" },
+    { "name": "에어부산 고객센터", "phone": "1666-3060", "url": "https://www.airbusan.com/" },
+    { "name": "에어서울 고객센터", "phone": "1800-8100", "url": "https://flyairseoul.com/" },
+    { "name": "한국공항공사", "phone": "1661-2626", "url": "https://www.airport.co.kr/" },
+    { "name": "국토교통부 항공정책실", "phone": "044-201-4193", "url": "https://www.molit.go.kr/" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=5&cciNo=1&cnpClsNo=1",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 상단 '시행일' 표기",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행령 (별표2 공공시설 등의 이용요금 감면 기준)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표2 표 내용",
+        "robots_txt_ok": true,
+        "notes": "항공 운임 감면은 권고적 성격으로 별표2에 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공요금 감면 — 장애인정책 안내",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010500",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 영역",
+        "robots_txt_ok": true,
+        "notes": "보건복지부 사업안내 책자에서 항공사별 할인율을 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공 교통요금 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=5&cciNo=1&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "항공·철도·여객선 통합 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "대한항공 국내선 운임 안내(개인 할인)",
+      "publisher": "대한항공(Korean Air)",
+      "publisher_type": "민간",
+      "url": "https://www.koreanair.com/contents/booking/reservation-guide/fares/domestic",
+      "fallback_url": "https://www.koreanair.com/kr/ko/booking/overview/domestic/personal-discount",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "국내선 운임 표",
+        "robots_txt_ok": true,
+        "notes": "중증 50% / 경증 30%, 동반자 50% 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "대한항공 휠체어 이용 승객 안내",
+      "publisher": "대한항공(Korean Air)",
+      "publisher_type": "민간",
+      "url": "https://www.koreanair.com/contents/plan-your-travel/special-assistance/disability-assistance/wheelchair",
+      "fallback_url": "https://www.koreanair.com/contents/plan-your-travel/special-assistance/disability-assistance",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "휠체어 운반·사전 통보 절차."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "아시아나항공 도움이 필요한 고객(장애인) 안내",
+      "publisher": "아시아나항공(Asiana Airlines)",
+      "publisher_type": "민간",
+      "url": "https://flyasiana.com/C/KR/KO/contents/reservation-information",
+      "fallback_url": "https://m.flyasiana.com/C/US/EN/index",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "장애인 할인 항목 표",
+        "robots_txt_ok": true,
+        "notes": "전단지에는 '공통 50%'이나 항공사 정책 변동 모니터링 필요."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "진에어 신분할인제도",
+      "publisher": "진에어(Jin Air)",
+      "publisher_type": "민간",
+      "url": "https://www.jinair.com/discount/identify?snsLang=ko_KR&ctrCd=KOR",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "신분할인 표",
+        "robots_txt_ok": true,
+        "notes": "중증·1~4급 40%."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "티웨이항공 국내선 운임안내",
+      "publisher": "티웨이항공(T'way Air)",
+      "publisher_type": "민간",
+      "url": "https://m.twayair.com/service/serviceInfo.do?menuSeq=277",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "장애인 50% 할인."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "에어서울 국내선 신분할인 안내",
+      "publisher": "에어서울(Air Seoul)",
+      "publisher_type": "민간",
+      "url": "https://flyairseoul.com/CW/ko/terms07.do",
+      "fallback_url": "https://flyairseoul.com/CW/ko/noticeContent.do?seq=3766&pageNo=1",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "1~4급 40%, 5~6급 공항이용료만 50%."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "에어부산 서비스 안내",
+      "publisher": "에어부산(Air Busan)",
+      "publisher_type": "민간",
+      "url": "https://www.airbusan.com/content/individual/service/serviceCustomerInfo",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "중증 50% 할인."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "항공요금 할인 및 서비스 — 복지뱅크",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "http://bokjibank.or.kr/bokji/view.php?zipEncode=ZiJm90wDU91DLLMDMetpSfMvWLME",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "항공사별 할인율 정리."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "장애인 항공권 국내선만 찔끔 혜택 — 한국경제",
+      "publisher": "한국경제",
+      "publisher_type": "민간",
+      "url": "https://www.hankyung.com/article/2024021944251",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "manual_review",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "국제선 미적용 이슈 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B001", "B002", "B004"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

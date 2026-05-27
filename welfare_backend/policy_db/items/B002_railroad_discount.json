@@ -1,0 +1,454 @@
+{
+  "id": "B002",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 2,
+  "title": "철도요금 감면 (KTX·새마을·무궁화·ITX 등 일반철도)",
+  "short_summary": "철도요금 장애의 정도가 심한 장애(중증) : 50% 감면(보호자 1인 포함). 장애의 정도가 심하지 않은 장애(경증) : 30% 감면(KTX, 새마을호는 토·일·공휴일 제외 주중에 한함) (전단지 원문)",
+  "category": "교통",
+  "benefit_type": "감면",
+  "supported_amount": {
+    "rate": "중증 50% / 경증 30% (KTX·새마을호 경증은 토·일·공휴일 제외 주중에 한함)",
+    "amount": null,
+    "scope": "한국철도공사(코레일)가 운영하는 일반철도 본인 1인 운임 — KTX, KTX-산천, KTX-이음, 새마을호, ITX-새마을, ITX-마음, ITX-청춘, 무궁화호, 누리로, 통근열차 등. SR(수서고속철도)이 운영하는 SRT도 동일한 할인율 적용. 도시철도·광역철도(수도권전철·경춘선·동해선 광역전철 등)는 B001 항목(100% 무임)이 적용되며 본 항목과 구별. 임시열차·관광열차·전세열차의 할인은 운영기관 정책에 따라 별도. 운임에만 적용되며 좌석등급·식음료·기타 부가서비스에는 적용되지 않음."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 장애인",
+    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "companion_allowed": {
+      "applicable_to": "심한 장애(중증)",
+      "count": 1,
+      "scope": "심한 장애(중증) 장애인을 동반하는 보호자 1인에게도 동일한 50% 할인 적용. 보호자 좌석은 본인과 함께 동시에 예매·발권되어야 하며, 별도 예매 또는 보호자 단독 발권은 불가. 경증 장애인은 본인만 30% 할인이며 보호자는 일반 운임."
+    },
+    "income_criteria": null,
+    "age_criteria": null,
+    "residency_criteria": "거주지 제한 없음. 전국 어느 코레일·SR 운영 노선에서도 동일 적용."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제30조(경제적 부담의 경감)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행령",
+      "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+    },
+    {
+      "name": "철도사업법",
+      "article": "제9조(여객 운임·요금) 및 제9조의2(여객 운임·요금의 감면)",
+      "url": "https://www.law.go.kr/법령/철도사업법"
+    },
+    {
+      "name": "한국철도공사법",
+      "article": "제9조(사업) 및 여객운송약관(여객운송 부속약관 — 운임 감면)",
+      "url": "https://www.law.go.kr/법령/한국철도공사법"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "한국철도공사(코레일) — KTX·KTX-산천·KTX-이음",
+      "lines_or_routes": ["경부고속선(서울~부산)", "호남고속선(용산~목포·광주송정)", "수서평택고속선 연결 일부", "경부선·호남선·전라선·동해선·중앙선·강릉선·중부내륙선 KTX-이음 등 전국 고속·준고속 노선"],
+      "apply_channel": "코레일톡 앱 → 마이페이지 → '할인/장애인 등록' 메뉴에서 복지카드 사진 등록(최초 1회) / 또는 역 매표창구에서 복지카드 제시 후 발권 / 또는 letskorail.com 홈페이지 로그인 후 '우대고객' 등록",
+      "card_or_proof_type": "장애인등록증(복지카드, 모바일 복지카드 포함)",
+      "url": "https://www.korail.com/ticket/discountSystem/discount",
+      "notes": "중증 50% / 경증 30%(토·일·공휴일 제외). KTX는 휠체어 사용자 지정석(열차별 5석 내외)이 별도 운영되며, 동반 1인 좌석(인접좌석 3개)도 함께 보호. 휠체어 지정석은 코레일톡 또는 역 창구에서 동반자와 동시에 예매해야 할인 적용. 최초 인증은 PC(레츠코레일)에서만 가능했으나 최근에는 모바일에서도 가능. 인증 유효기간 1년 경과 시 재인증 필요. 검표 시 복지카드 원본 또는 모바일 복지카드 지참 필수."
+    },
+    {
+      "region": "전국",
+      "agency": "한국철도공사(코레일) — 일반열차(새마을·ITX·무궁화·누리로 등)",
+      "lines_or_routes": ["경부선", "호남선", "전라선", "장항선", "충북선", "중앙선", "태백선", "영동선", "경전선", "동해선", "경춘선(ITX-청춘)", "경강선 일반열차 등 전국 일반철도"],
+      "apply_channel": "동일(코레일톡 / 레츠코레일 / 역 매표창구)",
+      "card_or_proof_type": "장애인등록증(복지카드, 모바일 복지카드 포함)",
+      "url": "https://www.korail.com/ticket/discountSystem/discount",
+      "notes": "새마을호·ITX-새마을은 KTX와 동일하게 경증 30% 할인이 토·일·공휴일 제외 주중에만 적용. 무궁화호·누리로·ITX-청춘·통근열차는 경증도 요일 제한 없이 30% 상시 할인. 본인 외 동반 1인 50% 할인(중증)은 모든 일반열차 공통."
+    },
+    {
+      "region": "수도권·충청권",
+      "agency": "SR(주식회사 에스알) — SRT 수서고속철도",
+      "lines_or_routes": ["경부선 SRT(수서~부산)", "호남선 SRT(수서~목포·광주송정)", "동탄·평택지제·천안아산·오송·대전·동대구·울산·신경주·울산·부산 등"],
+      "apply_channel": "SR 홈페이지(etk.srail.kr) → 회원가입 후 '공공할인 신청하기'(우대고객 등록) → 본인 인증 및 복지카드 정보 등록 / 또는 SRT 모바일 앱 / 또는 역 매표창구",
+      "card_or_proof_type": "장애인등록증(복지카드, 모바일 복지카드 포함). 본인 외 보호자는 신분증 추가 확인 가능.",
+      "url": "https://etk.srail.kr/cms/archive.do?pageId=TK0401010000",
+      "notes": "SRT도 코레일과 동일하게 중증 50%(보호자 1인 포함) / 경증 30%(토·일·공휴일 제외 주중에 한함). 회원가입 시 '우대고객' 사전 등록 필요. 휠체어 사용자는 일반실 1·4호차에 휠체어석 운영. 고객센터 1800-1472."
+    }
+  ],
+  "how_to_use": {
+    "default": "(A) 코레일톡·SRT 앱 또는 홈페이지에 1회 복지카드 인증 등록 → 예매 시 자동으로 장애인 할인 운임 표시 → 결제 → 모바일 승차권 발급, (B) 역 매표창구에서 복지카드 제시 후 발권. 어느 경우든 탑승 시 복지카드(원본 또는 모바일 복지카드) 지참 필수.",
+    "with_card": "코레일톡: 마이페이지 → '할인/장애인 등록' → 복지카드 사진 첨부 → 승인 시까지 보통 1~2영업일. 승인 후 예매하면 할인운임이 자동 적용. SRT(SR): etk.srail.kr 회원가입 → '공공할인 신청하기' → 본인인증·복지카드 정보 등록 → 승인 후 자동 적용. 모바일 복지카드(정부24 발급)도 인정.",
+    "without_card": "역 매표창구에서 장애인복지카드(또는 모바일 복지카드)와 신분증을 제시하면 즉시 발권. 코레일 홈페이지(letskorail.com)·SRT 홈페이지(etk.srail.kr) 비회원 예매로도 가능하지만, 발권 시점에 우대고객 등록이 안 된 경우 역 창구에서 추가 확인을 받을 수 있음.",
+    "exceptions": "(1) KTX·새마을호·ITX-새마을의 경증 30% 할인은 토·일·공휴일 제외 주중에만 적용. 즉 토·일·공휴일에는 경증 장애인은 일반운임. 중증은 요일 제한 없이 50%. (2) 무궁화호·누리로·ITX-청춘·통근열차는 경증도 요일 제한 없이 30% 상시. (3) 보호자 동반 50%(중증)는 본인과 함께 동시 예매·동시 탑승해야 적용. 보호자 단독 이용 불가. (4) 좌석 지정 변경(예: 일반실 → 특실, 입석 → 일반실) 시 일부 경우 할인이 해제·재계산되므로 기존 표를 환불 후 재구매해야 할 수 있음. (5) 명절·성수기 할당좌석은 장애인 할인 적용에 제한이 있을 수 있음(특히 SRT). (6) 임시열차·관광열차(해랑·정선아리랑열차·바다열차 등)는 별도 정책 — 코레일 고객센터(1544-7788) 사전 확인 권장."
+  },
+  "application": {
+    "where": [
+      { "channel": "코레일톡 앱", "method": "모바일 앱", "url": "https://www.korail.com/ticket/main" },
+      { "channel": "레츠코레일 홈페이지", "method": "온라인", "url": "https://www.letskorail.com/" },
+      { "channel": "SR 홈페이지(SRT)", "method": "온라인", "url": "https://etk.srail.kr/main.do" },
+      { "channel": "SRT 모바일 앱", "method": "모바일 앱", "url": "https://etk.srail.kr/main.do" },
+      { "channel": "코레일·SR 역 매표창구", "method": "방문", "url": "https://www.korail.com/" },
+      { "channel": "코레일 고객센터", "method": "전화", "url": "tel:1544-7788" },
+      { "channel": "SR 고객센터", "method": "전화", "url": "tel:1800-1472" }
+    ],
+    "required_documents": [
+      "장애인등록증(복지카드) 원본 또는 모바일 복지카드(정부24 발급)",
+      "본인 신분증(주민등록증·운전면허증·여권 등)",
+      "보호자 동반 시: 보호자 신분증(검표 시 함께 확인 가능)",
+      "온라인 등록 시: 복지카드 앞·뒷면 사진 파일(jpg/png)",
+      "외국인 등록 장애인의 경우: 외국인등록증"
+    ],
+    "processing_period": "복지카드 1회 등록(우대고객 인증): 코레일톡 약 1~2영업일, SR 약 1영업일. 승인 후 예매 즉시 할인 자동 적용. 역 창구 발권은 즉시 처리. 인증 유효기간 1년, 만료 후 재인증 필요.",
+    "fee": {
+      "default": "할인 등록·발권·환불 자체에는 별도 수수료 없음. 일반 승차권과 동일한 환불 위약금(출발 전 시점에 따라 0~70%, 출발 후 15분까지 15%, 그 이후 시간대별로 인상)이 적용됨.",
+      "exceptions": "할인 승차권을 역 창구에서 좌석 변경할 경우 할인이 자동 해제되어 기존 승차권을 환불 후 재구매해야 할 수 있음(코레일·SR 공통). 명절 특별수송 기간에는 환불 위약금이 인상될 수 있음."
+    },
+    "online_available": true,
+    "proxy_allowed": false
+  },
+  "validity": {
+    "expiry": "복지카드 자체의 유효기간(영구 또는 재판정 기한)에 따름. 코레일톡·SRT의 우대고객 인증 유효기간은 1년이며, 만료 시 동일한 절차로 재인증 필요.",
+    "renewal": "복지카드 분실·훼손·재발급, 장애 재판정, 주소·성명 변경 시 코레일톡·SRT 우대고객 정보를 재등록. 갱신은 동일한 메뉴(코레일톡 마이페이지·SR '공공할인 신청')에서 재첨부."
+  },
+  "exceptions_and_caveats": [
+    "KTX·새마을호·ITX-새마을의 경증 30% 할인은 토·일·공휴일 제외 주중에 한함. 토·일·공휴일에는 경증 장애인은 일반운임 적용(중증은 요일 제한 없이 50%).",
+    "무궁화호·누리로·ITX-청춘·통근열차는 경증도 요일 제한 없이 30% 상시 할인.",
+    "도시철도·광역철도(수도권전철 1~9호선 광역전철, 경춘선, 동해선 광역전철 등)는 본 항목이 아닌 B001 항목(100% 무임) 적용.",
+    "중증 보호자 동반 50% 할인은 본인과 동시 예매·동시 탑승이 원칙. 보호자만 단독 이용 시 할인 적용 불가.",
+    "할인 승차권은 본인만 이용 가능. 타인 양도·대여 시 부정승차로 간주되어 정상운임 외에 부가운임(0.5~10배) 추징.",
+    "역 창구에서 좌석 변경 시 할인이 해제되는 경우가 있어, 기존 승차권을 환불 후 재구매해야 할 수 있음.",
+    "코레일톡·SRT의 우대고객 인증 유효기간은 1년. 만료 시 재인증 전까지 자동 할인 적용 불가(매번 역 창구 발권 필요).",
+    "외국인 등록 장애인은 「장애인복지법」 제32조의2에 따른 등록을 마친 경우에만 할인 적용. 외국인등록증 추가 확인이 있을 수 있음.",
+    "관광·전세·임시열차(해랑·정선아리랑열차·바다열차 등)는 별도 정책. 운영기관 사전 확인 필요.",
+    "할인은 운임에만 적용되며 특실료(KTX 특실 차액)·식음료·주차료 등 부가서비스 비용에는 적용되지 않음.",
+    "명절·성수기에는 우대고객 좌석 할당이 제한적일 수 있음(특히 SRT). 사전 예매 권장.",
+    "모바일 복지카드는 정부24·복지로 앱에서 발급 가능. 일부 역 창구에서는 검표 시 원본 카드 추가 확인을 요구할 수 있음."
+  ],
+  "penalties_for_misuse": "할인 자격이 없는 사람이 할인 승차권을 이용하는 경우 또는 타인에게 양도·대여한 경우 부정승차로 간주되어 「철도사업법」 제10조에 따라 정상운임 외에 그 운임의 0.5~10배(코레일 여객운송약관 기준 평균 30배 한도 내)에 해당하는 부가운임을 징수. 반복적 부정승차 시 우대고객 등록이 일정 기간 제한될 수 있으며, 사안에 따라 형사고발 가능. 검표 시 복지카드 미지참 시 정상운임으로 재정산(차내 발권)됨.",
+  "faq": [
+    {
+      "q": "KTX·새마을호·무궁화호 모두 같은 할인율인가요?",
+      "a": "할인율은 모두 동일합니다 — 중증 50%, 경증 30%. 다만 KTX·새마을호·ITX-새마을의 경증 30% 할인은 토·일·공휴일을 제외한 주중에만 적용됩니다. 무궁화호·누리로·ITX-청춘·통근열차는 경증도 요일 제한 없이 30% 상시 할인됩니다. 중증은 모든 일반열차에서 요일 제한 없이 50% 할인되며 보호자 1인도 함께 50% 할인을 받습니다."
+    },
+    {
+      "q": "SRT(수서고속철도)도 할인되나요? 코레일과 별개인가요?",
+      "a": "SRT(주식회사 SR 운영)도 코레일과 동일한 할인율로 운영합니다 — 중증 50%(보호자 1인 포함), 경증 30%(토·일·공휴일 제외 주중에 한함). 다만 회사가 다르므로 코레일과는 별개로 SR 홈페이지(etk.srail.kr) 또는 SRT 모바일 앱에서 회원가입 후 '공공할인 신청하기' 메뉴로 우대고객 등록을 따로 해야 합니다. 한 번 등록하면 그 후 예매 시 자동 적용됩니다."
+    },
+    {
+      "q": "왜 경증 장애인은 KTX 주말 할인이 안 되나요?",
+      "a": "이는 한국철도공사·SR의 운임체계 정책으로, KTX·새마을호·ITX-새마을의 경증 장애인 30% 할인을 토·일·공휴일에는 적용하지 않습니다. 그 외 무궁화호·누리로 등은 주말에도 30% 할인이 유지됩니다. 장애계에서는 이 차등 적용에 대한 개선을 지속 요구해 왔지만 2026년 현재까지도 정책 변경은 이뤄지지 않았습니다. 중증 장애인과 동반 보호자 1인은 KTX 주말에도 50% 할인이 유지됩니다."
+    },
+    {
+      "q": "코레일톡 앱에서 어떻게 등록하나요?",
+      "a": "코레일톡 앱을 실행한 뒤 '메뉴 → 마이페이지 → 할인/장애인 등록(또는 우대고객 등록)'으로 들어가서 본인 인증을 한 뒤 장애인복지카드 앞·뒷면 사진을 첨부해 신청하면 됩니다. 보통 1~2영업일 안에 승인되며, 승인되면 그 이후 예매부터 장애인 운임이 자동 표시됩니다. 최초 등록은 PC(레츠코레일)에서만 가능하던 시기가 있었으나 최근에는 모바일 앱에서도 가능합니다. 인증 유효기간은 1년이며 만료 후 재인증해야 합니다."
+    },
+    {
+      "q": "보호자도 같이 50% 할인을 받으려면 어떻게 예매하나요?",
+      "a": "중증 장애인의 보호자 1인은 같은 50% 할인을 받습니다. 보호자 좌석은 본인과 동시에 같은 예매 화면에서 함께 발권해야 하며, 보호자만 단독으로 예매·이용할 경우 할인이 적용되지 않습니다. 코레일톡·SRT 앱 모두 '동반자 1인 추가' 옵션이 있어 본인 승차권을 예매할 때 함께 선택하면 됩니다. KTX 휠체어 사용자 지정석을 예매할 때도 인접 좌석을 동반자석으로 함께 예매해야 합니다."
+    },
+    {
+      "q": "복지카드가 없이도 탈 수 있나요?",
+      "a": "원칙적으로 장애인등록증(복지카드) 제시가 필요합니다. 모바일 복지카드(정부24·복지로 앱)도 인정됩니다. 카드를 미지참한 채 검표받을 경우 정상운임으로 재정산될 수 있습니다. 모바일 복지카드를 미리 다운받아 두고 휴대전화에서 보여줄 수 있도록 준비해 두는 것이 안전합니다."
+    },
+    {
+      "q": "환불 위약금도 일반인과 똑같나요?",
+      "a": "할인 승차권의 환불 위약금은 일반 승차권과 동일한 기준입니다 — 출발 시점에 따라 0~70% 위약금이 부과되며 출발 후에는 더 높아집니다. 다만 역 창구에서 좌석을 변경하면 할인이 해제되어 기존 표를 환불 후 재구매해야 하는 경우가 있으니, 가능하면 코레일톡·SRT 앱에서 직접 변경하거나 새로 예매하는 것이 편리합니다."
+    },
+    {
+      "q": "휠체어 사용자도 KTX를 탈 수 있나요? 어떻게 예매하나요?",
+      "a": "KTX는 열차별로 휠체어 지정석(보통 5석)이 별도 운영되며, 인접 좌석(3개)이 동반자석으로 보호됩니다. 코레일톡 앱이나 코레일 홈페이지의 '교통약자 배려서비스' 메뉴, 또는 역 매표창구에서 휠체어 지정석을 예매할 수 있습니다. 일반열차(새마을·무궁화)는 휠체어 지정석이 별도 운영되지 않는 경우가 많아 사전에 코레일 고객센터(1544-7788)에 문의해 휠체어 보조서비스를 요청하는 것이 좋습니다. SRT도 일반실 1·4호차에 휠체어석이 있습니다."
+    },
+    {
+      "q": "정기권·자유여행패스(내일로 등)도 할인되나요?",
+      "a": "정기승차권·자유여행패스(내일로 등)는 별도 상품으로, 각 상품의 약관에 따른 정액 운임이 적용됩니다. 일반 장애인 할인(50%/30%)이 중복 적용되지는 않는 경우가 일반적이나, 일부 상품은 장애인 전용 할인 패스를 별도 운영하기도 합니다. 코레일 고객센터(1544-7788)에 사전 확인을 권장합니다."
+    },
+    {
+      "q": "특실·우등실에 타도 50%·30% 할인을 받나요?",
+      "a": "할인은 일반실 운임 기준으로 적용됩니다. 특실(KTX 특실)을 타는 경우 일반실과 특실의 차액(특실료)은 할인 대상이 아니며, 일반실 운임 부분에만 할인이 적용됩니다. 즉 '특실 정상요금 ÷ 2'가 아닌 '일반실 운임 × (1 − 할인율) + 특실료 차액'으로 계산됩니다."
+    },
+    {
+      "q": "다른 사람에게 양도하면 어떻게 되나요?",
+      "a": "장애인 할인 승차권은 본인 전용입니다. 타인에게 양도·대여한 경우 부정승차로 간주되어 정상운임 외에 부가운임(코레일 약관상 평균 0.5~10배, 최대 30배)이 추징됩니다. 반복적 부정사용 시 우대고객 등록이 일정 기간 제한되며 사안에 따라 형사고발될 수 있습니다."
+    },
+    {
+      "q": "외국인 등록 장애인도 할인되나요?",
+      "a": "「장애인복지법」 제32조의2에 따라 한국에서 장애인 등록을 마친 재외동포·외국인은 동일하게 할인을 받을 수 있습니다. 외국인등록증과 함께 등록 시 받은 복지카드를 제시하면 됩니다. 다만 일부 역 창구에서는 외국인등록증 추가 확인을 요구할 수 있습니다."
+    }
+  ],
+  "contact": [
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
+    { "name": "한국철도공사(코레일) 고객센터", "phone": "1544-7788", "url": "https://www.korail.com/" },
+    { "name": "SR(SRT) 고객센터", "phone": "1800-1472", "url": "https://etk.srail.kr/" },
+    { "name": "한국철도공사 교통약자 배려서비스", "phone": "1544-7788", "url": "https://www.korail.com/ticket/guest/weakService" },
+    { "name": "국토교통부 철도정책관실", "phone": "044-201-3938", "url": "https://www.molit.go.kr/" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=5&cciNo=1&cnpClsNo=1",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 상단 '시행일' 표기",
+        "robots_txt_ok": true,
+        "notes": "국가법령정보 Open API로 안정적 변경 모니터링 가능."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행령 (별표2 공공시설 등의 이용요금 감면 기준)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표2 표 내용",
+        "robots_txt_ok": true,
+        "notes": "철도 운임 감면 비율(중증 50%/경증 30%)이 별표2에 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "철도사업법 / 한국철도공사 여객운송약관",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/철도사업법",
+      "fallback_url": "https://info.korail.com/info/contents.do?key=1446",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "여객운임·요금 감면 근거. 운송약관 PDF는 별도 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공요금 감면 — 장애인정책 안내",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710010500",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 영역 (div#contents 등)",
+        "robots_txt_ok": true,
+        "notes": "보건복지부 사업안내 책자(연 1~2회) 다운로드 페이지도 함께 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공 교통요금 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=5&cciNo=1&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "철도·도시철도·항공·여객선 감면 통합 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "코레일 할인제도 안내(승차권예매)",
+      "publisher": "한국철도공사(코레일)",
+      "publisher_type": "공기업",
+      "url": "https://www.korail.com/ticket/discountSystem/discount",
+      "fallback_url": "https://www.letskorail.com/ebizprd/EbizPrdTicketpr15500W_pr15510.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 div.contents 또는 할인율 표",
+        "robots_txt_ok": true,
+        "notes": "장애인·국가유공자·임산부 등 모든 할인 정책 통합 안내. 운임체계 변경 시 즉시 반영."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "코레일 교통약자 배려서비스 안내",
+      "publisher": "한국철도공사(코레일)",
+      "publisher_type": "공기업",
+      "url": "https://www.korail.com/ticket/guest/weakService",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "휠체어 지정석·승강보조서비스·동반자 안내 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "SRT 할인제도(SR 종합이용안내)",
+      "publisher": "주식회사 SR(에스알)",
+      "publisher_type": "민간",
+      "url": "https://etk.srail.kr/cms/archive.do?pageId=TK0401010000",
+      "fallback_url": "https://etk.srail.kr/cms/archive.do?pageId=TK0402130100",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "div.tbStyle03 또는 할인율 표",
+        "robots_txt_ok": true,
+        "notes": "공공할인 신청 절차·우대고객 등록 안내 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "SRT 부가운임 징수기준",
+      "publisher": "주식회사 SR(에스알)",
+      "publisher_type": "민간",
+      "url": "https://etk.srail.kr/cms/archive.do?pageId=TK0402080000",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "부정승차 시 부가운임 산정 기준."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "코레일 승차권 환불·위약금 안내",
+      "publisher": "한국철도공사(코레일)",
+      "publisher_type": "공기업",
+      "url": "https://www.korail.com/ticket/reserve/guide/pay",
+      "fallback_url": "https://m.letskorail.com/mbt/m_penalty.html",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "할인 승차권 환불 규정은 일반 승차권과 동일하나 좌석 변경 시 할인 해제."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "철도·도시철도 요금 감면 — 복지뱅크",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjibank.or.kr/bokji/view.php?zipEncode=5eJm90wDU91DLLMDMetpSfMvWLME",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "B001과 공유. 철도·도시철도 통합 안내."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "KTX·SRT 경증 장애인 차등요금 논란 — 더인디고",
+      "publisher": "더인디고",
+      "publisher_type": "민간",
+      "url": "https://theindigo.co.kr/archives/21152",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "manual_review",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "정책 개선 논의 동향 모니터링용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B001", "B003", "B004"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

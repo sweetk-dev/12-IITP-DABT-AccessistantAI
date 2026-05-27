@@ -1,0 +1,489 @@
+{
+  "id": "B016",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 16,
+  "title": "장애인 거주시설 입소",
+  "short_summary": "장애인 거주시설 입소 * 시설종류별 대상 장애인 입소 (전단지 원문)",
+  "category": "주거",
+  "benefit_type": "서비스제공",
+  "supported_amount": {
+    "rate": "소득·장애등급에 따라 차등",
+    "amount": "보장시설(기초생활수급자) 입소자: 시설 운영비(인건비·관리운영비) 전액 국비·지방비 부담, 본인부담 0원. 실비시설 입소자: 월 입소료 최대 648,000원 중 286,000원을 정부가 지원, 본인부담 약 약 362,000원 한도(본인 또는 보호자 생활능력에 따라 1인당 월 약 490,700원 범위 내 수납). 단기거주시설: 일·주 단위 이용료 별도(시설별 차등).",
+    "scope": "주거공간 제공 + 일상생활 지원(식사·세탁·청소·목욕) + 의료재활(촉탁의·간호 서비스) + 교육·심리·사회·직업재활 프로그램 + 야간 안전관리(중증장애인 거주시설은 24시간 상주 인력). 단, 의료비(병원 진료·치과)는 별도 부담. 시설 외부 외출·외박은 자유로우나 시설 규정에 따름."
+  },
+  "eligibility": {
+    "target": "「장애인복지법」 제32조에 따라 등록된 장애인 중 일반가정에서 생활하기 어려운 자. 입소 신청은 본인 또는 친족·관계인이 할 수 있음.",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "companion_allowed": null,
+    "income_criteria": "보장시설(무료) 입소: 국민기초생활보장법에 따른 수급자(생계·의료급여), 또는 부양의무자가 없거나 부양능력이 없는 등록 장애인. 실비시설(본인부담) 입소: 소득기준 없으나 본인부담금 납부 가능자. 단기거주시설·공동생활가정: 시설별로 다름, 일반적으로 수급자 우대.",
+    "age_criteria": "시설 종류별 차등 — 장애영유아 거주시설은 만 6세 미만(연장 시 만 18세까지). 그 외 시설은 원칙적으로 만 18세 이상(아동은 보호자 동의 및 시·군·구 결정). 중증장애인 거주시설은 연령 제한 없음.",
+    "residency_criteria": "원칙적으로 거주지(주소지) 관할 시·군·구청에 신청. 다만 해당 시·군·구에 적합한 시설이 없을 경우 타 지역 시설에 의뢰 가능. 입소 후 주소지를 시설로 이전."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제58조(장애인복지시설), 제59조(장애인복지시설의 설치·운영), 제60조(장애인거주시설의 이용절차 등)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행규칙",
+      "article": "제41조 및 별표4(장애인복지시설의 종류·기능)",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙"
+    },
+    {
+      "name": "국민기초생활 보장법",
+      "article": "보장시설(생계·의료급여 수급자 거주시설) 관련 조항",
+      "url": "https://www.law.go.kr/법령/국민기초생활보장법"
+    },
+    {
+      "name": "장애인복지사업안내",
+      "article": "보건복지부 연간 사업안내(제3권 장애인복지시설)",
+      "url": "https://www.mohw.go.kr/board.es?mid=a10413000000&bid=0021"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "중앙(정책 총괄)",
+      "agency": "보건복지부 장애인권익지원과",
+      "lines_or_routes": [
+        "장애인 거주시설 정책 총괄, 사업안내 발간"
+      ],
+      "apply_channel": "정책 문의: 보건복지상담센터 129 또는 보건복지부 장애인권익지원과(044-202-3318 등)",
+      "card_or_proof_type": "해당없음",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710020300",
+      "notes": "장애인복지법 제58조 및 시행규칙 별표4 운용. 2026년부터 '장애인 지역사회 자립지원사업' 본사업 전환 추진."
+    },
+    {
+      "region": "전국",
+      "agency": "광역지자체(시·도) 및 기초지자체(시·군·구)",
+      "lines_or_routes": [
+        "입소 신청 접수·심사, 시설 입소 결정, 운영비 보조"
+      ],
+      "apply_channel": "주소지 읍·면·동 행정복지센터(주민센터) 방문 신청 → 시·군·구청 장애인복지팀 심사 → 국민연금공단 '서비스지원 종합조사' 의뢰 → 시·군·구 입소 결정 통보",
+      "card_or_proof_type": "장애인등록증, 신분증, 가족관계증명서, 소득·재산 증빙",
+      "url": "https://www.gov.kr/",
+      "notes": "각 시·도·시·군·구별 운영지침은 보건복지부 연간 사업안내를 따름."
+    },
+    {
+      "region": "전국 (서비스 조사)",
+      "agency": "국민연금공단 장애인지원실",
+      "lines_or_routes": [
+        "서비스지원 종합조사 수행"
+      ],
+      "apply_channel": "시·군·구의 의뢰 → 종합조사원 가정방문 → 적격성·필요도 평가",
+      "card_or_proof_type": "해당없음",
+      "url": "https://www.nps.or.kr/",
+      "notes": "종합조사 결과(인정점수)가 거주시설 선정기준(보통 X1~X3 영역 총점 기준) 이상이면 입소 적격 결정."
+    },
+    {
+      "region": "전국 (시설 검색)",
+      "agency": "보건복지부 사회서비스정보시스템(희망이음, 구 W4C)",
+      "lines_or_routes": [
+        "전국 장애인 거주시설 검색·현황 조회"
+      ],
+      "apply_channel": "시설별 정원·결원·연락처 확인 후 시·군·구를 통해 입소 의뢰",
+      "card_or_proof_type": "해당없음",
+      "url": "https://www.ssis.go.kr/",
+      "notes": "2025년 1월부터 기존 W4C가 희망이음으로 통합 운영. 공공데이터포털 '전국사회복지시설표준데이터'에서도 확인 가능."
+    },
+    {
+      "region": "전국 (협회)",
+      "agency": "한국장애인복지시설협회 (KAWID)",
+      "lines_or_routes": [
+        "회원시설(거주시설 다수) 검색, 입소 상담"
+      ],
+      "apply_channel": "시·도지부 또는 시설 직접 연락. 공식 입소 결정은 시·군·구.",
+      "card_or_proof_type": "해당없음",
+      "url": "http://www.kawid.or.kr/",
+      "notes": "지역별 거주시설 목록 제공. 정확한 입소절차는 시·군·구에서 진행."
+    }
+  ],
+  "how_to_use": {
+    "default": "1) 주소지 읍·면·동 행정복지센터에 입소 신청서 제출 → 2) 시·군·구청에서 입소 적격성 심사(가족관계·소득·생활환경 확인) → 3) 국민연금공단에 서비스지원 종합조사 의뢰 → 4) 종합조사원 가정방문·조사 → 5) 시·군·구청이 입소 적격 결정 및 적합 시설 매칭 → 6) 해당 시설에 입소의뢰서 송부 → 7) 시설 방문·면접 후 입소 계약 체결 → 8) 입소.",
+    "with_card": null,
+    "without_card": null,
+    "exceptions": "긴급한 보호가 필요한 경우(학대·방임 피해, 보호자 갑작스러운 부재 등) 단기거주시설 또는 장애인 쉼터에 임시 입소 후 종합조사 진행. 학대 피해 장애인은 「장애인복지법」 제59조의15에 따른 '피해장애인 쉼터' 우선 이용."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "주소지 읍·면·동 행정복지센터(주민센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "주소지 시·군·구청 장애인복지팀",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "복지로 — 장애인 거주시설 안내",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/"
+      },
+      {
+        "channel": "보건복지부 사회서비스정보시스템 — 시설 검색",
+        "method": "온라인",
+        "url": "https://www.ssis.go.kr/"
+      },
+      {
+        "channel": "보건복지상담센터 — 상담·안내",
+        "method": "전화",
+        "url": "https://www.129.go.kr/"
+      }
+    ],
+    "required_documents": [
+      "장애인 거주시설 이용 신청서(소정 양식)",
+      "장애인등록증(복지카드) 사본",
+      "신청인 신분증",
+      "주민등록표 등본",
+      "가족관계증명서",
+      "건강진단서(결핵·전염성 질환 확인용, 시설별 요구사항 다름)",
+      "소득·재산 증빙(보장시설 무료 입소 신청 시): 수급자 증명서, 차상위계층 증명서, 또는 부양의무자 부양능력 미약 입증서류",
+      "신청인이 본인이 아닌 경우: 위임장, 대리인 신분증, 가족관계 입증서류",
+      "건강보험 자격득실확인서(보장시설 신청 시)"
+    ],
+    "processing_period": "입소 신청부터 적격 결정까지 약 1~3개월(서비스지원 종합조사 포함). 실제 입소까지는 시설 결원 발생에 따라 추가 대기 — 인기 있는 시설은 1~3년, 단기거주시설은 1~4주, 공동생활가정(그룹홈)은 6개월~2년. 긴급보호의 경우 즉시 단기시설 임시 입소 가능.",
+    "fee": {
+      "default": "보장시설(기초생활수급자·부양의무자 없는 자): 입소·이용 비용 전액 무료(국비·지방비). 실비시설: 본인부담금 월 약 362,000원 한도(정부 지원 286,000원 차감 후), 최대 입소료 648,000원 기준. 단기거주시설·그룹홈은 시설별 차등.",
+      "exceptions": "의료비(병원 진료·약값·치과 등)는 본인부담 또는 의료급여 적용. 시설 내 부대비용(개인 의복·간식 등)은 본인부담."
+    },
+    "online_available": false,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "원칙적으로 입소 후 본인이 퇴소를 희망하거나 자격 상실(예: 시설 부적응, 의료시설 이송 필요) 시까지 거주 가능. 단기거주시설은 최대 1년(연장 가능), 장애영유아 거주시설은 만 18세까지 거주 후 성인 시설로 전환.",
+    "renewal": "입소자격은 별도 갱신 절차 없이 유지되나, 시·군·구가 정기적으로 입소자의 인권·환경 점검을 실시. 본인 또는 보호자가 퇴소를 원하면 언제든 퇴소 가능(시설 측이 강제 거주시킬 수 없음). 2026년부터 시범사업에서 본사업 전환 예정인 '지역사회 자립지원' 통해 거주시설→독립주거 전환도 가능."
+  },
+  "exceptions_and_caveats": [
+    "장애인 거주시설은 총 5종 — (1) 장애유형별 거주시설, (2) 중증장애인 거주시설, (3) 장애영유아 거주시설(만 6세 미만), (4) 단기거주시설(일시·단기 보호), (5) 공동생활가정(그룹홈). 시설별 입소 대상이 다름.",
+    "입소는 시·군·구의 결정에 따르며, 본인이 원하는 시설에 무조건 입소 가능한 것은 아님. 시설 결원·입소 적격성에 따라 매칭됨.",
+    "보장시설(무료) 입소는 기초생활수급자 또는 부양의무자가 없거나 부양능력이 없어야 함. 부양능력 판단은 시·군·구청장의 권한.",
+    "공동생활가정(그룹홈)은 정원 4명 이하의 소규모 시설로, 자립이 가능한 경증·중증 장애인이 전문인력 지도하에 공동생활.",
+    "단기거주시설은 보호자의 일시적 부재(병원 입원·출장 등), 긴급 일시보호가 필요한 경우 이용. 최대 1년까지 거주 가능(연장 사유 있을 시 예외).",
+    "장애영유아 거주시설은 6세 미만 영유아에 한하나, 만 18세까지 연장 거주 후 성인 시설로 전환할 수 있음.",
+    "가족과 함께 입소는 원칙적으로 불가(시설은 개인 단위 입소). 단, 부모-자녀가 모두 등록장애인인 경우 같은 시설 입소를 시·군·구가 조정할 수 있음.",
+    "100인 이상 대규모 시설은 신규 설치 제한(2026 탈시설 로드맵). 신규 입소는 30인 이하 소규모 시설·그룹홈으로 유도.",
+    "시설 선택권 — 본인이 원하는 시설을 신청할 수 있으나, 시·군·구의 적격 결정 및 시설의 동의가 필요. 결원이 없는 시설은 대기.",
+    "퇴소는 본인 의사로 언제든 가능. 보호자의 동의가 필요한 경우(미성년·의사결정능력 곤란)는 가족·후견인 협의.",
+    "시설 내 인권침해(폭행·방임·성폭력)는 「장애인복지법」 제59조의11(학대 신고) 및 1577-1366(장애인권익옹호기관)에 신고."
+  ],
+  "penalties_for_misuse": "허위 입소 신청(부양능력 은닉 등) 시 입소 자격 취소 및 그동안 지원받은 비용 환수. 시설 운영자의 보조금 부정수급은 「보조금 관리에 관한 법률」 및 「장애인복지법」에 따라 시설폐쇄·운영자 형사처벌. 시설 종사자의 학대·인권침해는 「장애인복지법」 제86조(벌칙)에 따라 처벌(학대 행위자는 7년 이하 징역 또는 7천만원 이하 벌금 등).",
+  "faq": [
+    {
+      "q": "어떤 시설들이 있나요?",
+      "a": "총 5종입니다. (1) **장애유형별 거주시설** — 같거나 유사한 장애 유형(지적·자폐성·시각·청각·지체 등)의 장애인이 거주. (2) **중증장애인 거주시설** — 장애정도가 심한 장애인에게 요양·일상생활 지원. (3) **장애영유아 거주시설** — 6세 미만 영유아의 재활·일상생활·요양. (4) **장애인 단기거주시설** — 보호자 일시 부재·긴급 보호용 단기간 거주. (5) **장애인 공동생활가정(그룹홈)** — 자립이 가능한 장애인이 4명 이하 소규모로 공동생활. 「장애인복지법 시행규칙」 별표4에서 규정."
+    },
+    {
+      "q": "어디에 신청하나요?",
+      "a": "**주소지 읍·면·동 행정복지센터(주민센터)** 가 첫 신청처입니다. 신청서 작성 후 시·군·구청 장애인복지팀으로 이관되어 심사가 진행됩니다. 본인 외에 친족(부모·형제자매)이나 사회복지사 등 관계인도 신청할 수 있습니다. 전화 상담은 보건복지상담센터(129)에 문의."
+    },
+    {
+      "q": "입소까지 얼마나 걸리나요?",
+      "a": "신청부터 적격 결정까지 **약 1~3개월**(서비스지원 종합조사 포함). 실제 입소는 시설 결원에 따라 추가 대기가 필요합니다. **인기 있는 시설은 1~3년 대기**, 단기거주시설은 1~4주, 그룹홈은 6개월~2년 정도입니다. 학대 피해·긴급보호의 경우 즉시 단기시설 임시 입소가 가능합니다."
+    },
+    {
+      "q": "비용은 얼마나 드나요?",
+      "a": "**기초생활수급자(생계·의료급여) 또는 부양의무자가 없거나 부양능력이 없는 등록 장애인**은 보장시설에 **무료 입소**(국비·지방비 전액 지원). **그 외의 분(실비시설 입소자)** 은 본인 또는 보호자의 생활능력에 따라 1인당 월 약 490,700원 범위 내에서 본인부담, 정부가 최대 월 286,000원을 추가 지원(최대 입소료 648,000원 기준). 의료비·개인 부대비용은 별도."
+    },
+    {
+      "q": "내가 원하는 시설에 무조건 들어갈 수 있나요?",
+      "a": "**아닙니다.** 본인이 원하는 시설을 신청할 수는 있으나, 시·군·구의 입소 적격 결정과 해당 시설의 동의, 그리고 결원 발생이 필요합니다. 결원이 없으면 대기자 명단에 등재됩니다. 시설 견학·면접도 입소 결정에 영향을 줍니다."
+    },
+    {
+      "q": "가족과 함께 들어갈 수 있나요?",
+      "a": "원칙적으로 **개인 단위 입소**입니다. 시설은 가족 단위 거주를 전제로 하지 않으므로, 부모와 자녀가 함께 들어가는 것은 일반적이지 않습니다. 다만 부모-자녀가 모두 등록 장애인이고 동일한 시설 입소가 적절한 경우 시·군·구가 같은 시설로 매칭을 조정할 수 있습니다. 가족과의 외출·외박은 자유롭습니다."
+    },
+    {
+      "q": "공동생활가정(그룹홈)은 뭐가 다른가요?",
+      "a": "그룹홈은 **정원 4명 이하의 소규모 주거시설**로, 지역사회 내 일반 주택을 이용합니다. 자립이 가능한 장애인이 전문인력(사회복지사·생활지도원)의 지도하에 공동생활을 하면서 사회 적응을 훈련합니다. 큰 거주시설보다 가정적이고 자립을 지향하는 모델로, 2026 탈시설 로드맵에서 권장됩니다."
+    },
+    {
+      "q": "단기거주시설은 누가 이용하나요?",
+      "a": "**보호자의 일시적 부재**(병원 입원·장기 출장·여행), **긴급 일시보호**(가정 내 위기 상황), 또는 거주시설 입소 전 임시 보호가 필요한 경우 이용합니다. 일·주·월 단위로 이용 가능하며 최대 1년까지(연장 가능). 시설별로 정원이 작고 결원이 자주 발생하므로 대기 기간은 비교적 짧습니다."
+    },
+    {
+      "q": "퇴소 절차는 어떻게 되나요?",
+      "a": "본인의 의사로 **언제든 퇴소 가능**합니다. 시설은 본인 의사에 반해 강제 거주시킬 수 없습니다(장애인복지법). 미성년자 또는 의사결정능력이 곤란한 경우 보호자·후견인 협의가 필요합니다. 시·군·구청에 퇴소 신고 후 새 주소지로 전입하면 됩니다. 2026년부터 본사업 전환되는 '장애인 지역사회 자립지원사업'을 통해 시설→독립주거 전환을 지원받을 수 있습니다."
+    },
+    {
+      "q": "시설 안에서 학대·인권침해가 의심되면?",
+      "a": "즉시 **장애인권익옹호기관(전국 공통 1644-8295)** 또는 **1577-1366(장애인 학대 신고)**, 그리고 시·군·구청·경찰서(112)에 신고하세요. 「장애인복지법」 제59조의11에 따라 학대 신고가 의무화되어 있고, 신고자는 보호받습니다. 학대 행위자는 **7년 이하 징역 또는 7천만원 이하 벌금**(법 제86조)."
+    },
+    {
+      "q": "전국에 어떤 시설이 있는지 어떻게 찾나요?",
+      "a": "**보건복지부 사회서비스정보시스템(희망이음, ssis.go.kr)** 에서 전국 사회복지시설을 검색할 수 있습니다(2025년 1월 기존 W4C 통합). **공공데이터포털**의 '전국사회복지시설표준데이터'(data.go.kr)에서도 시설 목록·주소·전화번호를 일괄 조회 가능합니다. 한국장애인복지시설협회(kawid.or.kr)에서도 회원시설을 안내합니다."
+    },
+    {
+      "q": "탈시설 정책 때문에 시설이 줄어든다고 하던데, 입소가 어려워지나요?",
+      "a": "보건복지부의 '탈시설 장애인 지역사회 자립지원 로드맵'(2021~)에 따라 **100인 이상 대규모 시설의 신규 설치는 제한**되고, 30인 이하 소규모 시설·그룹홈으로 전환이 추진되고 있습니다. 다만 거주시설 자체를 폐쇄하는 것은 아니며, 본인이 원하는 경우 입소는 계속 가능합니다. 2026년부터는 '지역사회 자립지원사업'이 본사업으로 전환되어 시설 거주자가 자립 주거로 이동할 수 있는 지원도 확대됩니다."
+    }
+  ],
+  "contact": [
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "보건복지부 장애인권익지원과",
+      "phone": "044-202-3318",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710020300"
+    },
+    {
+      "name": "장애인 학대 신고(중앙장애인권익옹호기관)",
+      "phone": "1644-8295",
+      "url": "https://www.naapd.or.kr/"
+    },
+    {
+      "name": "장애인 학대·인권침해 신고 보조",
+      "phone": "1577-1366",
+      "url": null
+    },
+    {
+      "name": "한국장애인복지시설협회",
+      "phone": "02-718-9363",
+      "url": "http://www.kawid.or.kr/"
+    },
+    {
+      "name": "국민연금공단 장애인지원실(서비스지원 종합조사)",
+      "phone": "1355",
+      "url": "https://www.nps.or.kr/"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법 (제58조 장애인복지시설, 제60조 거주시설 이용절차)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": "https://casenote.kr/법령/장애인복지법/제58조",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 시행일",
+        "robots_txt_ok": true,
+        "notes": "거주시설 종류·이용절차의 직접 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행규칙 (제41조 및 별표4 — 장애인복지시설의 종류·기능)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표4 표",
+        "robots_txt_ok": true,
+        "notes": "5종 거주시설 분류의 직접 근거."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "보건복지부 — 장애인거주시설 정책 안내",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710020300",
+      "fallback_url": "https://www.mohw.go.kr/menu.es?mid=a10710011000",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 콘텐츠 영역",
+        "robots_txt_ok": true,
+        "notes": "거주시설 종류·입소 대상·절차 요약."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "2025년 장애인복지시설 사업안내(제3권)",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/board.es?mid=a10413000000&bid=0021&act=view&list_no=1485155",
+      "fallback_url": "https://www.mohw.go.kr/board.es?mid=a10413000000&bid=0021",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "게시판 첨부파일 영역",
+        "robots_txt_ok": true,
+        "notes": "연간 갱신. 2026년 사업안내 발간 시 갱신 모니터링. PDF 본문에 거주시설 운영지침·입소절차·비용 부담 기준 상세."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "찾기쉬운 생활법령정보 — 장애인 거주시설 입소 및 입소이용료 지원",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=2856&ccfNo=3&cciNo=3&cnpClsNo=1",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1003&ccfNo=3&cciNo=1&cnpClsNo=2",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "보장시설/실비시설 본인부담금 명시."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "탈시설 장애인 지역사회 자립지원 로드맵",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/boardDownload.es?bid=0027&list_no=366703&seq=1",
+      "fallback_url": "https://www.mohw.go.kr/menu.es?mid=a10710011000",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "pdf_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "2026년 본사업 전환 추진 중. 정책 변동 모니터링 필요."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "사회서비스정보시스템(희망이음) — 전국 사회복지시설 검색",
+      "publisher": "보건복지부 / 한국사회보장정보원",
+      "publisher_type": "공기업",
+      "url": "https://www.ssis.go.kr/",
+      "fallback_url": "https://www.w4c.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "2025년 1월 기존 W4C(w4c.go.kr) 통합. 시설 검색 기능 제공."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "공공데이터포털 — 전국사회복지시설표준데이터",
+      "publisher": "공공데이터포털",
+      "publisher_type": "공공데이터포털",
+      "url": "https://www.data.go.kr/data/15096296/standard.do",
+      "fallback_url": "https://www.data.go.kr/data/15128057/fileData.do",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://api.odcloud.kr/api",
+        "auth_required": true,
+        "docs_url": "https://www.data.go.kr/"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "전국 시설 목록 일괄 조회용. 거주시설 수 및 입소 현황 별도 데이터셋."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "한국장애인복지시설협회 — 회원시설 안내",
+      "publisher": "한국장애인복지시설협회",
+      "publisher_type": "민간",
+      "url": "http://www.kawid.or.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "민간 협회. 정책 본문은 아니며 시설 검색 보조."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "장애인거주시설 평가지표 2025",
+      "publisher": "보건복지부 / 사회복지시설정보시스템",
+      "publisher_type": "중앙정부",
+      "url": "https://www.w4c.go.kr/favl/com/fileDownload.do?dvsn=7&SEQ=1283&file=/webdata//wfis/favl/uploadfile/FE000/2025%EB%85%84+%EC%82%AC%ED%9A%8C%EB%B3%B5%EC%A7%80%EC%8B%9C%EC%84%A4+%ED%8F%89%EA%B0%80%EC%A7%80%ED%91%9C(%EC%9E%A5%EC%95%A0%EC%9D%B8%EA%B1%B0%EC%A3%BC%EC%8B%9C%EC%84%A4).pdf",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "pdf_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "시설 운영 기준 참고용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": [
+    "B012"
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

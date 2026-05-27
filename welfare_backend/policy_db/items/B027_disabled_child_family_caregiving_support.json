@@ -1,0 +1,383 @@
+{
+  "id": "B027",
+  "leaflet_section": "심한장애(중증) 전국공통",
+  "leaflet_number": 3,
+  "title": "장애아 가족 양육지원(돌봄서비스·가족휴식 지원)",
+  "short_summary": "장애아 가족 양육지원(만18세 미만의 장애의 정도가 심한 아동) (전단지 원문)",
+  "category": "활동지원",
+  "benefit_type": "서비스제공",
+  "supported_amount": {
+    "rate": null,
+    "amount": "연 최대 480시간(월 80시간 이내) 돌봄서비스 제공. 기준 중위소득 120% 이하 가정은 무료, 초과 가정은 이용료의 40% 본인부담(시간당 약 5,120원 수준, 지자체별 상이).",
+    "scope": "전문 돌보미가 가정 방문 또는 외부 기관에서 만 18세 미만 중증 장애아동을 돌봄. 가족휴식지원프로그램(캠프·힐링 프로그램 등)도 별도 제공. 지자체 예산에 따라 지원시간이 연장되는 경우 있음(일부 지자체 연 1,200시간까지 확대 사례)."
+  },
+  "eligibility": {
+    "target": "만 18세 미만의 장애의 정도가 심한 장애아동(중증 장애아동)과 생계·주거를 같이하는 가정.",
+    "severity_levels": ["심한 장애(중증)"],
+    "companion_allowed": null,
+    "income_criteria": "돌봄서비스: 기준 중위소득 120% 이하 가정 무료, 초과 가정 이용료 40% 본인부담. 가족휴식프로그램: 소득기준 없이 만 18세 미만 모든 장애아 가족 참여 가능(돌봄서비스 이용 가정 우선).",
+    "age_criteria": "만 18세 미만(아동복지법상 아동 기준). 만 18세 도달 시 서비스 종료. 단, 특수교육대상자로서 만 18세 이후에도 학교에 재학 중인 경우 예외 적용 여부는 지자체 확인 필요.",
+    "residency_criteria": null
+  },
+  "legal_basis": [
+    {
+      "name": "장애아동 복지지원법",
+      "article": "제37조(가족지원), 제38조(돌봄 및 일시적 휴식 지원 서비스)",
+      "url": "https://www.law.go.kr/법령/장애아동복지지원법"
+    },
+    {
+      "name": "장애아동 복지지원법 시행규칙",
+      "article": "돌봄서비스·가족지원 절차 및 기준",
+      "url": "https://www.law.go.kr/법령/장애아동복지지원법시행규칙"
+    },
+    {
+      "name": "장애인복지법",
+      "article": "제32조(장애인 등록)",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "보건복지부",
+      "lines_or_routes": ["장애아가족 양육지원사업 총괄·예산", "사업지침 수립"],
+      "apply_channel": "보건복지상담센터 129",
+      "card_or_proof_type": null,
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040400",
+      "notes": "연간 사업안내 발간. 지원시간·단가 등 매년 사업지침 확인 필요."
+    },
+    {
+      "region": "전국",
+      "agency": "한국장애인부모회 중앙지원단(브로소)",
+      "lines_or_routes": ["장애아가족 양육지원사업 중앙운영", "돌보미 교육·파견 관리"],
+      "apply_channel": "브로소 홈페이지(broso.or.kr) 또는 지역 장애인부모회",
+      "card_or_proof_type": null,
+      "url": "https://www.broso.or.kr/contents.do?menuId=0509000000",
+      "notes": "보건복지부 위탁 운영. 돌봄서비스 신청포털 및 돌보미 관리 담당."
+    },
+    {
+      "region": "전국(읍·면·동)",
+      "agency": "주소지 읍·면·동 주민센터(행정복지센터)",
+      "lines_or_routes": ["서비스 신청 접수", "대상자 선정 및 사례 관리"],
+      "apply_channel": "방문 신청",
+      "card_or_proof_type": "장애인등록증, 주민등록등본, 건강보험료 납부확인서 등",
+      "url": "https://www.gov.kr/",
+      "notes": "신청은 주민센터에서 받고, 시·군·구가 최종 대상자 선정. 대기자 명단이 있는 경우 우선순위(소득·장애중증도·돌봄 긴급도) 고려."
+    },
+    {
+      "region": "서울",
+      "agency": "서울시장애인부모회",
+      "lines_or_routes": ["서울 지역 돌보미 교육·파견"],
+      "apply_channel": "서울시장애인부모회 홈페이지 또는 동주민센터 연계",
+      "card_or_proof_type": null,
+      "url": "https://www.broso.or.kr/",
+      "notes": "서울시는 자체 예산으로 지원시간 추가 확대 가능. 해당 연도 지원시간 동주민센터 확인 필요."
+    },
+    {
+      "region": "충청남도(금산군 예시)",
+      "agency": "금산군(지자체 예산 확대 사례)",
+      "lines_or_routes": ["연 지원시간 확대(2026년 연 1,200시간 운영 사례)"],
+      "apply_channel": "금산군청 또는 주민센터",
+      "card_or_proof_type": null,
+      "url": "https://www.geumsan.go.kr/",
+      "notes": "기본 480시간(월 80시간) 외 지자체 예산으로 추가 시간을 확대하는 지자체가 있음. 거주 지자체 확인 필수."
+    }
+  ],
+  "how_to_use": {
+    "default": "주소지 읍·면·동 주민센터에 신청 → 시·군·구 대상자 선정 → 돌보미 배정 → 가정 방문 또는 외부 기관에서 돌봄서비스 이용. 연 최대 480시간(월 80시간 이내) 범위에서 이용 가능.",
+    "with_card": "장애인등록증(복지카드)·주민등록등본·건강보험료 납부확인서(소득 확인용)를 지참하여 주민센터를 방문하거나 복지로(bokjiro.go.kr)에서 온라인 신청.",
+    "without_card": "장애인증명서(동주민센터에서 발급)를 대신 사용 가능. 신청서는 주민센터 비치.",
+    "exceptions": "서비스 이용 대기자가 많은 지역에서는 우선순위(소득·장애중증도·긴급도) 적용으로 즉시 이용이 어려울 수 있음. 돌봄서비스는 양육자(부모 등)가 자리를 비울 수 있는 시간대에 제공. 장애아동이 어린이집·특수학교 재원 중에도 방과 후·주말 등에 이용 가능. 가족(부모·형제자매)이 돌보미로 등록하여 직접 서비스를 제공하는 것은 불가."
+  },
+  "application": {
+    "where": [
+      { "channel": "주소지 읍·면·동 주민센터(행정복지센터)", "method": "방문", "url": "https://www.gov.kr/" },
+      { "channel": "복지로 홈페이지", "method": "온라인", "url": "https://www.bokjiro.go.kr/" },
+      { "channel": "브로소(한국장애인부모회 중앙지원단)", "method": "온라인", "url": "https://www.broso.or.kr/dcsp/fo/" },
+      { "channel": "보건복지상담센터", "method": "전화", "url": "https://www.129.go.kr" },
+      { "channel": "정부24", "method": "온라인", "url": "https://www.gov.kr/portal/service/serviceInfo/391000000295" }
+    ],
+    "required_documents": [
+      "장애아가족 양육지원 신청서(주민센터 비치 또는 복지로 양식)",
+      "장애인등록증(복지카드) 또는 장애인증명서",
+      "주민등록등본(가족관계 및 동거 여부 확인)",
+      "건강보험료 납부확인서 또는 소득증빙서류(기준 중위소득 120% 이하 여부 확인)",
+      "대리 신청 시: 위임장, 대리인 신분증"
+    ],
+    "processing_period": "신청 후 시·군·구 대상자 선정까지 통상 2~4주. 대기자가 있는 경우 순위에 따라 추가 대기 발생 가능.",
+    "fee": {
+      "default": "기준 중위소득 120% 이하 가정: 무료.",
+      "exceptions": "기준 중위소득 120% 초과 가정: 이용료의 40% 본인부담(시간당 약 5,120원 수준. 지자체별·연도별 상이하므로 확인 필요)."
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "아동이 만 18세가 될 때까지. 매년 소득·장애 기준 재확인 후 갱신.",
+    "renewal": "연 1회 갱신 신청(시·군·구 또는 주민센터). 장애 재판정 결과 변동 시 즉시 신고 필요."
+  },
+  "exceptions_and_caveats": [
+    "만 18세 이상이 되면 서비스 종료. 특수교육 재학 중이어도 원칙상 만 18세 생일 기준 종료(지자체에 따라 예외 적용 여부 확인 필요).",
+    "기준 중위소득 120% 초과 가정도 서비스 이용 가능하나 이용료의 40% 본인부담. 소득기준 관계없이 신청 가능.",
+    "돌봄서비스 연간 지원시간(480시간, 월 80시간)은 기본값이며, 지자체 예산에 따라 확대 운영하는 지역이 있음(예: 충남 금산군 연 1,200시간). 거주 지자체 확인 필수.",
+    "대기자가 많을 경우 즉시 이용이 어려울 수 있음. 우선순위(저소득·장애중증도·긴급도)에 따라 순차 배정.",
+    "가족(부모·형제자매 등 친인척)은 돌보미로 등록하여 서비스를 제공할 수 없음.",
+    "가족휴식지원프로그램(캠프·힐링 프로그램 등)은 소득기준 없이 만 18세 미만 모든 장애아 가족이 참여 가능. 돌봄서비스 이용 가정을 우선 배정.",
+    "돌봄서비스는 양육자(부모 등)가 자리를 비워야 하는 상황(질병·사회활동·직장 등)에 한해 제공. 단순 편의를 위한 이용은 제한될 수 있음.",
+    "장애아동이 어린이집·특수학교 재원 중이어도 방과 후·주말·방학 중 등에 서비스 이용 가능.",
+    "경증 장애아동(장애의 정도가 심하지 않은 아동)은 이 항목의 대상이 아님. 단, 별도 지자체 돌봄 서비스(장애아 보육 지원 등)는 이용 가능할 수 있음.",
+    "소득기준 확인을 위한 건강보험료 납부내역 제출이 필요. 매년 재확인."
+  ],
+  "penalties_for_misuse": "허위 서류 제출 등 부정 이용 시 이용 정지 및 지원금 환수. 돌보미의 부정 출근·허위 서비스 신고 시 돌보미 자격 박탈.",
+  "faq": [
+    {
+      "q": "만 18세 미만이면 어떤 장애 유형이든 신청할 수 있나요?",
+      "a": "장애의 정도가 심한(중증) 장애아동이면 장애 유형에 관계없이 신청 가능합니다. 지체·뇌병변·시각·청각·언어·지적·자폐성·정신 등 모든 유형의 중증 등록 장애아동이 해당됩니다."
+    },
+    {
+      "q": "소득이 높으면 아예 신청 못 하나요?",
+      "a": "아닙니다. 소득기준(기준 중위소득 120%) 초과 가정도 신청하여 서비스를 이용할 수 있습니다. 다만 이 경우 이용료의 40%를 본인이 부담해야 합니다. 120% 이하 가정은 완전 무료입니다."
+    },
+    {
+      "q": "연간 480시간이 부족한데 더 이용할 수 있나요?",
+      "a": "기본 지원시간은 연 480시간(월 80시간 이내)이지만, 거주 지자체가 자체 예산으로 시간을 추가 확대하는 경우가 있습니다. 예를 들어 충남 금산군은 2026년 연 1,200시간으로 확대 운영하고 있습니다. 거주 지역 주민센터 또는 시·군·구 담당 부서에 추가 시간 여부를 문의하세요."
+    },
+    {
+      "q": "부모 또는 형제자매가 돌보미로 신청할 수 있나요?",
+      "a": "불가합니다. 가족·친인척은 돌보미로 등록할 수 없으며, 전문 돌보미만 서비스를 제공할 수 있습니다."
+    },
+    {
+      "q": "아이가 어린이집이나 특수학교에 다니는데도 이용할 수 있나요?",
+      "a": "네. 어린이집이나 특수학교에 재원 중이어도 방과 후, 주말, 방학 중에 돌봄서비스를 이용할 수 있습니다."
+    },
+    {
+      "q": "가족휴식지원프로그램이란 무엇인가요? 별도 신청해야 하나요?",
+      "a": "장애아동 가족의 정서적 휴식을 위한 캠프·힐링 프로그램 등을 지원하는 제도입니다. 소득기준 없이 만 18세 미만 장애아 가족이라면 참여 가능합니다(돌봄서비스 이용 가정 우선). 지역 장애인부모회 또는 주민센터를 통해 일정을 확인하고 별도 신청합니다."
+    },
+    {
+      "q": "신청 후 얼마나 기다려야 서비스를 받을 수 있나요?",
+      "a": "대기자 유무에 따라 다릅니다. 통상 대상자 선정까지 2~4주 소요되며, 대기자가 많은 지역에서는 그 이상 걸릴 수 있습니다. 우선순위(저소득·장애중증도·돌봄 긴급도)에 따라 순차 배정됩니다."
+    },
+    {
+      "q": "돌보미가 어떤 일을 해주나요?",
+      "a": "전문 교육을 이수한 돌보미가 가정 또는 외부 기관에서 장애아동의 식사, 위생관리, 이동 지원, 학습 보조, 여가 활동 등 일상적 돌봄을 제공합니다. 의료 행위(투약·주사 등)는 돌보미 업무 범위 외입니다."
+    },
+    {
+      "q": "경증 장애아동은 이 서비스를 받을 수 없나요?",
+      "a": "이 항목은 중증(심한 장애) 아동 전용입니다. 경증 장애아동은 지자체별 장애아 보육 지원, 발달재활서비스(B020) 등 다른 복지 제도를 활용하시기 바랍니다."
+    },
+    {
+      "q": "아이가 만 18세가 되면 서비스가 바로 끊기나요?",
+      "a": "원칙적으로 만 18세 생일을 기준으로 서비스가 종료됩니다. 다만 특수교육 재학 중인 경우 예외 적용 여부는 거주 지자체에 문의하세요. 만 18세 이후에는 장애 성인 대상 활동지원서비스(B024) 등 다른 제도로 전환이 가능합니다."
+    }
+  ],
+  "contact": [
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
+    { "name": "한국장애인부모회 중앙지원단(브로소)", "phone": "02-2088-8500", "url": "https://www.broso.or.kr/" },
+    { "name": "주소지 동주민센터(행정복지센터)", "phone": null, "url": "https://www.gov.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "장애아동 복지지원법 (제37조·제38조 — 가족지원·돌봄 및 일시적 휴식 지원)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애아동복지지원법",
+      "fallback_url": "https://www.law.go.kr/LSW/lsEfInfoP.do?lsiSeq=140931",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제37조·제38조 조문 본문",
+        "robots_txt_ok": true,
+        "notes": "장애아동 복지지원법 개정 시 지원 대상·범위 변경 가능성."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애아동 복지지원법 시행규칙",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애아동복지지원법시행규칙",
+      "fallback_url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=246425&lsId=011669",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "보건복지부 — 장애아가족 양육지원 개요",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040400",
+      "fallback_url": "https://www.mohw.go.kr/react/policy/index.jsp?PAR_MENU_ID=06&MENU_ID=06370404",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "지원시간·소득기준 텍스트",
+        "robots_txt_ok": true,
+        "notes": "연간 사업지침 갱신 시 지원시간·단가·소득기준 변경 가능. 반드시 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "복지로 — 장애아가족 양육지원 서비스 상세",
+      "publisher": "보건복지부 복지로",
+      "publisher_type": "중앙정부",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003265",
+      "fallback_url": "https://www.bokjiro.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "지원내용·소득기준·신청방법 텍스트",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "한국장애인부모회 중앙지원단(브로소) — 장애아가족 양육지원사업",
+      "publisher": "한국장애인부모회 중앙지원단(브로소)",
+      "publisher_type": "민간",
+      "url": "https://www.broso.or.kr/contents.do?menuId=0509000000",
+      "fallback_url": "https://www.broso.or.kr/dcsp/fo/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "사업 안내·신청 절차 텍스트",
+        "robots_txt_ok": true,
+        "notes": "보건복지부 위탁 운영기관. 돌보미 배정·교육 정보 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "정부24 — 장애아 가족 양육 지원 서비스 안내",
+      "publisher": "행정안전부 정부24",
+      "publisher_type": "중앙정부",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/391000000295",
+      "fallback_url": "https://www.gov.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "2026년 장애인복지 사업안내 2(보건복지부·복지뱅크)",
+      "publisher": "한국사회보장정보원 복지뱅크",
+      "publisher_type": "공기업",
+      "url": "https://bokjibank.or.kr/SW_bbs/notice/view.php?zipEncode=%3D%3DWm9ugDHnezYf2BIzYnWKtpTvNBFDxzPzNjHrxyK91vt1drjrMCH9MyMetpSfMvWLME",
+      "fallback_url": "https://www.bokjibank.or.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "pdf_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "2026년 장애인복지 사업안내 PDF 내 장애아 가족 양육지원 세부 기준 포함. 연 1회 갱신."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "충청남도 2026년 장애인복지사업 안내(지자체 사업안내 예시)",
+      "publisher": "충청남도",
+      "publisher_type": "광역지자체",
+      "url": "https://www.chungnam.go.kr/cnportal/cmmn/file/fileDown.do?menuNo=5100288&atchFileId=26219466339a488c91dfa84428d763f1&fileSn=1",
+      "fallback_url": "https://www.chungnam.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "pdf_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "지자체별 지원시간 차이 확인 사례. 다른 지자체 유사 문서 병행 모니터링 권장."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    }
+  ],
+  "related_items": ["B024", "B026", "B020"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

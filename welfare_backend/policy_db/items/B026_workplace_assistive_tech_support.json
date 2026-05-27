@@ -1,0 +1,337 @@
+{
+  "id": "B026",
+  "leaflet_section": "심한장애(중증) 전국공통",
+  "leaflet_number": 2,
+  "title": "직장 내 보조공학기기 및 근로지원인 지원",
+  "short_summary": "직장 내 보조공학기기, 근로지원인 지원(장애인고용법상 심한장애, 추가심사 후 지원) (전단지 원문)",
+  "category": "활동지원",
+  "benefit_type": "현물지급",
+  "supported_amount": {
+    "rate": null,
+    "amount": "보조공학기기: 1인당 최대 1,500만원(중증 장애인 기준). 근로지원인: 국가 임금 전액 지원(근로자 본인부담 시간당 300원)",
+    "scope": "보조공학기기는 구입·대여·맞춤제작 비용을 고용유지기간(2년) 합산 1,500만원 한도 내 지원. 근로지원인은 1일 최대 8시간, 주 40시간 이내에서 핵심 업무 외 부수 업무 보조 제공. 두 지원은 별개로 신청·심사되며 중복 수혜 가능."
+  },
+  "eligibility": {
+    "target": "「장애인고용촉진 및 직업재활법」상 중증장애인으로 근로 중이거나 취업 예정인 장애인. 사업주도 장애인 근로자를 위해 보조공학기기를 신청 가능.",
+    "severity_levels": ["심한 장애(중증)"],
+    "companion_allowed": null,
+    "income_criteria": null,
+    "age_criteria": "근로연령 제한 없음. 단, 실제 근로 중이거나 3개월 내 취업 예정이어야 함.",
+    "residency_criteria": null
+  },
+  "legal_basis": [
+    {
+      "name": "장애인고용촉진 및 직업재활법",
+      "article": "제21조(장애인 고용 사업주에 대한 지원), 제21조의2(근로지원인 지원)",
+      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법"
+    },
+    {
+      "name": "장애인고용촉진 및 직업재활법 시행령",
+      "article": "보조공학기기·근로지원인 지원 기준",
+      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법시행령"
+    },
+    {
+      "name": "사업주 및 장애인 등에 대한 융자·지원규정(한국장애인고용공단 내규)",
+      "article": "보조공학기기 지원한도 및 근로지원인 운영 세부 기준",
+      "url": "https://www.kead.or.kr/bbs/plaw/bbsView.do?bbsCnId=200476&menuId=MENU0796"
+    }
+  ],
+  "operating_agencies": [
+    {
+      "region": "전국",
+      "agency": "한국장애인고용공단(KEAD)",
+      "lines_or_routes": ["보조공학기기 지원사업", "근로지원인 지원사업"],
+      "apply_channel": "장애인서비스신청포털(hub.kead.or.kr) 온라인, 전국 공단 지역본부·지사 방문, 1588-1519 전화",
+      "card_or_proof_type": "장애인등록증(복지카드), 재직증명서 또는 근로계약서",
+      "url": "https://www.kead.or.kr/",
+      "notes": "추가심사(심사위원회) 후 지원 여부·규모 결정. 신청 후 심사까지 수 주 소요될 수 있음. 보조공학기기 심사와 근로지원인 심사는 별도 진행."
+    },
+    {
+      "region": "전국",
+      "agency": "고용노동부",
+      "lines_or_routes": ["장애인 고용 정책 총괄", "예산 지원"],
+      "apply_channel": "고용노동부 고객상담센터 1350",
+      "card_or_proof_type": null,
+      "url": "https://www.moel.go.kr/",
+      "notes": "KEAD가 고용노동부 위탁 운영."
+    }
+  ],
+  "how_to_use": {
+    "default": "한국장애인고용공단(KEAD) 장애인서비스신청포털(hub.kead.or.kr) 또는 가까운 공단 지사에서 신청 → 심사위원회 심사 → 지원 결정 통보 → 보조공학기기 지급/대여 또는 근로지원인 연결.",
+    "with_card": "장애인등록증(복지카드)·재직증명서 등 서류를 갖추어 신청포털에서 온라인 접수 또는 방문 접수.",
+    "without_card": "장애인등록 확인 후 신청 가능. 등록증 미소지자는 동주민센터에서 장애인증명서를 발급받아 사용.",
+    "exceptions": "보조공학기기: 구입·대여 비용 중 지원한도(1,500만원) 초과분은 본인(또는 사업주) 부담. 근로지원인: 이용 장애인은 시간당 300원 본인부담(1명의 근로지원인이 2명 이상 동시 지원 시 시간당 180원으로 할인). 주 40시간 이내에서만 지원되며 초과 근로 시간분 추가 지원 불가. 가족·친인척은 근로지원인으로 등록 불가."
+  },
+  "application": {
+    "where": [
+      { "channel": "장애인서비스신청포털(KEAD)", "method": "온라인", "url": "https://hub.kead.or.kr/" },
+      { "channel": "한국장애인고용공단 전국 지역본부·지사", "method": "방문", "url": "https://www.kead.or.kr/" },
+      { "channel": "한국장애인고용공단 고객상담센터", "method": "전화", "url": "https://www.kead.or.kr/" },
+      { "channel": "고용노동부 고객상담센터", "method": "전화", "url": "https://www.moel.go.kr/" },
+      { "channel": "복지로(정보 안내)", "method": "온라인", "url": "https://www.bokjiro.go.kr/" }
+    ],
+    "required_documents": [
+      "보조공학기기 지원 신청서(포털 또는 방문 비치)",
+      "장애인등록증(복지카드) 또는 장애인증명서",
+      "재직증명서 또는 근로계약서(현 근무처 확인용)",
+      "보조공학기기 견적서 및 제품 사양서(보조공학기기 신청 시)",
+      "근로지원인 지원 신청서(근로지원인 신청 시)",
+      "직무기술서(어떤 업무에 지원이 필요한지 기술)",
+      "대리 신청 시: 위임장, 대리인 신분증"
+    ],
+    "processing_period": "신청 접수 후 심사위원회 심의까지 통상 3~6주. 결정 통보 후 보조공학기기는 발주·납품 일정(약 2~4주 추가), 근로지원인은 매칭 후 즉시 또는 수일 내 서비스 개시.",
+    "fee": {
+      "default": "보조공학기기: 지원한도(1,500만원) 이내 무료, 초과분 본인(사업주) 부담. 근로지원인: 이용 장애인 시간당 300원 본인부담.",
+      "exceptions": "1명의 근로지원인이 2인 이상 동시 지원 시 시간당 180원으로 할인."
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "validity": {
+    "expiry": "보조공학기기: 고용유지기간(지원 후 2년) 동안 한도 내 재신청 가능. 근로지원인: 지원 결정 후 1년 단위 연장 심사. 고용 관계 종료 시 즉시 지원 종료.",
+    "renewal": "보조공학기기: 2년 고용유지 기간 후 재신청 가능. 근로지원인: 연 1회 연장 신청(계속 근로 확인)."
+  },
+  "exceptions_and_caveats": [
+    "추가심사(심사위원회) 통과가 필수. 중증 장애인이라도 직무·근로시간·보조공학기기 필요성 등을 종합 심사하여 지원 여부·규모를 결정. 자동 지원되지 않음.",
+    "보조공학기기 지원한도는 고용유지기간(2년) 합산 1,500만원(중증 기준). 한도 초과분은 본인 또는 사업주 부담.",
+    "근로지원인 지원은 핵심 업무 수행능력이 있는 중증 장애인에 한함. 핵심 업무 자체를 수행할 능력이 없다고 판단되면 지원 불가.",
+    "근로지원인은 가족·친인척 등록 불가. 공단 또는 사업수행기관을 통해 배정된 자에 한함.",
+    "근로지원인 이용 장애인의 본인부담금은 시간당 300원(1명이 2인 이상 동시 지원 시 180원).",
+    "지원 시간은 1일 최대 8시간, 주 40시간 이내. 시간제·단시간 근로자는 실 근로시간 내에서만 지원.",
+    "보조공학기기 종류: 스크린리더, 점자정보단말기, 화면확대기, 음성합성장치, 시각장애인용 컴퓨터, 지체장애인용 특수마우스·키보드 등 직업재활 관련 기기. 생활보조기기(의족·휠체어 등)는 별도 지원 창구(복지부).",
+    "사업주도 장애인 근로자를 위해 보조공학기기를 신청 가능(사업주 명의 신청). 지원한도 동일하게 적용.",
+    "근로지원인 지원은 비영리법인·사회적기업 등 사업수행기관이 서비스를 제공. 직접 채용 방식이 아님.",
+    "경증 장애인은 이 항목 적용 불가. 단, 중증장애인으로 인정되지 않더라도 별도 심사를 통해 일부 보조공학기기 지원을 받을 수 있는 경우가 있음(공단 문의)."
+  ],
+  "penalties_for_misuse": "보조공학기기를 고용유지기간 내 고용 관계를 임의로 종료하거나 다른 용도로 사용한 경우 환수 조치 가능. 부정 신청(허위 재직증명 등) 시 지원금 반환 및 향후 신청 제한.",
+  "faq": [
+    {
+      "q": "보조공학기기와 근로지원인 둘 다 신청할 수 있나요?",
+      "a": "네. 두 지원은 별개 사업으로 각각 신청·심사됩니다. 중복 수혜가 가능하며, 보조공학기기 지원을 받으면서 동시에 근로지원인 서비스를 이용할 수 있습니다."
+    },
+    {
+      "q": "지원받을 수 있는 보조공학기기의 종류는 어떻게 되나요?",
+      "a": "직업생활에 필요한 모든 보조공학기기가 대상입니다. 시각장애인용 스크린리더, 점자정보단말기, 화면확대기, 음성합성장치, 지체장애인용 특수키보드·마우스, 청각장애인용 진동알람·자막표시장치 등이 포함됩니다. 다만 의족·보청기·휠체어 등 생활보조기기는 보건복지부 별도 지원 창구를 이용해야 합니다."
+    },
+    {
+      "q": "추가심사란 무엇인가요? 심사를 통과하지 못하면 어떻게 되나요?",
+      "a": "공단 심사위원회가 신청자의 장애 유형·직무 내용·기기 필요성·근로 현황 등을 종합 평가하여 지원 여부와 지원 규모를 결정합니다. 심사에서 부적합 판정을 받으면 지원이 되지 않습니다. 이 경우 사유를 확인하고 보완 후 재신청하거나 공단에 이의신청할 수 있습니다."
+    },
+    {
+      "q": "가족이 근로지원인으로 등록될 수 있나요?",
+      "a": "불가합니다. 근로지원인은 공단 또는 사업수행기관(비영리법인 등)을 통해 배정된 자만 가능하며, 가족·친인척은 제외됩니다."
+    },
+    {
+      "q": "근로지원인이 대신 일을 해주는 건가요?",
+      "a": "아닙니다. 근로지원인은 장애인 근로자가 핵심 업무를 직접 수행하도록 보조하는 역할입니다. 문서 이동, 전화 대신 받기, 이동 보조, 의사소통 지원 등 부수적 업무를 도와줍니다. 핵심 업무 자체를 대신 수행하는 것은 근로지원인의 역할이 아닙니다."
+    },
+    {
+      "q": "근로지원인 이용 시 본인 부담이 얼마나 되나요?",
+      "a": "시간당 300원입니다. 1명의 근로지원인이 2명 이상을 동시에 지원하는 경우에는 시간당 180원으로 할인됩니다. 나머지 비용(근로지원인 임금 전액 포함)은 국가(한국장애인고용공단)가 지원합니다."
+    },
+    {
+      "q": "보조공학기기 지원한도 1,500만원은 한 번에 다 써야 하나요?",
+      "a": "아닙니다. 고용유지기간(2년) 동안 여러 품목에 나누어 사용할 수 있으며, 합산 금액이 1,500만원을 넘지 않으면 됩니다. 2년 경과 후에는 재신청을 통해 추가 지원을 받을 수 있습니다."
+    },
+    {
+      "q": "취업 전에 미리 신청할 수 있나요?",
+      "a": "3개월 이내 취업 예정자(근로계약 체결 예정자)도 신청 가능합니다. 단, 최종 지원 결정 및 기기 수령은 실제 취업 이후 진행됩니다."
+    },
+    {
+      "q": "재직 중에 장애가 심해진 경우 신청할 수 있나요?",
+      "a": "네. 재직 중 장애 상태가 변화하거나 새로운 보조기기가 필요하게 된 경우에도 신청할 수 있습니다. 장애인등록증 재판정 결과와 현재 직무에 맞는 기기 필요성을 기술하여 신청하면 됩니다."
+    },
+    {
+      "q": "경증 장애인은 이 지원을 아예 받을 수 없나요?",
+      "a": "이 전단지 항목은 중증 장애인 전용입니다. 다만 한국장애인고용공단에서는 경증 장애인에 대해서도 별도 심사를 통해 일부 보조공학기기 지원이 가능한 경우가 있으므로, 공단(1588-1519)에 직접 문의하시기를 권장합니다."
+    }
+  ],
+  "contact": [
+    { "name": "한국장애인고용공단(KEAD) 고객상담센터", "phone": "1588-1519", "url": "https://www.kead.or.kr/" },
+    { "name": "장애인서비스신청포털", "phone": null, "url": "https://hub.kead.or.kr/" },
+    { "name": "고용노동부 고객상담센터", "phone": "1350", "url": "https://www.moel.go.kr/" },
+    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
+    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" }
+  ],
+  "sources": [
+    {
+      "title": "장애인고용촉진 및 직업재활법 (제21조, 제21조의2)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법",
+      "fallback_url": "https://www.law.go.kr/LSW/lsInfoP.do?ancNo=21138&efYd=20260512&lsiSeq=279737",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제21조·제21조의2 조문 본문",
+        "robots_txt_ok": true,
+        "notes": "2025년 11월 개정(법률 제21138호, 2026.05.12. 시행) 포함. 개정 내역 모니터링 필요."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인고용촉진 및 직업재활법 시행령",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "사업주 및 장애인 등에 대한 융자·지원규정(KEAD 내규)",
+      "publisher": "한국장애인고용공단",
+      "publisher_type": "공기업",
+      "url": "https://www.kead.or.kr/bbs/plaw/bbsView.do?bbsCnId=200476&menuId=MENU0796",
+      "fallback_url": "https://www.kead.or.kr/bbs/plaw/bbsPage.do?menuId=MENU0795",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "보조공학기기 지원한도 및 근로지원인 세부 기준 표",
+        "robots_txt_ok": true,
+        "notes": "지원한도액은 이 규정 개정 시 변경될 수 있음. 연간 모니터링 필수."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "KEAD 보조공학기기 지원 사업소개",
+      "publisher": "한국장애인고용공단",
+      "publisher_type": "공기업",
+      "url": "https://www.kead.or.kr/atintrdbsns/cntntsPage.do?menuId=MENU0629",
+      "fallback_url": "https://www.kead.or.kr/atintrdbsns/cntntsPage.do?menuId=MENU0628",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "지원한도·대상·절차 텍스트",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "KEAD 근로지원인 지원사업 안내",
+      "publisher": "한국장애인고용공단",
+      "publisher_type": "공기업",
+      "url": "https://www.kead.or.kr/sprlbsprt/cntntsPage.do?menuId=MENU0632",
+      "fallback_url": "https://hub.kead.or.kr/lbspBizGuidPage.do",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "지원시간·본인부담금·신청절차 텍스트",
+        "robots_txt_ok": true,
+        "notes": "본인부담금(시간당 300원) 및 지원시간 변동 여부 주기 확인 필요."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "장애인서비스신청포털 — 보조공학기기 사업안내",
+      "publisher": "한국장애인고용공단",
+      "publisher_type": "공기업",
+      "url": "https://hub.kead.or.kr/atdvGuid.do",
+      "fallback_url": "https://hub.kead.or.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "온라인 신청 포털. 실제 신청·접수 경로."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "한국장애인고용공단_근로지원비용 지원 정보(공공데이터포털)",
+      "publisher": "공공데이터포털",
+      "publisher_type": "공공데이터포털",
+      "url": "https://www.data.go.kr/data/3072377/fileData.do",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://api.odcloud.kr/api",
+        "auth_required": true,
+        "docs_url": "https://www.data.go.kr/"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "근로지원 비용 단가 등 수치 데이터 보완용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    },
+    {
+      "title": "복지로 — 장애인 직장 내 보조공학기기·근로지원인 서비스",
+      "publisher": "보건복지부 복지로",
+      "publisher_type": "중앙정부",
+      "url": "https://www.bokjiro.go.kr/",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "복지서비스 검색 포털. B026 관련 서비스 항목 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": ["B027"],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

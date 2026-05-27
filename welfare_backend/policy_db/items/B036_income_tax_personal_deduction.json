@@ -1,0 +1,299 @@
+{
+  "id": "B036",
+  "leaflet_section": "기타",
+  "leaflet_number": 1,
+  "title": "소득세 인적공제 — 장애인 추가공제 (연 200만원)",
+  "short_summary": "소득세 인적 공제 : 장애인 1인당 200만원 추가공제(연말정산 및 종합소득 신고시)",
+  "category": "세제",
+  "benefit_type": "공제",
+  "supported_amount": {
+    "rate": null,
+    "amount": "장애인 1인당 연 200만원 소득공제(추가공제). 기본공제 1인당 150만원과 별도 합산 적용.",
+    "scope": "거주자 본인, 배우자, 부양가족 중 「소득세법」상 장애인에 해당하는 사람 1인당 연 200만원 추가 소득공제. 장애인복지법상 등록 장애인뿐 아니라 항시 치료를 요하는 중증환자(의료기관 장애인증명서 발급)도 포함. 소득세 산출세액에서 직접 차감하는 '세액공제'가 아닌 '소득공제(과세표준 차감)'임."
+  },
+  "eligibility": {
+    "target": "소득세 납세 의무가 있는 거주자로서, 본인·배우자·부양가족 중 장애인이 있는 경우",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "companion_allowed": null,
+    "income_criteria": "부양가족에 해당하려면 해당 부양가족의 연간 소득금액이 100만원 이하여야 함(근로소득만 있는 경우 총급여액 500만원 이하). 단, 부양가족의 나이 요건은 장애인의 경우 없음(일반 부양가족은 만 20세 이하 또는 만 60세 이상). 본인 및 배우자는 소득·나이 요건 없음.",
+    "age_criteria": "부양가족이 장애인인 경우 나이 요건 없음. 소득요건(연간소득금액 100만원 이하)은 충족해야 함.",
+    "residency_criteria": "부양가족은 생계를 같이하는 자여야 함. 다만 장애인은 주거 형편상 별거하는 경우에도 생계를 같이하는 것으로 봄(별거 가능). 해외 이주하여 거주하는 직계존속 등은 원칙적으로 부양가족공제 불인정."
+  },
+  "legal_basis": [
+    {
+      "name": "소득세법",
+      "article": "제51조(추가공제) 제1항 제1호",
+      "url": "https://www.law.go.kr/법령/소득세법/제51조"
+    },
+    {
+      "name": "소득세법",
+      "article": "제50조(기본공제) — 부양가족 요건",
+      "url": "https://www.law.go.kr/법령/소득세법/제50조"
+    },
+    {
+      "name": "소득세법 시행령",
+      "article": "제51조(추가공제 요건 세부사항), 제107조(장애인의 범위)",
+      "url": "https://www.law.go.kr/법령/소득세법시행령/제107조"
+    }
+  ],
+  "how_to_use": {
+    "default": "근로소득자: 연말정산 시 회사 급여담당자에게 장애인 증명서류(장애인등록증 사본, 장애인증명서 등)를 제출하면 자동 반영. 종합소득세 신고 대상자(사업자 등): 매년 5월 종합소득세 신고 시 홈택스(hometax.go.kr)에서 직접 입력하여 공제 적용.",
+    "with_card": "장애인복지카드(등록증) 사본을 회사 급여담당자 또는 홈택스 자료에 첨부.",
+    "without_card": "「장애인복지법」상 미등록이더라도 의료기관에서 '항시 치료를 요하는 중증환자'로 판정받아 장애인증명서(소득세법 시행규칙 별지 제38호서식)를 발급받으면 공제 가능.",
+    "exceptions": "장애인 부양가족 공제를 위해서는 해당 부양가족이 기본공제 대상자여야 함(연간소득금액 100만원 이하). 기본공제 대상이 되지 않는 경우 추가공제(200만원)도 불가. 단, 의료비 공제는 기본공제 대상 여부와 관계없이 실지 부양하는 경우 가능하므로 항목별로 요건 차이 있음."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "회사 연말정산(근로소득자)",
+        "method": "방문",
+        "url": null
+      },
+      {
+        "channel": "국세청 홈택스(종합소득세 신고 또는 근로소득 연말정산 환급 신청)",
+        "method": "온라인",
+        "url": "https://www.hometax.go.kr"
+      },
+      {
+        "channel": "세무서 직접 신고(종합소득세)",
+        "method": "방문",
+        "url": "https://www.nts.go.kr"
+      }
+    ],
+    "required_documents": [
+      "장애인등록증(복지카드) 사본 — 장애인복지법 등록 장애인의 경우",
+      "장애인증명서(소득세법 시행규칙 별지 제38호서식) — 비등록 중증환자의 경우, 의료기관 발급",
+      "발달재활서비스 이용 증명 서류 — 장애아동복지지원법 제21조에 따른 발달재활서비스를 받는 장애아동의 경우",
+      "부양가족 관계 증명서류(주민등록등본 등, 필요 시)"
+    ],
+    "processing_period": "연말정산: 근무 연도의 다음 해 1~2월 중 신청·반영. 종합소득세: 매년 5월 신고.",
+    "fee": {
+      "default": "무료",
+      "exceptions": null
+    },
+    "online_available": true,
+    "proxy_allowed": false
+  },
+  "validity": {
+    "expiry": "매 과세연도(1.1~12.31)마다 적용. 장애 상태가 유지되는 한 매년 공제 가능.",
+    "renewal": "매년 연말정산 또는 종합소득세 신고 시 재신청. 장애 상태 변경(장애 등록 해제, 완치 등) 시 해당 연도부터 미적용."
+  },
+  "exceptions_and_caveats": [
+    "이 항목은 '소득공제'로 세금을 직접 깎는 '세액공제'와 다름. 과세표준을 200만원 줄이므로, 실제 절세 효과는 개인의 세율에 따라 다름(세율 15%이면 30만원, 24%이면 48만원 절세).",
+    "기본공제(1인당 150만원)와 별도로 합산 적용됨. 즉 장애인 부양가족 1명에게 기본공제 150만원 + 추가공제 200만원 = 총 350만원 공제.",
+    "부양가족의 연간 소득금액이 100만원을 초과하면 기본공제 대상이 되지 않아 추가공제(200만원)도 받을 수 없음.",
+    "장애인 부양가족의 경우 나이 제한 없음(일반 자녀는 20세 이하, 부모는 60세 이상이어야 하나 장애인은 연령 제한 없음).",
+    "별거하는 장애인 부양가족도 실제 생계를 같이하는 경우 공제 가능. 단, 해외에 이주하여 거주하는 가족은 원칙적으로 불인정.",
+    "맞벌이 부부의 경우 장애인 부양가족 공제는 부부 중 한 명만 적용 가능(중복 공제 불가).",
+    "부양가족이 사망한 경우 사망한 연도까지는 공제 가능.",
+    "장애인증명서(비등록 중증환자)는 의사가 발급하며, 과세기간 중에 발급받아 제출해야 함. 국세청 홈택스 연말정산 간소화 서비스에서 자동 조회되지 않으므로 직접 제출 필요.",
+    "2025년 과세기간부터 장애아동복지지원법에 따른 발달재활서비스 수급 장애아동도 '발달재활서비스 이용 증명서류'를 제출하면 장애인공제 적용 가능."
+  ],
+  "penalties_for_misuse": "허위 공제로 환급을 받은 경우 가산세(부당과소신고가산세 40%, 납부지연가산세) 및 세금 추징.",
+  "faq": [
+    {
+      "q": "장애인 추가공제 200만원은 세액공제인가요, 소득공제인가요?",
+      "a": "소득공제입니다. 세금을 직접 깎는 세액공제와 달리, 과세표준(세금 계산 기준 소득)에서 200만원을 빼주는 방식입니다. 실제 절세 효과는 본인 세율에 따라 달라집니다(세율 15%이면 30만원, 24%이면 48만원 절세). 별도로 장애인 의료비 세액공제(15%)나 특수교육비 세액공제(15%)는 이 항목과 별개입니다."
+    },
+    {
+      "q": "기본공제(150만원)와 추가공제(200만원)를 함께 받을 수 있나요?",
+      "a": "네, 함께 받을 수 있습니다. 장애인 부양가족 1명에 대해 기본공제 150만원과 추가공제 200만원을 합산하여 총 350만원을 소득에서 공제받을 수 있습니다."
+    },
+    {
+      "q": "부모님이 장애인이신데 나이 요건이 있나요?",
+      "a": "장애인인 경우 나이 요건이 없습니다. 일반 부양가족은 직계존속의 경우 만 60세 이상이어야 하나, 장애인이라면 나이에 상관없이 공제 대상이 됩니다. 단 연간 소득금액 100만원 이하 요건은 충족해야 합니다."
+    },
+    {
+      "q": "부모님이 따로 사시는데도 공제가 되나요?",
+      "a": "네, 장애인 부양가족은 주거 형편상 별거하는 경우에도 생계를 같이하는 것으로 간주하여 공제받을 수 있습니다. 단, 해외에 이주하여 거주하는 경우는 원칙적으로 부양가족공제 불인정입니다."
+    },
+    {
+      "q": "형제자매가 장애인인데 공제가 가능한가요?",
+      "a": "형제자매가 연간 소득금액 100만원 이하이고, 실제 생계를 같이 한다면 나이에 관계없이 기본공제와 장애인 추가공제를 받을 수 있습니다."
+    },
+    {
+      "q": "배우자가 장애인이면 공제가 되나요?",
+      "a": "네, 배우자가 장애인인 경우 배우자공제(150만원)와 장애인 추가공제(200만원)를 함께 받을 수 있습니다. 배우자는 소득금액이 100만원 이하여야 합니다."
+    },
+    {
+      "q": "장애인 등록을 하지 않은 경우에도 공제를 받을 수 있나요?",
+      "a": "네, 가능합니다. 「장애인복지법」에 따른 등록 장애인이 아니더라도, 의료기관 의사가 '항시 치료를 요하는 중증환자'로 판단하여 장애인증명서(소득세법 시행규칙 별지 제38호서식)를 발급해 주면 공제를 받을 수 있습니다."
+    },
+    {
+      "q": "맞벌이 부부 중 누가 공제를 받아야 하나요?",
+      "a": "장애인 부양가족 공제는 부부 중 한 명만 적용할 수 있습니다. 세율이 높은 배우자가 공제를 받는 것이 절세 효과가 큽니다. 이를 중복 적용하면 가산세가 부과되므로 주의하세요."
+    },
+    {
+      "q": "연도 중에 사망한 장애인 가족도 공제가 되나요?",
+      "a": "네, 연도 중에 사망하더라도 사망한 해까지는 장애인 추가공제를 받을 수 있습니다."
+    },
+    {
+      "q": "회사 연말정산에 장애인 자료를 제출하지 못한 경우 어떻게 하나요?",
+      "a": "연말정산에서 누락한 경우 다음 해 5월 종합소득세 신고를 통해 경정청구(환급 신청)를 하거나, 국세청 홈택스에서 기한 후 경정청구를 할 수 있습니다. 5년 이내 누락분에 대해 환급 신청이 가능합니다."
+    },
+    {
+      "q": "부양하는 장애인 가족이 양쪽 부모 모두에게 부양자가 있는 경우 중복 공제가 되나요?",
+      "a": "중복 공제는 되지 않습니다. 예를 들어 장애인 부모를 형제자매 여럿이 나누어 부양하더라도, 부양가족 공제는 실제로 공제 신청하는 한 사람에게만 적용됩니다. 이 경우 형제자매 간에 협의하여 한 명만 신청해야 합니다."
+    }
+  ],
+  "contact": [
+    {
+      "name": "국세청 국세상담센터",
+      "phone": "126",
+      "url": "https://call.nts.go.kr/"
+    },
+    {
+      "name": "국세청 홈택스",
+      "phone": null,
+      "url": "https://www.hometax.go.kr"
+    },
+    {
+      "name": "관할 세무서",
+      "phone": null,
+      "url": "https://www.nts.go.kr"
+    }
+  ],
+  "sources": [
+    {
+      "title": "소득세법 제51조(추가공제)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/소득세법/제51조",
+      "fallback_url": "https://www.law.go.kr/법령/소득세법",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제51조 본문 '장애인' 추가공제 금액",
+        "robots_txt_ok": true,
+        "notes": "공제 금액(200만원)은 세법 개정 시 변경될 수 있어 연 1회 이상 확인 권장."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "소득세법 제50조(기본공제) — 부양가족 및 장애인 요건",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/소득세법/제50조",
+      "fallback_url": "https://www.law.go.kr/법령/소득세법",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제50조 본문 부양가족·소득 요건",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "소득세법 시행령 제107조(장애인의 범위)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/소득세법시행령/제107조",
+      "fallback_url": "https://www.law.go.kr/법령/소득세법시행령",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제107조 장애인 범위 목록",
+        "robots_txt_ok": true,
+        "notes": "비등록 중증환자 포함 여부, 발달재활서비스 대상 장애아동 포함(2025년 이후) 등 확인."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인 생활안정 > 세금감면 > 소득세 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=4&cciNo=1&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 '장애인 추가공제' 200만원 텍스트",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국세청 — 장애인공제 Q&A",
+      "publisher": "국세청",
+      "publisher_type": "중앙정부",
+      "url": "https://call.nts.go.kr/call/qna/selectQnaInfo.do?mi=1318&ctgId=CTG11929",
+      "fallback_url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=6595&cntntsId=7874",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "장애인공제 Q&A 본문",
+        "robots_txt_ok": true,
+        "notes": "국세청 국세상담센터 자주묻는 Q&A 페이지. 실무 적용 사례 확인에 유용."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "국세법령정보시스템 — 장애인공제 용어 정의",
+      "publisher": "국세청",
+      "publisher_type": "중앙정부",
+      "url": "https://txsi.hometax.go.kr/docs/customer/dictionary/view.jsp?word=&word_id=7744",
+      "fallback_url": "https://txsi.hometax.go.kr/docs/new/customer/comment/comment_jomun_main_internet.jsp?node_id=H00000&lawid=001565&jomunkey=0051005",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "홈택스 국세법령정보시스템 용어 정의 및 조문 해설."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": [
+    "B037",
+    "B038"
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

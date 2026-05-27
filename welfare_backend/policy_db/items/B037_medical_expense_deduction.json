@@ -1,0 +1,267 @@
+{
+  "id": "B037",
+  "leaflet_section": "기타",
+  "leaflet_number": 2,
+  "title": "장애인 의료비 세액공제 (당해연도 의료비 전액의 15%)",
+  "short_summary": "장애인 의료비 공제 : 당해연도 의료비 전액의 15% 공제(연말정산 및 종합소득 신고시)",
+  "category": "세제",
+  "benefit_type": "공제",
+  "supported_amount": {
+    "rate": "15%",
+    "amount": null,
+    "scope": "해당 과세연도에 지출한 장애인 본인·부양가족(장애인)의 의료비 전액에 대해 15% 세액공제. 일반 의료비는 총급여액의 3% 초과분에 대해서만 15% 공제(한도 700만원)이나, 장애인 의료비는 3% 초과 요건 없이 전액 공제(한도 없음). 단, 총급여 3% 초과분 계산 시에는 포함하여 먼저 차감한 후 잔여분을 한도 없이 추가 공제하는 구조."
+  },
+  "eligibility": {
+    "target": "근로소득이 있는 거주자(연말정산) 또는 종합소득세 신고 의무자로서 본인·배우자·부양가족이 장애인인 경우",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "companion_allowed": null,
+    "income_criteria": "의료비를 지출한 자가 납세자여야 함. 부양가족의 소득·나이 요건 불문하고 실제 납세자가 지출한 의료비라면 모두 공제 대상(기본공제 대상자 요건 불필요 — 의료비 공제의 특례). 단, 장애인 의료비를 한도 없이 공제받으려면 해당 의료비를 지출한 부양가족이 장애인이어야 함.",
+    "age_criteria": null,
+    "residency_criteria": null
+  },
+  "legal_basis": [
+    {
+      "name": "소득세법",
+      "article": "제59조의4(특별세액공제) 제2항(의료비 세액공제)",
+      "url": "https://www.law.go.kr/법령/소득세법/제59조의4"
+    },
+    {
+      "name": "소득세법 시행령",
+      "article": "제118조의5(의료비 세액공제 대상 의료비의 범위)",
+      "url": "https://www.law.go.kr/법령/소득세법시행령"
+    },
+    {
+      "name": "소득세법 시행규칙",
+      "article": "제50조의2(의료비 세액공제 신청 서식)",
+      "url": "https://www.law.go.kr/법령/소득세법시행규칙"
+    }
+  ],
+  "how_to_use": {
+    "default": "연말정산: 국세청 홈택스 연말정산 간소화 서비스에서 의료비 자료를 조회·출력하거나, 해당 의료기관 영수증을 직접 취합하여 회사 급여담당자에게 제출. 종합소득세 신고: 매년 5월 홈택스(hometax.go.kr)에서 의료비 명세서와 함께 신고.",
+    "with_card": null,
+    "without_card": null,
+    "exceptions": "사내근로복지기금·보험금·실손보험금 등으로 보전받은 금액은 공제 대상에서 제외. 미용·성형수술비, 건강증진 의약품 구입비 등은 공제 불가. 장애인활동지원급여 본인부담금은 2024년 1월 1일 이후 지출분부터 의료비 공제 대상에 포함."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "국세청 홈택스 — 연말정산 간소화 서비스 (의료비 자료 조회)",
+        "method": "온라인",
+        "url": "https://www.hometax.go.kr"
+      },
+      {
+        "channel": "회사 급여담당자 (근로소득자 연말정산)",
+        "method": "방문",
+        "url": null
+      },
+      {
+        "channel": "관할 세무서 (종합소득세 신고)",
+        "method": "방문",
+        "url": "https://www.nts.go.kr"
+      }
+    ],
+    "required_documents": [
+      "의료비 납입 영수증 또는 홈택스 연말정산 간소화 의료비 자료(출력본)",
+      "장애인등록증(복지카드) 사본 또는 장애인증명서",
+      "의료비 지급 명세서(소득세법 시행규칙 별지 제37호서식) — 세무서 신고 시"
+    ],
+    "processing_period": "연말정산: 1~2월 중 처리, 3~4월 환급. 종합소득세: 5월 신고 후 6월경 환급.",
+    "fee": {
+      "default": "무료",
+      "exceptions": null
+    },
+    "online_available": true,
+    "proxy_allowed": false
+  },
+  "validity": {
+    "expiry": "매 과세연도(1.1~12.31) 지출분에 대해 해당 연도 신고 시 적용.",
+    "renewal": "매년 연말정산 또는 종합소득세 신고 시 해당 연도 의료비 기준으로 재계산."
+  },
+  "exceptions_and_caveats": [
+    "일반 의료비는 총급여액의 3% 초과분에 대해서만 공제(연 700만원 한도). 장애인 의료비는 3% 초과 요건 없이 전액 공제, 한도 없음.",
+    "실제 의료비 공제 계산 방식: 전체 의료비에서 총급여 3%를 먼저 차감한 후, 한도 있는 일반 의료비와 한도 없는 특정 의료비(장애인, 65세 이상, 본인, 6세 이하, 난임시술, 중증질환 등)로 구분하여 처리. 장애인 의료비는 한도 없이 전액 공제 영역에 포함.",
+    "실손보험·보험금·사내근로복지기금 등으로 보전받은 금액은 의료비에서 차감하여 공제.",
+    "미용·성형수술비, 건강식품·의약외품 구입비, 간병비(시설 소속 간병인 제외), 외국 의료기관 지출은 공제 불가.",
+    "장애인활동지원급여(장애인활동지원에 관한 법률 제17조~제28조) 본인부담금은 2024.1.1. 이후 지출분부터 의료비 세액공제 대상에 포함.",
+    "의료비를 지출한 납세자 본인이 공제를 신청해야 함. 부양가족의 소득·나이 요건과 무관하게 납세자가 실제 지출한 의료비는 모두 공제 대상.",
+    "맞벌이 부부의 경우 의료비를 지출한 배우자가 공제를 신청해야 하나, 예외적으로 소득이 없거나 의료비 공제 요건(3% 초과)을 충족하지 못하는 배우자의 의료비를 다른 배우자가 지출한 것으로 처리하는 경우도 있음(세무 전문가 확인 권장).",
+    "기본공제 대상이 아닌 부양가족(소득 100만원 초과)의 의료비도 납세자가 실제로 지출했다면 공제 가능(의료비 공제 특례)."
+  ],
+  "penalties_for_misuse": "허위 공제 적용 시 가산세(부당과소신고가산세 40%, 납부지연가산세) 및 추징.",
+  "faq": [
+    {
+      "q": "장애인 의료비는 한도가 없다고 하던데, 정확히 어떻게 되나요?",
+      "a": "일반 의료비는 총급여액의 3%를 초과하는 금액에 대해 15% 공제하되, 연 700만원 한도가 있습니다. 반면 장애인(등록 장애인 또는 의료기관 장애인증명서 발급자)을 위해 지출한 의료비는 3% 초과분을 한도 없이 전액 공제받을 수 있습니다. 예를 들어 장애인 가족 의료비로 300만원을 지출한 경우(총급여 3% 적용 후 공제 대상 의료비 기준), 그 전액의 15%인 45만원을 세액에서 직접 차감받습니다."
+    },
+    {
+      "q": "부양가족의 소득이 100만원을 초과해도 의료비 공제를 받을 수 있나요?",
+      "a": "네, 의료비는 기본공제대상자 요건(소득 100만원 이하)과 무관하게 납세자가 실제로 지출한 부양가족 의료비 전액을 공제받을 수 있습니다. 의료비 공제는 이 점에서 다른 항목과 다릅니다."
+    },
+    {
+      "q": "65세 이상 장애인 부모님 의료비도 한도 없이 공제되나요?",
+      "a": "네, 65세 이상이거나 장애인인 경우 모두 한도 없이 전액 공제 대상입니다. 부모님이 65세 이상이면서 장애인인 경우에도 동일하게 적용됩니다."
+    },
+    {
+      "q": "실손보험으로 보상받은 의료비도 공제되나요?",
+      "a": "아닙니다. 실손보험, 건강보험, 사내근로복지기금 등에서 보전받은 금액은 공제 대상에서 제외됩니다. 본인이 실제로 부담한 금액만 공제됩니다."
+    },
+    {
+      "q": "장애인 활동보조(활동지원) 본인부담금도 의료비 공제가 되나요?",
+      "a": "2024년 1월 1일 이후 지출한 장애인활동지원급여의 본인부담금은 의료비 세액공제 대상에 포함됩니다."
+    },
+    {
+      "q": "홈택스 연말정산 간소화에서 의료비가 조회되지 않으면 어떻게 하나요?",
+      "a": "의료기관에서 직접 의료비 납입 영수증을 발급받아 제출하시면 됩니다. 일부 소규모 의료기관, 한방 의원 등은 간소화 서비스에서 조회되지 않을 수 있습니다."
+    },
+    {
+      "q": "연말정산에서 장애인 의료비를 누락한 경우 소급 공제가 되나요?",
+      "a": "네, 지출 연도로부터 5년 이내에 경정청구를 통해 환급받을 수 있습니다. 홈택스 또는 세무서를 통해 신청하세요."
+    },
+    {
+      "q": "미용 목적 시술비, 건강식품, 안경·콘택트렌즈도 공제가 되나요?",
+      "a": "미용·성형수술비와 건강증진 의약품 구입비는 공제 불가입니다. 안경·콘택트렌즈 구입비는 공제 가능하지만 1인당 50만원 한도 내에서 일반 의료비로 처리됩니다. 보청기, 휠체어 등 장애인 보조기기 구입비도 의료비 공제 대상에 포함됩니다."
+    },
+    {
+      "q": "맞벌이 부부의 경우 장애인 의료비는 누가 공제받아야 하나요?",
+      "a": "원칙적으로 실제로 의료비를 지출(결제)한 납세자가 공제를 신청합니다. 다만, 의료비 합산 총액이 총급여 3% 미만이어서 공제가 안 되는 경우 다른 배우자가 공제받는 방법을 세무 전문가와 상의하세요."
+    }
+  ],
+  "contact": [
+    {
+      "name": "국세청 국세상담센터",
+      "phone": "126",
+      "url": "https://call.nts.go.kr/"
+    },
+    {
+      "name": "국세청 홈택스",
+      "phone": null,
+      "url": "https://www.hometax.go.kr"
+    },
+    {
+      "name": "관할 세무서",
+      "phone": null,
+      "url": "https://www.nts.go.kr"
+    }
+  ],
+  "sources": [
+    {
+      "title": "소득세법 제59조의4(특별세액공제 — 의료비)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/소득세법/제59조의4",
+      "fallback_url": "https://www.law.go.kr/법령/소득세법",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제59조의4 제2항 의료비 세액공제율·한도 텍스트",
+        "robots_txt_ok": true,
+        "notes": "공제율(15%)·한도(700만원) 변경 여부 연 1회 이상 확인 권장."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "소득세법 시행령 제118조의5(의료비 세액공제 대상 의료비의 범위)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/소득세법시행령",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "제118조의5 장애인 의료비 대상 항목",
+        "robots_txt_ok": true,
+        "notes": "장애인활동지원급여 본인부담금 포함(2024년 시행) 등 항목 변경 모니터링."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인 생활안정 > 세금감면 > 소득세 감면 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916&ccfNo=4&cciNo=1&cnpClsNo=1",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 '장애인 의료비' 15% 공제 텍스트",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "국세청 — 의료비·보험료 세액공제 안내",
+      "publisher": "국세청",
+      "publisher_type": "중앙정부",
+      "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7874",
+      "fallback_url": "https://call.nts.go.kr/call/qna/selectQnaInfo.do?mi=1318&ctgId=CTG11909",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "의료비 공제 대상 항목 및 한도 설명",
+        "robots_txt_ok": true,
+        "notes": "국세청 공식 안내 페이지. 연간 사업안내 갱신 시 내용 변경."
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    },
+    {
+      "title": "국세청 — 올해부터 장애인 식사도움·이동지원 비용도 의료비 세액공제 (보도자료)",
+      "publisher": "국세청",
+      "publisher_type": "중앙정부",
+      "url": "https://www.nts.go.kr/comm/nttFileDownload.do?fileKey=1e2caba4f329b58dedc58dc7ac5c2ba8",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "on_demand",
+        "change_detection_method": "pdf_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "2024년 시행 장애인활동지원급여 의료비 공제 포함 관련 보도자료 PDF."
+      },
+      "accessed": "2026-05-19",
+      "priority": "supplementary"
+    }
+  ],
+  "related_items": [
+    "B036",
+    "B038"
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}

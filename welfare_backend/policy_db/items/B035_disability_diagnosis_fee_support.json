@@ -1,0 +1,281 @@
+{
+  "id": "B035",
+  "leaflet_section": "저소득층(기초 및 차상위)",
+  "leaflet_number": 4,
+  "title": "장애진단서 발급비용 및 검사비 지원",
+  "short_summary": "장애인등록위한 장애진단서 발급비용(기초-신규, 재판정시) 및 검사비(기초, 차상위-재판정시) 지원",
+  "category": "의료",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": null,
+    "amount": "진단서 발급비: 지적·자폐성·정신장애 최대 4만원, 그 외 장애 최대 1만 5천원 / 검사비: 최대 10만원(실비 지원)",
+    "scope": "장애인 등록을 위한 장애진단서 발급비용 및 장애 판정에 필요한 검사비(진단서·검사비 합산 최대 10만원 범위 내 실비). 기초생활수급자는 신규 등록 시 진단서 발급비만 지원(정액). 기초생활수급자 및 차상위계층은 재판정 시 진단서 발급비와 검사비 모두 지원(합산 10만원 한도 실비). 직권재판정 대상자는 소득 수준 무관하게 지원."
+  },
+  "eligibility": {
+    "target": "국민기초생활보장법에 따른 기초생활수급자 또는 차상위계층으로서 장애인 등록을 신청하거나 장애 재판정을 받는 자",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "companion_allowed": null,
+    "income_criteria": "기초생활수급자(생계·의료·주거·교육 급여 수급자 중 1개 이상 해당) 또는 차상위계층(차상위계층 확인사업, 차상위 본인부담경감, 차상위 장애인, 한부모 가족지원, 차상위 자활 등 해당자). 직권재판정 대상자는 소득 요건 없음.",
+    "age_criteria": null,
+    "residency_criteria": "주소지 관할 읍·면·동 주민센터에 신청. 전국 공통 적용."
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제32조(장애인 등록) 및 제32조의2",
+      "url": "https://www.law.go.kr/법령/장애인복지법"
+    },
+    {
+      "name": "장애인복지법 시행규칙",
+      "article": "제3조(장애인 등록 신청 및 장애 진단) 등",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙"
+    },
+    {
+      "name": "보건복지부 장애인복지 사업안내(연도별 지침)",
+      "article": "저소득장애인 장애심사용 진단서 발급비 및 검사비 지원 항목",
+      "url": "https://www.mohw.go.kr/board.es?mid=a10409020000&bid=0026"
+    }
+  ],
+  "how_to_use": {
+    "default": "장애인 등록 또는 재판정 시 의료기관(장애 유형별 지정 의료기관)에서 장애진단서 발급 및 검사를 받은 후, 주소지 읍·면·동 주민센터에 영수증을 제출하여 비용을 지원받는다. 기초생활수급자의 신규 등록 진단서 발급비는 정액 지원(별도 영수증 제출 불필요한 경우도 있음).",
+    "with_card": null,
+    "without_card": null,
+    "exceptions": "차상위계층은 재판정 시에만 지원 대상(신규 등록 시 진단서 발급비는 기초수급자에게만 지원). 진단서 발급비와 검사비를 합산하여 최대 10만원 범위 내에서 실비 지원. 지원 한도를 초과하는 금액은 본인 부담."
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "주소지 읍·면·동 주민센터(행정복지센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "정부24(서비스 정보 조회)",
+        "method": "온라인",
+        "url": "https://www.gov.kr/portal/service/serviceInfo/SPE000000030"
+      }
+    ],
+    "required_documents": [
+      "신청서(현장 비치)",
+      "신분증(주민등록증 등)",
+      "장애진단서 또는 진단비용 영수증",
+      "검사비 영수증(검사 실시 시)",
+      "기초생활수급자 또는 차상위계층 증빙서류(해당하는 경우, 주민센터 행정 조회로 대체 가능한 경우 있음)"
+    ],
+    "processing_period": "신청 후 보통 수일 내 처리(지자체별 상이). 지원금은 신청인 계좌로 입금.",
+    "fee": {
+      "default": "무료(신청 수수료 없음). 지원 한도 초과 금액은 본인 부담.",
+      "exceptions": null
+    },
+    "online_available": false,
+    "proxy_allowed": true
+  },
+  "exceptions_and_caveats": [
+    "기초생활수급자의 신규 등록 시: 진단서 발급비만 지원(지적·자폐성·정신장애 4만원, 그 외 1만 5천원 정액). 검사비는 신규 등록 시 기초수급자에게는 별도 지원 규정 없음(재판정 시 지원).",
+    "기초생활수급자의 재판정 시: 진단서 발급비 + 검사비 합산 10만원 한도 내 실비 지원.",
+    "차상위계층의 재판정 시: 검사비만 지원(진단서 발급비는 차상위 대상 아님) — 검사비 10만원 한도 내 실비. 단, 일부 지자체에서 진단서 발급비도 포함하여 지원할 수 있으므로 주민센터 확인 필요.",
+    "직권재판정 대상자: 소득 요건 무관하게 검사비 지원.",
+    "지원금액은 보건복지부 「장애인복지 사업안내」에 따라 연도별로 조정될 수 있으므로 최신 지침 확인 필요.",
+    "장애 유형별로 진단 가능한 의료기관이 지정되어 있으므로, 반드시 지정 의료기관에서 진단받아야 지원 대상이 됨(장애인복지법 시행규칙 별표 1 '장애 진단 기관 및 전문의' 기준).",
+    "동일 사유로 중복 지원 불가. 지원 후 장애 등록이 되지 않은 경우에도 이미 지원된 진단비는 환수되지 않음(단, 허위·부정 수급 제외)."
+  ],
+  "penalties_for_misuse": "허위 또는 부정한 방법으로 지원을 받은 경우 지원금 환수 및 관계 법령에 따른 제재 가능.",
+  "faq": [
+    {
+      "q": "기초생활수급자인데 처음 장애 등록을 하려고 합니다. 진단서 비용을 지원받을 수 있나요?",
+      "a": "네, 가능합니다. 기초생활수급자가 신규로 장애 등록을 신청하는 경우 진단서 발급비를 지원받을 수 있습니다. 지적·자폐성·정신장애는 최대 4만원, 그 외 장애는 최대 1만 5천원이 지원됩니다. 주소지 읍·면·동 주민센터에 진단서 영수증을 제출하면 됩니다."
+    },
+    {
+      "q": "차상위계층인데 신규 장애 등록 시 지원이 되나요?",
+      "a": "차상위계층의 경우 신규 등록 시 진단서 발급비 지원은 원칙적으로 적용되지 않습니다. 차상위계층은 재판정 시 검사비를 지원받을 수 있습니다. 다만, 지자체별로 추가 지원이 있을 수 있으니 주소지 주민센터에 확인하시기 바랍니다."
+    },
+    {
+      "q": "재판정을 받아야 하는데 기초수급자입니다. 진단서와 검사비 모두 지원받을 수 있나요?",
+      "a": "네, 기초생활수급자가 재판정을 받는 경우 진단서 발급비와 검사비를 합산하여 최대 10만원 범위 내에서 실비로 지원받을 수 있습니다. 의료기관에서 진단 및 검사를 받은 후 영수증을 지참하여 주민센터에 신청하시면 됩니다."
+    },
+    {
+      "q": "직권재판정 대상이 되었는데, 소득이 있어도 지원이 되나요?",
+      "a": "네, 직권재판정 대상자는 소득 수준이나 수급자 여부에 관계없이 검사비 지원을 받을 수 있습니다."
+    },
+    {
+      "q": "장애진단을 어느 병원에서 받아야 하나요?",
+      "a": "장애 유형에 따라 진단을 받을 수 있는 의료기관과 전문의 자격이 지정되어 있습니다(장애인복지법 시행규칙 별표 1). 예를 들어, 지체장애는 정형외과·신경외과·재활의학과 전문의, 시각장애는 안과 전문의가 있는 의료기관에서만 진단서를 받을 수 있습니다. 반드시 지정 의료기관에서 받아야 비용 지원 대상이 되므로, 사전에 주민센터 또는 보건복지부 콜센터(129)에 확인하시기 바랍니다."
+    },
+    {
+      "q": "지원 신청은 언제까지 해야 하나요?",
+      "a": "진단서 발급 및 검사를 받은 후 장애인 등록 신청과 함께 또는 이후에 신청할 수 있습니다. 별도의 신청 기한이 규정되어 있지 않은 경우가 많으나, 영수증 등 증빙서류는 보관하여 가급적 빠른 시일 내에 주민센터에 방문하여 신청하는 것이 좋습니다."
+    },
+    {
+      "q": "검사비 영수증을 분실했어요. 어떻게 해야 하나요?",
+      "a": "영수증을 분실한 경우 의료기관에 재발급을 요청하거나 진료비 납부 확인서를 발급받아 대체할 수 있습니다. 국민건강보험공단에서 진료비 내역 확인서를 발급받는 방법도 가능합니다. 주민센터 담당자와 상의하시기 바랍니다."
+    },
+    {
+      "q": "진단비 지원과 별도로 장애인 의료비 지원도 받을 수 있나요?",
+      "a": "진단비 지원은 장애 등록을 위한 별도 지원 항목이며, 등록 이후에는 의료급여, 장애인 보조기기 급여, 발달재활서비스 등 다양한 의료 관련 혜택을 추가로 받을 수 있습니다. 관련 사항은 주민센터 또는 복지로(bokjiro.go.kr)에서 확인하실 수 있습니다."
+    }
+  ],
+  "contact": [
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    },
+    {
+      "name": "주소지 읍·면·동 주민센터(행정복지센터)",
+      "phone": null,
+      "url": "https://www.gov.kr/"
+    },
+    {
+      "name": "국립재활원 장애인건강콜센터",
+      "phone": "1800-0420",
+      "url": "https://www.nrc.go.kr/"
+    }
+  ],
+  "sources": [
+    {
+      "title": "장애인복지법",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "fallback_url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=916",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "법령 본문 상단 시행일 표기",
+        "robots_txt_ok": true,
+        "notes": "국가법령정보 Open API로 안정적 모니터링 가능."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인복지법 시행규칙 (별표 1 장애 진단 기관 및 전문의)",
+      "publisher": "국가법령정보센터",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙",
+      "fallback_url": null,
+      "official_api": {
+        "available": true,
+        "endpoint": "https://www.law.go.kr/DRF/lawService.do",
+        "auth_required": true,
+        "docs_url": "https://open.law.go.kr/LSO/main.do"
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": "별표1 장애 진단 기관 및 전문의 표 내용",
+        "robots_txt_ok": true,
+        "notes": "시행규칙 별표1이 진단서 발급 가능 의료기관 및 전문의 기준을 규정."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "장애인 편의·건강지원 > 의료비에 대한 지원 > 그 밖의 의료비 등 지원 — 찾기쉬운 생활법령정보",
+      "publisher": "법제처",
+      "publisher_type": "중앙정부",
+      "url": "https://www.easylaw.go.kr/CSP/CnpClsMain.laf?csmSeq=1003&ccfNo=4&cciNo=1&cnpClsNo=3",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 '진단서 발급비' 또는 '검사비 지원' 텍스트",
+        "robots_txt_ok": true,
+        "notes": "진단서 발급비 및 검사비 지원 항목 상세 안내 포함."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "저소득장애인 장애심사용 진단서 발급비 및 검사비 지원 — 정부24 민원 안내",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/SPE000000030",
+      "fallback_url": "https://www.bokjiro.go.kr/",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "본문 지원대상·지원내용 텍스트",
+        "robots_txt_ok": true,
+        "notes": "정부24 민원 안내 페이지. 지원 대상·금액·신청방법 요약 확인 가능."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "보건복지부 장애인복지 사업안내(연도별 지침)",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "url": "https://www.mohw.go.kr/board.es?mid=a10409020000&bid=0026",
+      "fallback_url": "https://www.korea.kr/archive/expDocView.do?docId=41440",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "장애인복지 사업안내 파일 링크",
+        "robots_txt_ok": true,
+        "notes": "매년 사업안내 개정본 게시. 지원 단가는 연도별 사업안내 PDF에서 확인 필요. 2026년 기준 단가 확인 시 해당 연도 지침 다운로드 필요."
+      },
+      "accessed": "2026-05-19",
+      "priority": "primary"
+    },
+    {
+      "title": "저소득장애인 진단서 발급비 및 검사비 지원 — 복지뱅크",
+      "publisher": "한국사회보장정보원 복지뱅크",
+      "publisher_type": "공기업",
+      "url": "http://bokjibank.or.kr/bokji/view.php?zipEncode=2Gtm90wDU91DLLMDMetpSfMvWLME",
+      "fallback_url": null,
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": null,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "지원내용 본문 텍스트",
+        "robots_txt_ok": true,
+        "notes": null
+      },
+      "accessed": "2026-05-19",
+      "priority": "secondary"
+    }
+  ],
+  "related_items": [
+    "B017"
+  ],
+  "last_verified": "2026-05-19",
+  "version": "1.0.0"
+}
