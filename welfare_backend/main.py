@@ -65,9 +65,17 @@ app = FastAPI(
     ),
 )
 
+# CORS 허용 오리진 — 환경변수 ALLOWED_ORIGINS(콤마 구분), 미설정 시 로컬 개발 오리진만 허용
+_DEFAULT_ORIGINS = "http://127.0.0.1:18000,http://localhost:18000"
+ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get("ALLOWED_ORIGINS", _DEFAULT_ORIGINS).split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
