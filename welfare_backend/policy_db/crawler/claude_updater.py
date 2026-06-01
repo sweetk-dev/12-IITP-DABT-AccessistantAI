@@ -37,23 +37,21 @@ logger = logging.getLogger(__name__)
 
 
 # 안전한 시스템 프롬프트 — Hallucination 방지 + schema 보존
-SYSTEM_PROMPT = """당신은 한국 장애인 복지 정책 데이터베이스의 항목 JSON 을 정확하게 갱신하는 정밀 엔진입니다.
+SYSTEM_PROMPT = """당신은 한국 장애인 복지 정책 데이터베이스 항목을 갱신하는 정밀 엔진입니다.
+전체 JSON 을 다시 쓰지 말고, 변경된 필드만 담은 패치만 반환하세요.
 
 ## 절대 규칙
-1. **schema 보존**: 입력으로 받은 JSON 의 모든 필드를 그대로 유지하세요. 새 필드를 추가하거나 기존 필드를 제거하지 마세요.
-2. **사실 변경만 반영**: 제공된 "변경된 출처 본문"에서 명확히 새로 확인되는 사실(금액·시행일·신청처·자격기준 등)만 업데이트하세요.
-3. **추측·추론 금지**: 출처에 명시되지 않은 정보는 절대 추가·변경하지 마세요. 기존 내용이 더 정확하다고 판단되면 유지.
-4. **문장 스타일 유지**: 기존 항목의 문체·요약 길이·테이블 구조를 그대로 유지하세요.
-5. **last_verified 갱신**: 오늘 날짜로 업데이트.
-6. **version 갱신**: minor 자릿수 +0.1 (예: 1.1.0 → 1.2.0).
-7. **변경이 모호하면 보존**: 출처 본문이 짧거나 불명확하면 해당 필드를 그대로 두세요.
-8. **답변 형식**: 오직 갱신된 JSON 본체 1개만 반환. 설명·코드블록·머리말·꼬리말 없이 순수 JSON.
+1. 변경된 필드만: 출처에서 명확히 새로 확인된 사실(금액·시행일·신청처·자격기준 등)에 한해 패치를 만드세요. 변경 없는 필드는 패치에 포함하지 마세요.
+2. 추측 금지: 출처에 명시되지 않은 정보는 만들지 마세요. 모호하면 패치하지 마세요.
+3. 삭제 신중: 단지 출처에 안 보인다는 이유로 delete 하지 마세요. 폐지·종료·미시행 등 명시적 종료 근거가 출처에 있을 때만 delete 패치를 만들고 evidence 에 그 문구를 인용하세요.
+4. evidence 필수: 각 패치에 근거가 된 출처 문장을 evidence 로 적고, confidence 는 high/medium/low 로 표기하세요.
+5. 답변 형식: 오직 아래 JSON 1개만. 설명·코드블록·머리말·꼬리말 없이 순수 JSON.
 
 ## 출력 형식
-```
-{"id": "B001", ... 전체 JSON 그대로 ...}
-```
-(위의 ``` 는 예시 표기일 뿐, 실제 답변에는 ``` 을 포함하지 마세요.)
+{"patches": [{"op": "update", "path": "supported_amount.rate", "old": "100%", "new": "90%", "evidence": "...", "confidence": "high"}]}
+- op: update(값 교체) / add(필드 추가 또는 리스트 append) / delete(검토 대상 표시)
+- path: 점(.)으로 구분한 필드 경로. add 의 대상이 리스트면 value 를 append.
+- 변경이 전혀 없으면 {"patches": []} 를 반환하세요.
 """
 
 USER_TEMPLATE = """[기존 항목 JSON]
@@ -62,7 +60,7 @@ USER_TEMPLATE = """[기존 항목 JSON]
 [변경된 출처들]
 {sources_block}
 
-위 출처에서 확인된 변경 사실만 반영해 갱신된 JSON 을 반환하세요. 변경이 모호하거나 출처 본문이 부족하면 기존 값을 그대로 유지하세요."""
+위 출처에서 확인된 변경 사실만 패치로 반환하세요. 변경이 모호하거나 출처가 부족하면 빈 패치({{"patches": []}})를 반환하세요."""
 
 
 def _build_sources_block(related_changes: list) -> str:
@@ -285,6 +283,99 @@ def _diff_summary(old: dict, new: dict) -> str:
     return "; ".join(diffs[:6]) + (" …" if len(diffs) > 6 else "") if diffs else "변경 사항 없음"
 
 
+# ── 필드 단위 패치 (C14) ─────────────────────────────────────
+# LLM 은 전체 JSON 대신 아래 형식의 패치만 반환한다:
+#   {"patches": [
+#     {"op":"update","path":"supported_amount.rate","old":"100%","new":"90%",
+#      "evidence":"...","confidence":"high"},
+#     {"op":"add","path":"faq","value":{"q":"...","a":"..."},"evidence":"...","confidence":"medium"},
+#     {"op":"delete","path":"operating_agencies","evidence":"...","confidence":"low"}
+#   ]}
+# path 는 점(.)으로 dict 를 따라가는 경로. add 의 대상이 list 면 value 를 append.
+
+def _get_parent(doc: dict, path: str, create: bool = False):
+    """점 경로의 부모 dict 와 마지막 키를 반환. 실패 시 (None, None)."""
+    keys = path.split(".")
+    cur = doc
+    for k in keys[:-1]:
+        if isinstance(cur, dict) and k in cur:
+            cur = cur[k]
+        elif create and isinstance(cur, dict):
+            cur[k] = {}
+            cur = cur[k]
+        else:
+            return None, None
+    return (cur, keys[-1]) if isinstance(cur, dict) else (None, None)
+
+
+def _set_by_path(doc: dict, path: str, value, require_exists: bool = True) -> bool:
+    """update: 기존 키가 있을 때만(require_exists) 값 교체."""
+    parent, last = _get_parent(doc, path, create=not require_exists)
+    if parent is None:
+        return False
+    if require_exists and last not in parent:
+        return False
+    parent[last] = value
+    return True
+
+
+def _add_by_path(doc: dict, path: str, value) -> bool:
+    """add: 대상이 list 면 append, 없는 키면 신규 설정. 이미 스칼라면 거부."""
+    parent, last = _get_parent(doc, path, create=True)
+    if parent is None:
+        return False
+    if last in parent and isinstance(parent[last], list):
+        parent[last].append(value)
+        return True
+    if last not in parent:
+        parent[last] = value
+        return True
+    return False
+
+
+# 명시적 종료 신호 — 단순 부재(출처에 안 보임)와 실제 폐지를 구분 (C18)
+TERMINATION_MARKERS = ["폐지", "종료", "미시행", "시행 종료", "지원 종료", "중단", "폐止되"]
+
+
+def _has_termination_evidence(evidence: str) -> bool:
+    """evidence 본문에 명시적 종료 문구가 있는지."""
+    text = evidence or ""
+    return any(m in text for m in TERMINATION_MARKERS)
+
+
+def _apply_patch(existing: dict, patches: list):
+    """패치를 기존 문서에 적용한다. add/update 만 자동 적용하고, 패치에 명시되지
+    않은 필드는 절대 변경하지 않는다(미변경 필드 불변 보장). delete 는 적용하지
+    않고 검토 항목으로 분리한다.
+    반환: (new_doc, applied, review)"""
+    import copy
+    new_doc = copy.deepcopy(existing)
+    applied, review = [], []
+    for op in (patches or []):
+        kind = op.get("op")
+        path = op.get("path", "")
+        if kind == "update":
+            if _set_by_path(new_doc, path, op.get("new"), require_exists=True):
+                applied.append({"op": "update", "path": path})
+            else:
+                review.append({"reason": "update 경로 없음", "path": path, "op": op})
+        elif kind == "add":
+            if _add_by_path(new_doc, path, op.get("value")):
+                applied.append({"op": "add", "path": path})
+            else:
+                review.append({"reason": "add 실패(이미 스칼라 존재 등)", "path": path, "op": op})
+        elif kind == "delete":
+            ev = op.get("evidence", "")
+            cls = "delete_candidate" if _has_termination_evidence(ev) else "review_needed"
+            review.append({"reason": "delete 자동 적용 금지", "path": path,
+                           "classification": cls,
+                           "evidence": ev,
+                           "confidence": op.get("confidence", "low")})
+        else:
+            review.append({"reason": "알 수 없는 op", "op": op})
+    return new_doc, applied, review
+
+
 async def update_item_via_claude(
     *,
     item_path: Path,
@@ -324,20 +415,23 @@ async def update_item_via_claude(
         raw = raw.strip("`").lstrip("json").strip()
 
     try:
-        new_data = json.loads(raw)
+        patch_obj = json.loads(raw)
+        patches = patch_obj.get("patches", []) if isinstance(patch_obj, dict) else []
     except Exception as e:
-        logger.error("Claude 응답이 유효한 JSON 이 아님: %s", e)
-        # 디버깅 파일로 저장
+        logger.error("LLM 응답이 유효한 패치 JSON 이 아님: %s", e)
         debug = staging_dir / f"{existing['id']}_FAILED_{date.today()}.txt"
         debug.write_text(raw, encoding="utf-8")
-        raise RuntimeError(f"Claude 응답 JSON 파싱 실패 — {debug}")
+        raise RuntimeError(f"LLM 응답 패치 파싱 실패 — {debug}")
 
-    # last_verified, version 자동 갱신 (Claude 가 깜빡한 경우 보강)
+    # 패치 적용 — 미변경 필드는 그대로 두고, delete 는 검토로 분리
+    new_data, applied, review = _apply_patch(existing, patches)
+
+    # last_verified, version 자동 갱신
     new_data["last_verified"] = date.today().isoformat()
     if existing.get("version") and new_data.get("version") == existing.get("version"):
         new_data["version"] = _bump_version(existing["version"])
 
-    # schema 검증
+    # schema 검증 (패치 적용 결과)
     if schema_path.exists():
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         validator = jsonschema.Draft7Validator(schema)
@@ -346,12 +440,16 @@ async def update_item_via_claude(
             err_msgs = [f"{list(e.path)}: {e.message[:100]}" for e in errs[:5]]
             raise RuntimeError(f"schema 검증 실패 ({len(errs)}건): " + " / ".join(err_msgs))
 
-    # staging 저장
+    # staging 저장 + 검토 리포트(있으면)
     staging_dir.mkdir(parents=True, exist_ok=True)
     fname = item_path.name.replace(".json", f".{date.today().isoformat()}.staged.json")
     staged_path = staging_dir / fname
     staged_path.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
-    logger.info("💾 staging 저장: %s", staged_path)
+    if review:
+        review_path = staging_dir / fname.replace(".staged.json", ".review.json")
+        review_path.write_text(json.dumps(review, ensure_ascii=False, indent=2), encoding="utf-8")
+        logger.info("검토 필요 항목 %d건: %s", len(review), review_path)
+    logger.info("staging 저장: %s (적용 %d / 검토 %d)", staged_path, len(applied), len(review))
 
     diff = _diff_summary(existing, new_data)
     return staged_path, diff

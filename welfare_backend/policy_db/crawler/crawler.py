@@ -136,6 +136,7 @@ async def run(args):
                 "reason": r.reason,
                 "used_by_items": t.get("used_by_items", []),
                 "snapshot_dir": str((SNAPSHOTS_DIR / tid).relative_to(ROOT)),
+                "chunk_diff": r.chunk_diff,
             })
             for pid in t.get("used_by_items", []):
                 affected_items.add(pid)
@@ -233,6 +234,13 @@ def _format_report_md(d: dict) -> str:
         lines.append(f"  - URL: {c['url']}")
         lines.append(f"  - 영향 정책: {', '.join(c['used_by_items']) or '(없음)'}")
         lines.append(f"  - 스냅샷: `{c['snapshot_dir']}`")
+        cd = c.get("chunk_diff")
+        if cd:
+            lines.append(
+                f"  - 청크 변경: 추가 {len(cd.get('added', []))} / "
+                f"삭제 {len(cd.get('removed', []))} / 수정 {len(cd.get('changed', []))} "
+                f"(유지 {cd.get('unchanged', 0)})"
+            )
     lines.append("")
     lines.append("## Claude API 갱신 결과")
     if not d["updated_items"]:
