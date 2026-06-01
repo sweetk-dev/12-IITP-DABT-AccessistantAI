@@ -43,62 +43,146 @@
     },
     "title": {
       "type": "string",
-      "description": "항목 정식 이름. 예: '지하철, 전철 요금 100% 지원'."
+      "description": "항목 정식 이름. 예: '지하철, 전철 요금 100% 지원'.",
+      "minLength": 1
     },
     "short_summary": {
       "type": "string",
-      "description": "전단지 원문 그대로의 한 줄 요약."
+      "description": "전단지 원문 그대로의 한 줄 요약.",
+      "minLength": 1
     },
     "category": {
       "type": "string",
-      "enum": ["교통", "통신", "공공시설", "주거", "의료", "보육·교육", "세제", "소득지원", "활동지원", "문화·체육", "기타"],
+      "enum": [
+        "교통",
+        "통신",
+        "공공시설",
+        "주거",
+        "의료",
+        "보육·교육",
+        "세제",
+        "소득지원",
+        "활동지원",
+        "문화·체육",
+        "기타"
+      ],
       "description": "AI 비서 검색용 큰 분류."
     },
     "benefit_type": {
       "type": "string",
-      "enum": ["면제", "감면", "할인", "현금지급", "현물지급", "서비스제공", "공제", "우선공급"]
+      "enum": [
+        "면제",
+        "감면",
+        "할인",
+        "현금지급",
+        "현물지급",
+        "서비스제공",
+        "공제",
+        "우선공급"
+      ]
     },
     "supported_amount": {
       "type": "object",
       "properties": {
-        "rate": { "type": ["string", "null"], "description": "할인율 또는 지원율(예: '100%', '50%'). 비율 개념이 없는 항목(예: 자동차 표지 발급, 거주시설 입소)은 null 허용." },
-        "amount": { "type": ["string", "null"], "description": "정액 지원금이 있으면 표기." },
-        "scope": { "type": "string", "description": "지원 적용 범위(어떤 비용/품목까지)." }
+        "rate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "할인율 또는 지원율(예: '100%', '50%'). 비율 개념이 없는 항목(예: 자동차 표지 발급, 거주시설 입소)은 null 허용."
+        },
+        "amount": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "정액 지원금이 있으면 표기."
+        },
+        "scope": {
+          "type": "string",
+          "description": "지원 적용 범위(어떤 비용/품목까지)."
+        }
       }
     },
     "eligibility": {
       "type": "object",
       "properties": {
-        "target": { "type": "string", "description": "대상자(예: '등록 장애인')." },
+        "target": {
+          "type": "string",
+          "description": "대상자(예: '등록 장애인')."
+        },
         "severity_levels": {
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["심한 장애(중증)", "심하지 않은 장애(경증)"]
+            "enum": [
+              "심한 장애(중증)",
+              "심하지 않은 장애(경증)"
+            ]
           }
         },
         "companion_allowed": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "properties": {
-            "applicable_to": { "type": "string" },
-            "count": { "type": "integer" },
-            "scope": { "type": "string" }
+            "applicable_to": {
+              "type": "string"
+            },
+            "count": {
+              "type": "integer"
+            },
+            "scope": {
+              "type": "string"
+            }
           }
         },
-        "income_criteria": { "type": ["string", "null"] },
-        "age_criteria": { "type": ["string", "null"] },
-        "residency_criteria": { "type": ["string", "null"] }
+        "income_criteria": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "age_criteria": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "residency_criteria": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "legal_basis": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "properties": {
-          "name": { "type": "string" },
-          "article": { "type": ["string", "null"], "description": "조문(예: '제30조')." },
-          "url": { "type": ["string", "null"], "format": "uri" }
+          "name": {
+            "type": "string"
+          },
+          "article": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "조문(예: '제30조')."
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          }
         }
       }
     },
@@ -108,23 +192,72 @@
       "items": {
         "type": "object",
         "properties": {
-          "region": { "type": "string" },
-          "agency": { "type": "string" },
-          "lines_or_routes": { "type": "array", "items": { "type": "string" } },
-          "apply_channel": { "type": ["string", "null"] },
-          "card_or_proof_type": { "type": ["string", "null"], "description": "필요한 카드·증명서. 신청·발급 채널이 아닌 정보 제공 포털 등에서는 null 허용." },
-          "url": { "type": ["string", "null"], "format": "uri" },
-          "notes": { "type": ["string", "null"] }
+          "region": {
+            "type": "string"
+          },
+          "agency": {
+            "type": "string"
+          },
+          "lines_or_routes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "apply_channel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "card_or_proof_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "필요한 카드·증명서. 신청·발급 채널이 아닌 정보 제공 포털 등에서는 null 허용."
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
         }
       }
     },
     "how_to_use": {
       "type": "object",
       "properties": {
-        "default": { "type": "string", "description": "일반적인 이용 방법(현장 무임/환급/카드 등)." },
-        "with_card": { "type": ["string", "null"] },
-        "without_card": { "type": ["string", "null"] },
-        "exceptions": { "type": ["string", "null"] }
+        "default": {
+          "type": "string",
+          "description": "일반적인 이용 방법(현장 무임/환급/카드 등)."
+        },
+        "with_card": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "without_card": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "exceptions": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "application": {
@@ -135,45 +268,101 @@
           "items": {
             "type": "object",
             "properties": {
-              "channel": { "type": "string" },
-              "method": { "type": "string", "enum": ["방문", "온라인", "전화", "우편", "모바일 앱"] },
-              "url": { "type": ["string", "null"], "format": "uri" }
+              "channel": {
+                "type": "string"
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "방문",
+                  "온라인",
+                  "전화",
+                  "우편",
+                  "모바일 앱"
+                ]
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri"
+              }
             }
           }
         },
-        "required_documents": { "type": "array", "items": { "type": "string" } },
-        "processing_period": { "type": ["string", "null"] },
+        "required_documents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "processing_period": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "fee": {
           "type": "object",
           "properties": {
-            "default": { "type": "string" },
-            "exceptions": { "type": ["string", "null"] }
+            "default": {
+              "type": "string"
+            },
+            "exceptions": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
         },
-        "online_available": { "type": "boolean" },
-        "proxy_allowed": { "type": "boolean" }
+        "online_available": {
+          "type": "boolean"
+        },
+        "proxy_allowed": {
+          "type": "boolean"
+        }
       }
     },
     "validity": {
       "type": "object",
       "properties": {
-        "expiry": { "type": "string" },
-        "renewal": { "type": "string" }
+        "expiry": {
+          "type": "string"
+        },
+        "renewal": {
+          "type": "string"
+        }
       }
     },
     "exceptions_and_caveats": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
-    "penalties_for_misuse": { "type": ["string", "null"] },
+    "penalties_for_misuse": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "faq": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["q", "a"],
+        "required": [
+          "q",
+          "a"
+        ],
         "properties": {
-          "q": { "type": "string" },
-          "a": { "type": "string" }
+          "q": {
+            "type": "string"
+          },
+          "a": {
+            "type": "string"
+          }
         }
       }
     },
@@ -182,9 +371,22 @@
       "items": {
         "type": "object",
         "properties": {
-          "name": { "type": "string" },
-          "phone": { "type": ["string", "null"] },
-          "url": { "type": ["string", "null"], "format": "uri" }
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          }
         }
       }
     },
@@ -193,25 +395,68 @@
       "description": "근거·참고 자료 목록. 각 항목에 재크롤링용 메타데이터 포함.",
       "items": {
         "type": "object",
-        "required": ["title", "publisher", "url"],
+        "required": [
+          "title",
+          "publisher",
+          "url"
+        ],
         "properties": {
-          "title": { "type": "string" },
-          "publisher": { "type": "string" },
+          "title": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
           "publisher_type": {
             "type": "string",
-            "enum": ["중앙정부", "광역지자체", "기초지자체", "공기업", "법령DB", "공공데이터포털", "민간"],
+            "enum": [
+              "중앙정부",
+              "광역지자체",
+              "기초지자체",
+              "공기업",
+              "법령DB",
+              "공공데이터포털",
+              "민간"
+            ],
             "description": "기관 유형. 공식 출처 우선순위 판정에 사용."
           },
-          "url": { "type": "string", "format": "uri" },
-          "fallback_url": { "type": ["string", "null"], "format": "uri" },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "fallback_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          },
           "official_api": {
             "type": "object",
             "description": "공식 API 제공 여부. 공공데이터포털 등.",
             "properties": {
-              "available": { "type": "boolean" },
-              "endpoint": { "type": ["string", "null"] },
-              "auth_required": { "type": ["boolean", "null"] },
-              "docs_url": { "type": ["string", "null"], "format": "uri" }
+              "available": {
+                "type": "boolean"
+              },
+              "endpoint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "auth_required": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "docs_url": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri"
+              }
             }
           },
           "crawl": {
@@ -220,34 +465,78 @@
             "properties": {
               "frequency": {
                 "type": "string",
-                "enum": ["daily", "weekly", "monthly", "quarterly", "on_demand"],
+                "enum": [
+                  "daily",
+                  "weekly",
+                  "monthly",
+                  "quarterly",
+                  "on_demand"
+                ],
                 "description": "권장 크롤 주기."
               },
               "change_detection_method": {
                 "type": "string",
-                "enum": ["page_hash", "last_modified_field", "css_selector_text", "pdf_hash", "manual_review"],
+                "enum": [
+                  "page_hash",
+                  "last_modified_field",
+                  "css_selector_text",
+                  "pdf_hash",
+                  "manual_review"
+                ],
                 "description": "변경 감지 방식."
               },
-              "css_selector_hint": { "type": ["string", "null"], "description": "변경 감지에 쓸 셀렉터 또는 텍스트 패턴." },
-              "robots_txt_ok": { "type": ["boolean", "null"] },
-              "notes": { "type": ["string", "null"] }
+              "css_selector_hint": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "변경 감지에 쓸 셀렉터 또는 텍스트 패턴."
+              },
+              "robots_txt_ok": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
             }
           },
-          "accessed": { "type": "string", "format": "date" },
+          "accessed": {
+            "type": "string",
+            "format": "date"
+          },
           "priority": {
             "type": "string",
-            "enum": ["primary", "secondary", "supplementary"],
+            "enum": [
+              "primary",
+              "secondary",
+              "supplementary"
+            ],
             "description": "primary는 법적/공식 1차 근거, secondary는 운영기관 공식 안내, supplementary는 보조 참고."
           }
         }
-      }
+      },
+      "minItems": 1
     },
     "related_items": {
       "type": "array",
       "description": "연관 항목 ID 리스트(예: ②번 철도요금 감면).",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
-    "last_verified": { "type": "string", "format": "date" },
-    "version": { "type": "string" }
+    "last_verified": {
+      "type": "string",
+      "format": "date"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    }
   }
 }
