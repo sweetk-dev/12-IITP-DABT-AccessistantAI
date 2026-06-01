@@ -62,9 +62,17 @@ def _read_prev_hash(snapshot_dir: Path, method: str) -> Optional[str]:
 
 
 def _mask_dynamic_noise(text: str) -> str:
-    """동적 노이즈를 placeholder 로 치환한다 (확대 가능 — C5에서 패턴 추가)."""
-    text = re.sub(r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}", "DATETIME", text)
-    text = re.sub(r'(name="[^"]*token[^"]*"\s+value=")[^"]*(")', r"\1MASKED\2", text, flags=re.IGNORECASE)
+    """동적 노이즈를 placeholder 로 치환한다 (날짜·시각·조회수·세션·토큰 등)."""
+    patterns = [
+        (r"\d{4}[-./]\d{2}[-./]\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?", "DATE"),
+        (r"\d{2}:\d{2}:\d{2}", "TIME"),
+        (r"(?:조회\s*수?|조회|view(?:s)?|hit(?:s)?)\s*[:：]?\s*[\d,]+", "VIEWCOUNT"),
+        (r"오늘\s*[\d,]+\s*명?", "TODAYCOUNT"),
+        (r'(name="[^"]*(?:token|csrf|session)[^"]*"\s+value=")[^"]*(")', r"\1MASKED\2"),
+        (r"(?:JSESSIONID|PHPSESSID|csrf[-_]?token)=[A-Za-z0-9]+", "SESSION"),
+    ]
+    for pat, repl in patterns:
+        text = re.sub(pat, repl, text, flags=re.IGNORECASE)
     return text
 
 
