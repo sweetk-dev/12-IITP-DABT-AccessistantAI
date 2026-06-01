@@ -9,11 +9,11 @@ import tempfile
 from pathlib import Path
 
 try:
-    from .detectors import ChangeResult, SNAPSHOT_FILES, _read_prev_hash, save_snapshot
+    from .detectors import ChangeResult, SNAPSHOT_FILES, _read_prev_hash, save_snapshot, _normalize_html_text, _hash_bytes
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from crawler.detectors import ChangeResult, SNAPSHOT_FILES, _read_prev_hash, save_snapshot  # type: ignore
+    from crawler.detectors import ChangeResult, SNAPSHOT_FILES, _read_prev_hash, save_snapshot, _normalize_html_text, _hash_bytes  # type: ignore
 
 
 def _decide(prev_hash, new_hash):
@@ -55,6 +55,20 @@ def test_last_modified_regression():
         prev = _read_prev_hash(snap, "last_modified_field")
         assert prev == h
         assert _decide(prev, h) is False
+
+
+def test_normalize_masks_dynamic_noise():
+    """본문이 같고 날짜/조회수 같은 노이즈만 다른 두 HTML 은 동일 해시를 내야 한다."""
+    html_a = (b"<html><body><h1>Subway Free</h1><p>Discount 50%</p>"
+              b"<span>views 1,234</span><time>2026-05-01</time>"
+              b"<script>var t=1</script></body></html>")
+    html_b = (b"<html><body><h1>Subway Free</h1><p>Discount 50%</p>"
+              b"<span>views 9,999</span><time>2026-06-15 10:20:30</time>"
+              b"<script>var t=2</script></body></html>")
+    a = _normalize_html_text(html_a)
+    b = _normalize_html_text(html_b)
+    assert a == b, (a, b)
+    assert _hash_bytes(a.encode("utf-8")) == _hash_bytes(b.encode("utf-8"))
 
 
 if __name__ == "__main__":
