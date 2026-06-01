@@ -106,6 +106,42 @@ def _normalize_html_text(html: bytes) -> str:
     return text
 
 
+# ── 의미 단위 청킹 (C8) ──────────────────────────────────────
+BLOCK_TAGS = ["p", "li", "tr", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6",
+              "dt", "dd", "blockquote", "figcaption", "caption"]
+
+
+def _chunk_html(html: bytes) -> list:
+    """HTML 을 의미 단위(문단/리스트/표 행/제목) 청크 리스트로 변환한다.
+    각 청크는 _mask_dynamic_noise 로 노이즈가 마스킹된 정규화 텍스트.
+    bs4 미설치 시 정규화 전체 텍스트를 문장 단위로 분할(폴백)."""
+    try:
+        raw = html.decode("utf-8", errors="replace")
+    except Exception:
+        raw = html.decode("latin-1", errors="replace")
+    chunks = []
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(raw, "html.parser")
+        for tag in soup(["script", "style", "noscript", "nav", "header",
+                         "footer", "aside", "form", "iframe", "svg",
+                         "button", "input"]):
+            tag.decompose()
+        for el in soup.find_all(BLOCK_TAGS):
+            t = re.sub(r"\s+", " ", _mask_dynamic_noise(el.get_text(separator=" "))).strip()
+            if len(t) >= 10:
+                chunks.append(t)
+    except Exception:
+        chunks = []
+    if not chunks:
+        flat = _normalize_html_text(html)
+        for seg in re.split(r"(?<=[.?。])\s+|[\r\n]+", flat):
+            seg = seg.strip()
+            if len(seg) >= 10:
+                chunks.append(seg)
+    return chunks
+
+
 def _extract_text_from_html(html: bytes) -> str:
     """간단한 HTML→텍스트. BeautifulSoup 없이 정규식 기반(의존성 최소화).
     광고·스크립트·날짜 위젯 등 노이즈 일부 제거."""
