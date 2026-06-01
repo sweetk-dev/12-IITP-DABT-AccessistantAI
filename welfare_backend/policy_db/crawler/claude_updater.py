@@ -403,20 +403,23 @@ async def update_item_via_claude(
         raw = raw.strip("`").lstrip("json").strip()
 
     try:
-        new_data = json.loads(raw)
+        patch_obj = json.loads(raw)
+        patches = patch_obj.get("patches", []) if isinstance(patch_obj, dict) else []
     except Exception as e:
-        logger.error("Claude 응답이 유효한 JSON 이 아님: %s", e)
-        # 디버깅 파일로 저장
+        logger.error("LLM 응답이 유효한 패치 JSON 이 아님: %s", e)
         debug = staging_dir / f"{existing['id']}_FAILED_{date.today()}.txt"
         debug.write_text(raw, encoding="utf-8")
-        raise RuntimeError(f"Claude 응답 JSON 파싱 실패 — {debug}")
+        raise RuntimeError(f"LLM 응답 패치 파싱 실패 — {debug}")
 
-    # last_verified, version 자동 갱신 (Claude 가 깜빡한 경우 보강)
+    # 패치 적용 — 미변경 필드는 그대로 두고, delete 는 검토로 분리
+    new_data, applied, review = _apply_patch(existing, patches)
+
+    # last_verified, version 자동 갱신
     new_data["last_verified"] = date.today().isoformat()
     if existing.get("version") and new_data.get("version") == existing.get("version"):
         new_data["version"] = _bump_version(existing["version"])
 
-    # schema 검증
+    # schema 검증 (패치 적용 결과)
     if schema_path.exists():
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         validator = jsonschema.Draft7Validator(schema)
@@ -425,12 +428,16 @@ async def update_item_via_claude(
             err_msgs = [f"{list(e.path)}: {e.message[:100]}" for e in errs[:5]]
             raise RuntimeError(f"schema 검증 실패 ({len(errs)}건): " + " / ".join(err_msgs))
 
-    # staging 저장
+    # staging 저장 + 검토 리포트(있으면)
     staging_dir.mkdir(parents=True, exist_ok=True)
     fname = item_path.name.replace(".json", f".{date.today().isoformat()}.staged.json")
     staged_path = staging_dir / fname
     staged_path.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
-    logger.info("💾 staging 저장: %s", staged_path)
+    if review:
+        review_path = staging_dir / fname.replace(".staged.json", ".review.json")
+        review_path.write_text(json.dumps(review, ensure_ascii=False, indent=2), encoding="utf-8")
+        logger.info("검토 필요 항목 %d건: %s", len(review), review_path)
+    logger.info("staging 저장: %s (적용 %d / 검토 %d)", staged_path, len(applied), len(review))
 
     diff = _diff_summary(existing, new_data)
     return staged_path, diff
