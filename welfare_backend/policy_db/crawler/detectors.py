@@ -41,6 +41,26 @@ def _hash_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+# ── 스냅샷 파일 매핑 + 공통 비교 헬퍼 ─────────────────────────
+# 변경 감지 방식 → 스냅샷 파일명. 읽기(_read_prev_hash)와 쓰기(save_snapshot)가
+# 동일 매핑을 공유하므로 "저장=해시 / 비교=원문" 같은 불일치가 재발하지 않는다.
+SNAPSHOT_FILES = {
+    "page_hash": "page_hash.txt",
+    "pdf_hash": "pdf_hash.txt",
+    "last_modified_field": "last_modified.txt",
+    "css_selector_text": "selector.txt",
+}
+
+
+def _read_prev_hash(snapshot_dir: Path, method: str) -> Optional[str]:
+    """직전 회차에 저장된 비교 해시를 읽는다 (없으면 None = 최초 스냅샷)."""
+    fname = SNAPSHOT_FILES.get(method)
+    if fname is None:
+        return None
+    f = snapshot_dir / fname
+    return f.read_text(encoding="utf-8").strip() if f.exists() else None
+
+
 def _extract_text_from_html(html: bytes) -> str:
     """간단한 HTML→텍스트. BeautifulSoup 없이 정규식 기반(의존성 최소화).
     광고·스크립트·날짜 위젯 등 노이즈 일부 제거."""
@@ -86,8 +106,7 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
     text = _extract_text_from_html(resp.content)
     new_hash = _hash_bytes(text.encode("utf-8"))
 
-    prev_file = snapshot_dir / "page_hash.txt"
-    prev_hash = prev_file.read_text(encoding="utf-8").strip() if prev_file.exists() else None
+    prev_hash = _read_prev_hash(snapshot_dir, "page_hash")
     changed = (prev_hash is None) or (prev_hash != new_hash)
     reason = "최초 스냅샷" if prev_hash is None else ("해시 변경" if changed else "변경 없음")
     return ChangeResult(
@@ -108,8 +127,7 @@ async def detect_pdf_hash(target: dict, snapshot_dir: Path, *, client: httpx.Asy
     if resp is None:
         return ChangeResult(False, "fetch_failed", fetched_url=url)
     new_hash = _hash_bytes(resp.content)
-    prev_file = snapshot_dir / "pdf_hash.txt"
-    prev_hash = prev_file.read_text(encoding="utf-8").strip() if prev_file.exists() else None
+    prev_hash = _read_prev_hash(snapshot_dir, "pdf_hash")
     changed = (prev_hash is None) or (prev_hash != new_hash)
     # PDF 파일명 날짜 패턴 변화도 함께 모니터링 (예: _250623 → _260101)
     return ChangeResult(
@@ -149,14 +167,12 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
             break
     new_key = f"{http_lm}|{body_lm or ''}"
     new_hash = _hash_bytes(new_key.encode("utf-8"))
-    prev_file = snapshot_dir / "last_modified.txt"
-    prev_key = prev_file.read_text(encoding="utf-8").strip() if prev_file.exists() else None
-    changed = (prev_key is None) or (prev_key != new_key)
+    # 저장/비교 모두 해시 기준 — SNAPSHOT_FILES 매핑 공유로 불일치 재발 방지.
+    prev_hash = _read_prev_hash(snapshot_dir, "last_modified_field")
+    changed = (prev_hash is None) or (prev_hash != new_hash)
     return ChangeResult(
         changed=changed,
-        reason=f"최종 수정 키 변경: '{prev_key}' → '{new_key}'" if changed and prev_key else (
-            "최초 스냅샷" if prev_key is None else "변경 없음"
-        ),
+        reason="최초 스냅샷" if prev_hash is None else ("최종 수정 키 변경" if changed else "변경 없음"),
         new_content=resp.content if changed else None,
         new_hash=new_hash,
         fetched_url=url,
@@ -189,8 +205,7 @@ async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: 
 
     target_text = extracted if extracted else text[:5000]  # 큰 본문은 앞 5KB
     new_hash = _hash_bytes(target_text.encode("utf-8"))
-    prev_file = snapshot_dir / "selector.txt"
-    prev_hash = prev_file.read_text(encoding="utf-8").strip() if prev_file.exists() else None
+    prev_hash = _read_prev_hash(snapshot_dir, "css_selector_text")
     changed = (prev_hash is None) or (prev_hash != new_hash)
     return ChangeResult(
         changed=changed,
@@ -229,20 +244,11 @@ DETECTORS = {
 def save_snapshot(snapshot_dir: Path, method: str, result: ChangeResult):
     """변경 감지 후 기준 스냅샷 저장."""
     snapshot_dir.mkdir(parents=True, exist_ok=True)
-    fname_map = {
-        "page_hash": "page_hash.txt",
-        "pdf_hash": "pdf_hash.txt",
-        "last_modified_field": "last_modified.txt",
-        "css_selector_text": "selector.txt",
-    }
-    if method not in fname_map or result.new_hash is None:
+    fname = SNAPSHOT_FILES.get(method)
+    if fname is None or result.new_hash is None:
         return
-    # last_modified_field 만 해시가 아닌 원본 키 저장
-    if method == "last_modified_field":
-        # 새 키를 그대로 재구성하기 어려우니 해시 저장
-        (snapshot_dir / fname_map[method]).write_text(result.new_hash, encoding="utf-8")
-    else:
-        (snapshot_dir / fname_map[method]).write_text(result.new_hash, encoding="utf-8")
+    # 모든 방식 동일: 비교 키(해시)를 저장 → 다음 회차 _read_prev_hash 와 정합.
+    (snapshot_dir / fname).write_text(result.new_hash, encoding="utf-8")
     # 본문도 저장 (선택적 진단용)
     if result.new_content is not None:
         ext = "pdf" if method == "pdf_hash" else "html"
