@@ -148,7 +148,8 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
     resp = await _fetch(url, client=client)
     if resp is None:
         return ChangeResult(False, "fetch_failed", fetched_url=url)
-    text = _extract_text_from_html(resp.content)
+    # C6: 정규화 텍스트 기반 — 노이즈만 바뀐 경우의 거짓 변경 방지
+    text = _normalize_html_text(resp.content)
     new_hash = _hash_bytes(text.encode("utf-8"))
 
     prev_hash = _read_prev_hash(snapshot_dir, "page_hash")
