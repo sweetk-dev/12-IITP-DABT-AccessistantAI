@@ -61,6 +61,51 @@ def _read_prev_hash(snapshot_dir: Path, method: str) -> Optional[str]:
     return f.read_text(encoding="utf-8").strip() if f.exists() else None
 
 
+def _mask_dynamic_noise(text: str) -> str:
+    """동적 노이즈를 placeholder 로 치환한다 (날짜·시각·조회수·세션·토큰 등)."""
+    patterns = [
+        (r"\d{4}[-./]\d{2}[-./]\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?", "DATE"),
+        (r"\d{2}:\d{2}:\d{2}", "TIME"),
+        (r"(?:조회\s*수?|조회|view(?:s)?|hit(?:s)?)\s*[:：]?\s*[\d,]+", "VIEWCOUNT"),
+        (r"오늘\s*[\d,]+\s*명?", "TODAYCOUNT"),
+        (r'(name="[^"]*(?:token|csrf|session)[^"]*"\s+value=")[^"]*(")', r"\1MASKED\2"),
+        (r"(?:JSESSIONID|PHPSESSID|csrf[-_]?token)=[A-Za-z0-9]+", "SESSION"),
+    ]
+    for pat, repl in patterns:
+        text = re.sub(pat, repl, text, flags=re.IGNORECASE)
+    return text
+
+
+def _normalize_html_text(html: bytes) -> str:
+    """HTML 바이트 → 정규화된 본문 텍스트.
+
+    BeautifulSoup 가 있으면 script/nav/header/footer 등 비콘텐츠 태그를 제거해
+    본문만 남기고, 없으면 정규식 폴백으로 동작한다. 이후 _mask_dynamic_noise 로
+    동적 노이즈를 마스킹해 '본문은 그대로인데 노이즈만 바뀐' 경우의 거짓 변경을 막는다.
+    """
+    try:
+        text = html.decode("utf-8", errors="replace")
+    except Exception:
+        text = html.decode("latin-1", errors="replace")
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(text, "html.parser")
+        for tag in soup(["script", "style", "noscript", "nav", "header",
+                         "footer", "aside", "form", "iframe", "svg",
+                         "button", "input"]):
+            tag.decompose()
+        text = soup.get_text(separator=" ")
+    except Exception:
+        text = re.sub(r"<script[\s\S]*?</script>", " ", text, flags=re.IGNORECASE)
+        text = re.sub(r"<style[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
+        text = re.sub(r"<[^>]+>", " ", text)
+    text = _mask_dynamic_noise(text)
+    text = (text.replace("&nbsp;", " ").replace("&amp;", "&")
+                .replace("&lt;", "<").replace("&gt;", ">"))
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
 def _extract_text_from_html(html: bytes) -> str:
     """간단한 HTML→텍스트. BeautifulSoup 없이 정규식 기반(의존성 최소화).
     광고·스크립트·날짜 위젯 등 노이즈 일부 제거."""
@@ -103,7 +148,8 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
     resp = await _fetch(url, client=client)
     if resp is None:
         return ChangeResult(False, "fetch_failed", fetched_url=url)
-    text = _extract_text_from_html(resp.content)
+    # C6: 정규화 텍스트 기반 — 노이즈만 바뀐 경우의 거짓 변경 방지
+    text = _normalize_html_text(resp.content)
     new_hash = _hash_bytes(text.encode("utf-8"))
 
     prev_hash = _read_prev_hash(snapshot_dir, "page_hash")
