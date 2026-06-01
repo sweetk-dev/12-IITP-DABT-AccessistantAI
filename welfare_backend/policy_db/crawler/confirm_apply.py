@@ -86,6 +86,40 @@ def _diff_view(existing: dict, new: dict) -> str:
     return "\n".join(lines) if lines else "(변경 사항 없음 — 갱신 대상 아님)"
 
 
+# ── 반영 전 회귀 가드 (C20) — 스키마가 못 잡는 조용한 손실 탐지 ──
+TOP_LEVEL_REQUIRED = ["id", "leaflet_section", "leaflet_number", "title",
+                      "short_summary", "category", "benefit_type",
+                      "supported_amount", "eligibility", "legal_basis",
+                      "how_to_use", "application", "sources",
+                      "last_verified", "version"]
+WATCHED_ARRAYS = ["legal_basis", "operating_agencies", "exceptions_and_caveats",
+                  "faq", "contact", "sources", "related_items"]
+SIZE_SHRINK_RATIO = 0.5    # 새 문서가 기존의 50% 미만이면 차단
+ARRAY_SHRINK_RATIO = 0.5   # 배열 길이가 절반 이하로 줄면 차단
+
+
+def _regression_check(existing: dict, new: dict) -> list:
+    """패치 적용 결과가 기존을 의도치 않게 축소·손상시키는지 검사한다.
+    반환: 차단 사유 문자열 리스트(비어 있으면 안전)."""
+    issues = []
+    # 1) 최상위 필수 키 누락
+    for k in TOP_LEVEL_REQUIRED:
+        if k in existing and k not in new:
+            issues.append(f"필수 키 누락: {k}")
+    # 2) 전체 크기 급감
+    ol = len(json.dumps(existing, ensure_ascii=False))
+    nl = len(json.dumps(new, ensure_ascii=False))
+    if ol > 0 and nl < ol * SIZE_SHRINK_RATIO:
+        issues.append(f"문서 크기 급감: {ol}B -> {nl}B (<{int(SIZE_SHRINK_RATIO*100)}%)")
+    # 3) 주요 배열 길이 급감
+    for k in WATCHED_ARRAYS:
+        ov, nv = existing.get(k), new.get(k)
+        if isinstance(ov, list) and isinstance(nv, list) and len(ov) >= 2:
+            if len(nv) < len(ov) * ARRAY_SHRINK_RATIO:
+                issues.append(f"배열 급감 {k}: {len(ov)} -> {len(nv)}")
+    return issues
+
+
 def _apply_one(policy_id: str, *, diff_only: bool, reject: bool, auto_yes: bool) -> bool:
     files = _find_staged(policy_id)
     if not files:
