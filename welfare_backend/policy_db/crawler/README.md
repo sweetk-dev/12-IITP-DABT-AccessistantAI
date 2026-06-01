@@ -256,3 +256,23 @@ if sc and sc.grounding_metadata:
 ---
 
 *문서 버전: 1.1  ·  작성: 2026-05-21 야간 → 2026-05-22 갱신  ·  사용자 confirm 워크플로우 안전 모드*
+
+---
+
+## 파이프라인 보강 (v0.2 ~ v0.5)
+
+초기 "해시 비교 → LLM 전체 재생성" 흐름을 다음과 같이 단계적으로 강화했습니다.
+
+1. **본문 정규화 (v0.2, `detectors._normalize_html_text`)**
+   BeautifulSoup 기반으로 nav/footer/script 등 비콘텐츠를 제거하고, 조회수·세션·다형식 날짜·토큰 같은 동적 노이즈를 마스킹합니다. 본문이 동일하면 노이즈가 달라도 같은 해시가 나와 거짓 변경이 줄어듭니다. (bs4 미설치 시 정규식 폴백)
+
+2. **청크 기반 변경 감지 (v0.3, `_chunk_html` / `_chunk_diff`)**
+   본문을 의미 단위(문단·리스트·표 행·제목)로 청킹해 이전 스냅샷과 비교하고, 추가/삭제/수정을 산출합니다. 유사도(difflib) 기반으로 "수정"을 분류해 add/remove 과대계상을 줄이며, 결과는 크롤러 리포트에 요약 출력됩니다.
+
+3. **필드 단위 패치 갱신 (v0.4, `claude_updater._apply_patch`)**
+   LLM 이 항목 전체 JSON 을 다시 쓰지 않고 변경된 필드만 패치(op/path/old/new/evidence/confidence)로 반환합니다. add/update 만 자동 적용하고 패치에 없는 필드는 불변으로 보존합니다. **delete 는 자동 적용하지 않고** 검토 항목(`.review.json`)으로 분리하며, 출처에 명시적 종료 문구(폐지·종료·미시행 등)가 있을 때만 `delete_candidate` 로 승격합니다.
+
+4. **반영 전 회귀 가드 (v0.5, `confirm_apply._regression_check`)**
+   items/ 반영 직전에 최상위 필수 키 누락, 문서 크기 급감(<50%), 주요 배열 길이 급감(<50%)을 검사해 조용한 손실을 차단합니다. 스키마도 핵심 필드(`title`·`short_summary`·`version` minLength, `sources` minItems)에 최소 제약을 추가했습니다. 검토가 필요한 패치 항목은 반영 단계에서 함께 표시됩니다.
+
+> 전체 흐름: 출처 fetch → 정규화 → (해시 + 청크) 변경 감지 → 변경 시 LLM 필드 패치 → staging 저장(+검토 리포트) → `confirm_apply`(스키마 검증 + 회귀 가드 + 사람 승인) → items/ 반영(백업 후 덮어쓰기).
