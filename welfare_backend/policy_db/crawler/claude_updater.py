@@ -333,6 +333,37 @@ def _add_by_path(doc: dict, path: str, value) -> bool:
     return False
 
 
+def _apply_patch(existing: dict, patches: list):
+    """패치를 기존 문서에 적용한다. add/update 만 자동 적용하고, 패치에 명시되지
+    않은 필드는 절대 변경하지 않는다(미변경 필드 불변 보장). delete 는 적용하지
+    않고 검토 항목으로 분리한다.
+    반환: (new_doc, applied, review)"""
+    import copy
+    new_doc = copy.deepcopy(existing)
+    applied, review = [], []
+    for op in (patches or []):
+        kind = op.get("op")
+        path = op.get("path", "")
+        if kind == "update":
+            if _set_by_path(new_doc, path, op.get("new"), require_exists=True):
+                applied.append({"op": "update", "path": path})
+            else:
+                review.append({"reason": "update 경로 없음", "path": path, "op": op})
+        elif kind == "add":
+            if _add_by_path(new_doc, path, op.get("value")):
+                applied.append({"op": "add", "path": path})
+            else:
+                review.append({"reason": "add 실패(이미 스칼라 존재 등)", "path": path, "op": op})
+        elif kind == "delete":
+            review.append({"reason": "delete 자동 적용 금지", "path": path,
+                           "classification": "review_needed",
+                           "evidence": op.get("evidence", ""),
+                           "confidence": op.get("confidence", "low")})
+        else:
+            review.append({"reason": "알 수 없는 op", "op": op})
+    return new_doc, applied, review
+
+
 async def update_item_via_claude(
     *,
     item_path: Path,
