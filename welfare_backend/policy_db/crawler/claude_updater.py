@@ -333,6 +333,16 @@ def _add_by_path(doc: dict, path: str, value) -> bool:
     return False
 
 
+# 명시적 종료 신호 — 단순 부재(출처에 안 보임)와 실제 폐지를 구분 (C18)
+TERMINATION_MARKERS = ["폐지", "종료", "미시행", "시행 종료", "지원 종료", "중단", "폐止되"]
+
+
+def _has_termination_evidence(evidence: str) -> bool:
+    """evidence 본문에 명시적 종료 문구가 있는지."""
+    text = evidence or ""
+    return any(m in text for m in TERMINATION_MARKERS)
+
+
 def _apply_patch(existing: dict, patches: list):
     """패치를 기존 문서에 적용한다. add/update 만 자동 적용하고, 패치에 명시되지
     않은 필드는 절대 변경하지 않는다(미변경 필드 불변 보장). delete 는 적용하지
@@ -355,9 +365,11 @@ def _apply_patch(existing: dict, patches: list):
             else:
                 review.append({"reason": "add 실패(이미 스칼라 존재 등)", "path": path, "op": op})
         elif kind == "delete":
+            ev = op.get("evidence", "")
+            cls = "delete_candidate" if _has_termination_evidence(ev) else "review_needed"
             review.append({"reason": "delete 자동 적용 금지", "path": path,
-                           "classification": "review_needed",
-                           "evidence": op.get("evidence", ""),
+                           "classification": cls,
+                           "evidence": ev,
                            "confidence": op.get("confidence", "low")})
         else:
             review.append({"reason": "알 수 없는 op", "op": op})
