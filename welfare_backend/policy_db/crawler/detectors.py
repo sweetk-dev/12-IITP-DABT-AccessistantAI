@@ -149,14 +149,14 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
             break
     new_key = f"{http_lm}|{body_lm or ''}"
     new_hash = _hash_bytes(new_key.encode("utf-8"))
+    # 스냅샷에는 해시를 저장하므로(save_snapshot) 비교도 해시 기준으로 맞춘다.
+    # 이전 구현은 저장=해시 / 비교=원문 키였어서 매 회차 거짓 변경이 발생했다.
     prev_file = snapshot_dir / "last_modified.txt"
-    prev_key = prev_file.read_text(encoding="utf-8").strip() if prev_file.exists() else None
-    changed = (prev_key is None) or (prev_key != new_key)
+    prev_hash = prev_file.read_text(encoding="utf-8").strip() if prev_file.exists() else None
+    changed = (prev_hash is None) or (prev_hash != new_hash)
     return ChangeResult(
         changed=changed,
-        reason=f"최종 수정 키 변경: '{prev_key}' → '{new_key}'" if changed and prev_key else (
-            "최초 스냅샷" if prev_key is None else "변경 없음"
-        ),
+        reason="최초 스냅샷" if prev_hash is None else ("최종 수정 키 변경" if changed else "변경 없음"),
         new_content=resp.content if changed else None,
         new_hash=new_hash,
         fetched_url=url,
