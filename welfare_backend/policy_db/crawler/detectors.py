@@ -9,6 +9,7 @@
 #   .reason  (str)         — 사람이 읽을 수 있는 설명
 #   .new_content (bytes|None) — 새 본문 (변경 시) — staging 저장용
 #   .new_hash (str|None)   — 비교 키 (다음 회차에 비교 기준이 됨)
+import difflib
 import hashlib
 import logging
 import re
@@ -144,17 +145,34 @@ def _chunk_html(html: bytes) -> list:
     return chunks
 
 
-def _chunk_diff(old_chunks, new_chunks):
-    """청크 집합 비교 (C9, 1차: 정확 일치 기준 added/removed/unchanged).
-    유사도 기반 changed 분류는 이후 단계에서 보강한다."""
+def _chunk_diff(old_chunks, new_chunks, sim_threshold: float = 0.6):
+    """청크 집합 비교 (C11: 유사도 기반 changed 분류 포함).
+    정확 일치 외의 added/removed 쌍 중 유사도 >= sim_threshold 인 것을
+    changed(수정)로 묶어 add/remove 과대계상을 방지한다."""
     old_list = list(old_chunks or [])
     new_list = list(new_chunks or [])
     old_set = set(old_list)
     new_set = set(new_list)
-    added = [c for c in new_list if c not in old_set]
-    removed = [c for c in old_list if c not in new_set]
+    raw_added = [c for c in new_list if c not in old_set]
+    raw_removed = [c for c in old_list if c not in new_set]
     unchanged = len(old_set & new_set)
-    return {"added": added, "removed": removed, "changed": [], "unchanged": unchanged}
+
+    changed = []
+    remaining_removed = list(raw_removed)
+    still_added = []
+    for a in raw_added:
+        best, best_ratio = None, 0.0
+        for r in remaining_removed:
+            ratio = difflib.SequenceMatcher(None, r, a).ratio()
+            if ratio > best_ratio:
+                best, best_ratio = r, ratio
+        if best is not None and best_ratio >= sim_threshold:
+            changed.append({"before": best, "after": a, "ratio": round(best_ratio, 3)})
+            remaining_removed.remove(best)
+        else:
+            still_added.append(a)
+    return {"added": still_added, "removed": remaining_removed,
+            "changed": changed, "unchanged": unchanged}
 
 
 def _read_prev_chunks(snapshot_dir: Path) -> list:
