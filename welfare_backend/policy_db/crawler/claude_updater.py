@@ -285,6 +285,56 @@ def _diff_summary(old: dict, new: dict) -> str:
     return "; ".join(diffs[:6]) + (" …" if len(diffs) > 6 else "") if diffs else "변경 사항 없음"
 
 
+# ── 필드 단위 패치 (C14) ─────────────────────────────────────
+# LLM 은 전체 JSON 대신 아래 형식의 패치만 반환한다:
+#   {"patches": [
+#     {"op":"update","path":"supported_amount.rate","old":"100%","new":"90%",
+#      "evidence":"...","confidence":"high"},
+#     {"op":"add","path":"faq","value":{"q":"...","a":"..."},"evidence":"...","confidence":"medium"},
+#     {"op":"delete","path":"operating_agencies","evidence":"...","confidence":"low"}
+#   ]}
+# path 는 점(.)으로 dict 를 따라가는 경로. add 의 대상이 list 면 value 를 append.
+
+def _get_parent(doc: dict, path: str, create: bool = False):
+    """점 경로의 부모 dict 와 마지막 키를 반환. 실패 시 (None, None)."""
+    keys = path.split(".")
+    cur = doc
+    for k in keys[:-1]:
+        if isinstance(cur, dict) and k in cur:
+            cur = cur[k]
+        elif create and isinstance(cur, dict):
+            cur[k] = {}
+            cur = cur[k]
+        else:
+            return None, None
+    return (cur, keys[-1]) if isinstance(cur, dict) else (None, None)
+
+
+def _set_by_path(doc: dict, path: str, value, require_exists: bool = True) -> bool:
+    """update: 기존 키가 있을 때만(require_exists) 값 교체."""
+    parent, last = _get_parent(doc, path, create=not require_exists)
+    if parent is None:
+        return False
+    if require_exists and last not in parent:
+        return False
+    parent[last] = value
+    return True
+
+
+def _add_by_path(doc: dict, path: str, value) -> bool:
+    """add: 대상이 list 면 append, 없는 키면 신규 설정. 이미 스칼라면 거부."""
+    parent, last = _get_parent(doc, path, create=True)
+    if parent is None:
+        return False
+    if last in parent and isinstance(parent[last], list):
+        parent[last].append(value)
+        return True
+    if last not in parent:
+        parent[last] = value
+        return True
+    return False
+
+
 async def update_item_via_claude(
     *,
     item_path: Path,
