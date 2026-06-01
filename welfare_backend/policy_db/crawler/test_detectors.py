@@ -9,11 +9,11 @@ import tempfile
 from pathlib import Path
 
 try:
-    from .detectors import ChangeResult, SNAPSHOT_FILES, _read_prev_hash, save_snapshot, _normalize_html_text, _hash_bytes
+    from .detectors import ChangeResult, SNAPSHOT_FILES, _read_prev_hash, save_snapshot, _normalize_html_text, _hash_bytes, _chunk_html, _chunk_diff
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from crawler.detectors import ChangeResult, SNAPSHOT_FILES, _read_prev_hash, save_snapshot, _normalize_html_text, _hash_bytes  # type: ignore
+    from crawler.detectors import ChangeResult, SNAPSHOT_FILES, _read_prev_hash, save_snapshot, _normalize_html_text, _hash_bytes, _chunk_html, _chunk_diff  # type: ignore
 
 
 def _decide(prev_hash, new_hash):
@@ -69,6 +69,41 @@ def test_normalize_masks_dynamic_noise():
     b = _normalize_html_text(html_b)
     assert a == b, (a, b)
     assert _hash_bytes(a.encode("utf-8")) == _hash_bytes(b.encode("utf-8"))
+
+
+def test_chunk_html_splits_blocks():
+    html = (b"<html><body><h1>Welcome heading title</h1>"
+            b"<p>First paragraph with enough text.</p>"
+            b"<ul><li>List item number one here</li>"
+            b"<li>List item number two here</li></ul></body></html>")
+    chunks = _chunk_html(html)
+    assert len(chunks) >= 3, chunks
+    assert any("First paragraph" in c for c in chunks)
+
+
+def test_chunk_diff_added_removed():
+    old = ["apple pie recipe details", "banana bread instructions"]
+    new = ["apple pie recipe details", "chocolate cake steps here"]
+    d = _chunk_diff(old, new)
+    assert d["unchanged"] == 1
+    assert any("chocolate" in c for c in d["added"])
+    assert any("banana" in c for c in d["removed"])
+    assert d["changed"] == []
+
+
+def test_chunk_diff_detects_changed():
+    old = ["discount rate is 50 percent for everyone"]
+    new = ["discount rate is 40 percent for everyone"]
+    d = _chunk_diff(old, new)
+    assert len(d["changed"]) == 1, d
+    assert d["added"] == [] and d["removed"] == []
+
+
+def test_chunk_diff_unchanged():
+    chunks = ["same one here yes", "same two here yes"]
+    d = _chunk_diff(chunks, list(chunks))
+    assert d["added"] == [] and d["removed"] == [] and d["changed"] == []
+    assert d["unchanged"] == 2
 
 
 if __name__ == "__main__":

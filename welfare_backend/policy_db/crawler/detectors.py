@@ -9,6 +9,7 @@
 #   .reason  (str)         — 사람이 읽을 수 있는 설명
 #   .new_content (bytes|None) — 새 본문 (변경 시) — staging 저장용
 #   .new_hash (str|None)   — 비교 키 (다음 회차에 비교 기준이 됨)
+import difflib
 import hashlib
 import logging
 import re
@@ -35,6 +36,8 @@ class ChangeResult:
     new_content: Optional[bytes] = None
     new_hash: Optional[str] = None
     fetched_url: Optional[str] = None
+    chunk_diff: Optional[dict] = None
+    new_chunks: Optional[list] = None
 
 
 def _hash_bytes(data: bytes) -> str:
@@ -106,6 +109,92 @@ def _normalize_html_text(html: bytes) -> str:
     return text
 
 
+# ── 의미 단위 청킹 (C8) ──────────────────────────────────────
+BLOCK_TAGS = ["p", "li", "tr", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6",
+              "dt", "dd", "blockquote", "figcaption", "caption"]
+
+
+def _chunk_html(html: bytes) -> list:
+    """HTML 을 의미 단위(문단/리스트/표 행/제목) 청크 리스트로 변환한다.
+    각 청크는 _mask_dynamic_noise 로 노이즈가 마스킹된 정규화 텍스트.
+    bs4 미설치 시 정규화 전체 텍스트를 문장 단위로 분할(폴백)."""
+    try:
+        raw = html.decode("utf-8", errors="replace")
+    except Exception:
+        raw = html.decode("latin-1", errors="replace")
+    chunks = []
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(raw, "html.parser")
+        for tag in soup(["script", "style", "noscript", "nav", "header",
+                         "footer", "aside", "form", "iframe", "svg",
+                         "button", "input"]):
+            tag.decompose()
+        for el in soup.find_all(BLOCK_TAGS):
+            t = re.sub(r"\s+", " ", _mask_dynamic_noise(el.get_text(separator=" "))).strip()
+            if len(t) >= 10:
+                chunks.append(t)
+    except Exception:
+        chunks = []
+    if not chunks:
+        flat = _normalize_html_text(html)
+        for seg in re.split(r"(?<=[.?。])\s+|[\r\n]+", flat):
+            seg = seg.strip()
+            if len(seg) >= 10:
+                chunks.append(seg)
+    return chunks
+
+
+def _chunk_diff(old_chunks, new_chunks, sim_threshold: float = 0.6):
+    """청크 집합 비교 (C11: 유사도 기반 changed 분류 포함).
+    정확 일치 외의 added/removed 쌍 중 유사도 >= sim_threshold 인 것을
+    changed(수정)로 묶어 add/remove 과대계상을 방지한다."""
+    old_list = list(old_chunks or [])
+    new_list = list(new_chunks or [])
+    old_set = set(old_list)
+    new_set = set(new_list)
+    raw_added = [c for c in new_list if c not in old_set]
+    raw_removed = [c for c in old_list if c not in new_set]
+    unchanged = len(old_set & new_set)
+
+    changed = []
+    remaining_removed = list(raw_removed)
+    still_added = []
+    for a in raw_added:
+        best, best_ratio = None, 0.0
+        for r in remaining_removed:
+            ratio = difflib.SequenceMatcher(None, r, a).ratio()
+            if ratio > best_ratio:
+                best, best_ratio = r, ratio
+        if best is not None and best_ratio >= sim_threshold:
+            changed.append({"before": best, "after": a, "ratio": round(best_ratio, 3)})
+            remaining_removed.remove(best)
+        else:
+            still_added.append(a)
+    return {"added": still_added, "removed": remaining_removed,
+            "changed": changed, "unchanged": unchanged}
+
+
+def _read_prev_chunks(snapshot_dir: Path) -> list:
+    """직전 회차 청크 스냅샷(chunks.json) 로드 (없으면 빈 리스트)."""
+    f = snapshot_dir / "chunks.json"
+    if not f.exists():
+        return []
+    try:
+        import json as _json
+        return _json.loads(f.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def _save_chunks(snapshot_dir: Path, chunks: list) -> None:
+    """이번 회차 청크를 chunks.json 에 저장 (다음 회차 비교 기준)."""
+    import json as _json
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    (snapshot_dir / "chunks.json").write_text(
+        _json.dumps(chunks, ensure_ascii=False), encoding="utf-8")
+
+
 def _extract_text_from_html(html: bytes) -> str:
     """간단한 HTML→텍스트. BeautifulSoup 없이 정규식 기반(의존성 최소화).
     광고·스크립트·날짜 위젯 등 노이즈 일부 제거."""
@@ -152,6 +241,11 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
     text = _normalize_html_text(resp.content)
     new_hash = _hash_bytes(text.encode("utf-8"))
 
+    # C10: 청크 단위 비교 — 어디가 바뀌었는지 진단(추가/삭제/수정)
+    new_chunks = _chunk_html(resp.content)
+    prev_chunks = _read_prev_chunks(snapshot_dir)
+    cdiff = _chunk_diff(prev_chunks, new_chunks) if prev_chunks else None
+
     prev_hash = _read_prev_hash(snapshot_dir, "page_hash")
     changed = (prev_hash is None) or (prev_hash != new_hash)
     reason = "최초 스냅샷" if prev_hash is None else ("해시 변경" if changed else "변경 없음")
@@ -161,6 +255,8 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
         new_content=resp.content if changed else None,
         new_hash=new_hash,
         fetched_url=url,
+        chunk_diff=cdiff,
+        new_chunks=new_chunks,
     )
 
 
@@ -295,6 +391,9 @@ def save_snapshot(snapshot_dir: Path, method: str, result: ChangeResult):
         return
     # 모든 방식 동일: 비교 키(해시)를 저장 → 다음 회차 _read_prev_hash 와 정합.
     (snapshot_dir / fname).write_text(result.new_hash, encoding="utf-8")
+    # C10: page_hash 는 청크 스냅샷도 저장 (다음 회차 청크 diff 기준)
+    if method == "page_hash" and result.new_chunks is not None:
+        _save_chunks(snapshot_dir, result.new_chunks)
     # 본문도 저장 (선택적 진단용)
     if result.new_content is not None:
         ext = "pdf" if method == "pdf_hash" else "html"
