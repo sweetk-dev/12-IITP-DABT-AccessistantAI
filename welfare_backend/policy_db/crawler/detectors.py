@@ -142,6 +142,19 @@ def _chunk_html(html: bytes) -> list:
     return chunks
 
 
+def _chunk_diff(old_chunks, new_chunks):
+    """청크 집합 비교 (C9, 1차: 정확 일치 기준 added/removed/unchanged).
+    유사도 기반 changed 분류는 이후 단계에서 보강한다."""
+    old_list = list(old_chunks or [])
+    new_list = list(new_chunks or [])
+    old_set = set(old_list)
+    new_set = set(new_list)
+    added = [c for c in new_list if c not in old_set]
+    removed = [c for c in old_list if c not in new_set]
+    unchanged = len(old_set & new_set)
+    return {"added": added, "removed": removed, "changed": [], "unchanged": unchanged}
+
+
 def _extract_text_from_html(html: bytes) -> str:
     """간단한 HTML→텍스트. BeautifulSoup 없이 정규식 기반(의존성 최소화).
     광고·스크립트·날짜 위젯 등 노이즈 일부 제거."""
