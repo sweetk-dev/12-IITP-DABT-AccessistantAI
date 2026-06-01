@@ -35,6 +35,8 @@ class ChangeResult:
     new_content: Optional[bytes] = None
     new_hash: Optional[str] = None
     fetched_url: Optional[str] = None
+    chunk_diff: Optional[dict] = None
+    new_chunks: Optional[list] = None
 
 
 def _hash_bytes(data: bytes) -> str:
@@ -155,6 +157,26 @@ def _chunk_diff(old_chunks, new_chunks):
     return {"added": added, "removed": removed, "changed": [], "unchanged": unchanged}
 
 
+def _read_prev_chunks(snapshot_dir: Path) -> list:
+    """직전 회차 청크 스냅샷(chunks.json) 로드 (없으면 빈 리스트)."""
+    f = snapshot_dir / "chunks.json"
+    if not f.exists():
+        return []
+    try:
+        import json as _json
+        return _json.loads(f.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def _save_chunks(snapshot_dir: Path, chunks: list) -> None:
+    """이번 회차 청크를 chunks.json 에 저장 (다음 회차 비교 기준)."""
+    import json as _json
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    (snapshot_dir / "chunks.json").write_text(
+        _json.dumps(chunks, ensure_ascii=False), encoding="utf-8")
+
+
 def _extract_text_from_html(html: bytes) -> str:
     """간단한 HTML→텍스트. BeautifulSoup 없이 정규식 기반(의존성 최소화).
     광고·스크립트·날짜 위젯 등 노이즈 일부 제거."""
@@ -201,6 +223,11 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
     text = _normalize_html_text(resp.content)
     new_hash = _hash_bytes(text.encode("utf-8"))
 
+    # C10: 청크 단위 비교 — 어디가 바뀌었는지 진단(추가/삭제/수정)
+    new_chunks = _chunk_html(resp.content)
+    prev_chunks = _read_prev_chunks(snapshot_dir)
+    cdiff = _chunk_diff(prev_chunks, new_chunks) if prev_chunks else None
+
     prev_hash = _read_prev_hash(snapshot_dir, "page_hash")
     changed = (prev_hash is None) or (prev_hash != new_hash)
     reason = "최초 스냅샷" if prev_hash is None else ("해시 변경" if changed else "변경 없음")
@@ -210,6 +237,8 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
         new_content=resp.content if changed else None,
         new_hash=new_hash,
         fetched_url=url,
+        chunk_diff=cdiff,
+        new_chunks=new_chunks,
     )
 
 
@@ -344,6 +373,9 @@ def save_snapshot(snapshot_dir: Path, method: str, result: ChangeResult):
         return
     # 모든 방식 동일: 비교 키(해시)를 저장 → 다음 회차 _read_prev_hash 와 정합.
     (snapshot_dir / fname).write_text(result.new_hash, encoding="utf-8")
+    # C10: page_hash 는 청크 스냅샷도 저장 (다음 회차 청크 diff 기준)
+    if method == "page_hash" and result.new_chunks is not None:
+        _save_chunks(snapshot_dir, result.new_chunks)
     # 본문도 저장 (선택적 진단용)
     if result.new_content is not None:
         ext = "pdf" if method == "pdf_hash" else "html"
