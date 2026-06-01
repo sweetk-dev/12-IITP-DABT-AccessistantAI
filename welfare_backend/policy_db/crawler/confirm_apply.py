@@ -168,6 +168,28 @@ def _apply_one(policy_id: str, *, diff_only: bool, reject: bool, auto_yes: bool)
             return False
         logger.info("✅ schema 검증 PASS")
 
+    # 회귀 가드 (C21) — 스키마가 못 잡는 손실을 반영 직전에 차단
+    reg = _regression_check(existing, new_data)
+    if reg:
+        logger.error("회귀 가드 차단 (%d건):", len(reg))
+        for r in reg:
+            print(f"   - {r}")
+        print("   → 의도된 변경이면 검토 후 수동 처리하세요. 자동 반영을 막았습니다.")
+        return False
+
+    # 패치 단계 검토 근거 표시 (C21) — 동반 .review.json (delete 후보/검토 항목)
+    review_file = latest.parent / latest.name.replace(".staged.json", ".review.json")
+    if review_file.exists():
+        try:
+            review = json.loads(review_file.read_text(encoding="utf-8"))
+            if review:
+                print(f"\n검토 필요 항목 {len(review)}건 (패치 단계):")
+                for it in review[:10]:
+                    tag = it.get("classification") or it.get("reason", "")
+                    print(f"   - [{tag}] {it.get('path', '')} {str(it.get('evidence', ''))[:60]}")
+        except Exception:
+            pass
+
     # 사용자 확인
     if not auto_yes:
         ans = input(f"\n위 변경을 {target.name} 에 반영하시겠습니까? [y/N]: ").strip().lower()
