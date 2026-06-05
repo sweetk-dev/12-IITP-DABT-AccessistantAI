@@ -11,6 +11,7 @@
 #   .new_hash (str|None)   — 비교 키 (다음 회차에 비교 기준이 됨)
 import difflib
 import hashlib
+import json
 import logging
 import re
 from dataclasses import dataclass
@@ -369,18 +370,41 @@ DETECTORS = {
 }
 
 
-def save_snapshot(snapshot_dir: Path, method: str, result: ChangeResult):
-    """변경 감지 후 기준 스냅샷 저장."""
+# ── 스냅샷 저장 — 감지/확정 2단계 분리 (#27 A안) ──────────────
+# 감지 시점에는 본문(latest.*)·pending 청크만 저장하고, 비교 baseline(해시 + chunks.json)은
+# confirm_apply 반영 성공 시 save_baseline_snapshot 로 전진시킨다. 따라서 리포트를 놓치거나
+# LLM/staging 이 실패하면 baseline 이 그대로 남아 다음 회차에 변경이 재노출된다.
+def save_content_snapshot(snapshot_dir: Path, method: str, result: ChangeResult):
+    """변경 본문만 저장 (claude_updater LLM 입력·진단용). baseline 은 건드리지 않는다."""
     snapshot_dir.mkdir(parents=True, exist_ok=True)
-    fname = SNAPSHOT_FILES.get(method)
-    if fname is None or result.new_hash is None:
-        return
-    # 모든 방식 동일: 비교 키(해시)를 저장 → 다음 회차 _read_prev_hash 와 정합.
-    (snapshot_dir / fname).write_text(result.new_hash, encoding="utf-8")
-    # C10: page_hash 는 청크 스냅샷도 저장 (다음 회차 청크 diff 기준)
-    if method == "page_hash" and result.new_chunks is not None:
-        _save_chunks(snapshot_dir, result.new_chunks)
-    # 본문도 저장 (선택적 진단용)
     if result.new_content is not None:
         ext = "pdf" if method == "pdf_hash" else "html"
         (snapshot_dir / f"latest.{ext}").write_bytes(result.new_content)
+    # page_hash 청크는 pending 으로만 저장 — confirm 시 chunks.json 으로 승격.
+    if method == "page_hash" and result.new_chunks is not None:
+        (snapshot_dir / "pending_chunks.json").write_text(
+            json.dumps(result.new_chunks, ensure_ascii=False), encoding="utf-8")
+
+
+def save_baseline_snapshot(snapshot_dir: Path, method: str, new_hash) -> bool:
+    """비교 baseline(해시 + page_hash chunks.json)을 전진. confirm_apply 반영 성공 시 호출.
+    반환: 전진 여부(스냅샷/해시 없으면 False)."""
+    fname = SNAPSHOT_FILES.get(method)
+    if fname is None or new_hash is None:
+        return False
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    (snapshot_dir / fname).write_text(new_hash, encoding="utf-8")
+    # pending 청크가 있으면 chunks.json 으로 승격 (다음 회차 청크 diff 기준).
+    if method == "page_hash":
+        pend = snapshot_dir / "pending_chunks.json"
+        if pend.exists():
+            pend.replace(snapshot_dir / "chunks.json")
+    return True
+
+
+def save_snapshot(snapshot_dir: Path, method: str, result: ChangeResult):
+    """[호환] 본문 + baseline 을 한 번에 저장 (수동 도구·테스트용).
+    정기 크롤러는 #27 A안에 따라 save_content_snapshot(감지) + save_baseline_snapshot(confirm)
+    로 분리 호출한다."""
+    save_content_snapshot(snapshot_dir, method, result)
+    save_baseline_snapshot(snapshot_dir, method, result.new_hash)

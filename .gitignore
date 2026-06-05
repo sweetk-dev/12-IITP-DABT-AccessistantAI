@@ -52,3 +52,9 @@ disability_voice_qa.html
 .idea/
 .DS_Store
 Thumbs.db
+
+# 크롤러 런타임 산출물 (감지 스냅샷 / 스테이징 / 리포트 / 수동검토 상태)
+welfare_backend/policy_db/crawler/snapshots/
+welfare_backend/policy_db/crawler/staging/
+welfare_backend/policy_db/crawler/reports/
+welfare_backend/policy_db/crawler/manual_review_state.json
