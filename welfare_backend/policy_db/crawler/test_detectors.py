@@ -38,7 +38,7 @@ def test_save_then_read_roundtrip_all_methods():
     for method in SNAPSHOT_FILES:
         with tempfile.TemporaryDirectory() as d:
             snap = Path(d)
-            res = ChangeResult(True, "x", None, "HASH_" + method, "u")
+            res = ChangeResult(True, "x", None, "HASH_" + method)
             save_snapshot(snap, method, res)
             prev = _read_prev_hash(snap, method)
             assert prev == "HASH_" + method, (method, prev)
@@ -51,7 +51,7 @@ def test_last_modified_regression():
     with tempfile.TemporaryDirectory() as d:
         snap = Path(d)
         h = "abc123"
-        save_snapshot(snap, "last_modified_field", ChangeResult(True, "x", None, h, "u"))
+        save_snapshot(snap, "last_modified_field", ChangeResult(True, "x", None, h))
         prev = _read_prev_hash(snap, "last_modified_field")
         assert prev == h
         assert _decide(prev, h) is False

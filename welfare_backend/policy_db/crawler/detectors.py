@@ -36,7 +36,6 @@ class ChangeResult:
     reason: str
     new_content: Optional[bytes] = None
     new_hash: Optional[str] = None
-    fetched_url: Optional[str] = None
     chunk_diff: Optional[dict] = None
     new_chunks: Optional[list] = None
 
@@ -86,6 +85,58 @@ def _mask_dynamic_noise(text: str, mask_dates: bool = True) -> str:
     return text
 
 
+# ── HTML 파싱 공통 헬퍼 (#25: page_hash 이중 파싱 제거 — soup 1회 재사용) ──
+_NOISE_TAGS = ["script", "style", "noscript", "nav", "header", "footer",
+               "aside", "form", "iframe", "svg", "button", "input"]
+
+
+def _decode_html(html: bytes) -> str:
+    try:
+        return html.decode("utf-8", errors="replace")
+    except Exception:
+        return html.decode("latin-1", errors="replace")
+
+
+def _soup_clean(raw: str):
+    """BeautifulSoup 파싱 후 비콘텐츠 태그 제거한 soup 반환 (bs4 미설치/실패 시 None)."""
+    try:
+        from bs4 import BeautifulSoup
+    except Exception:
+        return None
+    try:
+        soup = BeautifulSoup(raw, "html.parser")
+        for tag in soup(_NOISE_TAGS):
+            tag.decompose()
+        return soup
+    except Exception:
+        return None
+
+
+def _finalize_text(text: str, mask_dates: bool) -> str:
+    text = _mask_dynamic_noise(text, mask_dates=mask_dates)
+    text = (text.replace("&nbsp;", " ").replace("&amp;", "&")
+                .replace("&lt;", "<").replace("&gt;", ">"))
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _chunks_from_soup(soup) -> list:
+    chunks = []
+    for el in soup.find_all(BLOCK_TAGS):
+        t = re.sub(r"\s+", " ", _mask_dynamic_noise(el.get_text(separator=" "))).strip()
+        if len(t) >= 10:
+            chunks.append(t)
+    return chunks
+
+
+def _sentence_chunks(flat: str) -> list:
+    chunks = []
+    for seg in re.split(r"(?<=[.?。])\s+|[\r\n]+", flat):
+        seg = seg.strip()
+        if len(seg) >= 10:
+            chunks.append(seg)
+    return chunks
+
+
 def _normalize_html_text(html: bytes, mask_dates: bool = True) -> str:
     """HTML 바이트 → 정규화된 본문 텍스트.
 
@@ -93,27 +144,14 @@ def _normalize_html_text(html: bytes, mask_dates: bool = True) -> str:
     본문만 남기고, 없으면 정규식 폴백으로 동작한다. 이후 _mask_dynamic_noise 로
     동적 노이즈를 마스킹해 '본문은 그대로인데 노이즈만 바뀐' 경우의 거짓 변경을 막는다.
     """
-    try:
-        text = html.decode("utf-8", errors="replace")
-    except Exception:
-        text = html.decode("latin-1", errors="replace")
-    try:
-        from bs4 import BeautifulSoup
-        soup = BeautifulSoup(text, "html.parser")
-        for tag in soup(["script", "style", "noscript", "nav", "header",
-                         "footer", "aside", "form", "iframe", "svg",
-                         "button", "input"]):
-            tag.decompose()
-        text = soup.get_text(separator=" ")
-    except Exception:
-        text = re.sub(r"<script[\s\S]*?</script>", " ", text, flags=re.IGNORECASE)
-        text = re.sub(r"<style[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
-        text = re.sub(r"<[^>]+>", " ", text)
-    text = _mask_dynamic_noise(text, mask_dates=mask_dates)
-    text = (text.replace("&nbsp;", " ").replace("&amp;", "&")
-                .replace("&lt;", "<").replace("&gt;", ">"))
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
+    raw = _decode_html(html)
+    soup = _soup_clean(raw)
+    if soup is not None:
+        return _finalize_text(soup.get_text(separator=" "), mask_dates)
+    text = re.sub(r"<script[\s\S]*?</script>", " ", raw, flags=re.IGNORECASE)
+    text = re.sub(r"<style[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", " ", text)
+    return _finalize_text(text, mask_dates)
 
 
 # ── 의미 단위 청킹 (C8) ──────────────────────────────────────
@@ -125,31 +163,25 @@ def _chunk_html(html: bytes) -> list:
     """HTML 을 의미 단위(문단/리스트/표 행/제목) 청크 리스트로 변환한다.
     각 청크는 _mask_dynamic_noise 로 노이즈가 마스킹된 정규화 텍스트.
     bs4 미설치 시 정규화 전체 텍스트를 문장 단위로 분할(폴백)."""
-    try:
-        raw = html.decode("utf-8", errors="replace")
-    except Exception:
-        raw = html.decode("latin-1", errors="replace")
-    chunks = []
-    try:
-        from bs4 import BeautifulSoup
-        soup = BeautifulSoup(raw, "html.parser")
-        for tag in soup(["script", "style", "noscript", "nav", "header",
-                         "footer", "aside", "form", "iframe", "svg",
-                         "button", "input"]):
-            tag.decompose()
-        for el in soup.find_all(BLOCK_TAGS):
-            t = re.sub(r"\s+", " ", _mask_dynamic_noise(el.get_text(separator=" "))).strip()
-            if len(t) >= 10:
-                chunks.append(t)
-    except Exception:
-        chunks = []
+    soup = _soup_clean(_decode_html(html))
+    chunks = _chunks_from_soup(soup) if soup is not None else []
     if not chunks:
-        flat = _normalize_html_text(html)
-        for seg in re.split(r"(?<=[.?。])\s+|[\r\n]+", flat):
-            seg = seg.strip()
-            if len(seg) >= 10:
-                chunks.append(seg)
+        chunks = _sentence_chunks(_normalize_html_text(html))
     return chunks
+
+
+def _parse_page_hash(html: bytes):
+    """page_hash 전용 — soup 를 1회만 파싱해 정규화 텍스트와 청크를 함께 산출 (#25).
+    detect_page_hash 가 _normalize_html_text + _chunk_html 로 같은 HTML 을 두 번
+    파싱하던 비용을 제거. 산출 텍스트/청크는 두 함수의 결과와 동일하다."""
+    raw = _decode_html(html)
+    soup = _soup_clean(raw)
+    if soup is None:
+        text = _normalize_html_text(html)
+        return text, _sentence_chunks(text)
+    text = _finalize_text(soup.get_text(separator=" "), True)
+    chunks = _chunks_from_soup(soup) or _sentence_chunks(text)
+    return text, chunks
 
 
 def _chunk_diff(old_chunks, new_chunks, sim_threshold: float = 0.6):
@@ -221,13 +253,12 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
     url = target["url"]
     resp = await _fetch(url, client=client)
     if resp is None:
-        return ChangeResult(False, "fetch_failed", fetched_url=url)
-    # C6: 정규화 텍스트 기반 — 노이즈만 바뀐 경우의 거짓 변경 방지
-    text = _normalize_html_text(resp.content)
+        return ChangeResult(False, "fetch_failed")
+    # C6/#25: soup 1회 파싱으로 정규화 텍스트 + 청크 동시 산출 (이중 파싱 제거)
+    text, new_chunks = _parse_page_hash(resp.content)
     new_hash = _hash_bytes(text.encode("utf-8"))
 
     # C10: 청크 단위 비교 — 어디가 바뀌었는지 진단(추가/삭제/수정)
-    new_chunks = _chunk_html(resp.content)
     prev_chunks = _read_prev_chunks(snapshot_dir)
     cdiff = _chunk_diff(prev_chunks, new_chunks) if prev_chunks else None
 
@@ -239,7 +270,6 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
         reason=reason,
         new_content=resp.content if changed else None,
         new_hash=new_hash,
-        fetched_url=url,
         chunk_diff=cdiff,
         new_chunks=new_chunks,
     )
@@ -252,7 +282,7 @@ async def detect_pdf_hash(target: dict, snapshot_dir: Path, *, client: httpx.Asy
     url = target["url"]
     resp = await _fetch(url, client=client)
     if resp is None:
-        return ChangeResult(False, "fetch_failed", fetched_url=url)
+        return ChangeResult(False, "fetch_failed")
     new_hash = _hash_bytes(resp.content)
     prev_hash = _read_prev_hash(snapshot_dir, "pdf_hash")
     changed = (prev_hash is None) or (prev_hash != new_hash)
@@ -262,7 +292,6 @@ async def detect_pdf_hash(target: dict, snapshot_dir: Path, *, client: httpx.Asy
         reason="최초 스냅샷" if prev_hash is None else ("PDF 해시 변경" if changed else "변경 없음"),
         new_content=resp.content if changed else None,
         new_hash=new_hash,
-        fetched_url=url,
     )
 
 
@@ -282,7 +311,7 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
     url = target["url"]
     resp = await _fetch(url, client=client)
     if resp is None:
-        return ChangeResult(False, "fetch_failed", fetched_url=url)
+        return ChangeResult(False, "fetch_failed")
     text = _normalize_html_text(resp.content, mask_dates=False)
     # HTTP Last-Modified 헤더도 함께 본다
     http_lm = resp.headers.get("Last-Modified", "")
@@ -302,7 +331,6 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
         reason="최초 스냅샷" if prev_hash is None else ("최종 수정 키 변경" if changed else "변경 없음"),
         new_content=resp.content if changed else None,
         new_hash=new_hash,
-        fetched_url=url,
     )
 
 
@@ -317,7 +345,7 @@ async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: 
     hint = (target.get("css_selector_hint") or "").strip()
     resp = await _fetch(url, client=client)
     if resp is None:
-        return ChangeResult(False, "fetch_failed", fetched_url=url)
+        return ChangeResult(False, "fetch_failed")
     text = _normalize_html_text(resp.content)
 
     # hint 가 "re:" 프리픽스면 정규식으로 해석, 그 외(빈 값/셀렉터 설명 등)는
@@ -343,7 +371,6 @@ async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: 
         ),
         new_content=resp.content if changed else None,
         new_hash=new_hash,
-        fetched_url=url,
     )
 
 
@@ -354,7 +381,6 @@ async def detect_manual_review(target: dict, snapshot_dir: Path, *, client: http
     return ChangeResult(
         changed=False,
         reason="manual_review — 분기 1회 수동 검토 권장",
-        fetched_url=target["url"],
     )
 
 

@@ -44,7 +44,7 @@ def test_compat_save_snapshot_writes_hash():
     for method in SNAPSHOT_FILES:
         with tempfile.TemporaryDirectory() as d:
             snap = Path(d)
-            save_snapshot(snap, method, ChangeResult(True, "x", None, "HX", "u"))
+            save_snapshot(snap, method, ChangeResult(True, "x", None, "HX"))
             assert _read_prev_hash(snap, method) == "HX", method
 
 

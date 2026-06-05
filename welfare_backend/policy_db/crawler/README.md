@@ -18,11 +18,12 @@ policy_db/crawler/
 ├── confirm_apply.py      # 사용자 검토 후 items/ 반영 + ingest_sync.py 자동 호출
 ├── README.md             # 이 문서
 │
-├── snapshots/{target_id}/    # 비교 기준 (다음 회차 변경 감지용)
-├── staging/                  # LLM 이 만든 갱신 JSON 대기
+├── snapshots/{target_id}/    # 감지 본문(latest.*, pending) + 비교 baseline(해시·chunks)
+├── staging/                  # LLM 갱신 JSON 대기 (+ .sources.json baseline 메타)
 │   ├── .applied/             # 반영 완료 보관
 │   └── .rejected/            # 폐기 보관
-└── reports/YYYY-MM-DD.{md,json}    # 회차별 리포트
+├── manual_review_state.json  # manual_review 타겟의 마지막 검토일
+└── reports/YYYY-MM-DD.{md,json}    # 회차별 리포트 (수동 검토 대상 섹션 포함)
 ```
 
 ---
@@ -87,6 +88,10 @@ python -m crawler.crawler --skip-claude
 
 # (d) 특정 출처만
 python -m crawler.crawler --only law
+
+# (e) 수동 검토(manual_review) 타겟의 검토일 기록 (크롤링 안 함)
+python -m crawler.crawler --mark-reviewed all          # 전체
+python -m crawler.crawler --mark-reviewed <target_id>  # 특정 타겟
 ```
 
 ### 3. 변경 사항 검토
@@ -246,7 +251,7 @@ if sc and sc.grounding_metadata:
 
 - **첫 실행은 변경 0건이 정상** — 모든 출처가 "최초 스냅샷" 으로 기록되어 비교 기준이 됨. 다음 회차부터 실제 감지 시작.
 - **LLM 응답이 schema 위배** — staging/ 에 `_FAILED_*.txt` 디버그 파일이 저장됨. 시스템 프롬프트 보강 필요.
-- **변경 감지 false positive** — 페이지에 동적 타임스탬프가 있으면 매번 변경됨. detectors.py 의 `_extract_text_from_html()` 마스킹 패턴 추가.
+- **변경 감지 false positive** — 페이지에 동적 타임스탬프가 있으면 매번 변경됨. detectors.py 의 `_mask_dynamic_noise()` 마스킹 패턴을 보강(조회수·세션·날짜 등). page_hash 는 `_normalize_html_text()` 로 정규화한 본문만 비교하고, last_modified_field 는 날짜를 보존(`mask_dates=False`)한다.
 - **변경 감지 false negative** — JS 렌더링 페이지는 httpx 만으로는 못 잡음. 향후 Playwright 도입 검토.
 - **LLM_BACKEND 전환 시 응답 품질 차이** — Claude → Gemma 교체 후 첫 회차는 `--skip-claude` 로 감지만 한 뒤 일부 항목만 수동 테스트하며 SI 튜닝 권장.
 
@@ -255,7 +260,7 @@ if sc and sc.grounding_metadata:
 
 ---
 
-*문서 버전: 1.1  ·  작성: 2026-05-21 야간 → 2026-05-22 갱신  ·  사용자 confirm 워크플로우 안전 모드*
+*문서 버전: 1.2  ·  작성: 2026-05-21 → 2026-06-05 갱신(v0.6 baseline 분리·수동 검토)  ·  사용자 confirm 워크플로우 안전 모드*
 
 ---
 
@@ -275,4 +280,10 @@ if sc and sc.grounding_metadata:
 4. **반영 전 회귀 가드 (v0.5, `confirm_apply._regression_check`)**
    items/ 반영 직전에 최상위 필수 키 누락, 문서 크기 급감(<50%), 주요 배열 길이 급감(<50%)을 검사해 조용한 손실을 차단합니다. 스키마도 핵심 필드(`title`·`short_summary`·`version` minLength, `sources` minItems)에 최소 제약을 추가했습니다. 검토가 필요한 패치 항목은 반영 단계에서 함께 표시됩니다.
 
-> 전체 흐름: 출처 fetch → 정규화 → (해시 + 청크) 변경 감지 → 변경 시 LLM 필드 패치 → staging 저장(+검토 리포트) → `confirm_apply`(스키마 검증 + 회귀 가드 + 사람 승인) → items/ 반영(백업 후 덮어쓰기).
+5. **감지/확정 baseline 분리 (v0.6, `detectors.save_content_snapshot` / `save_baseline_snapshot`)**
+   변경 감지 시점에는 본문(`latest.*`)·pending 청크만 저장하고, 비교 baseline(해시·`chunks.json`)은 `confirm_apply` 반영이 성공한 시점에만 전진합니다. 따라서 리포트를 놓치거나 LLM·staging 이 실패해도 다음 회차에 변경이 다시 노출됩니다. 미확정 변경의 매 회차 LLM 재호출은 "이미 staging 대기 시 생략" 가드로 막고, 반영 시 전진할 출처는 staging 의 `.sources.json` 사이드카에 기록합니다.
+
+6. **수동 검토 표면화 (v0.6, `manual_review`)**
+   자동 감지가 불가한 `manual_review` 타겟을 리포트의 "수동 검토 대상" 섹션에 노출하고, `manual_review_state.json` 으로 마지막 검토일을 추적합니다. 관리자는 `python -m crawler.crawler --mark-reviewed <target_id|all>` 로 검토일을 기록합니다.
+
+> 전체 흐름: 출처 fetch → 정규화 → (해시 + 청크) 변경 감지 → 변경 본문 저장 → 변경 시 LLM 필드 패치 → staging 저장(+검토 리포트 + 출처 메타) → `confirm_apply`(스키마 검증 + 회귀 가드 + 사람 승인) → items/ 반영(백업 후 덮어쓰기) + 출처 baseline 전진.
