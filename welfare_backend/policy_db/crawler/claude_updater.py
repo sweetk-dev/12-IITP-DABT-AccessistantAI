@@ -444,6 +444,14 @@ async def update_item_via_claude(
         review_path = staging_dir / fname.replace(".staged.json", ".review.json")
         review_path.write_text(json.dumps(review, ensure_ascii=False, indent=2), encoding="utf-8")
         logger.info("검토 필요 항목 %d건: %s", len(review), review_path)
+    # confirm 반영 성공 시 baseline 전진에 쓸 출처 메타 사이드카 (#27 A안)
+    sources_meta = [
+        {"target_id": c.get("target_id"), "method": c.get("method"),
+         "new_hash": c.get("new_hash"), "snapshot_dir": c.get("snapshot_dir")}
+        for c in related_changes
+    ]
+    (staging_dir / fname.replace(".staged.json", ".sources.json")).write_text(
+        json.dumps(sources_meta, ensure_ascii=False, indent=2), encoding="utf-8")
     logger.info("staging 저장: %s (적용 %d / 검토 %d)", staged_path, len(applied), len(review))
 
     diff = _diff_summary(existing, new_data)
