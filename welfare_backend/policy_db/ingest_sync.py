@@ -4,12 +4,21 @@ import json
 import re
 import hashlib
 import logging
+import sys
 from time import sleep
 import psycopg2
 from psycopg2.extras import Json
 from pgvector.psycopg2 import register_vector
 import requests
 from dotenv import load_dotenv
+
+# 콘솔 출력 인코딩 강제 (#33) — cp949/POSIX(ascii) 로케일에서 한글·박스문자·이모지
+# 출력 시 UnicodeEncodeError 로 죽지 않도록 stdout/stderr 를 UTF-8 로 재설정.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 # =====================================================================
 # 1. 환경 설정 및 로깅
@@ -35,6 +44,14 @@ def calculate_file_hash(file_path):
         buf = afile.read()
         hasher.update(buf)
     return hasher.hexdigest()
+
+
+def _mask_secret(s: str) -> str:
+    """로그 문자열에서 API 키(?key=... / AIza...)를 가린다 (#35 키 노출 방지)."""
+    s = re.sub(r'([?&]key=)[A-Za-z0-9_\-]+', r'\1***', s)
+    s = re.sub(r'AIza[A-Za-z0-9_\-]{10,}', 'AIza***', s)
+    return s
+
 
 def parse_age_criteria(age_text):
     if not age_text: return None, None
@@ -122,39 +139,51 @@ def process_file(file_path, file_hash, cur, conn):
             INSERT INTO policy_chunks (policy_id, chunk_type, chunk_subtype, content, embedding, embedding_model_version, metadata)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
-        api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={GEMINI_API_KEY}"
-        headers = {'Content-Type': 'application/json'}
+        # 키를 URL 쿼리스트링이 아닌 헤더로 전달 — URL 기반 로그에 키가 남지 않도록 (#35)
+        api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent"
+        headers = {'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY}
 
         for idx, chunk in enumerate(chunks):
-            for attempt in range(3):
+            payload = {"model": "models/gemini-embedding-001", "content": {"parts": [{"text": chunk["content"]}]}, "outputDimensionality": 768}
+            emb_values = None
+            last_err = None
+            for attempt in range(5):
                 try:
-                    payload = {"model": "models/gemini-embedding-001", "content": {"parts": [{"text": chunk["content"]}]}, "outputDimensionality": 768}
-                    # timeout 추가 — 임베딩 API hang 방지 (connect=10, read=30). 누락 시 무한 대기 위험.
+                    # timeout: connect=10, read=30 (임베딩 API hang 방지)
                     response = requests.post(api_url, headers=headers, json=payload, timeout=(10, 30))
+                    if response.status_code == 429:
+                        # 레이트/선불잔액 초과 — Retry-After 우선, 없으면 상한 있는 지수 백오프
+                        ra = response.headers.get("Retry-After", "")
+                        wait = float(ra) if ra.replace('.', '', 1).isdigit() else min(60.0, 2.0 * (2 ** attempt))
+                        logging.warning(f"[{policy_id}] 청크 {idx+1} 429 (재시도 {attempt+1}/5) — {wait:.0f}s 대기")
+                        last_err = "429 RESOURCE_EXHAUSTED"
+                        sleep(wait)
+                        continue
                     response.raise_for_status()
                     emb_values = response.json()["embedding"]["values"]
-
-                    cur.execute(insert_chunk_query, (
-                        policy_id, chunk["type"], chunk["subtype"], chunk["content"],
-                        emb_values, 'models/gemini-embedding-001', Json(chunk["metadata"])
-                    ))
-                    # 10개 단위 진행 로그 — hang 진단 보조
-                    if (idx + 1) % 10 == 0 or idx == len(chunks) - 1:
-                        logging.info(f"[{policy_id}] 청크 임베딩 진행 {idx+1}/{len(chunks)}")
                     break
                 except Exception as e:
-                    if attempt == 2:
-                        logging.warning(f"[{policy_id}] 청크 {idx+1} 임베딩 3회 실패, 재호출 시도 후 raise: {e}")
-                        raise
-                    logging.debug(f"[{policy_id}] 청크 {idx+1} 임베딩 시도 #{attempt+1} 실패, {1.5**attempt:.1f}초 후 재시도: {e}")
-                    sleep(1.5 ** attempt)
+                    last_err = _mask_secret(str(e))
+                    if attempt < 4:
+                        sleep(min(30.0, 1.5 ** attempt))
+            if emb_values is None:
+                raise RuntimeError(f"청크 {idx+1} 임베딩 실패(재시도 소진): {last_err}")
+            cur.execute(insert_chunk_query, (
+                policy_id, chunk["type"], chunk["subtype"], chunk["content"],
+                emb_values, 'models/gemini-embedding-001', Json(chunk["metadata"])
+            ))
+            if (idx + 1) % 10 == 0 or idx == len(chunks) - 1:
+                logging.info(f"[{policy_id}] 청크 임베딩 진행 {idx+1}/{len(chunks)}")
+            sleep(0.2)  # 페이싱 — RPM 버스트 완화
 
         conn.commit()
         logging.info(f"[{policy_id}] ✅ 동기화 완료! (재생성된 청크 수: {len(chunks)}개)")
+        return True
 
     except Exception as e:
         conn.rollback()
-        logging.error(f"[{policy_id}] ❌ 처리 중 오류 발생: {e}")
+        logging.error(f"[{policy_id}] ❌ 처리 중 오류 발생(롤백): {_mask_secret(str(e))}")
+        return False
 
 # =====================================================================
 # 4. 메인 실행부
@@ -183,8 +212,10 @@ def main():
         logging.warning("items 폴더 내에 처리할 JSON 파일(B0*.json)이 없습니다.")
         return
 
-    sync_count = 0
+    sync_ok = 0
+    sync_fail = 0
     skip_count = 0
+    failed_ids = []
 
     for file_path in json_files:
         filename = os.path.basename(file_path)
@@ -203,17 +234,25 @@ def main():
         else:
             logging.info(f"[{policy_id}] 🔄 내용 변경 감지! 업데이트를 시작합니다.")
             
-        process_file(file_path, current_hash, cur, conn)
-        sync_count += 1
+        if process_file(file_path, current_hash, cur, conn):
+            sync_ok += 1
+        else:
+            sync_fail += 1
+            failed_ids.append(policy_id)
 
     logging.info(f"==========================================")
     logging.info(f"🎯 스마트 동기화 완료!")
-    logging.info(f" - 새로 고치거나 추가된 정책: {sync_count}건")
+    logging.info(f" - 성공 반영: {sync_ok}건")
+    logging.info(f" - 실패(롤백): {sync_fail}건" + (f" -> {', '.join(failed_ids)}" if failed_ids else ""))
     logging.info(f" - 변경 없어 건너뛴 정책: {skip_count}건")
     logging.info(f"==========================================")
 
     cur.close()
     conn.close()
+
+    if sync_fail:
+        # 실패가 있으면 비정상 종료 — cron / confirm_apply --reingest 가 실패를 인지하도록
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
