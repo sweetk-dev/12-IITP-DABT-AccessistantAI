@@ -253,7 +253,7 @@ def main():
     p.add_argument("--diff", action="store_true", help="반영하지 않고 diff 만 보기")
     p.add_argument("--reject", action="store_true", help="staging 폐기 (의도된 변경이 아닐 때)")
     p.add_argument("-y", "--yes", action="store_true", help="확인 프롬프트 없이 자동 yes")
-    p.add_argument("--reingest", action="store_true", help="반영 후 DB 재적재 안내 출력")
+    p.add_argument("--reingest", action="store_true", help="반영 후 ingest_sync.py 로 DB 부분 재적재 실행")
     args = p.parse_args()
 
     if args.list or (not args.policy_id and not args.all):

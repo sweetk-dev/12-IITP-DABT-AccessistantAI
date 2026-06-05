@@ -2,7 +2,7 @@
 # 정기 크롤러 메인 오케스트레이션 — 매월 2일·16일 실행 권장.
 #
 # 흐름:
-#   1) crawl_targets.json 312개 타겟 로드
+#   1) crawl_targets.json 의 모든 타겟 로드 (현재 382개)
 #   2) 각 타겟별 change_detection_method 에 따라 detectors.DETECTORS[m] 호출
 #   3) 변경 감지된 타겟의 used_by_items[] 항목 ID 수집 (영향 정책 식별)
 #   4) 영향 정책마다 claude_updater.update_item_via_claude() 호출
@@ -11,7 +11,7 @@
 #   6) 사람이 검토 후 confirm_apply.py 실행 → items/ 반영
 #
 # 사용법:
-#   python -m crawler.crawler                       # 전체 312 타겟 점검
+#   python -m crawler.crawler                       # 전체 타겟 점검 (현재 382개)
 #   python -m crawler.crawler --dry-run             # 다운로드/Claude 호출 없이 변경 감지만
 #   python -m crawler.crawler --only law            # target_id 에 'law' 포함된 것만
 #   python -m crawler.crawler --skip-claude         # Claude API 호출 생략 (감지 + 리포트만)
@@ -208,7 +208,7 @@ async def run(args):
     logger.info("📝 리포트 작성: %s", report_md)
 
     print(_short_console_summary(report_data))
-    return 0 if not failures else 0  # 실패가 있어도 exit 0 — 리포트 확인이 더 중요
+    return 0  # 실패가 있어도 항상 exit 0 — 리포트 확인이 더 중요
 
 
 def _format_report_md(d: dict) -> str:
