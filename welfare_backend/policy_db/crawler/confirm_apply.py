@@ -29,6 +29,12 @@ STAGING_DIR = ROOT / "crawler" / "staging"
 BACKUPS_DIR = ITEMS_DIR / ".backups"
 SCHEMA = ROOT / "schema.json"
 
+try:
+    from .detectors import save_baseline_snapshot
+except ImportError:
+    sys.path.insert(0, str(ROOT))
+    from crawler.detectors import save_baseline_snapshot  # type: ignore
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("confirm_apply")
 
@@ -120,6 +126,26 @@ def _regression_check(existing: dict, new: dict) -> list:
     return issues
 
 
+def _advance_baselines(staged_path: Path):
+    """staged 파일 동반 .sources.json 을 읽어 각 출처 비교 baseline 을 전진 (#27 A안).
+    감지 시점이 아니라 반영 성공 시점에만 호출된다."""
+    sources_file = staged_path.parent / staged_path.name.replace(".staged.json", ".sources.json")
+    if not sources_file.exists():
+        logger.info("sources 사이드카 없음 — baseline 전진 생략: %s", staged_path.name)
+        return
+    try:
+        sources = json.loads(sources_file.read_text(encoding="utf-8"))
+    except Exception as e:
+        logger.warning("sources 사이드카 파싱 실패: %s", e)
+        return
+    n = 0
+    for s in sources or []:
+        sd, method, nh = s.get("snapshot_dir"), s.get("method"), s.get("new_hash")
+        if sd and method and nh and save_baseline_snapshot(ROOT / sd, method, nh):
+            n += 1
+    logger.info("🔁 baseline 전진: %d개 출처", n)
+
+
 def _apply_one(policy_id: str, *, diff_only: bool, reject: bool, auto_yes: bool) -> bool:
     files = _find_staged(policy_id)
     if not files:
@@ -133,6 +159,9 @@ def _apply_one(policy_id: str, *, diff_only: bool, reject: bool, auto_yes: bool)
         rej_dir = STAGING_DIR / ".rejected"
         rej_dir.mkdir(parents=True, exist_ok=True)
         shutil.move(str(latest), str(rej_dir / latest.name))
+        rej_sidecar = latest.parent / latest.name.replace(".staged.json", ".sources.json")
+        if rej_sidecar.exists():
+            shutil.move(str(rej_sidecar), str(rej_dir / rej_sidecar.name))
         logger.info("🗑 reject 처리: %s → %s", latest.name, rej_dir)
         return True
 
@@ -204,10 +233,16 @@ def _apply_one(policy_id: str, *, diff_only: bool, reject: bool, auto_yes: bool)
     target.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
     logger.info("✅ 반영 완료: %s (백업: %s)", target.name, backup_name)
 
+    # #27 A안 — 반영 성공 시에만 출처 baseline 전진 (감지 시점엔 전진 안 함)
+    _advance_baselines(latest)
+
     # staging 파일은 .applied/ 로 이동 (히스토리 보관)
     applied_dir = STAGING_DIR / ".applied"
     applied_dir.mkdir(parents=True, exist_ok=True)
     shutil.move(str(latest), str(applied_dir / latest.name))
+    src_sidecar = latest.parent / latest.name.replace(".staged.json", ".sources.json")
+    if src_sidecar.exists():
+        shutil.move(str(src_sidecar), str(applied_dir / src_sidecar.name))
     return True
 
 
@@ -253,7 +288,7 @@ def main():
     p.add_argument("--diff", action="store_true", help="반영하지 않고 diff 만 보기")
     p.add_argument("--reject", action="store_true", help="staging 폐기 (의도된 변경이 아닐 때)")
     p.add_argument("-y", "--yes", action="store_true", help="확인 프롬프트 없이 자동 yes")
-    p.add_argument("--reingest", action="store_true", help="반영 후 DB 재적재 안내 출력")
+    p.add_argument("--reingest", action="store_true", help="반영 후 ingest_sync.py 로 DB 부분 재적재 실행")
     args = p.parse_args()
 
     if args.list or (not args.policy_id and not args.all):

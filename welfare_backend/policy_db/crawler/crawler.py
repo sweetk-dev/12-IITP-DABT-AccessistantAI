@@ -2,7 +2,7 @@
 # 정기 크롤러 메인 오케스트레이션 — 매월 2일·16일 실행 권장.
 #
 # 흐름:
-#   1) crawl_targets.json 312개 타겟 로드
+#   1) crawl_targets.json 의 모든 타겟 로드 (현재 382개)
 #   2) 각 타겟별 change_detection_method 에 따라 detectors.DETECTORS[m] 호출
 #   3) 변경 감지된 타겟의 used_by_items[] 항목 ID 수집 (영향 정책 식별)
 #   4) 영향 정책마다 claude_updater.update_item_via_claude() 호출
@@ -11,10 +11,11 @@
 #   6) 사람이 검토 후 confirm_apply.py 실행 → items/ 반영
 #
 # 사용법:
-#   python -m crawler.crawler                       # 전체 312 타겟 점검
+#   python -m crawler.crawler                       # 전체 타겟 점검 (현재 382개)
 #   python -m crawler.crawler --dry-run             # 다운로드/Claude 호출 없이 변경 감지만
 #   python -m crawler.crawler --only law            # target_id 에 'law' 포함된 것만
 #   python -m crawler.crawler --skip-claude         # Claude API 호출 생략 (감지 + 리포트만)
+#   python -m crawler.crawler --mark-reviewed all   # manual_review 타겟 검토일 기록 (크롤링 안 함)
 import argparse
 import asyncio
 import json
@@ -37,6 +38,7 @@ SCHEMA = ROOT / "schema.json"
 SNAPSHOTS_DIR = ROOT / "crawler" / "snapshots"
 STAGING_DIR = ROOT / "crawler" / "staging"
 REPORTS_DIR = ROOT / "crawler" / "reports"
+MANUAL_STATE = ROOT / "crawler" / "manual_review_state.json"
 
 load_dotenv(BACKEND_ROOT / ".env")
 
@@ -45,10 +47,10 @@ logger = logging.getLogger("crawler")
 
 # ── 동적 import (패키지/스크립트 양쪽 지원) ──────────────────
 try:
-    from .detectors import DETECTORS, save_snapshot, ChangeResult
+    from .detectors import DETECTORS, save_content_snapshot, ChangeResult
 except ImportError:
     sys.path.insert(0, str(ROOT))
-    from crawler.detectors import DETECTORS, save_snapshot, ChangeResult  # type: ignore
+    from crawler.detectors import DETECTORS, save_content_snapshot, ChangeResult  # type: ignore
 
 
 def _load_targets() -> dict:
@@ -69,20 +71,50 @@ def _items_index() -> dict:
     return idx
 
 
+def _load_manual_state() -> dict:
+    """manual_review 타겟의 마지막 검토일 상태 로드 (#28). 없으면 빈 dict."""
+    try:
+        return json.loads(MANUAL_STATE.read_text(encoding="utf-8")) if MANUAL_STATE.exists() else {}
+    except Exception:
+        return {}
+
+
+def _mark_reviewed(target_spec: str) -> int:
+    """manual_review 타겟의 마지막 검토일을 오늘로 기록 (#28). target_spec='all' 이면 전체."""
+    ct = _load_targets()
+    manual_ids = [t["target_id"] for t in ct["targets"]
+                  if t.get("change_detection_method") == "manual_review"]
+    if target_spec == "all":
+        ids = manual_ids
+    elif target_spec in manual_ids:
+        ids = [target_spec]
+    else:
+        logger.error("manual_review 타겟이 아님: %s (대상: %s)", target_spec, ", ".join(manual_ids))
+        return 1
+    state = _load_manual_state()
+    today = datetime.now().strftime("%Y-%m-%d")
+    for tid in ids:
+        state[tid] = today
+    MANUAL_STATE.parent.mkdir(parents=True, exist_ok=True)
+    MANUAL_STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"✅ 검토일 기록: {len(ids)}개 타겟 → {today}")
+    return 0
+
+
 async def _process_target(target: dict, client: httpx.AsyncClient, args) -> ChangeResult:
     """단일 타겟 변경 감지 + 결과 반환."""
     method = target.get("change_detection_method", "manual_review")
     detector = DETECTORS.get(method)
     if not detector:
-        return ChangeResult(False, f"unknown method: {method}", fetched_url=target["url"])
+        return ChangeResult(False, f"unknown method: {method}")
 
     target_id = target["target_id"]
     snapshot_dir = SNAPSHOTS_DIR / target_id
     result = await detector(target, snapshot_dir, client=client)
 
-    # 변경 감지된 경우 스냅샷 갱신 (다음 회차 비교 기준)
+    # 변경 감지 시 본문만 저장 (baseline 은 confirm 반영 시 전진 — #27 A안)
     if result.changed and not args.dry_run:
-        save_snapshot(snapshot_dir, method, result)
+        save_content_snapshot(snapshot_dir, method, result)
 
     return result
 
@@ -106,6 +138,8 @@ async def run(args):
     changes = []          # 변경 감지된 타겟 리스트
     failures = []         # 실패한 타겟
     affected_items = set()  # 영향받는 정책 ID
+    manual_targets = []   # manual_review 타겟 (#28)
+    skipped_staged = []   # 이미 staging 대기라 LLM 생략된 정책 (#27 A안)
 
     # ── 1) 변경 감지 동시 실행 (rate limit 위해 동시성 5 제한) ──
     sem = asyncio.Semaphore(5)
@@ -117,7 +151,7 @@ async def run(args):
                     return t, r
                 except Exception as e:
                     logger.exception("타겟 처리 실패 %s: %s", t.get("target_id"), e)
-                    return t, ChangeResult(False, f"exception: {e}", fetched_url=t.get("url"))
+                    return t, ChangeResult(False, f"exception: {e}")
 
         results = await asyncio.gather(*[task(t) for t in targets])
 
@@ -125,6 +159,15 @@ async def run(args):
         tid = t["target_id"]
         if "fetch_failed" in r.reason or "exception" in r.reason:
             failures.append({"target_id": tid, "reason": r.reason, "url": t.get("url")})
+            continue
+        if t.get("change_detection_method") == "manual_review":
+            manual_targets.append({
+                "target_id": tid,
+                "title": t.get("title"),
+                "url": t.get("url"),
+                "publisher": t.get("publisher"),
+                "used_by_items": t.get("used_by_items", []),
+            })
             continue
         if r.changed:
             changes.append({
@@ -137,6 +180,7 @@ async def run(args):
                 "used_by_items": t.get("used_by_items", []),
                 "snapshot_dir": str((SNAPSHOTS_DIR / tid).relative_to(ROOT)),
                 "chunk_diff": r.chunk_diff,
+                "new_hash": r.new_hash,
             })
             for pid in t.get("used_by_items", []):
                 affected_items.add(pid)
@@ -160,10 +204,17 @@ async def run(args):
             for pid in ch["used_by_items"]:
                 item_to_changes[pid].append(ch)
 
+        # 이미 staging 대기 중인 정책은 LLM 재호출 생략 (#27 A안 — 미확정 변경 중복 비용 방지)
+        pending_pids = {p.name.split("_")[0] for p in STAGING_DIR.glob("B0*.staged.json")}
+
         for pid, related_changes in item_to_changes.items():
             jf = items_idx.get(pid)
             if not jf:
                 logger.warning("항목 파일 없음: %s — 스킵", pid)
+                continue
+            if pid in pending_pids:
+                logger.info("⏭ %s — 이미 staging 대기 중, LLM 재호출 생략", pid)
+                skipped_staged.append(pid)
                 continue
             try:
                 logger.info("🧠 Claude 갱신 호출: %s (%d개 변경 출처 반영)", pid, len(related_changes))
@@ -185,6 +236,20 @@ async def run(args):
                 updated_items.append({"policy_id": pid, "error": str(e)})
 
     # ── 3) 리포트 작성 ──
+    # manual_review 타겟에 마지막 검토일 부가 (#28)
+    mstate = _load_manual_state()
+    today_d = datetime.now().date()
+    for mt in manual_targets:
+        lr = mstate.get(mt["target_id"])
+        mt["last_reviewed"] = lr
+        days = None
+        if lr:
+            try:
+                days = (today_d - datetime.strptime(lr, "%Y-%m-%d").date()).days
+            except Exception:
+                days = None
+        mt["days_since_review"] = days
+
     today = datetime.now().strftime("%Y-%m-%d")
     report_data = {
         "date": today,
@@ -194,10 +259,14 @@ async def run(args):
             "failures": len(failures),
             "affected_items": sorted(affected_items),
             "items_updated_by_claude": len(updated_items),
+            "manual_review_targets": len(manual_targets),
+            "skipped_already_staged": len(skipped_staged),
         },
         "changes": changes,
         "failures": failures,
         "updated_items": updated_items,
+        "manual_review_targets": manual_targets,
+        "skipped_already_staged": skipped_staged,
         "dry_run": args.dry_run,
         "skip_claude": args.skip_claude,
     }
@@ -208,7 +277,7 @@ async def run(args):
     logger.info("📝 리포트 작성: %s", report_md)
 
     print(_short_console_summary(report_data))
-    return 0 if not failures else 0  # 실패가 있어도 exit 0 — 리포트 확인이 더 중요
+    return 0  # 실패가 있어도 항상 exit 0 — 리포트 확인이 더 중요
 
 
 def _format_report_md(d: dict) -> str:
@@ -257,6 +326,22 @@ def _format_report_md(d: dict) -> str:
     for f in d["failures"]:
         lines.append(f"- {f['target_id']} — {f['reason']} ({f.get('url')})")
     lines.append("")
+    lines.append("## 수동 검토 대상 (manual_review)")
+    mts = d.get("manual_review_targets", [])
+    if not mts:
+        lines.append("- 없음")
+    for mt in mts:
+        lr = mt.get("last_reviewed")
+        ds = mt.get("days_since_review")
+        when = f"마지막 검토 {lr} ({ds}일 경과)" if lr else "검토 이력 없음"
+        lines.append(f"- **{mt['target_id']}** ({mt.get('publisher') or '?'}) — {when}")
+        lines.append(f"  - {mt.get('title') or ''} / {mt.get('url')}")
+        lines.append(f"  - 영향 정책: {', '.join(mt.get('used_by_items', [])) or '(없음)'}")
+    if d.get("skipped_already_staged"):
+        lines.append("")
+        lines.append("## LLM 생략 (이미 staging 대기)")
+        lines.append("- " + ", ".join(d["skipped_already_staged"]))
+    lines.append("")
     lines.append("---")
     lines.append("")
     lines.append("## 다음 단계")
@@ -279,6 +364,7 @@ def _short_console_summary(d: dict) -> str:
         f"  영향 정책: {len(s['affected_items'])}개\n"
         f"  Claude 갱신: {s['items_updated_by_claude']}개\n"
         f"  실패: {s['failures']}건\n"
+        f"  수동 검토 대상: {s.get('manual_review_targets', 0)}개\n"
         f"  자세한 내용: policy_db/crawler/reports/{d['date']}.md\n"
         f"══════════════════════════════════════════\n"
     )
@@ -289,7 +375,11 @@ def main():
     p.add_argument("--dry-run", action="store_true", help="다운로드/스냅샷 갱신 없이 감지만")
     p.add_argument("--skip-claude", action="store_true", help="Claude API 호출 생략, 감지·리포트만")
     p.add_argument("--only", type=str, default=None, help="target_id 부분일치 필터")
+    p.add_argument("--mark-reviewed", type=str, default=None,
+                   help="수동 검토 완료 표시 — target_id(또는 all)의 마지막 검토일을 오늘로 기록 후 종료")
     args = p.parse_args()
+    if args.mark_reviewed:
+        sys.exit(_mark_reviewed(args.mark_reviewed))
     sys.exit(asyncio.run(run(args)))
 
 

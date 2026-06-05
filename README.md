@@ -53,7 +53,8 @@ uvicorn main:app --reload --host 127.0.0.1 --port 18000
 cd welfare_backend/policy_db
 python -m crawler.crawler --skip-claude  # 감지+다운로드만 (비용 0)
 python -m crawler.crawler                # 풀 실행 (감지+갱신안 staging 저장)
-python -m crawler.confirm_apply          # staging → items 반영
+python -m crawler.confirm_apply          # staging → items 반영 (반영 성공 시 baseline 전진)
+python -m crawler.crawler --mark-reviewed all  # 수동 검토 타겟 검토일 기록
 
 # 신규 항목 인제스트 (임베딩 생성 + DB 적재)
 python ingest_v1.5.py
@@ -75,7 +76,7 @@ python -m scripts.weekly_report --use-llm  # 주간 리포트 + 의도 클러스
 
 ## 버전
 
-- 레포 태그: **v0.5.4** (정책DB 크롤러 안정화)
+- 레포 태그: **v0.6.1** (정책DB 크롤러 — 감지/확정 baseline 분리, 수동 검토 표면화, 코드 정리)
 - 백엔드 내부: v1.2
 - 인제스트 스크립트: `ingest_v1.5.py`
 
