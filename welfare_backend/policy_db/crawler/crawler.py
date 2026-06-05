@@ -106,7 +106,7 @@ async def _process_target(target: dict, client: httpx.AsyncClient, args) -> Chan
     method = target.get("change_detection_method", "manual_review")
     detector = DETECTORS.get(method)
     if not detector:
-        return ChangeResult(False, f"unknown method: {method}", fetched_url=target["url"])
+        return ChangeResult(False, f"unknown method: {method}")
 
     target_id = target["target_id"]
     snapshot_dir = SNAPSHOTS_DIR / target_id
@@ -151,7 +151,7 @@ async def run(args):
                     return t, r
                 except Exception as e:
                     logger.exception("타겟 처리 실패 %s: %s", t.get("target_id"), e)
-                    return t, ChangeResult(False, f"exception: {e}", fetched_url=t.get("url"))
+                    return t, ChangeResult(False, f"exception: {e}")
 
         results = await asyncio.gather(*[task(t) for t in targets])
 
