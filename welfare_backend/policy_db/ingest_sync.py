@@ -4,12 +4,21 @@ import json
 import re
 import hashlib
 import logging
+import sys
 from time import sleep
 import psycopg2
 from psycopg2.extras import Json
 from pgvector.psycopg2 import register_vector
 import requests
 from dotenv import load_dotenv
+
+# 콘솔 출력 인코딩 강제 (#33) — cp949/POSIX(ascii) 로케일에서 한글·박스문자·이모지
+# 출력 시 UnicodeEncodeError 로 죽지 않도록 stdout/stderr 를 UTF-8 로 재설정.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 # =====================================================================
 # 1. 환경 설정 및 로깅
