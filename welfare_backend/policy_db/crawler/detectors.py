@@ -64,22 +64,28 @@ def _read_prev_hash(snapshot_dir: Path, method: str) -> Optional[str]:
     return f.read_text(encoding="utf-8").strip() if f.exists() else None
 
 
-def _mask_dynamic_noise(text: str) -> str:
-    """동적 노이즈를 placeholder 로 치환한다 (날짜·시각·조회수·세션·토큰 등)."""
+def _mask_dynamic_noise(text: str, mask_dates: bool = True) -> str:
+    """동적 노이즈를 placeholder 로 치환한다 (조회수·세션·토큰 등).
+
+    mask_dates=False 면 날짜·시각은 보존한다 — last_modified_field 처럼 날짜 자체가
+    비교 키인 경우에 사용한다."""
     patterns = [
-        (r"\d{4}[-./]\d{2}[-./]\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?", "DATE"),
-        (r"\d{2}:\d{2}:\d{2}", "TIME"),
         (r"(?:조회\s*수?|조회|view(?:s)?|hit(?:s)?)\s*[:：]?\s*[\d,]+", "VIEWCOUNT"),
         (r"오늘\s*[\d,]+\s*명?", "TODAYCOUNT"),
         (r'(name="[^"]*(?:token|csrf|session)[^"]*"\s+value=")[^"]*(")', r"\1MASKED\2"),
         (r"(?:JSESSIONID|PHPSESSID|csrf[-_]?token)=[A-Za-z0-9]+", "SESSION"),
     ]
+    if mask_dates:
+        patterns = [
+            (r"\d{4}[-./]\d{2}[-./]\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?", "DATE"),
+            (r"\d{2}:\d{2}:\d{2}", "TIME"),
+        ] + patterns
     for pat, repl in patterns:
         text = re.sub(pat, repl, text, flags=re.IGNORECASE)
     return text
 
 
-def _normalize_html_text(html: bytes) -> str:
+def _normalize_html_text(html: bytes, mask_dates: bool = True) -> str:
     """HTML 바이트 → 정규화된 본문 텍스트.
 
     BeautifulSoup 가 있으면 script/nav/header/footer 등 비콘텐츠 태그를 제거해
@@ -102,7 +108,7 @@ def _normalize_html_text(html: bytes) -> str:
         text = re.sub(r"<script[\s\S]*?</script>", " ", text, flags=re.IGNORECASE)
         text = re.sub(r"<style[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
         text = re.sub(r"<[^>]+>", " ", text)
-    text = _mask_dynamic_noise(text)
+    text = _mask_dynamic_noise(text, mask_dates=mask_dates)
     text = (text.replace("&nbsp;", " ").replace("&amp;", "&")
                 .replace("&lt;", "<").replace("&gt;", ">"))
     text = re.sub(r"\s+", " ", text).strip()
@@ -195,28 +201,6 @@ def _save_chunks(snapshot_dir: Path, chunks: list) -> None:
         _json.dumps(chunks, ensure_ascii=False), encoding="utf-8")
 
 
-def _extract_text_from_html(html: bytes) -> str:
-    """간단한 HTML→텍스트. BeautifulSoup 없이 정규식 기반(의존성 최소화).
-    광고·스크립트·날짜 위젯 등 노이즈 일부 제거."""
-    try:
-        text = html.decode("utf-8", errors="replace")
-    except Exception:
-        text = html.decode("latin-1", errors="replace")
-    # script, style 제거
-    text = re.sub(r"<script[\s\S]*?</script>", " ", text, flags=re.IGNORECASE)
-    text = re.sub(r"<style[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
-    # 흔한 동적 노이즈 (현재시각·세션·hidden token) 마스킹
-    text = re.sub(r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}", "DATETIME", text)
-    text = re.sub(r'(name="[^"]*token[^"]*"\s+value=")[^"]*(")', r"\1MASKED\2", text, flags=re.IGNORECASE)
-    # HTML 태그 제거
-    text = re.sub(r"<[^>]+>", " ", text)
-    # 엔티티 디코딩 일부
-    text = (text.replace("&nbsp;", " ").replace("&amp;", "&")
-                 .replace("&lt;", "<").replace("&gt;", ">"))
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
 async def _fetch(url: str, *, client: httpx.AsyncClient) -> Optional[httpx.Response]:
     try:
         resp = await client.get(url, headers=DEFAULT_HEADERS, follow_redirects=True, timeout=TIMEOUT)
@@ -298,7 +282,7 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
     resp = await _fetch(url, client=client)
     if resp is None:
         return ChangeResult(False, "fetch_failed", fetched_url=url)
-    text = _extract_text_from_html(resp.content)
+    text = _normalize_html_text(resp.content, mask_dates=False)
     # HTTP Last-Modified 헤더도 함께 본다
     http_lm = resp.headers.get("Last-Modified", "")
     body_lm = None
@@ -322,9 +306,10 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
 
 
 # ─────────────────────────────────────────────────────────────
-# 4) css_selector_text — 지정된 셀렉터/패턴 텍스트만 비교
-#    crawl_targets 의 css_selector_hint 에 패턴 또는 셀렉터 적힘.
-#    의존성 최소화를 위해 정규식 매칭만 지원 (셀렉터는 향후 확장).
+# 4) css_selector_text — 지정된 패턴 텍스트만 비교
+#    crawl_targets 의 css_selector_hint 가 "re:<정규식>" 형태면 그 정규식 매칭 결과를,
+#    그 외(빈 값/설명/셀렉터)면 전체 본문(앞 5KB) 해시를 비교 키로 쓴다.
+#    (CSS 셀렉터 직접 지원은 의존성 최소화를 위해 향후 확장)
 # ─────────────────────────────────────────────────────────────
 async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient) -> ChangeResult:
     url = target["url"]
@@ -332,18 +317,19 @@ async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: 
     resp = await _fetch(url, client=client)
     if resp is None:
         return ChangeResult(False, "fetch_failed", fetched_url=url)
-    text = _extract_text_from_html(resp.content)
+    text = _normalize_html_text(resp.content)
 
-    # hint 가 비어있거나 셀렉터 형태이면 전체 텍스트 해시로 fallback
+    # hint 가 "re:" 프리픽스면 정규식으로 해석, 그 외(빈 값/셀렉터 설명 등)는
+    # 침묵 오매칭을 피하기 위해 전체 본문 해시로 폴백한다. (셀렉터 직접 지원은 향후 확장)
     extracted = None
-    if hint and any(c in hint for c in "(){}[]/-=:;.,?") and not hint.startswith("."):
-        # 정규식 또는 키워드 패턴으로 간주
+    if hint.startswith("re:"):
+        pattern = hint[3:].strip()
         try:
-            m = re.search(hint, text)
+            m = re.search(pattern, text)
             if m:
                 extracted = m.group(0)
         except re.error:
-            pass
+            logger.warning("css_selector_text 정규식 오류 — 전체 텍스트 폴백: %s", pattern)
 
     target_text = extracted if extracted else text[:5000]  # 큰 본문은 앞 5KB
     new_hash = _hash_bytes(target_text.encode("utf-8"))

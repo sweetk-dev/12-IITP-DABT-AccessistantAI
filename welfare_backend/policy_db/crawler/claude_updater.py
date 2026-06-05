@@ -67,7 +67,6 @@ def _build_sources_block(related_changes: list) -> str:
     """각 변경 출처를 텍스트 블록으로 정리."""
     blocks = []
     for ch in related_changes:
-        snap_html = ROOT_HINT(ch.get("snapshot_dir", ""))  # type: ignore
         text_excerpt = _read_latest_snapshot(ch)
         blocks.append(
             f"### {ch['target_id']} ({ch.get('publisher','?')})\n"
@@ -76,10 +75,6 @@ def _build_sources_block(related_changes: list) -> str:
             f"- 본문 발췌 (앞 3000자):\n{text_excerpt[:3000]}\n"
         )
     return "\n".join(blocks) if blocks else "(변경 본문 없음)"
-
-
-def ROOT_HINT(s: str) -> str:  # placeholder for path hint
-    return s
 
 
 def _extract_main_text_from_html(raw: bytes) -> str:
@@ -334,7 +329,7 @@ def _add_by_path(doc: dict, path: str, value) -> bool:
 
 
 # 명시적 종료 신호 — 단순 부재(출처에 안 보임)와 실제 폐지를 구분 (C18)
-TERMINATION_MARKERS = ["폐지", "종료", "미시행", "시행 종료", "지원 종료", "중단", "폐止되"]
+TERMINATION_MARKERS = ["폐지", "종료", "미시행", "시행 종료", "지원 종료", "중단", "사업 종료"]
 
 
 def _has_termination_evidence(evidence: str) -> bool:
