@@ -2,6 +2,7 @@
 # PostgreSQL(welfare_db) 비동기 연결 설정.
 # 보안 원칙에 따라 DB 접속 정보는 .env 로 분리 (코드 하드코딩 금지).
 import os
+from urllib.parse import quote_plus
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
@@ -14,8 +15,10 @@ DB_HOST = os.environ.get("DB_HOST", "127.0.0.1")
 DB_PORT = os.environ.get("DB_PORT", "5432")
 DB_NAME = os.environ.get("DB_NAME", "welfare_db")
 
+# 자격증명에 @ : / 등 특수문자가 있어도 URL 이 깨지지 않도록 인코딩.
 DATABASE_URL = (
-    f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    f"postgresql+asyncpg://{quote_plus(DB_USER)}:{quote_plus(DB_PASS)}"
+    f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
 # echo=False 운영, 디버그 시 True 로 변경
