@@ -233,11 +233,16 @@ def _read_latest_snapshot(ch: dict) -> str:
     try:
         from pathlib import Path as _P
         snap_dir = _DATA_ROOT / ch.get("snapshot_dir", "")
-        for ext in ("html", "pdf"):
+        for ext in ("txt", "html", "pdf"):
             f = snap_dir / f"latest.{ext}"
             if not f.exists():
                 continue
             raw = f.read_bytes()
+            if ext == "txt":
+                # grounding 본문은 이미 정제된 평문 — 추가 추출 없이 그대로 사용
+                text = raw.decode("utf-8", errors="replace").strip()
+                logger.info("📄 grounding 본문: %s — %d자", f.name, len(text))
+                return text
             if ext == "html":
                 cleaned = _extract_main_text_from_html(raw)
                 logger.info("📄 HTML 정제: %s — raw %dB → cleaned %d자",
