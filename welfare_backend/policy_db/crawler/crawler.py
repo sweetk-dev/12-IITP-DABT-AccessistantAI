@@ -5,7 +5,7 @@
 #   1) crawl_targets.json 의 모든 타겟 로드 (현재 382개)
 #   2) 각 타겟별 change_detection_method 에 따라 detectors.DETECTORS[m] 호출
 #   3) 변경 감지된 타겟의 used_by_items[] 항목 ID 수집 (영향 정책 식별)
-#   4) 영향 정책마다 claude_updater.update_item_via_claude() 호출
+#   4) 영향 정책마다 llm_updater.update_item_via_llm() 호출
 #      → 기존 items/B0XX_*.json + 변경된 출처 본문 → Claude API → 갱신 JSON 생성
 #   5) staging/B0XX_*.json 저장 + reports/YYYY-MM-DD.md / .json 리포트
 #   6) 사람이 검토 후 confirm_apply.py 실행 → items/ 반영
@@ -121,9 +121,12 @@ async def _process_target(target: dict, client: httpx.AsyncClient, args) -> Chan
 
     target_id = target["target_id"]
     snapshot_dir = SNAPSHOTS_DIR / target_id
-    result = await detector(target, snapshot_dir, client=client)
+    result = await detector(target, snapshot_dir, client=client,
+                             revalidate=getattr(args, "revalidate", False))
 
-    # 변경 감지 시(또는 재검증 모드) 본문 저장 (baseline 은 confirm 반영 시 전진 — #27 A안)
+    # 변경 감지 시 또는 재검증 모드에서 본문 저장 (baseline 은 confirm 반영 시 전진 — #27 A안).
+    # revalidate 면 detector 가 변경 없어도 new_content 를 채우므로 latest.* 가 현재 페이지로
+    # 갱신되어, LLM 재검증이 stale/누락 스냅샷이 아닌 현재 본문을 보게 된다.
     if (result.changed or getattr(args, "revalidate", False)) and not args.dry_run:
         save_content_snapshot(snapshot_dir, method, result)
 
@@ -173,6 +176,7 @@ async def run(args):
     affected_items = set()  # 영향받는 정책 ID
     manual_targets = []   # manual_review 타겟 (#28)
     skipped_staged = []   # 이미 staging 대기라 LLM 생략된 정책 (#27 A안)
+    fallback_used = []    # 기본 URL 실패 → fallback_url 로 수집된 타겟 (URL 점검 필요 신호)
 
     # ── 1) 변경 감지 동시 실행 (rate limit 위해 동시성 5 제한) ──
     sem = asyncio.Semaphore(5)
@@ -206,6 +210,14 @@ async def run(args):
 
     for t, r in results:
         tid = t["target_id"]
+        if getattr(r, "used_fallback", False):
+            fallback_used.append({
+                "target_id": tid,
+                "title": t.get("title"),
+                "primary_url": t.get("url"),
+                "fallback_url": t.get("fallback_url"),
+                "used_by_items": t.get("used_by_items", []),
+            })
         if "fetch_failed" in r.reason or "exception" in r.reason:
             failures.append({"target_id": tid, "reason": r.reason, "url": t.get("url")})
             continue
@@ -242,9 +254,9 @@ async def run(args):
     updated_items = []
     if changes and not args.dry_run and not args.skip_claude:
         try:
-            from .claude_updater import update_item_via_claude
+            from .llm_updater import update_item_via_llm
         except ImportError:
-            from crawler.claude_updater import update_item_via_claude  # type: ignore
+            from crawler.llm_updater import update_item_via_llm  # type: ignore
 
         items_idx = _items_index()
         # 영향 정책별로 그 정책의 변경된 출처들을 모음
@@ -269,8 +281,8 @@ async def run(args):
                 skipped_staged.append(pid)
                 continue
             try:
-                logger.info("🧠 Claude 갱신 호출: %s (%d개 변경 출처 반영)", pid, len(related_changes))
-                staged_path, diff_summary = await update_item_via_claude(
+                logger.info("🧠 LLM 갱신 호출: %s (%d개 변경 출처 반영)", pid, len(related_changes))
+                staged_path, diff_summary = await update_item_via_llm(
                     item_path=jf,
                     related_changes=related_changes,
                     staging_dir=STAGING_DIR,
@@ -310,15 +322,17 @@ async def run(args):
             "changes_detected": len(changes),
             "failures": len(failures),
             "affected_items": sorted(affected_items),
-            "items_updated_by_claude": len(updated_items),
+            "items_updated_by_llm": len(updated_items),
             "manual_review_targets": len(manual_targets),
             "skipped_already_staged": len(skipped_staged),
+            "url_fallback_used": len(fallback_used),
         },
         "changes": changes,
         "failures": failures,
         "updated_items": updated_items,
         "manual_review_targets": manual_targets,
         "skipped_already_staged": skipped_staged,
+        "url_fallback_used": fallback_used,
         "dry_run": args.dry_run,
         "skip_claude": args.skip_claude,
     }
@@ -341,7 +355,7 @@ def _format_report_md(d: dict) -> str:
     lines.append(f"- 변경 감지: **{s['changes_detected']}건**")
     lines.append(f"- 영향 정책: {len(s['affected_items'])}개 — {', '.join(s['affected_items']) or '없음'}")
     lines.append(f"- 실패: {s['failures']}건")
-    lines.append(f"- Claude 갱신: {s['items_updated_by_claude']}개")
+    lines.append(f"- LLM 갱신: {s['items_updated_by_llm']}개")
     if d.get("dry_run"):
         lines.append("- (DRY RUN: 다운로드/저장만 시도, 스냅샷 갱신 안 함)")
     if d.get("skip_claude"):
@@ -363,7 +377,7 @@ def _format_report_md(d: dict) -> str:
                 f"(유지 {cd.get('unchanged', 0)})"
             )
     lines.append("")
-    lines.append("## Claude API 갱신 결과")
+    lines.append("## LLM 갱신 결과")
     if not d["updated_items"]:
         lines.append("- (Claude 호출 안 됨 또는 갱신 대상 없음)")
     for u in d["updated_items"]:
@@ -377,6 +391,16 @@ def _format_report_md(d: dict) -> str:
     lines.append("## 실패 목록")
     for f in d["failures"]:
         lines.append(f"- {f['target_id']} — {f['reason']} ({f.get('url')})")
+    lines.append("")
+    lines.append("## URL 점검 필요 (fallback_url 로 수집됨)")
+    fbs = d.get("url_fallback_used", [])
+    if not fbs:
+        lines.append("- 없음 — 모든 출처가 기본 URL 로 정상 수집")
+    for fb in fbs:
+        lines.append(f"- **{fb['target_id']}** — 기본 URL 실패, fallback_url 로 수집됨 (기본 URL 교체 검토)")
+        lines.append(f"  - 기본: {fb.get('primary_url')}")
+        lines.append(f"  - fallback: {fb.get('fallback_url')}")
+        lines.append(f"  - 영향 정책: {', '.join(fb.get('used_by_items', [])) or '(없음)'}")
     lines.append("")
     lines.append("## 수동 검토 대상 (manual_review)")
     mts = d.get("manual_review_targets", [])
@@ -414,8 +438,9 @@ def _short_console_summary(d: dict) -> str:
         f"  총 타겟: {s['total_targets']}\n"
         f"  변경 감지: {s['changes_detected']}건\n"
         f"  영향 정책: {len(s['affected_items'])}개\n"
-        f"  Claude 갱신: {s['items_updated_by_claude']}개\n"
+        f"  LLM 갱신: {s['items_updated_by_llm']}개\n"
         f"  실패: {s['failures']}건\n"
+        f"  URL 폴백 사용: {s.get('url_fallback_used', 0)}개\n"
         f"  수동 검토 대상: {s.get('manual_review_targets', 0)}개\n"
         f"  자세한 내용: policy_db/crawler/reports/{d['date']}.md\n"
         f"══════════════════════════════════════════\n"

@@ -1,8 +1,9 @@
-# crawler/claude_updater.py  (LLM Updater — Backend-agnostic)
+# crawler/llm_updater.py  (LLM Updater — Backend-agnostic)
 # 정책 항목 JSON 을 LLM 으로 갱신. 백엔드는 llm_backends.get_backend() 가 결정.
 #
 # 백엔드 옵션 (환경변수 LLM_BACKEND):
-#   - "claude" (기본, 외부 Anthropic API)
+#   - "gemini" (기본, 외부 Google Generative Language API — 임베딩·Live 와 키 단일화)
+#   - "claude" (외부 Anthropic API)
 #   - "gemma"  (온프레미스 — Ollama / vLLM 호환)
 #
 # 흐름:
@@ -16,8 +17,8 @@
 #   - last_verified·version 자동 갱신
 #   - LLM 의 의역·추가 정보 노이즈 방지: temperature 0
 #
-# 파일명은 호환성 위해 claude_updater.py 유지 (외부 import 영향 없음).
-# 향후 llm_updater.py 로 리네임할 때 import 만 갱신하면 됨.
+# (구 claude_updater.py → llm_updater.py 리네임. 백엔드 기본값이 gemini 로 전환됨.
+#  공개 함수는 update_item_via_llm, 하위호환 별칭 update_item_via_claude 유지.)
 import json
 import logging
 import os
@@ -378,7 +379,7 @@ def _apply_patch(existing: dict, patches: list):
     return new_doc, applied, review
 
 
-async def update_item_via_claude(
+async def update_item_via_llm(
     *,
     item_path: Path,
     related_changes: list,
@@ -389,8 +390,8 @@ async def update_item_via_claude(
 ) -> Tuple[Optional[Path], str]:
     """단일 항목 JSON 을 LLM 으로 갱신해 staging/ 에 저장.
 
-    함수명은 호환성 위해 update_item_via_claude 유지하지만, 실제 LLM 은
-    환경변수 LLM_BACKEND (claude/gemma) 에 따라 선택됨.
+    실제 LLM 은 환경변수 LLM_BACKEND (gemini[기본]/claude/gemma) 에 따라 선택됨.
+    하위호환 별칭 update_item_via_claude 로도 호출 가능.
     """
     existing = json.loads(item_path.read_text(encoding="utf-8"))
     existing_json_str = json.dumps(existing, ensure_ascii=False, indent=2)
@@ -468,3 +469,7 @@ async def update_item_via_claude(
 
     diff = _diff_summary(existing, new_data)
     return staged_path, diff
+
+
+# ── 하위호환 별칭 (구 함수명) ──
+update_item_via_claude = update_item_via_llm

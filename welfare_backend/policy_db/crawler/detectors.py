@@ -38,6 +38,8 @@ class ChangeResult:
     new_hash: Optional[str] = None
     chunk_diff: Optional[dict] = None
     new_chunks: Optional[list] = None
+    url_used: Optional[str] = None      # 실제 성공한 URL (기본 또는 fallback)
+    used_fallback: bool = False         # fallback_url 로 성공 → 기본 URL 점검 필요 신호
 
 
 def _hash_bytes(data: bytes) -> str:
@@ -234,7 +236,8 @@ def _save_chunks(snapshot_dir: Path, chunks: list) -> None:
         _json.dumps(chunks, ensure_ascii=False), encoding="utf-8")
 
 
-async def _fetch(url: str, *, client: httpx.AsyncClient) -> Optional[httpx.Response]:
+async def _fetch_url(url: str, *, client: httpx.AsyncClient) -> Optional[httpx.Response]:
+    """단일 URL 1회 GET. 실패(예외/HTTP>=400) 시 None."""
     try:
         resp = await client.get(url, headers=DEFAULT_HEADERS, follow_redirects=True, timeout=TIMEOUT)
         if resp.status_code >= 400:
@@ -246,14 +249,61 @@ async def _fetch(url: str, *, client: httpx.AsyncClient) -> Optional[httpx.Respo
         return None
 
 
+async def _fetch(target: dict, *, client: httpx.AsyncClient):
+    """기본 url 실패 시 crawl_targets 의 fallback_url 로 자동 재시도.
+
+    반환: (resp, info). info = {url_used, used_fallback, primary_failed}.
+    - 기본 URL 성공: used_fallback=False
+    - 기본 실패 → fallback 성공: used_fallback=True (=기본 URL 점검 필요 신호)
+    - 둘 다 실패: resp=None (호출자가 _fetch_failed_reason 으로 사유 구성)
+    official_api 는 포맷이 출처마다 달라 자동 호출하지 않고, 전부 실패 시 사유에 표기해
+    수동 대체를 유도한다(향후 확장 지점)."""
+    info = {"url_used": None, "used_fallback": False, "primary_failed": False}
+    primary = target.get("url")
+    fallback = target.get("fallback_url")
+    for label, u in (("primary", primary), ("fallback", fallback)):
+        if not u:
+            continue
+        resp = await _fetch_url(u, client=client)
+        if resp is not None:
+            info["url_used"] = u
+            info["used_fallback"] = (label == "fallback")
+            if info["used_fallback"]:
+                logger.warning("⚠ 기본 URL 실패 → fallback_url 로 수집: %s (기본=%s)", u, primary)
+            return resp, info
+        if label == "primary":
+            info["primary_failed"] = True
+            if fallback:
+                logger.info("기본 URL 실패 → fallback_url 시도: %s", fallback)
+    return None, info
+
+
+def _fetch_failed_reason(target: dict, info: dict) -> str:
+    """수집 실패 사유 문자열. 'fetch_failed' 접두어는 유지(크롤러 실패 분류 호환)."""
+    parts = ["fetch_failed"]
+    if target.get("fallback_url"):
+        parts.append("fallback_also_failed")
+    if target.get("official_api"):
+        parts.append("has_official_api(수동 대체 검토)")
+    return " | ".join(parts)
+
+
+def _annotate(res: "ChangeResult", info: dict) -> "ChangeResult":
+    """수집에 쓰인 URL/폴백 여부를 결과에 부착. 폴백 사용 시 사유에 점검 신호 추가."""
+    res.url_used = info.get("url_used")
+    res.used_fallback = bool(info.get("used_fallback"))
+    if res.used_fallback and "fetch_failed" not in res.reason:
+        res.reason = f"{res.reason} (fallback_url 사용 — 기본 URL 점검 필요)"
+    return res
+
+
 # ─────────────────────────────────────────────────────────────
 # 1) page_hash — HTML 본문 텍스트 SHA-256 비교
 # ─────────────────────────────────────────────────────────────
-async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient) -> ChangeResult:
-    url = target["url"]
-    resp = await _fetch(url, client=client)
+async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
+    resp, finfo = await _fetch(target, client=client)
     if resp is None:
-        return ChangeResult(False, "fetch_failed")
+        return ChangeResult(False, _fetch_failed_reason(target, finfo))
     # C6/#25: soup 1회 파싱으로 정규화 텍스트 + 청크 동시 산출 (이중 파싱 제거)
     text, new_chunks = _parse_page_hash(resp.content)
     new_hash = _hash_bytes(text.encode("utf-8"))
@@ -265,34 +315,33 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
     prev_hash = _read_prev_hash(snapshot_dir, "page_hash")
     changed = (prev_hash is None) or (prev_hash != new_hash)
     reason = "최초 스냅샷" if prev_hash is None else ("해시 변경" if changed else "변경 없음")
-    return ChangeResult(
+    return _annotate(ChangeResult(
         changed=changed,
         reason=reason,
-        new_content=resp.content if changed else None,
+        new_content=resp.content if (changed or revalidate) else None,
         new_hash=new_hash,
         chunk_diff=cdiff,
         new_chunks=new_chunks,
-    )
+    ), finfo)
 
 
 # ─────────────────────────────────────────────────────────────
 # 2) pdf_hash — PDF 바이트 SHA-256
 # ─────────────────────────────────────────────────────────────
-async def detect_pdf_hash(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient) -> ChangeResult:
-    url = target["url"]
-    resp = await _fetch(url, client=client)
+async def detect_pdf_hash(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
+    resp, finfo = await _fetch(target, client=client)
     if resp is None:
-        return ChangeResult(False, "fetch_failed")
+        return ChangeResult(False, _fetch_failed_reason(target, finfo))
     new_hash = _hash_bytes(resp.content)
     prev_hash = _read_prev_hash(snapshot_dir, "pdf_hash")
     changed = (prev_hash is None) or (prev_hash != new_hash)
     # PDF 파일명 날짜 패턴 변화도 함께 모니터링 (예: _250623 → _260101)
-    return ChangeResult(
+    return _annotate(ChangeResult(
         changed=changed,
         reason="최초 스냅샷" if prev_hash is None else ("PDF 해시 변경" if changed else "변경 없음"),
-        new_content=resp.content if changed else None,
+        new_content=resp.content if (changed or revalidate) else None,
         new_hash=new_hash,
-    )
+    ), finfo)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -307,11 +356,10 @@ LAST_MOD_PATTERNS = [
 ]
 
 
-async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient) -> ChangeResult:
-    url = target["url"]
-    resp = await _fetch(url, client=client)
+async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
+    resp, finfo = await _fetch(target, client=client)
     if resp is None:
-        return ChangeResult(False, "fetch_failed")
+        return ChangeResult(False, _fetch_failed_reason(target, finfo))
     text = _normalize_html_text(resp.content, mask_dates=False)
     # HTTP Last-Modified 헤더도 함께 본다
     http_lm = resp.headers.get("Last-Modified", "")
@@ -326,12 +374,12 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
     # 저장/비교 모두 해시 기준 — SNAPSHOT_FILES 매핑 공유로 불일치 재발 방지.
     prev_hash = _read_prev_hash(snapshot_dir, "last_modified_field")
     changed = (prev_hash is None) or (prev_hash != new_hash)
-    return ChangeResult(
+    return _annotate(ChangeResult(
         changed=changed,
         reason="최초 스냅샷" if prev_hash is None else ("최종 수정 키 변경" if changed else "변경 없음"),
-        new_content=resp.content if changed else None,
+        new_content=resp.content if (changed or revalidate) else None,
         new_hash=new_hash,
-    )
+    ), finfo)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -340,12 +388,11 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
 #    그 외(빈 값/설명/셀렉터)면 전체 본문(앞 5KB) 해시를 비교 키로 쓴다.
 #    (CSS 셀렉터 직접 지원은 의존성 최소화를 위해 향후 확장)
 # ─────────────────────────────────────────────────────────────
-async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient) -> ChangeResult:
-    url = target["url"]
+async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
     hint = (target.get("css_selector_hint") or "").strip()
-    resp = await _fetch(url, client=client)
+    resp, finfo = await _fetch(target, client=client)
     if resp is None:
-        return ChangeResult(False, "fetch_failed")
+        return ChangeResult(False, _fetch_failed_reason(target, finfo))
     text = _normalize_html_text(resp.content)
 
     # hint 가 "re:" 프리픽스면 정규식으로 해석, 그 외(빈 값/셀렉터 설명 등)는
@@ -364,20 +411,20 @@ async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: 
     new_hash = _hash_bytes(target_text.encode("utf-8"))
     prev_hash = _read_prev_hash(snapshot_dir, "css_selector_text")
     changed = (prev_hash is None) or (prev_hash != new_hash)
-    return ChangeResult(
+    return _annotate(ChangeResult(
         changed=changed,
         reason="셀렉터 텍스트 변경" if changed and prev_hash else (
             "최초 스냅샷" if prev_hash is None else "변경 없음"
         ),
-        new_content=resp.content if changed else None,
+        new_content=resp.content if (changed or revalidate) else None,
         new_hash=new_hash,
-    )
+    ), finfo)
 
 
 # ─────────────────────────────────────────────────────────────
 # 5) manual_review — 자동 감지 불가, 보고만
 # ─────────────────────────────────────────────────────────────
-async def detect_manual_review(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient) -> ChangeResult:
+async def detect_manual_review(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
     return ChangeResult(
         changed=False,
         reason="manual_review — 분기 1회 수동 검토 권장",
@@ -401,7 +448,7 @@ DETECTORS = {
 # confirm_apply 반영 성공 시 save_baseline_snapshot 로 전진시킨다. 따라서 리포트를 놓치거나
 # LLM/staging 이 실패하면 baseline 이 그대로 남아 다음 회차에 변경이 재노출된다.
 def save_content_snapshot(snapshot_dir: Path, method: str, result: ChangeResult):
-    """변경 본문만 저장 (claude_updater LLM 입력·진단용). baseline 은 건드리지 않는다."""
+    """변경 본문만 저장 (llm_updater LLM 입력·진단용). baseline 은 건드리지 않는다."""
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     if result.new_content is not None:
         ext = "pdf" if method == "pdf_hash" else "html"
