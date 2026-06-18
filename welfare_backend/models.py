@@ -1,5 +1,5 @@
 # models.py
-# v1.2 스키마(ingest_v1.5.py 와 동일)의 welfare_policies + policy_chunks 테이블 정의.
+# welfare_policies + policy_chunks 테이블 정의. 스키마 기준(SoT)은 policy_db/ingest_sync.py 의 ensure_schema().
 # PostgreSQL JSONB / ARRAY / pgvector(VECTOR) 타입 활용.
 #
 # Phase 5 Track A: UnresolvedQuery (데이터 플라이휠) 모델 추가됨.
@@ -36,7 +36,7 @@ class WelfarePolicy(Base):
     age_max = Column(Integer)
     full_data = Column(JSONB)  # 전체 JSON 통째로 (Fat Tool Response 활용)
     last_verified = Column(Date)
-    version = Column(String(10))
+    version = Column(String(50))  # ingest_sync 가 파일 MD5 해시를 변경감지 키로 저장(정책 버전 자체는 full_data 참조)
     active = Column(Boolean, nullable=False, server_default="true")  # soft delete
     deactivated_at = Column(DateTime(timezone=True))                 # 비활성 적용 일시
     created_at = Column(DateTime(timezone=True))
