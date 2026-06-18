@@ -35,6 +35,9 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# 가변 데이터 루트 — 스냅샷 해석 기준 (POLICY_DATA_DIR 미설정 시 코드 ROOT)
+_DATA_ROOT = Path(os.environ["POLICY_DATA_DIR"]).resolve() if os.environ.get("POLICY_DATA_DIR") else Path(__file__).resolve().parent.parent
+
 
 # 안전한 시스템 프롬프트 — Hallucination 방지 + schema 보존
 SYSTEM_PROMPT = """당신은 한국 장애인 복지 정책 데이터베이스 항목을 갱신하는 정밀 엔진입니다.
@@ -228,7 +231,7 @@ def _read_latest_snapshot(ch: dict) -> str:
     """
     try:
         from pathlib import Path as _P
-        snap_dir = _P(__file__).resolve().parent.parent / ch.get("snapshot_dir", "")
+        snap_dir = _DATA_ROOT / ch.get("snapshot_dir", "")
         for ext in ("html", "pdf"):
             f = snap_dir / f"latest.{ext}"
             if not f.exists():

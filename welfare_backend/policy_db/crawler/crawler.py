@@ -40,15 +40,18 @@ for _s in (sys.stdout, sys.stderr):
 # ── 경로 설정 ────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent          # policy_db/
 BACKEND_ROOT = ROOT.parent                              # welfare_backend/
-CRAWL_TARGETS = ROOT / "crawl_targets.json"
-ITEMS_DIR = ROOT / "items"
-SCHEMA = ROOT / "schema.json"
-SNAPSHOTS_DIR = ROOT / "crawler" / "snapshots"
-STAGING_DIR = ROOT / "crawler" / "staging"
-REPORTS_DIR = ROOT / "crawler" / "reports"
-MANUAL_STATE = ROOT / "crawler" / "manual_review_state.json"
 
 load_dotenv(BACKEND_ROOT / ".env")
+
+# 가변 데이터 루트 — POLICY_DATA_DIR 설정 시 그 경로, 미설정 시 ROOT (하위호환)
+DATA_ROOT = Path(os.environ["POLICY_DATA_DIR"]).resolve() if os.environ.get("POLICY_DATA_DIR") else ROOT
+CRAWL_TARGETS = ROOT / "crawl_targets.json"            # 설정(읽기전용) — 코드 경로 유지
+SCHEMA = ROOT / "schema.json"                          # 설정(읽기전용) — 코드 경로 유지
+ITEMS_DIR = DATA_ROOT / "items"
+SNAPSHOTS_DIR = DATA_ROOT / "crawler" / "snapshots"
+STAGING_DIR = DATA_ROOT / "crawler" / "staging"
+REPORTS_DIR = DATA_ROOT / "crawler" / "reports"
+MANUAL_STATE = DATA_ROOT / "crawler" / "manual_review_state.json"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("crawler")
