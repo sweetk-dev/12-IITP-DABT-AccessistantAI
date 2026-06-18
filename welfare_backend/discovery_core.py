@@ -68,21 +68,34 @@ def _cluster(rows):
     return clusters
 
 
-def _gemini(prompt, grounding=False, max_tokens=8000):
+def _gemini(prompt, grounding=False, max_tokens=8000, retries=3):
+    """Gemini generateContent. thinking 모델의 간헐적 빈 응답에 대비해 재시도."""
+    import time as _t
     payload = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
                "generationConfig": {"temperature": 0, "maxOutputTokens": max_tokens}}
     if grounding:
         payload["tools"] = [{"google_search": {}}]
     else:
         payload["generationConfig"]["responseMimeType"] = "application/json"
-    r = requests.post(_GEN_URL, headers={"x-goog-api-key": GEMINI_API_KEY,
-                      "Content-Type": "application/json"}, json=payload, timeout=(10, 120))
-    r.raise_for_status()
-    cands = r.json().get("candidates") or []
-    if not cands:
-        return ""
-    parts = (cands[0].get("content") or {}).get("parts") or []
-    return "".join(p.get("text", "") for p in parts if p.get("text") and not p.get("thought"))
+    last_err = None
+    for attempt in range(retries):
+        try:
+            r = requests.post(_GEN_URL, headers={"x-goog-api-key": GEMINI_API_KEY,
+                              "Content-Type": "application/json"}, json=payload, timeout=(10, 120))
+            r.raise_for_status()
+            cands = r.json().get("candidates") or []
+            if cands:
+                parts = (cands[0].get("content") or {}).get("parts") or []
+                txt = "".join(p.get("text", "") for p in parts if p.get("text") and not p.get("thought"))
+                if txt.strip():
+                    return txt
+            last_err = "빈 응답"
+        except Exception as e:
+            last_err = str(e)
+        if attempt < retries - 1:
+            _t.sleep(2 * (attempt + 1))
+    logger.warning("Gemini 응답 실패(%d회): %s", retries, last_err)
+    return ""
 
 
 def _parse_json(raw):
