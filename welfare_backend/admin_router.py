@@ -239,11 +239,12 @@ def discovery_reject(cid: str):
 
 
 @router.post("/admin/api/discovery/candidate/{cid}/approve")
-def discovery_approve(cid: str):
+def discovery_approve(cid: str, payload: dict = Body(default={})):
     cand = dc.get_candidate(cid)
     if cand.get("error"):
         raise HTTPException(status_code=404, detail=cand["error"])
-    draft = cand.get("draft_item")
+    # 관리자가 편집한 초안을 보내면 그걸 사용(저장도 갱신), 아니면 저장된 초안
+    draft = payload.get("draft_item") or cand.get("draft_item")
     if not draft:
         raise HTTPException(status_code=400, detail={"error": "초안 없음 — 승인 불가"})
     r = pc.create_policy(draft, slug=(draft.get("title") or "new"))

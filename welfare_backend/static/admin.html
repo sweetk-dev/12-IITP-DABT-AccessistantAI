@@ -69,6 +69,7 @@
     <div class="tab" id="tab-policy" onclick="showTab('policy')">정책 관리</div>
     <div class="tab" id="tab-unresolved" onclick="showTab('unresolved')">미답변 질의</div>
     <div class="tab" id="tab-ops" onclick="showTab('ops')">운영</div>
+    <div class="tab" id="tab-discovery" onclick="showTab('discovery')">신규 후보</div>
   </div>
   <button class="refresh" onclick="refresh()">새로고침</button>
 </header>
@@ -126,8 +127,38 @@
       <button class="primary" id="btnBackup" onclick="runOp('backup')">지금 백업 실행</button>
     </div>
     <div class="card" style="padding:16px;grid-column:1/3;">
+      <h2 style="margin:0 0 4px;font-size:15px;">신규 정책 발굴</h2>
+      <div class="msg">미답변 질의 → 군집·분류 → 외부검색 → 신규 정책 초안(검토 전용). '신규 후보' 탭에서 검토/승인.</div>
+      <div id="ops-discovery" style="margin:12px 0;font-size:13px;">…</div>
+      <button class="primary" id="btnDisc" onclick="runDiscovery()">지금 발굴 실행</button>
+    </div>
+    <div class="card" style="padding:16px;grid-column:1/3;">
       <h2 style="margin:0 0 4px;font-size:15px;">스케줄</h2>
       <div id="ops-sched" class="msg">…</div>
+    </div>
+  </div>
+</div>
+
+<div id="view-discovery" style="display:none">
+  <div class="pwrap">
+    <div style="margin-bottom:10px;"><span class="msg" id="dmsg">미답변 질의 기반 신규 정책 후보. 초안 검토 후 승인 시 정책으로 등록됩니다.</span></div>
+    <div class="card"><table id="dtable"><thead><tr><th>주제</th><th>초안 제목</th><th>분류</th><th>유사질문</th><th>상태</th><th>작업</th></tr></thead><tbody><tr><td colspan="6"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
+  </div>
+</div>
+
+<div class="modal" id="dmodal">
+  <div class="box">
+    <div class="mhead"><b id="dtitle">신규 후보</b><span class="msg" id="dmodalmsg" style="margin-left:auto"></span></div>
+    <div class="mbody">
+      <div id="dmeta" class="msg" style="margin-bottom:8px"></div>
+      <div class="msg" style="margin-bottom:4px">초안(JSON) — 승인 전 자유 편집 가능:</div>
+      <textarea id="deditor" spellcheck="false"></textarea>
+    </div>
+    <div class="mfoot">
+      <button class="primary" id="dApprove" onclick="approveCand()">승인(정책 등록)</button>
+      <button class="danger" onclick="rejectCand()">반려</button>
+      <button onclick="document.getElementById('dmodal').classList.remove('on')">닫기</button>
+      <span class="msg">승인 시 스키마 검증 후 items 등록 + DB 재적재</span>
     </div>
   </div>
 </div>
@@ -151,14 +182,14 @@ let current=null, editingId=null;
 let curTab="review";
 function showTab(t){
   curTab=t;
-  for(const k of ["review","policy","unresolved","ops"]){
+  for(const k of ["review","policy","unresolved","ops","discovery"]){
     document.getElementById("tab-"+k).classList.toggle("on", t===k);
     document.getElementById("view-"+k).style.display = t===k?"":"none";
   }
   if(opsTimer){ clearInterval(opsTimer); opsTimer=null; }
-  if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else if(t==="ops") loadOps(); else loadList();
+  if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else if(t==="ops") loadOps(); else if(t==="discovery") loadDiscovery(); else loadList();
 }
-function refresh(){ if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else if(curTab==="ops") loadOps(); else loadList(); }
+function refresh(){ if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else if(curTab==="ops") loadOps(); else if(curTab==="discovery") loadDiscovery(); else loadList(); }
 function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 function fmt(v){ if(v===null||v===undefined) return "(없음)"; return (typeof v==="object")? JSON.stringify(v,null,2):String(v); }
 
@@ -306,20 +337,20 @@ function _renderOp(name, d){
   let h=badge;
   if(s.last_run) h+=`<div style="margin-top:6px;color:var(--muted)">마지막 실행: ${escapeHtml((s.last_run||"").replace("T"," "))}</div>`;
   if(s.last_output) h+=`<pre style="margin-top:6px;background:#fafbfc;border:1px solid var(--line);border-radius:6px;padding:8px;font-size:11px;max-height:160px;overflow:auto;white-space:pre-wrap">${escapeHtml(s.last_output)}</pre>`;
-  const nextId = name==="crawl"?"crawl_scheduled":"backup_scheduled";
+  const nextId = name==="crawl"?"crawl_scheduled":(name==="backup"?"backup_scheduled":"discovery_scheduled");
   const nx=(d.next||{})[nextId]; if(nx) h+=`<div style="margin-top:4px;color:var(--muted)">다음 예약: ${escapeHtml(nx.replace("T"," ").slice(0,16))}</div>`;
   document.getElementById("ops-"+name).innerHTML=h;
-  const btn=document.getElementById(name==="crawl"?"btnCrawl":"btnBackup"); if(btn) btn.disabled=run;
+  const btnmap={crawl:"btnCrawl",backup:"btnBackup",discovery:"btnDisc"}; const btn=document.getElementById(btnmap[name]); if(btn) btn.disabled=run;
   if(name==="crawl"){ const ib=document.getElementById("btnInitBase"); if(ib) ib.disabled=run; const hb=document.getElementById("btnHash"); if(hb) hb.disabled=run; }
 }
 async function loadOps(){
   try{ const d=await (await fetch(OAPI+"/status")).json();
-    _renderOp("crawl",d); _renderOp("backup",d);
+    _renderOp("crawl",d); _renderOp("backup",d); _renderOp("discovery",d);
     const sc=d.schedules||{};
     document.getElementById("ops-sched").innerHTML =
       `크롤: 매월 ${escapeHtml(String((sc.crawl_cron||{}).day||""))}일 ${String((sc.crawl_cron||{}).hour||0).padStart(2,"0")}:${String((sc.crawl_cron||{}).minute||0).padStart(2,"0")} · `+
       `백업: 매일 ${String((sc.backup_cron||{}).hour||0).padStart(2,"0")}:${String((sc.backup_cron||{}).minute||0).padStart(2,"0")} (보존 ${escapeHtml(String(sc.backup_retention_days||30))}일) · 편집 UI는 추후`;
-    const anyRun=(d.crawl&&d.crawl.running)||(d.backup&&d.backup.running);
+    const anyRun=(d.crawl&&d.crawl.running)||(d.backup&&d.backup.running)||(d.discovery&&d.discovery.running);
     if(anyRun && !opsTimer){ opsTimer=setInterval(loadOps,4000); }
     if(!anyRun && opsTimer){ clearInterval(opsTimer); opsTimer=null; }
   }catch(e){ document.getElementById("ops-sched").textContent="상태 로드 실패: "+e; }
@@ -364,6 +395,50 @@ async function loadUnresolved(reset){
     setMsg("usum",`총 ${d.total}건 (표시 ${uOffset})`);
     document.getElementById("uMore").style.display = (uOffset < d.total) ? "" : "none";
   }catch(e){ setMsg("usum","로드 실패: "+e,true); }
+}
+const DAPI="/admin/api/discovery";
+async function runDiscovery(){
+  try{ const j=await (await fetch(DAPI+"/run",{method:"POST"})).json();
+    if(j.started===false) alert("시작 안 됨: "+(j.reason||"")); loadOps();
+  }catch(e){ alert("오류: "+e); }
+}
+async function loadDiscovery(){
+  const tb=document.querySelector("#dtable tbody"); tb.innerHTML='<tr><td colspan="6"><div class="empty">불러오는 중…</div></td></tr>';
+  try{ const rows=await (await fetch(DAPI+"/candidates")).json();
+    if(!rows.length){ tb.innerHTML='<tr><td colspan="6"><div class="empty">신규 후보 없음 (운영 탭에서 발굴 실행)</div></td></tr>'; return; }
+    tb.innerHTML="";
+    for(const c of rows){ const tr=document.createElement("tr");
+      const st=c.status||"pending";
+      const badge = st==="approved"?'<span class="b ok">승인</span>':(st==="rejected"?'<span class="b off">반려</span>':'<span class="b warn">검토대기</span>');
+      tr.innerHTML=`<td>${escapeHtml(c.topic||"")}</td><td>${escapeHtml(c.title||"(초안없음)")}</td>
+        <td>${escapeHtml(c.category||"")}</td><td>${c.n_queries||0}</td><td>${badge}</td>
+        <td><div class="act"><button onclick="openCand('${c.candidate_id}')">검토</button></div></td>`;
+      tb.appendChild(tr); }
+  }catch(e){ tb.innerHTML='<tr><td colspan="6"><div class="empty">로드 실패: '+e+'</div></td></tr>'; }
+}
+let curCand=null;
+async function openCand(cid){
+  curCand=cid; document.getElementById("dmodalmsg").textContent="";
+  const d=await (await fetch(DAPI+"/candidate/"+cid)).json();
+  document.getElementById("dtitle").textContent="신규 후보 — "+(d.topic||cid);
+  document.getElementById("dmeta").innerHTML="유사질문: "+escapeHtml((d.cluster_queries||[]).join(" / "))+"<br>분류: "+escapeHtml(JSON.stringify(d.classification||{}));
+  document.getElementById("deditor").value=JSON.stringify(d.draft_item||{},null,2);
+  document.getElementById("dmodal").classList.add("on");
+}
+async function approveCand(){
+  let draft; try{ draft=JSON.parse(document.getElementById("deditor").value); }catch(e){ setMsg("dmodalmsg","JSON 오류: "+e,true); return; }
+  document.getElementById("dApprove").disabled=true; setMsg("dmodalmsg","승인 중…");
+  try{ const r=await fetch(DAPI+"/candidate/"+curCand+"/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({draft_item:draft})});
+    const j=await r.json();
+    if(r.ok){ setMsg("dmodalmsg","등록 완료: "+(j.policy_id||"")); setTimeout(()=>{document.getElementById("dmodal").classList.remove("on"); loadDiscovery();},800); }
+    else { const dt=j.detail||j; setMsg("dmodalmsg","실패: "+(dt.error||"")+(dt.details?" ("+dt.details.join("; ")+")":""),true); document.getElementById("dApprove").disabled=false; }
+  }catch(e){ setMsg("dmodalmsg","오류: "+e,true); document.getElementById("dApprove").disabled=false; }
+}
+async function rejectCand(){
+  if(!confirm("이 후보를 반려할까요?"))return;
+  try{ const r=await fetch(DAPI+"/candidate/"+curCand+"/reject",{method:"POST"});
+    if(r.ok){ document.getElementById("dmodal").classList.remove("on"); loadDiscovery(); }
+  }catch(e){ setMsg("dmodalmsg","오류: "+e,true); }
 }
 function setMsg(id,m,bad){ const el=document.getElementById(id); if(el){ el.textContent=m; el.style.color=bad?"var(--bad)":"var(--muted)"; } }
 loadList();
