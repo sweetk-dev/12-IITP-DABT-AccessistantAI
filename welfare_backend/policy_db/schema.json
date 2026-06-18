@@ -537,6 +537,17 @@
     "version": {
       "type": "string",
       "minLength": 1
+    },
+    "active": {
+      "type": "boolean",
+      "description": "정책 활성 여부(soft delete). 미존재 시 활성으로 간주."
+    },
+    "deactivated_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "비활성 적용 일시(ISO8601). 활성 시 null/미존재."
     }
   }
 }

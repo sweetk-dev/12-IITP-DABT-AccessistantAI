@@ -39,7 +39,7 @@ async def tool_search_policies_by_metadata(
         limit: 최대 반환 개수 (1~20)
     """
     async def run(db: AsyncSession):
-        stmt = select(models.WelfarePolicy)
+        stmt = select(models.WelfarePolicy).where(models.WelfarePolicy.active.isnot(False))
         if category:
             stmt = stmt.where(models.WelfarePolicy.category == category)
         if severity:
@@ -121,7 +121,7 @@ async def tool_get_policy_details(policy_id: str) -> dict:
     """
     async def run(db: AsyncSession):
         p = (await db.execute(
-            select(models.WelfarePolicy).where(models.WelfarePolicy.id == policy_id)
+            select(models.WelfarePolicy).where(models.WelfarePolicy.id == policy_id, models.WelfarePolicy.active.isnot(False))
         )).scalar_one_or_none()
         if not p:
             return {"error": f"정책 {policy_id} 없음"}
@@ -154,7 +154,7 @@ async def tool_check_eligibility_criteria(policy_id: str) -> dict:
     """
     async def run(db: AsyncSession):
         p = (await db.execute(
-            select(models.WelfarePolicy).where(models.WelfarePolicy.id == policy_id)
+            select(models.WelfarePolicy).where(models.WelfarePolicy.id == policy_id, models.WelfarePolicy.active.isnot(False))
         )).scalar_one_or_none()
         if not p:
             return {"error": f"정책 {policy_id} 없음"}
