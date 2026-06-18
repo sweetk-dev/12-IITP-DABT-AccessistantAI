@@ -1,5 +1,6 @@
 # crawler/detectors.py
-# 5종 변경 감지 메서드 — crawl_targets.json 의 change_detection_method 와 1:1 대응.
+# 6종 변경 감지 메서드 — crawl_targets.json 의 change_detection_method 와 1:1 대응.
+# (page_hash / pdf_hash / last_modified_field / css_selector_text / manual_review / grounding)
 #
 # 호출 시그니처 통일:
 #   async def detect_xxx(target: dict, snapshot_path: Path) -> ChangeResult
@@ -32,6 +33,11 @@ TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 # JS 렌더링(SPA) 의심 임계 — httpx 가 받은 정규화 본문이 이보다 짧으면 본문을 못 받은 것으로 의심한다.
 # SPA 는 빈 셸(스크립트만)이 와서 본문이 매우 짧다. 운영 데이터에 맞춰 JS_SUSPECT_MIN_CHARS 로 조정.
 JS_SUSPECT_MIN_CHARS = int(os.environ.get("JS_SUSPECT_MIN_CHARS", "250"))
+
+# Gemini google_search grounding — JS 렌더링 등 httpx 로 본문을 못 받는 출처용 (Step 2)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_GROUNDING_MODEL = os.environ.get("GEMINI_LLM_MODEL", "gemini-3.1-pro-preview")
+GEMINI_API_URL = (os.environ.get("GEMINI_API_URL") or "https://generativelanguage.googleapis.com").rstrip("/")
 
 
 def _js_suspect(body_len: int) -> bool:
@@ -66,6 +72,7 @@ SNAPSHOT_FILES = {
     "pdf_hash": "pdf_hash.txt",
     "last_modified_field": "last_modified.txt",
     "css_selector_text": "selector.txt",
+    "grounding": "grounding_hash.txt",
 }
 
 
@@ -448,6 +455,72 @@ async def detect_manual_review(target: dict, snapshot_dir: Path, *, client: http
 
 
 # ─────────────────────────────────────────────────────────────
+# 6) grounding — Gemini google_search 로 현재 본문 취득 (JS 렌더링/SPA 출처용, Step 2)
+#    httpx 가 빈 셸만 받는 SPA 출처를, 정책DB 를 처음 만들 때처럼 웹검색(grounding)으로
+#    공식 출처 기준 현재 본문을 받아 변경 감지 + LLM 갱신 입력으로 쓴다. 비결정적 프로즈는
+#    하위 LLM 필드패치(증거 기반) + 사람 confirm 파이프라인이 흡수(자동 반영 없음).
+# ─────────────────────────────────────────────────────────────
+async def _gemini_grounded_text(query: str, *, client: httpx.AsyncClient) -> Optional[str]:
+    """Gemini generateContent + google_search tool 로 grounded 본문 텍스트를 받는다."""
+    if not GEMINI_API_KEY:
+        logger.warning("grounding: GEMINI_API_KEY 미설정 — 건너뜀")
+        return None
+    url = f"{GEMINI_API_URL}/v1beta/models/{GEMINI_GROUNDING_MODEL}:generateContent"
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": query}]}],
+        "tools": [{"google_search": {}}],
+        "generationConfig": {"temperature": 0, "maxOutputTokens": 8000},
+    }
+    try:
+        resp = await client.post(
+            url,
+            headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
+            json=payload, timeout=httpx.Timeout(120.0, connect=10.0),
+        )
+        if resp.status_code >= 400:
+            logger.warning("grounding HTTP %s", resp.status_code)
+            return None
+        data = resp.json()
+        cands = data.get("candidates") or []
+        if not cands:
+            return None
+        parts = (cands[0].get("content") or {}).get("parts") or []
+        # thinking 파트(thought=True) 제외, 실제 응답 텍스트만
+        text = "".join(p.get("text", "") for p in parts if p.get("text") and not p.get("thought")).strip()
+        return text or None
+    except Exception as e:
+        logger.warning("grounding 호출 실패: %s", e)
+        return None
+
+
+def _grounding_query(target: dict) -> str:
+    title = target.get("title") or ""
+    url = target.get("url") or ""
+    return (
+        f"대한민국 장애인 복지 정책 '{title}'의 현재 공식 내용을 알려줘. "
+        f"공식 출처(law.go.kr, 보건복지부 등 관할 부처, 운영기관 공식 페이지, 복지로)를 근거로 "
+        f"지원 금액·요율·자격 기준·시행일·신청 방법·신청처를 사실 위주로 정리해줘. "
+        f"참고 출처: {url}. 추측 금지 — 공식 출처에서 확인 안 되면 '확인 불가'로 표기."
+    )
+
+
+async def detect_grounding(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
+    text = await _gemini_grounded_text(_grounding_query(target), client=client)
+    if not text:
+        return ChangeResult(False, "fetch_failed | grounding_unavailable", status="fetch_failed")
+    new_hash = _hash_bytes(text.encode("utf-8"))
+    prev_hash = _read_prev_hash(snapshot_dir, "grounding")
+    changed = (prev_hash is None) or (prev_hash != new_hash)
+    return ChangeResult(
+        changed=changed,
+        reason="최초 스냅샷" if prev_hash is None else ("grounding 본문 변경" if changed else "변경 없음"),
+        new_content=text.encode("utf-8") if (changed or revalidate) else None,
+        new_hash=new_hash,
+        body_len=len(text),
+    )
+
+
+# ─────────────────────────────────────────────────────────────
 # 디스패처
 # ─────────────────────────────────────────────────────────────
 DETECTORS = {
@@ -456,6 +529,7 @@ DETECTORS = {
     "last_modified_field": detect_last_modified_field,
     "css_selector_text": detect_css_selector_text,
     "manual_review": detect_manual_review,
+    "grounding": detect_grounding,
 }
 
 
@@ -467,7 +541,7 @@ def save_content_snapshot(snapshot_dir: Path, method: str, result: ChangeResult)
     """변경 본문만 저장 (llm_updater LLM 입력·진단용). baseline 은 건드리지 않는다."""
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     if result.new_content is not None:
-        ext = "pdf" if method == "pdf_hash" else "html"
+        ext = "txt" if method == "grounding" else ("pdf" if method == "pdf_hash" else "html")
         (snapshot_dir / f"latest.{ext}").write_bytes(result.new_content)
     # page_hash 청크는 pending 으로만 저장 — confirm 시 chunks.json 으로 승격.
     if method == "page_hash" and result.new_chunks is not None:

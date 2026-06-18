@@ -11,7 +11,7 @@
 ```
 policy_db/crawler/
 ├── __init__.py
-├── detectors.py          # 5종 변경 감지
+├── detectors.py          # 6종 변경 감지(+ grounding)
 ├── crawler.py            # 메인 오케스트레이션 (CLI)
 ├── llm_backends.py       # ⭐ LLM 백엔드 추상화 — Claude/Gemma 교체 가능
 ├── llm_updater.py     # 기존/변경 출처 → LLM → 갱신 JSON (백엔드 무관)
@@ -261,7 +261,7 @@ if sc and sc.grounding_metadata:
 - **첫 실행은 변경 0건이 정상** — 모든 출처가 "최초 스냅샷" 으로 기록되어 비교 기준이 됨. 다음 회차부터 실제 감지 시작.
 - **LLM 응답이 schema 위배** — staging/ 에 `_FAILED_*.txt` 디버그 파일이 저장됨. 시스템 프롬프트 보강 필요.
 - **변경 감지 false positive** — 페이지에 동적 타임스탬프가 있으면 매번 변경됨. detectors.py 의 `_mask_dynamic_noise()` 마스킹 패턴을 보강(조회수·세션·날짜 등). page_hash 는 `_normalize_html_text()` 로 정규화한 본문만 비교하고, last_modified_field 는 날짜를 보존(`mask_dates=False`)한다.
-- **변경 감지 false negative** — JS 렌더링 페이지는 httpx 만으로는 못 잡음. 향후 Playwright 도입 검토.
+- **변경 감지 false negative (JS 렌더링/SPA)** — httpx 는 빈 셸만 받음. 크롤러가 본문 과소 출처를 리포트의 "JS 렌더링 의심" 섹션에 표면화한다(Step 1). 해당 출처는 `change_detection_method` 를 `grounding` 으로 바꾸면 Gemini google_search 로 공식 출처 기준 현재 본문을 받아 변경 감지·LLM 갱신에 사용한다(Step 2). grounding 본문은 `latest.txt` 로 저장되고 비결정적 프로즈는 LLM 필드패치+사람 confirm 이 흡수.
 - **LLM_BACKEND 전환 시 응답 품질 차이** — Claude → Gemma 교체 후 첫 회차는 `--skip-claude` 로 감지만 한 뒤 일부 항목만 수동 테스트하며 SI 튜닝 권장.
 
 ### 환경변수 누락 (드물지만 발생 시)
