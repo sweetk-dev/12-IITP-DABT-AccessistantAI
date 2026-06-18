@@ -123,8 +123,8 @@ async def _process_target(target: dict, client: httpx.AsyncClient, args) -> Chan
     snapshot_dir = SNAPSHOTS_DIR / target_id
     result = await detector(target, snapshot_dir, client=client)
 
-    # 변경 감지 시 본문만 저장 (baseline 은 confirm 반영 시 전진 — #27 A안)
-    if result.changed and not args.dry_run:
+    # 변경 감지 시(또는 재검증 모드) 본문 저장 (baseline 은 confirm 반영 시 전진 — #27 A안)
+    if (result.changed or getattr(args, "revalidate", False)) and not args.dry_run:
         save_content_snapshot(snapshot_dir, method, result)
 
     return result
@@ -218,7 +218,7 @@ async def run(args):
                 "used_by_items": t.get("used_by_items", []),
             })
             continue
-        if r.changed:
+        if r.changed or getattr(args, "revalidate", False):
             changes.append({
                 "target_id": tid,
                 "title": t.get("title"),
@@ -431,6 +431,8 @@ def main():
                    help="used_by_items 에 해당 정책 ID 가 포함된 출처만 점검 (예: B001)")
     p.add_argument("--init-baseline", dest="init_baseline", action="store_true",
                    help="현재 출처 상태를 비교 baseline 으로 확정(LLM/staging 없음) + 관련 staging 정리")
+    p.add_argument("--revalidate", action="store_true",
+                   help="해시 변경 여부와 무관하게 모든(또는 --policy) 정책을 현재 출처로 재검증 (무변경은 staging 미생성)")
     p.add_argument("--mark-reviewed", type=str, default=None,
                    help="수동 검토 완료 표시 — target_id(또는 all)의 마지막 검토일을 오늘로 기록 후 종료")
     args = p.parse_args()
