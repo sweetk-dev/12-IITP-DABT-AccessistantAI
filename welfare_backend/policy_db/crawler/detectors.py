@@ -47,7 +47,7 @@ def _hash_bytes(data: bytes) -> str:
 
 
 # ── 스냅샷 파일 매핑 + 공통 비교 헬퍼 ─────────────────────────
-# 변경 감지 방식 → 스냅샷 파일명. 읽기(_read_prev_hash)와 쓰기(save_snapshot)가
+# 변경 감지 방식 → 스냅샷 파일명. 읽기(_read_prev_hash)와 쓰기(save_baseline_snapshot)가
 # 동일 매핑을 공유하므로 "저장=해시 / 비교=원문" 같은 불일치가 재발하지 않는다.
 SNAPSHOT_FILES = {
     "page_hash": "page_hash.txt",
@@ -476,8 +476,11 @@ def save_baseline_snapshot(snapshot_dir: Path, method: str, new_hash) -> bool:
 
 
 def save_snapshot(snapshot_dir: Path, method: str, result: ChangeResult):
-    """[호환] 본문 + baseline 을 한 번에 저장 (수동 도구·테스트용).
-    정기 크롤러는 #27 A안에 따라 save_content_snapshot(감지) + save_baseline_snapshot(confirm)
-    로 분리 호출한다."""
+    """[테스트 전용] 본문 + baseline 을 한 번에 저장하는 편의 래퍼.
+
+    ⚠️ 프로덕션/운영 코드에서 호출하지 말 것. 현재 호출처는 단위 테스트뿐이며
+    (test_detectors.py / test_snapshot_split.py), 정기 크롤러는 #27 A안에 따라
+    save_content_snapshot(감지 시점) + save_baseline_snapshot(confirm 반영 시점)
+    을 분리 호출한다."""
     save_content_snapshot(snapshot_dir, method, result)
     save_baseline_snapshot(snapshot_dir, method, result.new_hash)
