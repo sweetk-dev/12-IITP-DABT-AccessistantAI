@@ -15,6 +15,7 @@ _PDB = Path(__file__).resolve().parent / "policy_db"
 if str(_PDB) not in sys.path:
     sys.path.insert(0, str(_PDB))
 from crawler import review_core as rc  # noqa: E402
+from crawler import policy_core as pc  # noqa: E402
 
 router = APIRouter(tags=["admin"])
 
@@ -47,6 +48,53 @@ def staging_apply(policy_id: str, payload: dict = Body(default={})):
 @router.post("/admin/api/staging/{policy_id}/reject")
 def staging_reject(policy_id: str):
     r = rc.reject(policy_id)
+    if not r.get("ok"):
+        raise HTTPException(status_code=400, detail=r)
+    return r
+
+
+# ── 정책 관리 (CRUD + soft delete) ──
+@router.get("/admin/api/policies")
+def policies_list():
+    return pc.list_policies()
+
+
+@router.get("/admin/api/policy/{policy_id}")
+def policy_get(policy_id: str):
+    r = pc.get_policy(policy_id)
+    if r.get("error"):
+        raise HTTPException(status_code=404, detail=r["error"])
+    return r
+
+
+@router.put("/admin/api/policy/{policy_id}")
+def policy_update(policy_id: str, payload: dict = Body(...)):
+    r = pc.update_policy(policy_id, payload)
+    if not r.get("ok"):
+        raise HTTPException(status_code=400, detail=r)
+    return r
+
+
+@router.post("/admin/api/policy")
+def policy_create(payload: dict = Body(...)):
+    data = payload.get("data") or payload
+    r = pc.create_policy(data, slug=payload.get("slug"))
+    if not r.get("ok"):
+        raise HTTPException(status_code=400, detail=r)
+    return r
+
+
+@router.post("/admin/api/policy/{policy_id}/deactivate")
+def policy_deactivate(policy_id: str):
+    r = pc.deactivate(policy_id)
+    if not r.get("ok"):
+        raise HTTPException(status_code=400, detail=r)
+    return r
+
+
+@router.post("/admin/api/policy/{policy_id}/reactivate")
+def policy_reactivate(policy_id: str):
+    r = pc.reactivate(policy_id)
     if not r.get("ok"):
         raise HTTPException(status_code=400, detail=r)
     return r

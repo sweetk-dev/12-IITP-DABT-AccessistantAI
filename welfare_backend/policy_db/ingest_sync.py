@@ -112,8 +112,8 @@ def process_file(file_path, file_hash, cur, conn):
         insert_master_query = """
             INSERT INTO welfare_policies 
             (id, leaflet_section, leaflet_number, title, short_summary, category, benefit_type, 
-             severity_levels, has_companion_benefit, has_income_criteria, age_min, age_max, full_data, last_verified, version)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+             severity_levels, has_companion_benefit, has_income_criteria, age_min, age_max, full_data, last_verified, version, active, deactivated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE SET
                 leaflet_section = EXCLUDED.leaflet_section, leaflet_number = EXCLUDED.leaflet_number,
                 title = EXCLUDED.title, short_summary = EXCLUDED.short_summary,
@@ -121,7 +121,8 @@ def process_file(file_path, file_hash, cur, conn):
                 severity_levels = EXCLUDED.severity_levels, has_companion_benefit = EXCLUDED.has_companion_benefit,
                 has_income_criteria = EXCLUDED.has_income_criteria, age_min = EXCLUDED.age_min,
                 age_max = EXCLUDED.age_max, full_data = EXCLUDED.full_data,
-                last_verified = EXCLUDED.last_verified, version = EXCLUDED.version, updated_at = NOW();
+                last_verified = EXCLUDED.last_verified, version = EXCLUDED.version,
+                active = EXCLUDED.active, deactivated_at = EXCLUDED.deactivated_at, updated_at = NOW();
         """
         cur.execute(insert_master_query, (
             policy_id, data.get("leaflet_section"), data.get("leaflet_number"),
@@ -129,10 +130,17 @@ def process_file(file_path, file_hash, cur, conn):
             eligibility.get("severity_levels", []), True if eligibility.get("companion_allowed") else False, 
             True if eligibility.get("income_criteria") else False, *parse_age_criteria(eligibility.get("age_criteria")), 
             Json(data), data.get("last_verified"), 
-            file_hash # 32글자 해시값이 에러 없이 쏙 들어갑니다!
+            file_hash, # 32글자 해시값이 에러 없이 쏙 들어갑니다!
+            data.get("active", True), data.get("deactivated_at"),
         ))
 
         cur.execute("DELETE FROM policy_chunks WHERE policy_id = %s;", (policy_id,))
+
+        # soft delete: 비활성 정책은 청크 재생성하지 않음 → 검색/답변에서 제외
+        if not data.get("active", True):
+            conn.commit()
+            logging.info(f"[{policy_id}] ⏸ 비활성 정책 — 청크 삭제(검색 제외) 후 종료")
+            return True
 
         chunks = extract_chunks(data)
         insert_chunk_query = """
@@ -198,6 +206,10 @@ def main():
 
         # [자동 패치] 해시값(32자)이 들어갈 수 있도록 version 컬럼 길이를 안전하게 확장합니다.
         cur.execute("ALTER TABLE welfare_policies ALTER COLUMN version TYPE VARCHAR(50);")
+        # soft delete 컬럼 자동 마이그레이션(멱등)
+        cur.execute("ALTER TABLE welfare_policies ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;")
+        cur.execute("ALTER TABLE welfare_policies ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMPTZ;")
+        conn.commit()
         conn.commit()
         
     except Exception as e:

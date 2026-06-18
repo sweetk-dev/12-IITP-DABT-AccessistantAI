@@ -37,6 +37,8 @@ class WelfarePolicy(Base):
     full_data = Column(JSONB)  # 전체 JSON 통째로 (Fat Tool Response 활용)
     last_verified = Column(Date)
     version = Column(String(10))
+    active = Column(Boolean, nullable=False, server_default="true")  # soft delete
+    deactivated_at = Column(DateTime(timezone=True))                 # 비활성 적용 일시
     created_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True))
 
