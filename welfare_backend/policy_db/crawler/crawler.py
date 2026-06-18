@@ -58,10 +58,10 @@ logger = logging.getLogger("crawler")
 
 # ── 동적 import (패키지/스크립트 양쪽 지원) ──────────────────
 try:
-    from .detectors import DETECTORS, save_content_snapshot, ChangeResult
+    from .detectors import DETECTORS, save_content_snapshot, save_baseline_snapshot, ChangeResult
 except ImportError:
     sys.path.insert(0, str(ROOT))
-    from crawler.detectors import DETECTORS, save_content_snapshot, ChangeResult  # type: ignore
+    from crawler.detectors import DETECTORS, save_content_snapshot, save_baseline_snapshot, ChangeResult  # type: ignore
 
 
 def _load_targets() -> dict:
@@ -130,6 +130,25 @@ async def _process_target(target: dict, client: httpx.AsyncClient, args) -> Chan
     return result
 
 
+def _purge_staging(scope_pids):
+    """staging 의 .staged.json(+사이드카)을 .rejected 로 이동. scope_pids 비면 전체."""
+    import shutil
+    rej = STAGING_DIR / ".rejected"
+    rej.mkdir(parents=True, exist_ok=True)
+    n = 0
+    for f in list(STAGING_DIR.glob("B0*.staged.json")):
+        pid = f.name.split("_")[0]
+        if scope_pids and pid not in scope_pids:
+            continue
+        shutil.move(str(f), str(rej / f.name))
+        for ext in (".sources.json", ".review.json", ".triage.json"):
+            side = f.parent / f.name.replace(".staged.json", ext)
+            if side.exists():
+                shutil.move(str(side), str(rej / side.name))
+        n += 1
+    return n
+
+
 async def run(args):
     SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
     STAGING_DIR.mkdir(parents=True, exist_ok=True)
@@ -142,6 +161,9 @@ async def run(args):
     if args.only:
         targets = [t for t in targets if args.only.lower() in t["target_id"].lower()]
         logger.info("필터 적용 — %d개 타겟만 검사", len(targets))
+    if getattr(args, "policy", None):
+        targets = [t for t in targets if args.policy in (t.get("used_by_items") or [])]
+        logger.info("정책 필터(%s) — %d개 타겟만 검사", args.policy, len(targets))
 
     logger.info("🕷 크롤러 시작 — %d개 타겟, dry_run=%s, skip_claude=%s",
                 len(targets), args.dry_run, args.skip_claude)
@@ -165,6 +187,22 @@ async def run(args):
                     return t, ChangeResult(False, f"exception: {e}")
 
         results = await asyncio.gather(*[task(t) for t in targets])
+
+    # ── 기준 확정(baseline 초기화) 모드 — LLM/staging 없이 비교 기준만 설정 ──
+    if getattr(args, "init_baseline", False):
+        n_base = 0
+        for t, r in results:
+            method = t.get("change_detection_method")
+            if method == "manual_review" or not getattr(r, "new_hash", None):
+                continue
+            if save_baseline_snapshot(SNAPSHOTS_DIR / t["target_id"], method, r.new_hash):
+                n_base += 1
+        scope_pids = {args.policy} if getattr(args, "policy", None) else set()
+        purged = _purge_staging(scope_pids)
+        msg = f"기준 확정 완료 — baseline {n_base}개 설정, staging 정리 {purged}개"
+        logger.info("🧱 %s", msg)
+        print(msg)
+        return 0
 
     for t, r in results:
         tid = t["target_id"]
@@ -386,6 +424,10 @@ def main():
     p.add_argument("--dry-run", action="store_true", help="다운로드/스냅샷 갱신 없이 감지만")
     p.add_argument("--skip-claude", action="store_true", help="Claude API 호출 생략, 감지·리포트만")
     p.add_argument("--only", type=str, default=None, help="target_id 부분일치 필터")
+    p.add_argument("--policy", type=str, default=None,
+                   help="used_by_items 에 해당 정책 ID 가 포함된 출처만 점검 (예: B001)")
+    p.add_argument("--init-baseline", dest="init_baseline", action="store_true",
+                   help="현재 출처 상태를 비교 baseline 으로 확정(LLM/staging 없음) + 관련 staging 정리")
     p.add_argument("--mark-reviewed", type=str, default=None,
                    help="수동 검토 완료 표시 — target_id(또는 all)의 마지막 검토일을 오늘로 기록 후 종료")
     args = p.parse_args()

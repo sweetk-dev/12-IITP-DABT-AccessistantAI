@@ -28,7 +28,7 @@ DEFAULT_CFG = {
 }
 
 _status = {
-    "crawl":  {"running": False, "last_run": None, "last_status": None, "last_output": None},
+    "crawl":  {"running": False, "label": None, "last_run": None, "last_status": None, "last_output": None},
     "backup": {"running": False, "last_run": None, "last_status": None, "last_output": None},
 }
 _lock = threading.Lock()
@@ -46,14 +46,16 @@ def _now():
     return datetime.now().isoformat(timespec="seconds")
 
 
-def _run_crawl():
+def _run_crawl(extra_args=None, label="full"):
     with _lock:
         if _status["crawl"]["running"]:
             return
         _status["crawl"]["running"] = True
-    logger.info("크롤 시작(백그라운드)")
+        _status["crawl"]["label"] = label
+    logger.info("크롤 시작(백그라운드) — %s", label)
     try:
-        r = subprocess.run(["python", "-m", "crawler.crawler"], cwd=str(_POLICYDB),
+        cmd = ["python", "-m", "crawler.crawler"] + list(extra_args or [])
+        r = subprocess.run(cmd, cwd=str(_POLICYDB),
                            capture_output=True, text=True, timeout=3600)
         combined = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
         out = "\n".join(combined.splitlines()[-15:])
@@ -103,14 +105,27 @@ def _run_backup():
         logger.exception("백업 실패: %s", e)
 
 
-def run_crawl_now():
+def _start_crawl(extra_args, label):
     with _lock:
         if _status["crawl"]["running"]:
             return {"started": False, "reason": "이미 실행 중"}
     if not _sched:
         return {"started": False, "reason": "스케줄러 미기동"}
-    _sched.add_job(_run_crawl, id="crawl_now", replace_existing=True)
-    return {"started": True}
+    _sched.add_job(_run_crawl, args=[extra_args, label], id="crawl_now", replace_existing=True)
+    return {"started": True, "label": label}
+
+
+def run_crawl_now():
+    return _start_crawl([], "full")
+
+
+def run_crawl_policy(policy_id):
+    return _start_crawl(["--policy", policy_id], f"policy {policy_id}")
+
+
+def run_init_baseline(policy_id=None):
+    extra = ["--init-baseline"] + (["--policy", policy_id] if policy_id else [])
+    return _start_crawl(extra, ("기준확정 " + policy_id) if policy_id else "기준확정 전체")
 
 
 def run_backup_now():

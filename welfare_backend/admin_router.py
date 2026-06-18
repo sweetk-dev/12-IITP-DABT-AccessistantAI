@@ -115,6 +115,16 @@ def policy_reactivate(policy_id: str):
     return r
 
 
+@router.post("/admin/api/policy/{policy_id}/crawl")
+def policy_crawl(policy_id: str):
+    return ops.run_crawl_policy(policy_id)
+
+
+@router.post("/admin/api/policy/{policy_id}/init-baseline")
+def policy_init_baseline(policy_id: str):
+    return ops.run_init_baseline(policy_id)
+
+
 # ── 미답변 질의 조회 (읽기 전용) ──
 _FALLBACK_REASONS = ["low_similarity", "empty_result", "category_mismatch",
                      "explicit_no_info", "google_search", "tool_error", "unknown"]
@@ -188,6 +198,11 @@ def ops_crawl_run():
 @router.post("/admin/api/ops/backup/run")
 def ops_backup_run():
     return ops.run_backup_now()
+
+
+@router.post("/admin/api/ops/init-baseline")
+def ops_init_baseline(payload: dict = Body(default={})):
+    return ops.run_init_baseline(payload.get("policy_id"))
 
 
 @router.get("/admin", response_class=HTMLResponse)
