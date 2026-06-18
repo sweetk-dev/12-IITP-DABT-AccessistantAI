@@ -152,7 +152,7 @@ def _advance_baselines(staged_path: Path):
     n = 0
     for s in sources or []:
         sd, method, nh = s.get("snapshot_dir"), s.get("method"), s.get("new_hash")
-        if sd and method and nh and save_baseline_snapshot(ROOT / sd, method, nh):
+        if sd and method and nh and save_baseline_snapshot(DATA_ROOT / sd, method, nh):
             n += 1
     logger.info("🔁 baseline 전진: %d개 출처", n)
 
