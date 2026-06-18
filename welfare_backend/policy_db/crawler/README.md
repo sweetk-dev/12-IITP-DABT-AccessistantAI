@@ -69,15 +69,16 @@ GEMMA_API_KEY=...               # (선택, vLLM 등 Bearer 인증 필요 시)
 
 `welfare_backend/.env` 에 다음 키가 있는지 확인 (이미 등록 완료):
 ```env
-LLM_BACKEND=claude
-ANTHROPIC_API_KEY=sk-ant-...    # 등록됨
-GEMINI_API_KEY=...               # 임베딩용
+LLM_BACKEND=gemini               # 현재 기본 백엔드
+GEMINI_API_KEY=...               # 갱신 LLM + 임베딩 공용 (Google 키 단일화)
+GEMINI_LLM_MODEL=gemini-3.1-pro-preview   # (선택)
+ANTHROPIC_API_KEY=sk-ant-...     # (선택) LLM_BACKEND=claude 로 전환 시에만 필요
 DB_HOST=<DB_HOST>           # 테스트 서버
 ```
 
 추가 패키지 (이미 requirements.txt 에 포함):
 ```bash
-pip install anthropic httpx jsonschema
+pip install google-genai anthropic httpx jsonschema beautifulsoup4 trafilatura readability-lxml pypdf
 ```
 
 ### 2. 크롤링 실행

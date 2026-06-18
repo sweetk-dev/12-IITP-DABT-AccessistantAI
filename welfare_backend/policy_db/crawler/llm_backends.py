@@ -1,18 +1,19 @@
 # crawler/llm_backends.py
 # LLM 갱신 엔진 추상화 — 외부 API(Anthropic)와 온프레미스 LLM(Gemma 등)을 동일 인터페이스로.
 #
-# 현재 단계: claude (Anthropic API) — 검증·기본값
-# 향후 단계: gemma (Ollama / vLLM / 자체 HTTP 서빙) — 온프레미스 서버 도입 시
+# 현재 단계: gemini (Google Generative Language API) — 기본값, 임베딩·Live 와 키 단일화
+# 대안: claude (Anthropic API), gemma (온프레미스 Ollama / vLLM / 자체 HTTP 서빙)
 #
 # 백엔드 선택은 환경변수 LLM_BACKEND 로:
-#   LLM_BACKEND=claude   (기본)
+#   LLM_BACKEND=gemini   (기본)
+#   LLM_BACKEND=claude
 #   LLM_BACKEND=gemma
 #
 # 각 백엔드는 동일한 generate_json_update() 시그니처를 따름:
 #   async def generate_json_update(system_prompt: str, user_message: str,
 #                                  max_tokens: int) -> str
 #
-# 반환은 "갱신된 JSON 본체 문자열" 1개. 파싱/검증은 호출자(claude_updater) 책임.
+# 반환은 "갱신된 JSON 본체 문자열" 1개. 파싱/검증은 호출자(llm_updater) 책임.
 import os
 import logging
 from abc import ABC, abstractmethod
@@ -166,7 +167,7 @@ class GeminiBackend(LLMBackend):
       POST /v1beta/models/{model}:generateContent
         { systemInstruction, contents,
           generationConfig:{temperature:0, responseMimeType:'application/json'} }
-    응답 JSON 본문(문자열) 1개 반환 — 파싱/검증은 claude_updater 책임(백엔드 무관).
+    응답 JSON 본문(문자열) 1개 반환 — 파싱/검증은 llm_updater 책임(백엔드 무관).
     """
 
     name = "gemini"
@@ -228,7 +229,7 @@ class GeminiBackend(LLMBackend):
 # ─────────────────────────────────────────────────────────────
 def get_backend(name: Optional[str] = None) -> LLMBackend:
     """LLM_BACKEND 환경변수 또는 인자 기반으로 백엔드 인스턴스 반환."""
-    name = (name or os.environ.get("LLM_BACKEND", "claude")).lower()
+    name = (name or os.environ.get("LLM_BACKEND", "gemini")).lower()
     if name == "claude":
         return AnthropicBackend()
     if name in ("gemma", "ollama"):
