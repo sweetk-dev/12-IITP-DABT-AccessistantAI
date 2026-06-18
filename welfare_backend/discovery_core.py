@@ -42,7 +42,8 @@ def _cosine(a, b):
 def _load_unresolved(limit=500):
     con = _db(); cur = con.cursor()
     cur.execute("SELECT id, user_query, embedding FROM unresolved_queries "
-                "WHERE embedding IS NOT NULL ORDER BY created_at DESC LIMIT %s", (limit,))
+                "WHERE embedding IS NOT NULL AND discovery_processed_at IS NULL "
+                "ORDER BY created_at DESC LIMIT %s", (limit,))
     rows = cur.fetchall(); con.close()
     out = []
     for rid, q, emb in rows:
@@ -138,10 +139,28 @@ def _schema_enums():
         return {"leaflet_section": [], "category": [], "benefit_type": []}
 
 
+def _ensure_processed_col():
+    con = _db(); cur = con.cursor()
+    cur.execute("ALTER TABLE unresolved_queries ADD COLUMN IF NOT EXISTS discovery_processed_at TIMESTAMPTZ")
+    con.commit(); con.close()
+
+
+def _mark_processed(ids):
+    if not ids:
+        return
+    con = _db(); cur = con.cursor()
+    cur.execute("UPDATE unresolved_queries SET discovery_processed_at = NOW() WHERE id = ANY(%s)", (list(ids),))
+    con.commit(); con.close()
+
+
 def run_discovery():
     """미답변 질의 → 군집 → 분류 → 신규 후보 초안 저장. 반환: 요약."""
     if not GEMINI_API_KEY:
         return {"error": "GEMINI_API_KEY 없음"}
+    try:
+        _ensure_processed_col()
+    except Exception as e:
+        return {"error": f"마이그레이션 실패: {e}"}
     rows = _load_unresolved()
     if not rows:
         return {"clusters": 0, "candidates": 0, "note": "임베딩된 미답변 질의 없음"}
@@ -203,12 +222,19 @@ def run_discovery():
         (_CAND_DIR / f"{cid}.json").write_text(json.dumps(cand, ensure_ascii=False, indent=2), encoding="utf-8")
         created.append(cid)
 
+    # 처리한 질의는 '발굴됨'으로 표시 → 다음 발굴에서 제외(중복 후보 방지)
+    processed_ids = [m["id"] for cl in clusters for m in cl["members"]]
+    try:
+        _mark_processed(processed_ids)
+    except Exception as e:
+        logger.warning("processed 표시 실패: %s", e)
+
     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
     summary = {"date": date.today().isoformat(), "clusters": len(clusters),
                "classified": clf, "novel": len(novel), "candidates": created}
     (_REPORT_DIR / f"{date.today().isoformat()}.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"clusters": len(clusters), "policy_novel": len(novel), "candidates": len(created)}
+    return {"clusters": len(clusters), "policy_novel": len(novel), "candidates": len(created), "processed": len(processed_ids)}
 
 
 def list_candidates():
