@@ -78,7 +78,7 @@ python -m scripts.weekly_report --use-llm  # 주간 리포트 + 의도 클러스
 
 ## 버전
 
-- 레포 태그: **v0.14.2** (정리 — crawler save_snapshot 을 테스트 전용으로 표기 명확화)
+- 레포 태그: **v0.14.3** (버그 — confirm_apply reject 시 .review/.triage 사이드카 누락 수정)
 - 백엔드 내부: v1.2
 - 인제스트 스크립트: `ingest_sync.py` (초기 구축 `--rebuild`, 증분 동기화 기본)
 
