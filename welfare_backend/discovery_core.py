@@ -112,6 +112,19 @@ def _existing_titles():
     return out
 
 
+def _schema_enums():
+    """schema.json 에서 enum 제약을 읽어 초안 프롬프트에 주입(스키마와 동기화)."""
+    try:
+        sc = json.loads((_APP / "policy_db" / "schema.json").read_text(encoding="utf-8"))
+        P = sc.get("properties", {})
+        def en(k):
+            return P.get(k, {}).get("enum") or []
+        return {"leaflet_section": en("leaflet_section"), "category": en("category"),
+                "benefit_type": en("benefit_type")}
+    except Exception:
+        return {"leaflet_section": [], "category": [], "benefit_type": []}
+
+
 def run_discovery():
     """미답변 질의 → 군집 → 분류 → 신규 후보 초안 저장. 반환: 요약."""
     if not GEMINI_API_KEY:
@@ -140,6 +153,7 @@ def run_discovery():
     except Exception as e:
         return {"clusters": len(clusters), "candidates": 0, "error": f"분류 실패: {e}"}
 
+    enums = _schema_enums()
     novel = [c for c in clf if c.get("policy_related") and c.get("novel")]
     _CAND_DIR.mkdir(parents=True, exist_ok=True)
     created = []
@@ -154,11 +168,15 @@ def run_discovery():
             "대한민국 장애인 지원 정책 중 다음 주제의 신규 정책 항목 초안을 작성하세요. "
             "공식 출처(law.go.kr·보건복지부·복지로 등)를 웹에서 찾아 근거로 쓰고, 추측 금지.\n"
             f"주제: {topic}\n관련 질문: {member_qs}\n\n"
-            "JSON 하나만 출력(설명·코드블록 없이). 키: id(빈 문자열), leaflet_section, leaflet_number(0), "
-            "title, short_summary, category, benefit_type, supported_amount{rate,amount,scope}, "
-            "eligibility{target}, legal_basis(배열), how_to_use{default}, application{}, "
-            'sources(배열 [{title,url,priority:"primary"}], 최소 1개 실제 URL), last_verified, version("1.0.0"). '
-            "확인 안 되는 필드는 보수적으로 비우되 sources 는 실제 URL 포함."
+            "JSON 하나만 출력(설명·코드블록 없이). 스키마 enum 을 반드시 지키세요.\n"
+            f"- leaflet_section 은 반드시 다음 중 하나: {enums['leaflet_section']} (지역·기타 정책은 \"기타\")\n"
+            f"- category 는 반드시 다음 중 하나: {enums['category']}\n"
+            f"- benefit_type 은 반드시 다음 중 하나: {enums['benefit_type']} (현금 지급은 \"현금지급\")\n"
+            "키: id(빈 문자열), leaflet_section, leaflet_number(0), title, short_summary, category, "
+            "benefit_type, supported_amount{rate,amount,scope}, eligibility{target}, legal_basis(배열), "
+            "how_to_use{default}, application{}, last_verified, version(\"1.0.0\"), "
+            'sources(배열, 각 항목 필수키 title·publisher·url + priority 는 ["primary","secondary","supplementary"] 중 하나, 최소 1개 실제 URL). '
+            "확인 안 되는 필드는 보수적으로 비우되 sources 는 실제 URL 과 publisher 를 포함."
         )
         draft = None
         try:
