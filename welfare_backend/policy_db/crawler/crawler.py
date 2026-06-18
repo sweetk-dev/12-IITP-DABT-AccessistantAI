@@ -25,6 +25,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 from dotenv import load_dotenv
@@ -178,17 +179,23 @@ async def run(args):
     skipped_staged = []   # 이미 staging 대기라 LLM 생략된 정책 (#27 A안)
     fallback_used = []    # 기본 URL 실패 → fallback_url 로 수집된 타겟 (URL 점검 필요 신호)
 
-    # ── 1) 변경 감지 동시 실행 (rate limit 위해 동시성 5 제한) ──
+    # ── 1) 변경 감지 동시 실행 (전역 동시성 5 + 호스트당 2 제한으로 예의) ──
     sem = asyncio.Semaphore(5)
+    host_sems = defaultdict(lambda: asyncio.Semaphore(2))
+
+    def _host(t):
+        return urlparse(t.get("url") or "").netloc
+
     async with httpx.AsyncClient() as client:
         async def task(t):
             async with sem:
-                try:
-                    r = await _process_target(t, client, args)
-                    return t, r
-                except Exception as e:
-                    logger.exception("타겟 처리 실패 %s: %s", t.get("target_id"), e)
-                    return t, ChangeResult(False, f"exception: {e}")
+                async with host_sems[_host(t)]:
+                    try:
+                        r = await _process_target(t, client, args)
+                        return t, r
+                    except Exception as e:
+                        logger.exception("타겟 처리 실패 %s: %s", t.get("target_id"), e)
+                        return t, ChangeResult(False, f"exception: {e}", status="exception")
 
         results = await asyncio.gather(*[task(t) for t in targets])
 
@@ -218,7 +225,7 @@ async def run(args):
                 "fallback_url": t.get("fallback_url"),
                 "used_by_items": t.get("used_by_items", []),
             })
-        if "fetch_failed" in r.reason or "exception" in r.reason:
+        if getattr(r, "status", "ok") != "ok":
             failures.append({"target_id": tid, "reason": r.reason, "url": t.get("url")})
             continue
         if t.get("change_detection_method") == "manual_review":

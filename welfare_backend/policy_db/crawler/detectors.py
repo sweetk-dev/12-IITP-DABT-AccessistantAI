@@ -40,6 +40,7 @@ class ChangeResult:
     new_chunks: Optional[list] = None
     url_used: Optional[str] = None      # 실제 성공한 URL (기본 또는 fallback)
     used_fallback: bool = False         # fallback_url 로 성공 → 기본 URL 점검 필요 신호
+    status: str = "ok"                  # ok / fetch_failed / exception — 실패 분류용(reason 문자열 매칭 대체)
 
 
 def _hash_bytes(data: bytes) -> str:
@@ -121,6 +122,11 @@ def _finalize_text(text: str, mask_dates: bool) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+# 의미 단위 청킹 블록 태그 (C8) — _chunks_from_soup / _chunk_html 공용
+BLOCK_TAGS = ["p", "li", "tr", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6",
+              "dt", "dd", "blockquote", "figcaption", "caption"]
+
+
 def _chunks_from_soup(soup) -> list:
     chunks = []
     for el in soup.find_all(BLOCK_TAGS):
@@ -154,11 +160,6 @@ def _normalize_html_text(html: bytes, mask_dates: bool = True) -> str:
     text = re.sub(r"<style[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
     return _finalize_text(text, mask_dates)
-
-
-# ── 의미 단위 청킹 (C8) ──────────────────────────────────────
-BLOCK_TAGS = ["p", "li", "tr", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6",
-              "dt", "dd", "blockquote", "figcaption", "caption"]
 
 
 def _chunk_html(html: bytes) -> list:
@@ -303,7 +304,7 @@ def _annotate(res: "ChangeResult", info: dict) -> "ChangeResult":
 async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
     resp, finfo = await _fetch(target, client=client)
     if resp is None:
-        return ChangeResult(False, _fetch_failed_reason(target, finfo))
+        return ChangeResult(False, _fetch_failed_reason(target, finfo), status="fetch_failed")
     # C6/#25: soup 1회 파싱으로 정규화 텍스트 + 청크 동시 산출 (이중 파싱 제거)
     text, new_chunks = _parse_page_hash(resp.content)
     new_hash = _hash_bytes(text.encode("utf-8"))
@@ -331,7 +332,7 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
 async def detect_pdf_hash(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
     resp, finfo = await _fetch(target, client=client)
     if resp is None:
-        return ChangeResult(False, _fetch_failed_reason(target, finfo))
+        return ChangeResult(False, _fetch_failed_reason(target, finfo), status="fetch_failed")
     new_hash = _hash_bytes(resp.content)
     prev_hash = _read_prev_hash(snapshot_dir, "pdf_hash")
     changed = (prev_hash is None) or (prev_hash != new_hash)
@@ -359,7 +360,7 @@ LAST_MOD_PATTERNS = [
 async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
     resp, finfo = await _fetch(target, client=client)
     if resp is None:
-        return ChangeResult(False, _fetch_failed_reason(target, finfo))
+        return ChangeResult(False, _fetch_failed_reason(target, finfo), status="fetch_failed")
     text = _normalize_html_text(resp.content, mask_dates=False)
     # HTTP Last-Modified 헤더도 함께 본다
     http_lm = resp.headers.get("Last-Modified", "")
@@ -387,12 +388,13 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
 #    crawl_targets 의 css_selector_hint 가 "re:<정규식>" 형태면 그 정규식 매칭 결과를,
 #    그 외(빈 값/설명/셀렉터)면 전체 본문(앞 5KB) 해시를 비교 키로 쓴다.
 #    (CSS 셀렉터 직접 지원은 의존성 최소화를 위해 향후 확장)
+#    ⚠️ 이름과 달리 실제 CSS 셀렉터 파싱은 아직 미지원 — re: 정규식 또는 5KB 해시 비교만.
 # ─────────────────────────────────────────────────────────────
 async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
     hint = (target.get("css_selector_hint") or "").strip()
     resp, finfo = await _fetch(target, client=client)
     if resp is None:
-        return ChangeResult(False, _fetch_failed_reason(target, finfo))
+        return ChangeResult(False, _fetch_failed_reason(target, finfo), status="fetch_failed")
     text = _normalize_html_text(resp.content)
 
     # hint 가 "re:" 프리픽스면 정규식으로 해석, 그 외(빈 값/셀렉터 설명 등)는

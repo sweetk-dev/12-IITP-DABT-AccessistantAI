@@ -14,7 +14,7 @@ policy_db/crawler/
 ├── detectors.py          # 5종 변경 감지
 ├── crawler.py            # 메인 오케스트레이션 (CLI)
 ├── llm_backends.py       # ⭐ LLM 백엔드 추상화 — Claude/Gemma 교체 가능
-├── claude_updater.py     # 기존/변경 출처 → LLM → 갱신 JSON (백엔드 무관)
+├── llm_updater.py     # 기존/변경 출처 → LLM → 갱신 JSON (백엔드 무관)
 ├── confirm_apply.py      # 사용자 검토 후 items/ 반영 + ingest_sync.py 자동 호출
 ├── README.md             # 이 문서
 │
@@ -56,7 +56,7 @@ GEMMA_API_STYLE=ollama          # 또는 openai (vLLM·LiteLLM 호환)
 GEMMA_API_KEY=...               # (선택, vLLM 등 Bearer 인증 필요 시)
 ```
 
-→ **코드 변경 없이 환경변수만 바꾸면 백엔드 교체 완료**. `claude_updater.py` 내부에서 `get_backend()` 가 자동으로 적절한 구현체를 반환.
+→ **코드 변경 없이 환경변수만 바꾸면 백엔드 교체 완료**. `llm_updater.py` 내부에서 `get_backend()` 가 자동으로 적절한 구현체를 반환.
 
 ### 추가 백엔드 작성
 `llm_backends.py` 의 `LLMBackend` 추상 클래스를 상속 → `generate_json_update()` 구현 → `get_backend()` 팩토리에 등록.
@@ -283,7 +283,7 @@ if sc and sc.grounding_metadata:
 2. **청크 기반 변경 감지 (v0.3, `_chunk_html` / `_chunk_diff`)**
    본문을 의미 단위(문단·리스트·표 행·제목)로 청킹해 이전 스냅샷과 비교하고, 추가/삭제/수정을 산출합니다. 유사도(difflib) 기반으로 "수정"을 분류해 add/remove 과대계상을 줄이며, 결과는 크롤러 리포트에 요약 출력됩니다.
 
-3. **필드 단위 패치 갱신 (v0.4, `claude_updater._apply_patch`)**
+3. **필드 단위 패치 갱신 (v0.4, `llm_updater._apply_patch`)**
    LLM 이 항목 전체 JSON 을 다시 쓰지 않고 변경된 필드만 패치(op/path/old/new/evidence/confidence)로 반환합니다. add/update 만 자동 적용하고 패치에 없는 필드는 불변으로 보존합니다. **delete 는 자동 적용하지 않고** 검토 항목(`.review.json`)으로 분리하며, 출처에 명시적 종료 문구(폐지·종료·미시행 등)가 있을 때만 `delete_candidate` 로 승격합니다.
 
 4. **반영 전 회귀 가드 (v0.5, `confirm_apply._regression_check`)**
