@@ -172,7 +172,8 @@ async function loadList(){
       div.innerHTML=`<div class="pid">${it.policy_id}</div><div class="ttl">${escapeHtml(it.title||"")}</div>
         <div class="badges"><span class="b changes">${it.n_changes} 변경</span>
         ${it.schema_ok?'<span class="b ok">스키마 OK</span>':'<span class="b bad">스키마 오류</span>'}
-        ${reg?'<span class="b bad">회귀 차단</span>':''}${it.review_count?`<span class="b warn">검토 ${it.review_count}</span>`:''}</div>`;
+        ${reg?'<span class="b bad">회귀 차단</span>':''}${it.review_count?`<span class="b warn">검토 ${it.review_count}</span>`:''}
+        ${it.priority?`<span class="b ${it.priority==='high'?'bad':(it.priority==='medium'?'warn':'off')}">${it.priority}</span>`:''}${it.hold?'<span class="b off">보류</span>':''}</div>`;
       div.onclick=()=>loadDetail(it.policy_id); el.appendChild(div);
     }
   }catch(e){ el.innerHTML='<div class="empty">로드 실패: '+e+'</div>'; }
@@ -180,7 +181,7 @@ async function loadList(){
 async function loadDetail(pid){ current=pid; loadList();
   const el=document.getElementById("detail"); el.innerHTML='<div class="empty">불러오는 중…</div>';
   try{ const r=await fetch(SAPI+"/"+pid); if(!r.ok){el.innerHTML='<div class="empty">로드 실패</div>';return;}
-    const d=await r.json(); const reg=d.regression&&d.regression.length;
+    const d=await r.json(); const reg=d.regression&&d.regression.length; const tri=d.triage||{};
     let h=`<h2>${d.policy_id} <span style="font-weight:400">${escapeHtml(d.title||"")}</span></h2>
       <div class="meta">${escapeHtml(d.staged_name)}${d.sources_changed&&d.sources_changed.length?" · 출처: "+escapeHtml(d.sources_changed.join(", ")):""}</div>`;
     if(reg) h+=`<div class="alert bad">회귀 가드 차단: ${escapeHtml(d.regression.join(" / "))}</div>`;
@@ -196,7 +197,14 @@ async function loadDetail(pid){ current=pid; loadList();
     h+=`<div class="bar"><label class="chk"><input type="checkbox" id="reingest" checked> 승인 시 DB 자동 재적재</label>
       <button class="primary" id="btnApply" onclick="applySel('${pid}')">선택 반영</button>
       <button class="danger" onclick="rejectOne('${pid}')">반려</button><span class="msg" id="msg"></span></div>`;
+    h+=`<div class="bar" style="padding-top:8px">
+      <span class="msg">분류</span>
+      <select id="trPriority"><option value="">우선순위-</option><option value="high">high</option><option value="medium">medium</option><option value="low">low</option></select>
+      <label class="chk"><input type="checkbox" id="trHold"> 보류</label>
+      <input id="trNote" placeholder="메모(선택)" style="flex:1;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit">
+      <button class="warn" onclick="saveTriage('${pid}')">분류 저장</button></div>`;
     el.innerHTML=h;
+    if(document.getElementById("trPriority")){ document.getElementById("trPriority").value=tri.priority||""; document.getElementById("trHold").checked=!!tri.hold; document.getElementById("trNote").value=tri.note||""; }
   }catch(e){ el.innerHTML='<div class="empty">로드 실패: '+e+'</div>'; }
 }
 async function applySel(pid){ const keys=Array.from(document.querySelectorAll(".selkey:checked")).map(x=>x.value);
@@ -208,6 +216,14 @@ async function applySel(pid){ const keys=Array.from(document.querySelectorAll(".
       setTimeout(()=>{loadList(); document.getElementById("detail").innerHTML='<div class="empty">반영 완료.</div>';},800); }
     else{ const d=j.detail||j; setMsg("msg","실패: "+(d.error||"")+(d.details?" ("+d.details.join("; ")+")":""),true); document.getElementById("btnApply").disabled=false; }
   }catch(e){ setMsg("msg","오류: "+e,true); document.getElementById("btnApply").disabled=false; }
+}
+async function saveTriage(pid){
+  const priority=document.getElementById("trPriority").value||null;
+  const hold=document.getElementById("trHold").checked;
+  const note=document.getElementById("trNote").value;
+  try{ const r=await fetch(SAPI+"/"+pid+"/triage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({priority,hold,note})});
+    if(r.ok){ setMsg("msg","분류 저장됨"); loadList(); } else setMsg("msg","분류 저장 실패",true);
+  }catch(e){ setMsg("msg","오류: "+e,true); }
 }
 async function rejectOne(pid){ if(!confirm(pid+" staging을 반려할까요?"))return;
   const r=await fetch(SAPI+"/"+pid+"/reject",{method:"POST"});
