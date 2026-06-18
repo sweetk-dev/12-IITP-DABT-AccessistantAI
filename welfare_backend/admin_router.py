@@ -22,6 +22,7 @@ from crawler import policy_core as pc  # noqa: E402
 from database import AsyncSessionLocal  # noqa: E402
 import models  # noqa: E402
 import scheduler as ops  # noqa: E402
+import discovery_core as dc  # noqa: E402
 
 router = APIRouter(tags=["admin"])
 
@@ -208,6 +209,48 @@ def ops_backup_run():
 @router.post("/admin/api/ops/init-baseline")
 def ops_init_baseline(payload: dict = Body(default={})):
     return ops.run_init_baseline(payload.get("policy_id"))
+
+
+# ── 신규 발굴 (Phase 5 Track B) ──
+@router.post("/admin/api/discovery/run")
+def discovery_run():
+    return ops.run_discovery_now()
+
+
+@router.get("/admin/api/discovery/candidates")
+def discovery_candidates():
+    return dc.list_candidates()
+
+
+@router.get("/admin/api/discovery/candidate/{cid}")
+def discovery_candidate(cid: str):
+    r = dc.get_candidate(cid)
+    if r.get("error"):
+        raise HTTPException(status_code=404, detail=r["error"])
+    return r
+
+
+@router.post("/admin/api/discovery/candidate/{cid}/reject")
+def discovery_reject(cid: str):
+    r = dc.set_status(cid, "rejected")
+    if not r.get("ok"):
+        raise HTTPException(status_code=400, detail=r)
+    return r
+
+
+@router.post("/admin/api/discovery/candidate/{cid}/approve")
+def discovery_approve(cid: str):
+    cand = dc.get_candidate(cid)
+    if cand.get("error"):
+        raise HTTPException(status_code=404, detail=cand["error"])
+    draft = cand.get("draft_item")
+    if not draft:
+        raise HTTPException(status_code=400, detail={"error": "초안 없음 — 승인 불가"})
+    r = pc.create_policy(draft, slug=(draft.get("title") or "new"))
+    if not r.get("ok"):
+        raise HTTPException(status_code=400, detail=r)
+    dc.set_status(cid, "approved")
+    return {"ok": True, "policy_id": r.get("policy_id"), "candidate": cid}
 
 
 @router.get("/admin", response_class=HTMLResponse)
