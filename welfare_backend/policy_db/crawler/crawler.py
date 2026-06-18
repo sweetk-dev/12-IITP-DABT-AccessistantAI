@@ -251,6 +251,9 @@ async def run(args):
         item_to_changes = defaultdict(list)
         for ch in changes:
             for pid in ch["used_by_items"]:
+                # 정책별 크롤(--policy): 공유 출처가 다른 정책까지 갱신하지 않도록 해당 정책만 처리
+                if getattr(args, "policy", None) and pid != args.policy:
+                    continue
                 item_to_changes[pid].append(ch)
 
         # 이미 staging 대기 중인 정책은 LLM 재호출 생략 (#27 A안 — 미확정 변경 중복 비용 방지)
