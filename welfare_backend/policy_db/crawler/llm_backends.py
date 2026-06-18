@@ -151,6 +151,79 @@ class GemmaBackend(LLMBackend):
 
 
 # ─────────────────────────────────────────────────────────────
+# 3) Gemini (외부 API) — Google generativelanguage REST
+# ─────────────────────────────────────────────────────────────
+class GeminiBackend(LLMBackend):
+    """
+    Google Gemini API(generativelanguage REST) 호출. 임베딩과 동일한 GEMINI_API_KEY 재사용.
+
+    환경변수:
+      GEMINI_API_KEY    (필수) Google AI Studio 키 — 임베딩과 공유
+      GEMINI_LLM_MODEL  기본 gemini-3.1-pro-preview
+      GEMINI_API_URL    기본 https://generativelanguage.googleapis.com
+
+    generateContent 호출:
+      POST /v1beta/models/{model}:generateContent
+        { systemInstruction, contents,
+          generationConfig:{temperature:0, responseMimeType:'application/json'} }
+    응답 JSON 본문(문자열) 1개 반환 — 파싱/검증은 claude_updater 책임(백엔드 무관).
+    """
+
+    name = "gemini"
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        api_url: Optional[str] = None,
+    ):
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        if not self.api_key:
+            raise RuntimeError(
+                "GEMINI_API_KEY 환경변수가 비어 있습니다 — welfare_backend/.env 확인"
+            )
+        self.model = model or os.environ.get("GEMINI_LLM_MODEL", "gemini-3.1-pro-preview")
+        self.api_url = (
+            api_url or os.environ.get("GEMINI_API_URL")
+            or "https://generativelanguage.googleapis.com"
+        ).rstrip("/")
+        self._timeout = httpx.Timeout(180.0, connect=10.0)
+
+    async def generate_json_update(
+        self, *, system_prompt: str, user_message: str, max_tokens: int = 16000
+    ) -> str:
+        url = f"{self.api_url}/v1beta/models/{self.model}:generateContent"
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": self.api_key,
+        }
+        payload = {
+            "systemInstruction": {"parts": [{"text": system_prompt}]},
+            "contents": [{"role": "user", "parts": [{"text": user_message}]}],
+            "generationConfig": {
+                "temperature": 0,
+                "maxOutputTokens": max_tokens,
+                "responseMimeType": "application/json",
+            },
+        }
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            resp = await client.post(url, headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+        candidates = data.get("candidates") or []
+        if not candidates:
+            return ""
+        parts = (candidates[0].get("content") or {}).get("parts") or []
+        # thinking 파트(thought=True)는 제외하고 실제 응답 텍스트만 결합
+        texts = [
+            p.get("text", "")
+            for p in parts
+            if p.get("text") and not p.get("thought")
+        ]
+        return "".join(texts)
+
+
+# ─────────────────────────────────────────────────────────────
 # 팩토리
 # ─────────────────────────────────────────────────────────────
 def get_backend(name: Optional[str] = None) -> LLMBackend:
@@ -160,4 +233,6 @@ def get_backend(name: Optional[str] = None) -> LLMBackend:
         return AnthropicBackend()
     if name in ("gemma", "ollama"):
         return GemmaBackend()
-    raise ValueError(f"unknown LLM_BACKEND: {name} (지원: claude, gemma)")
+    if name == "gemini":
+        return GeminiBackend()
+    raise ValueError(f"unknown LLM_BACKEND: {name} (지원: claude, gemma, gemini)")

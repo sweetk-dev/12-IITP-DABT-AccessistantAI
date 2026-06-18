@@ -1,6 +1,6 @@
 # 정책DB 정기 크롤러 (Phase 4 — 트랙 B)
 
-`crawl_targets.json` 의 출처들을 주기적으로 점검해 정책 변경을 감지하고, **LLM 백엔드(현 Claude API, 향후 온프레미스 Gemma)** 로 갱신 JSON 을 자동 생성한 뒤 staging 폴더에 저장합니다. 사용자가 검토 후 confirm 해야만 실제 DB(items/) 에 반영됩니다.
+`crawl_targets.json` 의 출처들을 주기적으로 점검해 정책 변경을 감지하고, **LLM 백엔드(현 Gemini API, Claude/온프레미스 Gemma 선택 가능)** 로 갱신 JSON 을 자동 생성한 뒤 staging 폴더에 저장합니다. 사용자가 검토 후 confirm 해야만 실제 DB(items/) 에 반영됩니다.
 
 > **운영 원칙**: LLM 자동 재적재 금지. 사용자가 매번 검토·승인하는 안전한 워크플로우.
 
@@ -28,11 +28,19 @@ policy_db/crawler/
 
 ---
 
-## LLM 백엔드 (현재 Claude → 향후 온프레미스 Gemma)
+## LLM 백엔드 (현재 Gemini → Claude / 온프레미스 Gemma 선택 가능)
 
 `llm_backends.py` 가 LLM 호출을 추상화. 환경변수 `LLM_BACKEND` 로 교체.
 
-### 현재(Phase 4): Claude API (외부)
+### 현재: Gemini API (외부, 권장 — 외부 API 벤더 단일화)
+```env
+LLM_BACKEND=gemini
+GEMINI_API_KEY=AIza...                 # 임베딩과 동일 키 재사용
+GEMINI_LLM_MODEL=gemini-3.1-pro-preview   # (선택, 기본값 동일)
+```
+> 임베딩·Live 음성과 동일한 Google 키 하나로 통합되어 키·결제·쿼터 관리가 단일화됩니다.
+
+### 대안: Claude API (외부)
 ```env
 LLM_BACKEND=claude
 ANTHROPIC_API_KEY=sk-ant-...
