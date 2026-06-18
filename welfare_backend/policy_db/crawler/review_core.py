@@ -28,6 +28,41 @@ def _sidecar(staged: Path, ext: str) -> Path:
     return staged.parent / staged.name.replace(".staged.json", ext)
 
 
+PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2, None: 3}
+
+
+def _read_triage(staged: Path) -> dict:
+    tf = _sidecar(staged, ".triage.json")
+    if tf.exists():
+        try:
+            return json.loads(tf.read_text(encoding="utf-8")) or {}
+        except Exception:
+            return {}
+    return {}
+
+
+def get_triage(policy_id):
+    found = ca._find_staged(policy_id)
+    return _read_triage(found[0]) if found else {}
+
+
+def set_triage(policy_id, priority=None, hold=None, note=None):
+    found = ca._find_staged(policy_id)
+    if not found:
+        return {"ok": False, "error": "staging 대기 항목 없음"}
+    cur = _read_triage(found[0])
+    if priority is not None:
+        cur["priority"] = priority if priority in ("high", "medium", "low") else None
+    if hold is not None:
+        cur["hold"] = bool(hold)
+    if note is not None:
+        cur["note"] = note
+    cur["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    _sidecar(found[0], ".triage.json").write_text(
+        json.dumps(cur, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"ok": True, **cur}
+
+
 def get_review(policy_id, _staged=None):
     """단일 정책의 staging 검토 정보(필드 diff + 검토/출처 + 회귀/스키마 상태)."""
     if _staged is not None:
@@ -79,6 +114,7 @@ def get_review(policy_id, _staged=None):
         "is_new": ep is None,
         "diffs": diffs, "review": review, "sources_changed": sources_changed,
         "regression": regression, "schema_ok": schema_ok, "schema_errors": schema_errors,
+        "triage": _read_triage(staged),
     }
 
 
@@ -98,6 +134,7 @@ def list_pending():
         info = get_review(pid, _staged=f)
         if info.get("error"):
             continue
+        tri = info.get("triage", {}) or {}
         out.append({
             "policy_id": pid,
             "title": info.get("title"),
@@ -109,7 +146,13 @@ def list_pending():
             "schema_ok": info["schema_ok"],
             "is_new": info["is_new"],
             "sources_changed": info["sources_changed"],
+            "priority": tri.get("priority"),
+            "hold": bool(tri.get("hold")),
+            "note": tri.get("note"),
         })
+    # 정렬: 비보류 우선 → 우선순위(high→low) → 최신순
+    out.sort(key=lambda x: x["mtime"], reverse=True)
+    out.sort(key=lambda x: (1 if x["hold"] else 0, PRIORITY_RANK.get(x["priority"], 3)))
     return out
 
 
@@ -156,7 +199,7 @@ def apply_selected(policy_id, selected_keys, reingest=True):
     applied = ca.STAGING_DIR / ".applied"
     applied.mkdir(parents=True, exist_ok=True)
     shutil.move(str(staged), str(applied / staged.name))
-    for ext in (".sources.json", ".review.json"):
+    for ext in (".sources.json", ".review.json", ".triage.json"):
         side = _sidecar(staged, ext)
         if side.exists():
             shutil.move(str(side), str(applied / side.name))
@@ -180,7 +223,7 @@ def reject(policy_id):
     rej = ca.STAGING_DIR / ".rejected"
     rej.mkdir(parents=True, exist_ok=True)
     shutil.move(str(staged), str(rej / staged.name))
-    for ext in (".sources.json", ".review.json"):
+    for ext in (".sources.json", ".review.json", ".triage.json"):
         side = _sidecar(staged, ext)
         if side.exists():
             shutil.move(str(side), str(rej / side.name))

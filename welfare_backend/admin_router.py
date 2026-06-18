@@ -59,6 +59,15 @@ def staging_reject(policy_id: str):
     return r
 
 
+@router.post("/admin/api/staging/{policy_id}/triage")
+def staging_triage(policy_id: str, payload: dict = Body(default={})):
+    r = rc.set_triage(policy_id, priority=payload.get("priority"),
+                      hold=payload.get("hold"), note=payload.get("note"))
+    if not r.get("ok"):
+        raise HTTPException(status_code=400, detail=r)
+    return r
+
+
 # ── 정책 관리 (CRUD + soft delete) ──
 @router.get("/admin/api/policies")
 def policies_list():
