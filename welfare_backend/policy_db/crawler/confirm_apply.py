@@ -170,9 +170,11 @@ def _apply_one(policy_id: str, *, diff_only: bool, reject: bool, auto_yes: bool)
         rej_dir = STAGING_DIR / ".rejected"
         rej_dir.mkdir(parents=True, exist_ok=True)
         shutil.move(str(latest), str(rej_dir / latest.name))
-        rej_sidecar = latest.parent / latest.name.replace(".staged.json", ".sources.json")
-        if rej_sidecar.exists():
-            shutil.move(str(rej_sidecar), str(rej_dir / rej_sidecar.name))
+        # 동반 사이드카 3종 모두 이동 (review_core.reject / _purge_staging 와 동일 — 고아 파일 방지)
+        for ext in (".sources.json", ".review.json", ".triage.json"):
+            side = latest.parent / latest.name.replace(".staged.json", ext)
+            if side.exists():
+                shutil.move(str(side), str(rej_dir / side.name))
         logger.info("🗑 reject 처리: %s → %s", latest.name, rej_dir)
         return True
 
