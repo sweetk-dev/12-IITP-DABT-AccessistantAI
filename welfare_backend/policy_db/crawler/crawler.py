@@ -189,7 +189,7 @@ async def run(args):
                 "method": t.get("change_detection_method"),
                 "reason": r.reason,
                 "used_by_items": t.get("used_by_items", []),
-                "snapshot_dir": str((SNAPSHOTS_DIR / tid).relative_to(ROOT)),
+                "snapshot_dir": str((SNAPSHOTS_DIR / tid).relative_to(DATA_ROOT)),
                 "chunk_diff": r.chunk_diff,
                 "new_hash": r.new_hash,
             })
@@ -238,7 +238,7 @@ async def run(args):
                 if staged_path:
                     updated_items.append({
                         "policy_id": pid,
-                        "staged": str(staged_path.relative_to(ROOT)),
+                        "staged": str(staged_path.relative_to(DATA_ROOT)),
                         "diff": diff_summary,
                         "sources_changed": [c["target_id"] for c in related_changes],
                     })
