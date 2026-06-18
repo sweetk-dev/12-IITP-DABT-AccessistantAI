@@ -174,9 +174,9 @@ def run_discovery():
             f"- benefit_type 은 반드시 다음 중 하나: {enums['benefit_type']} (현금 지급은 \"현금지급\")\n"
             "키: id(빈 문자열), leaflet_section, leaflet_number(0), title, short_summary, category, "
             "benefit_type, supported_amount{rate,amount,scope}, eligibility{target}, legal_basis(배열), "
-            "how_to_use{default}, application{}, last_verified, version(\"1.0.0\"), "
+            'legal_basis(배열, 각 항목은 객체 {"name":법령명(필수), "article":조항(선택), "url":(선택)} — 확실치 않으면 빈 배열 []), ' "how_to_use{default}, application{}, last_verified, version(\"1.0.0\"), "
             'sources(배열, 각 항목 필수키 title·publisher·url + priority 는 ["primary","secondary","supplementary"] 중 하나, 최소 1개 실제 URL). '
-            "확인 안 되는 필드는 보수적으로 비우되 sources 는 실제 URL 과 publisher 를 포함."
+            "확인 안 되는 필드는 보수적으로 비우되(배열은 [], 객체는 {}) sources 는 실제 URL 과 publisher 를 포함. 모든 배열·객체는 위 키 구조를 지킬 것."
         )
         draft = None
         try:
