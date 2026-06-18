@@ -428,6 +428,11 @@ async def update_item_via_claude(
     # 패치 적용 — 미변경 필드는 그대로 두고, delete 는 검토로 분리
     new_data, applied, review = _apply_patch(existing, patches)
 
+    # 실제 내용 변경이 없으면(적용 패치 0 + 검토항목 0) staging 미생성 — 노이즈 억제
+    if not applied and not review:
+        logger.info("변경 없음 — staging 생략: %s", existing.get("id"))
+        return None, "변경 없음"
+
     # last_verified, version 자동 갱신
     new_data["last_verified"] = date.today().isoformat()
     if existing.get("version") and new_data.get("version") == existing.get("version"):

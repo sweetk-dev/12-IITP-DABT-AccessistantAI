@@ -195,6 +195,11 @@ def ops_crawl_run():
     return ops.run_crawl_now()
 
 
+@router.post("/admin/api/ops/crawl/hashcheck")
+def ops_crawl_hashcheck():
+    return ops.run_crawl_hashcheck()
+
+
 @router.post("/admin/api/ops/backup/run")
 def ops_backup_run():
     return ops.run_backup_now()

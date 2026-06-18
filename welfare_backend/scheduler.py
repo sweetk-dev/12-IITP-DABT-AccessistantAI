@@ -22,7 +22,9 @@ _BACKUP_DIR = Path(os.environ.get("BACKUP_DIR", "/backups"))
 _SCHED_CFG = _DATA / "admin_schedule.json"
 
 DEFAULT_CFG = {
-    "crawl_cron": {"day": "2,16", "hour": 9, "minute": 0},
+    "crawl_cron": {"day": "2,16", "hour": 9, "minute": 0},       # 해시 감지(저비용)
+    "revalidate_cron": {"day": "25", "hour": 9, "minute": 0},    # 전체 재검증(전수)
+    "discovery_cron": {"day": "1,15", "hour": 9, "minute": 0},   # 신규 발굴(B, 별도 구현)
     "backup_cron": {"hour": 4, "minute": 0},
     "backup_retention_days": 30,
 }
@@ -116,11 +118,17 @@ def _start_crawl(extra_args, label):
 
 
 def run_crawl_now():
-    return _start_crawl([], "full")
+    # 수동 '지금 크롤 실행' 기본 = 재검증(해시 무관 전수 재검증, 무변경은 staging 미생성)
+    return _start_crawl(["--revalidate"], "재검증(전체)")
+
+
+def run_crawl_hashcheck():
+    # 해시 빠른검사(변경된 출처만)
+    return _start_crawl([], "해시검사(전체)")
 
 
 def run_crawl_policy(policy_id):
-    return _start_crawl(["--policy", policy_id], f"policy {policy_id}")
+    return _start_crawl(["--policy", policy_id, "--revalidate"], f"재검증 {policy_id}")
 
 
 def run_init_baseline(policy_id=None):
@@ -156,12 +164,17 @@ def start():
     from apscheduler.schedulers.background import BackgroundScheduler
     from apscheduler.triggers.cron import CronTrigger
     cfg = _load_cfg()
-    cc, bc = cfg["crawl_cron"], cfg["backup_cron"]
+    cc = cfg["crawl_cron"]; rc = cfg.get("revalidate_cron", DEFAULT_CFG["revalidate_cron"]); bc = cfg["backup_cron"]
     _sched = BackgroundScheduler(timezone="Asia/Seoul")
+    # 해시 감지(2·16) — args 없음(=변경된 출처만)
     _sched.add_job(_run_crawl, CronTrigger(day=str(cc.get("day", "2,16")),
                    hour=cc.get("hour", 9), minute=cc.get("minute", 0)),
-                   id="crawl_scheduled", replace_existing=True)
+                   args=[[], "해시검사(정기)"], id="crawl_scheduled", replace_existing=True)
+    # 전체 재검증(25) — --revalidate
+    _sched.add_job(_run_crawl, CronTrigger(day=str(rc.get("day", "25")),
+                   hour=rc.get("hour", 9), minute=rc.get("minute", 0)),
+                   args=[["--revalidate"], "재검증(정기)"], id="revalidate_scheduled", replace_existing=True)
     _sched.add_job(_run_backup, CronTrigger(hour=bc.get("hour", 4), minute=bc.get("minute", 0)),
                    id="backup_scheduled", replace_existing=True)
     _sched.start()
-    logger.info("스케줄러 기동 — crawl=%s backup=%s", cc, bc)
+    logger.info("스케줄러 기동 — 해시=%s 재검증=%s 백업=%s", cc, rc, bc)

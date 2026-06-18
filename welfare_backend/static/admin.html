@@ -113,9 +113,10 @@
   <div class="pwrap" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px;">
     <div class="card" style="padding:16px;">
       <h2 style="margin:0 0 4px;font-size:15px;">정책 크롤링</h2>
-      <div class="msg">출처 점검 → 변경 감지 → LLM 갱신(staging). 수 분 소요(백그라운드).</div>
+      <div class="msg">재검증: 해시 무관 전 정책을 현재 출처로 검증(무변경은 staging 미생성). 해시검사: 변경된 출처만. 백그라운드.</div>
       <div id="ops-crawl" style="margin:12px 0;font-size:13px;">…</div>
-      <button class="primary" id="btnCrawl" onclick="runOp('crawl')">지금 크롤 실행</button>
+      <button class="primary" id="btnCrawl" onclick="runOp('crawl')">지금 재검증 실행</button>
+      <button id="btnHash" onclick="runHashcheck()" style="margin-left:6px">해시 빠른검사</button>
       <button id="btnInitBase" onclick="initBaselineAll()" style="margin-left:6px">전체 기준 확정</button>
     </div>
     <div class="card" style="padding:16px;">
@@ -244,7 +245,7 @@ async function loadPolicies(){
         <td>${escapeHtml(p.version||"")}</td>
         <td><div class="act">
           <button onclick="openEditor('${p.policy_id}')">편집</button>
-          <button onclick="crawlPolicy('${p.policy_id}')">크롤</button>
+          <button onclick="crawlPolicy('${p.policy_id}')">재검증</button>
           <button onclick="initBaselinePolicy('${p.policy_id}')">기준확정</button>
           ${active?`<button class="warn" onclick="toggleActive('${p.policy_id}',false)">비활성</button>`
                   :`<button class="primary" onclick="toggleActive('${p.policy_id}',true)">재활성</button>`}
@@ -309,7 +310,7 @@ function _renderOp(name, d){
   const nx=(d.next||{})[nextId]; if(nx) h+=`<div style="margin-top:4px;color:var(--muted)">다음 예약: ${escapeHtml(nx.replace("T"," ").slice(0,16))}</div>`;
   document.getElementById("ops-"+name).innerHTML=h;
   const btn=document.getElementById(name==="crawl"?"btnCrawl":"btnBackup"); if(btn) btn.disabled=run;
-  if(name==="crawl"){ const ib=document.getElementById("btnInitBase"); if(ib) ib.disabled=run; }
+  if(name==="crawl"){ const ib=document.getElementById("btnInitBase"); if(ib) ib.disabled=run; const hb=document.getElementById("btnHash"); if(hb) hb.disabled=run; }
 }
 async function loadOps(){
   try{ const d=await (await fetch(OAPI+"/status")).json();
@@ -322,6 +323,11 @@ async function loadOps(){
     if(anyRun && !opsTimer){ opsTimer=setInterval(loadOps,4000); }
     if(!anyRun && opsTimer){ clearInterval(opsTimer); opsTimer=null; }
   }catch(e){ document.getElementById("ops-sched").textContent="상태 로드 실패: "+e; }
+}
+async function runHashcheck(){
+  try{ const j=await (await fetch(OAPI+"/crawl/hashcheck",{method:"POST"})).json();
+    if(j.started===false) alert("시작 안 됨: "+(j.reason||"")); loadOps();
+  }catch(e){ alert("오류: "+e); }
 }
 async function initBaselineAll(){
   if(!confirm("전체 출처를 현재 상태로 기준 확정할까요?\n- 최초 1회 권장\n- 모든 대기 staging 정리\n- LLM 호출 없음(감지/해시만)")) return;
