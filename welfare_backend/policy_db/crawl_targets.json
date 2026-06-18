@@ -1,6 +1,6 @@
 {
-  "version": "2.5.0",
-  "last_updated": "2026-05-22",
+  "version": "2.6.0",
+  "last_updated": "2026-06-18",
   "description": "장애인 지원 정책 DB의 모든 출처 URL을 한 곳에서 관리하는 크롤 대상 목록. 항목별 JSON의 sources 배열과 1:1 동기화되며, 정기 크롤러는 이 파일을 단일 진입점으로 사용한다.",
   "global_settings": {
     "user_agent": "DisabilityPolicyDB-Crawler/1.0 (+contact: <CRAWLER_CONTACT>)",
@@ -418,7 +418,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "secondary",
       "used_by_items": [
@@ -981,7 +981,7 @@
       "fallback_url": "https://www.bworld.co.kr/footer/page.do?menu_id=F01060000",
       "official_api": null,
       "frequency": "monthly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": "본문 표/감면율 텍스트",
       "priority": "secondary",
       "used_by_items": [
@@ -999,7 +999,7 @@
       "fallback_url": "https://www.bokjiro.go.kr/",
       "official_api": null,
       "frequency": "monthly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": "wlfareInfo 본문",
       "priority": "primary",
       "used_by_items": [
@@ -1084,7 +1084,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": "본문 영역",
       "priority": "primary",
       "used_by_items": [
@@ -1479,7 +1479,7 @@
       "fallback_url": "https://m.ntok.go.kr/TheaterGuide/ConvenientFacilities/CustomerPlace",
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "primary",
       "used_by_items": [
@@ -1978,7 +1978,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "monthly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "secondary",
       "used_by_items": [
@@ -2302,7 +2302,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "secondary",
       "used_by_items": [
@@ -2421,7 +2421,7 @@
       "fallback_url": "https://online.kepco.co.kr/",
       "official_api": null,
       "frequency": "monthly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "primary",
       "used_by_items": [
@@ -2659,7 +2659,7 @@
       "fallback_url": null,
       "official_api": "law_go_kr",
       "frequency": "monthly",
-      "change_detection_method": "last_modified_field",
+      "change_detection_method": "grounding",
       "css_selector_hint": "별표2 본문",
       "priority": "primary",
       "used_by_items": [
@@ -2814,7 +2814,7 @@
       "fallback_url": "https://online.bokjiro.go.kr/apl/info/aplInfoNurView.do",
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "primary",
       "used_by_items": [
@@ -3043,7 +3043,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "primary",
       "used_by_items": [
@@ -3147,7 +3147,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "primary",
       "used_by_items": [
@@ -3368,7 +3368,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "primary",
       "used_by_items": [
@@ -3538,7 +3538,7 @@
       "fallback_url": null,
       "official_api": "law_go_kr",
       "frequency": "monthly",
-      "change_detection_method": "last_modified_field",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "primary",
       "used_by_items": [
@@ -3760,7 +3760,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "primary",
       "used_by_items": [
@@ -3814,7 +3814,7 @@
       "fallback_url": "https://www.bokjiro.go.kr/",
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "supplementary",
       "used_by_items": [
@@ -4019,7 +4019,7 @@
       "fallback_url": "https://www.gov.kr/",
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "secondary",
       "used_by_items": [
@@ -4104,7 +4104,7 @@
       "fallback_url": "https://www.motie.go.kr/",
       "official_api": "law_go_kr",
       "frequency": "quarterly",
-      "change_detection_method": "last_modified_field",
+      "change_detection_method": "grounding",
       "css_selector_hint": "고시번호·시행일 텍스트",
       "priority": "primary",
       "used_by_items": [
@@ -4394,7 +4394,7 @@
       "fallback_url": "https://www.bokjiro.go.kr/",
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": "서비스 상세 본문",
       "priority": "supplementary",
       "used_by_items": [
@@ -4513,7 +4513,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "secondary",
       "used_by_items": [
@@ -4686,7 +4686,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "secondary",
       "used_by_items": [
@@ -4754,7 +4754,7 @@
       "fallback_url": null,
       "official_api": "law_go_kr",
       "frequency": "monthly",
-      "change_detection_method": "last_modified_field",
+      "change_detection_method": "grounding",
       "css_selector_hint": "선정기준액·기초급여액 표",
       "priority": "primary",
       "used_by_items": [
@@ -4893,7 +4893,7 @@
       "fallback_url": "https://www.bokjiro.go.kr/",
       "official_api": null,
       "frequency": "monthly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": "급여 금액, 대상 설명 영역",
       "priority": "secondary",
       "used_by_items": [
@@ -5319,7 +5319,7 @@
         "docs_url": null
       },
       "frequency": "monthly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": "본문 지원대상·지원내용·신청방법",
       "priority": "secondary",
       "used_by_items": [
@@ -5341,7 +5341,7 @@
         "docs_url": null
       },
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "secondary",
       "used_by_items": [
@@ -5743,7 +5743,7 @@
       "fallback_url": "https://nuricall.sctc.kr/",
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": "이용안내 본문",
       "priority": "secondary",
       "used_by_items": [
@@ -5879,7 +5879,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": "장애인 우대 요금 안내 영역",
       "priority": "secondary",
       "used_by_items": [
@@ -5930,7 +5930,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "quarterly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "secondary",
       "used_by_items": [
@@ -6491,7 +6491,7 @@
       "fallback_url": null,
       "official_api": "https://www.law.go.kr/DRF/lawService.do",
       "frequency": "monthly",
-      "change_detection_method": "last_modified_field",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "primary",
       "used_by_items": [
@@ -6729,7 +6729,7 @@
       "fallback_url": null,
       "official_api": null,
       "frequency": "monthly",
-      "change_detection_method": "page_hash",
+      "change_detection_method": "grounding",
       "css_selector_hint": null,
       "priority": "primary",
       "used_by_items": [

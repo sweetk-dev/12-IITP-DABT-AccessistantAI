@@ -78,7 +78,7 @@ python -m scripts.weekly_report --use-llm  # 주간 리포트 + 의도 클러스
 
 ## 버전
 
-- 레포 태그: **v0.16.0** (grounding 변경감지 메서드 — JS 렌더링 출처를 Gemini google_search 로 본문 취득)
+- 레포 태그: **v0.16.1** (자주 변경되는 정책 30개 출처를 grounding 으로 재분류 — crawl_targets v2.6.0)
 - 백엔드 내부: v1.2
 - 인제스트 스크립트: `ingest_sync.py` (초기 구축 `--rebuild`, 증분 동기화 기본)
 
