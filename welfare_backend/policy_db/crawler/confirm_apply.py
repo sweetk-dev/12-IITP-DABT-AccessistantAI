@@ -15,6 +15,7 @@
 import argparse
 import json
 import logging
+import os
 import shutil
 import subprocess
 import sys
@@ -32,8 +33,10 @@ for _s in (sys.stdout, sys.stderr):
         pass
 
 ROOT = Path(__file__).resolve().parent.parent     # policy_db/
-ITEMS_DIR = ROOT / "items"
-STAGING_DIR = ROOT / "crawler" / "staging"
+# 가변 데이터 루트 — POLICY_DATA_DIR 설정 시 그 경로, 미설정 시 ROOT (하위호환)
+DATA_ROOT = Path(os.environ["POLICY_DATA_DIR"]).resolve() if os.environ.get("POLICY_DATA_DIR") else ROOT
+ITEMS_DIR = DATA_ROOT / "items"
+STAGING_DIR = DATA_ROOT / "crawler" / "staging"
 BACKUPS_DIR = ITEMS_DIR / ".backups"
 SCHEMA = ROOT / "schema.json"
 

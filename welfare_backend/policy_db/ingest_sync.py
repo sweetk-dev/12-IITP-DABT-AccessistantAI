@@ -207,7 +207,8 @@ def main():
     cur.execute("SELECT id, version FROM welfare_policies;")
     db_versions = {row[0]: row[1] for row in cur.fetchall()}
 
-    json_files = sorted(glob.glob("items/B0*.json"))
+    _data_root = os.environ.get("POLICY_DATA_DIR") or os.path.dirname(os.path.abspath(__file__))
+    json_files = sorted(glob.glob(os.path.join(_data_root, "items", "B0*.json")))
     if not json_files:
         logging.warning("items 폴더 내에 처리할 JSON 파일(B0*.json)이 없습니다.")
         return
