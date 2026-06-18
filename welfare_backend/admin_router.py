@@ -21,6 +21,7 @@ from crawler import review_core as rc  # noqa: E402
 from crawler import policy_core as pc  # noqa: E402
 from database import AsyncSessionLocal  # noqa: E402
 import models  # noqa: E402
+import scheduler as ops  # noqa: E402
 
 router = APIRouter(tags=["admin"])
 
@@ -162,6 +163,22 @@ async def unresolved_list(limit: int = 50, offset: int = 0,
         )).scalars().all()
     return {"total": total, "count": len(rows), "limit": lim, "offset": off,
             "items": [_ser_unresolved(r) for r in rows]}
+
+
+# ── 운영(크롤/백업 지금 실행 + 상태) ──
+@router.get("/admin/api/ops/status")
+def ops_status():
+    return ops.get_status()
+
+
+@router.post("/admin/api/ops/crawl/run")
+def ops_crawl_run():
+    return ops.run_crawl_now()
+
+
+@router.post("/admin/api/ops/backup/run")
+def ops_backup_run():
+    return ops.run_backup_now()
 
 
 @router.get("/admin", response_class=HTMLResponse)

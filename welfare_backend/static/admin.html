@@ -68,6 +68,7 @@
     <div class="tab on" id="tab-review" onclick="showTab('review')">검토 큐</div>
     <div class="tab" id="tab-policy" onclick="showTab('policy')">정책 관리</div>
     <div class="tab" id="tab-unresolved" onclick="showTab('unresolved')">미답변 질의</div>
+    <div class="tab" id="tab-ops" onclick="showTab('ops')">운영</div>
   </div>
   <button class="refresh" onclick="refresh()">새로고침</button>
 </header>
@@ -108,6 +109,27 @@
   </div>
 </div>
 
+<div id="view-ops" style="display:none">
+  <div class="pwrap" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px;">
+    <div class="card" style="padding:16px;">
+      <h2 style="margin:0 0 4px;font-size:15px;">정책 크롤링</h2>
+      <div class="msg">출처 점검 → 변경 감지 → LLM 갱신(staging). 수 분 소요(백그라운드).</div>
+      <div id="ops-crawl" style="margin:12px 0;font-size:13px;">…</div>
+      <button class="primary" id="btnCrawl" onclick="runOp('crawl')">지금 크롤 실행</button>
+    </div>
+    <div class="card" style="padding:16px;">
+      <h2 style="margin:0 0 4px;font-size:15px;">데이터 백업</h2>
+      <div class="msg">/data(정본) tar 백업. 보존기간 경과분 자동 정리.</div>
+      <div id="ops-backup" style="margin:12px 0;font-size:13px;">…</div>
+      <button class="primary" id="btnBackup" onclick="runOp('backup')">지금 백업 실행</button>
+    </div>
+    <div class="card" style="padding:16px;grid-column:1/3;">
+      <h2 style="margin:0 0 4px;font-size:15px;">스케줄</h2>
+      <div id="ops-sched" class="msg">…</div>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="modal">
   <div class="box">
     <div class="mhead"><b id="mtitle">정책 편집</b><span class="msg" id="modalmsg" style="margin-left:auto"></span></div>
@@ -127,13 +149,14 @@ let current=null, editingId=null;
 let curTab="review";
 function showTab(t){
   curTab=t;
-  for(const k of ["review","policy","unresolved"]){
+  for(const k of ["review","policy","unresolved","ops"]){
     document.getElementById("tab-"+k).classList.toggle("on", t===k);
     document.getElementById("view-"+k).style.display = t===k?"":"none";
   }
-  if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else loadList();
+  if(opsTimer){ clearInterval(opsTimer); opsTimer=null; }
+  if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else if(t==="ops") loadOps(); else loadList();
 }
-function refresh(){ if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else loadList(); }
+function refresh(){ if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else if(curTab==="ops") loadOps(); else loadList(); }
 function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 function fmt(v){ if(v===null||v===undefined) return "(없음)"; return (typeof v==="object")? JSON.stringify(v,null,2):String(v); }
 
@@ -240,6 +263,38 @@ async function saveEditor(){
     else { const d=j.detail||j; setMsg("modalmsg","실패: "+(d.error||"")+(d.details?" ("+d.details.join("; ")+")":""),true); document.getElementById("saveBtn").disabled=false; }
   }catch(e){ setMsg("modalmsg","오류: "+e,true); document.getElementById("saveBtn").disabled=false; }
   document.getElementById("saveBtn").disabled=false;
+}
+const OAPI="/admin/api/ops";
+let opsTimer=null;
+function _renderOp(name, d){
+  const s=d[name]||{}; const run=s.running;
+  const badge = run?'<span class="b warn">실행 중…</span>' : (s.last_status==="ok"?'<span class="b ok">정상</span>':(s.last_status?'<span class="b bad">'+escapeHtml(s.last_status)+'</span>':'<span class="b off">기록 없음</span>'));
+  let h=badge;
+  if(s.last_run) h+=`<div style="margin-top:6px;color:var(--muted)">마지막 실행: ${escapeHtml((s.last_run||"").replace("T"," "))}</div>`;
+  if(s.last_output) h+=`<pre style="margin-top:6px;background:#fafbfc;border:1px solid var(--line);border-radius:6px;padding:8px;font-size:11px;max-height:160px;overflow:auto;white-space:pre-wrap">${escapeHtml(s.last_output)}</pre>`;
+  const nextId = name==="crawl"?"crawl_scheduled":"backup_scheduled";
+  const nx=(d.next||{})[nextId]; if(nx) h+=`<div style="margin-top:4px;color:var(--muted)">다음 예약: ${escapeHtml(nx.replace("T"," ").slice(0,16))}</div>`;
+  document.getElementById("ops-"+name).innerHTML=h;
+  const btn=document.getElementById(name==="crawl"?"btnCrawl":"btnBackup"); if(btn) btn.disabled=run;
+}
+async function loadOps(){
+  try{ const d=await (await fetch(OAPI+"/status")).json();
+    _renderOp("crawl",d); _renderOp("backup",d);
+    const sc=d.schedules||{};
+    document.getElementById("ops-sched").innerHTML =
+      `크롤: 매월 ${escapeHtml(String((sc.crawl_cron||{}).day||""))}일 ${String((sc.crawl_cron||{}).hour||0).padStart(2,"0")}:${String((sc.crawl_cron||{}).minute||0).padStart(2,"0")} · `+
+      `백업: 매일 ${String((sc.backup_cron||{}).hour||0).padStart(2,"0")}:${String((sc.backup_cron||{}).minute||0).padStart(2,"0")} (보존 ${escapeHtml(String(sc.backup_retention_days||30))}일) · 편집 UI는 추후`;
+    const anyRun=(d.crawl&&d.crawl.running)||(d.backup&&d.backup.running);
+    if(anyRun && !opsTimer){ opsTimer=setInterval(loadOps,4000); }
+    if(!anyRun && opsTimer){ clearInterval(opsTimer); opsTimer=null; }
+  }catch(e){ document.getElementById("ops-sched").textContent="상태 로드 실패: "+e; }
+}
+async function runOp(name){
+  const url=OAPI+"/"+name+"/run";
+  try{ const r=await fetch(url,{method:"POST"}); const j=await r.json();
+    if(j.started===false) alert((name==="crawl"?"크롤":"백업")+" 시작 안 됨: "+(j.reason||""));
+    loadOps();
+  }catch(e){ alert("오류: "+e); }
 }
 const UAPI="/admin/api/unresolved";
 let uOffset=0, uReasonsLoaded=false;
