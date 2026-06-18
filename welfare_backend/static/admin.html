@@ -116,6 +116,7 @@
       <div class="msg">출처 점검 → 변경 감지 → LLM 갱신(staging). 수 분 소요(백그라운드).</div>
       <div id="ops-crawl" style="margin:12px 0;font-size:13px;">…</div>
       <button class="primary" id="btnCrawl" onclick="runOp('crawl')">지금 크롤 실행</button>
+      <button id="btnInitBase" onclick="initBaselineAll()" style="margin-left:6px">전체 기준 확정</button>
     </div>
     <div class="card" style="padding:16px;">
       <h2 style="margin:0 0 4px;font-size:15px;">데이터 백업</h2>
@@ -243,12 +244,28 @@ async function loadPolicies(){
         <td>${escapeHtml(p.version||"")}</td>
         <td><div class="act">
           <button onclick="openEditor('${p.policy_id}')">편집</button>
+          <button onclick="crawlPolicy('${p.policy_id}')">크롤</button>
+          <button onclick="initBaselinePolicy('${p.policy_id}')">기준확정</button>
           ${active?`<button class="warn" onclick="toggleActive('${p.policy_id}',false)">비활성</button>`
                   :`<button class="primary" onclick="toggleActive('${p.policy_id}',true)">재활성</button>`}
         </div></td>`;
       tb.appendChild(tr);
     }
   }catch(e){ tb.innerHTML='<tr><td colspan="6"><div class="empty">로드 실패: '+e+'</div></td></tr>'; }
+}
+async function crawlPolicy(pid){
+  if(!confirm(pid+" 정책 출처만 크롤할까요? (백그라운드 실행, 변경 시 검토 큐에 생성됨)")) return;
+  setMsg("pmsg", pid+" 크롤 시작 요청…");
+  try{ const j=await (await fetch(PAPI+"/"+pid+"/crawl",{method:"POST"})).json();
+    setMsg("pmsg", j.started? (pid+" 크롤 시작됨 — '운영' 탭에서 진행 확인, 완료 후 '검토 큐' 확인") : ("시작 안 됨: "+(j.reason||"")), j.started===false);
+  }catch(e){ setMsg("pmsg","오류: "+e,true); }
+}
+async function initBaselinePolicy(pid){
+  if(!confirm(pid+" 현재 출처를 기준(baseline)으로 확정할까요? 해당 정책의 대기 staging은 정리됩니다. (LLM 없음)")) return;
+  setMsg("pmsg", pid+" 기준 확정 시작…");
+  try{ const j=await (await fetch(PAPI+"/"+pid+"/init-baseline",{method:"POST"})).json();
+    setMsg("pmsg", j.started? (pid+" 기준 확정 시작됨 ('운영' 탭에서 상태 확인)") : ("시작 안 됨: "+(j.reason||"")), j.started===false);
+  }catch(e){ setMsg("pmsg","오류: "+e,true); }
 }
 async function toggleActive(pid, activate){
   const verb=activate?"재활성":"비활성"; if(!confirm(`${pid}을(를) ${verb}할까요? (DB 재적재 1회 실행)`))return;
@@ -284,7 +301,7 @@ const OAPI="/admin/api/ops";
 let opsTimer=null;
 function _renderOp(name, d){
   const s=d[name]||{}; const run=s.running;
-  const badge = run?'<span class="b warn">실행 중…</span>' : (s.last_status==="ok"?'<span class="b ok">정상</span>':(s.last_status?'<span class="b bad">'+escapeHtml(s.last_status)+'</span>':'<span class="b off">기록 없음</span>'));
+  const badge = run?('<span class="b warn">실행 중…'+(s.label?(' ('+escapeHtml(s.label)+')'):'')+'</span>') : (s.last_status==="ok"?'<span class="b ok">정상</span>':(s.last_status?'<span class="b bad">'+escapeHtml(s.last_status)+'</span>':'<span class="b off">기록 없음</span>'));
   let h=badge;
   if(s.last_run) h+=`<div style="margin-top:6px;color:var(--muted)">마지막 실행: ${escapeHtml((s.last_run||"").replace("T"," "))}</div>`;
   if(s.last_output) h+=`<pre style="margin-top:6px;background:#fafbfc;border:1px solid var(--line);border-radius:6px;padding:8px;font-size:11px;max-height:160px;overflow:auto;white-space:pre-wrap">${escapeHtml(s.last_output)}</pre>`;
@@ -292,6 +309,7 @@ function _renderOp(name, d){
   const nx=(d.next||{})[nextId]; if(nx) h+=`<div style="margin-top:4px;color:var(--muted)">다음 예약: ${escapeHtml(nx.replace("T"," ").slice(0,16))}</div>`;
   document.getElementById("ops-"+name).innerHTML=h;
   const btn=document.getElementById(name==="crawl"?"btnCrawl":"btnBackup"); if(btn) btn.disabled=run;
+  if(name==="crawl"){ const ib=document.getElementById("btnInitBase"); if(ib) ib.disabled=run; }
 }
 async function loadOps(){
   try{ const d=await (await fetch(OAPI+"/status")).json();
@@ -304,6 +322,12 @@ async function loadOps(){
     if(anyRun && !opsTimer){ opsTimer=setInterval(loadOps,4000); }
     if(!anyRun && opsTimer){ clearInterval(opsTimer); opsTimer=null; }
   }catch(e){ document.getElementById("ops-sched").textContent="상태 로드 실패: "+e; }
+}
+async function initBaselineAll(){
+  if(!confirm("전체 출처를 현재 상태로 기준 확정할까요?\n- 최초 1회 권장\n- 모든 대기 staging 정리\n- LLM 호출 없음(감지/해시만)")) return;
+  try{ const j=await (await fetch(OAPI+"/init-baseline",{method:"POST"})).json();
+    if(j.started===false) alert("시작 안 됨: "+(j.reason||"")); loadOps();
+  }catch(e){ alert("오류: "+e); }
 }
 async function runOp(name){
   const url=OAPI+"/"+name+"/run";
