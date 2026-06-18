@@ -69,7 +69,7 @@ def _cluster(rows):
     return clusters
 
 
-def _gemini(prompt, grounding=False, max_tokens=8000, retries=3):
+def _gemini(prompt, grounding=False, max_tokens=24000, retries=3):
     """Gemini generateContent. thinking 모델의 간헐적 빈 응답에 대비해 재시도."""
     import time as _t
     payload = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
