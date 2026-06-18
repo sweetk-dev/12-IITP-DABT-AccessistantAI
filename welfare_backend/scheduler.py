@@ -55,7 +55,8 @@ def _run_crawl():
     try:
         r = subprocess.run(["python", "-m", "crawler.crawler"], cwd=str(_POLICYDB),
                            capture_output=True, text=True, timeout=3600)
-        out = "\n".join((r.stdout or "").splitlines()[-12:])
+        combined = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
+        out = "\n".join(combined.splitlines()[-15:])
         st = "ok" if r.returncode == 0 else f"exit {r.returncode}"
         with _lock:
             _status["crawl"].update(running=False, last_run=_now(), last_status=st, last_output=out)
