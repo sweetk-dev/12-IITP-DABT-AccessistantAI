@@ -1,0 +1,151 @@
+# scheduler.py
+# 관리자 콘솔용 운영 스케줄러 — 크롤/백업의 정기 실행 + "지금 실행"(백그라운드) + 상태.
+#   - APScheduler(BackgroundScheduler) 단일 인스턴스(단일 uvicorn 워커 전제).
+#   - 잡은 블로킹(subprocess/tar)이라 스레드풀에서 실행. run-now 는 즉시 add_job.
+#   - 스케줄 기본값은 코드 + /data 설정파일(admin_schedule.json). 편집 UI 는 v2.
+import glob
+import json
+import logging
+import os
+import subprocess
+import threading
+import time
+from datetime import datetime
+from pathlib import Path
+
+logger = logging.getLogger("scheduler")
+
+_APP = Path(__file__).resolve().parent                 # /app
+_POLICYDB = _APP / "policy_db"
+_DATA = Path(os.environ.get("POLICY_DATA_DIR") or str(_POLICYDB))
+_BACKUP_DIR = Path(os.environ.get("BACKUP_DIR", "/backups"))
+_SCHED_CFG = _DATA / "admin_schedule.json"
+
+DEFAULT_CFG = {
+    "crawl_cron": {"day": "2,16", "hour": 9, "minute": 0},
+    "backup_cron": {"hour": 4, "minute": 0},
+    "backup_retention_days": 30,
+}
+
+_status = {
+    "crawl":  {"running": False, "last_run": None, "last_status": None, "last_output": None},
+    "backup": {"running": False, "last_run": None, "last_status": None, "last_output": None},
+}
+_lock = threading.Lock()
+_sched = None
+
+
+def _load_cfg():
+    try:
+        return {**DEFAULT_CFG, **json.loads(_SCHED_CFG.read_text(encoding="utf-8"))}
+    except Exception:
+        return dict(DEFAULT_CFG)
+
+
+def _now():
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def _run_crawl():
+    with _lock:
+        if _status["crawl"]["running"]:
+            return
+        _status["crawl"]["running"] = True
+    logger.info("크롤 시작(백그라운드)")
+    try:
+        r = subprocess.run(["python", "-m", "crawler.crawler"], cwd=str(_POLICYDB),
+                           capture_output=True, text=True, timeout=3600)
+        out = "\n".join((r.stdout or "").splitlines()[-12:])
+        st = "ok" if r.returncode == 0 else f"exit {r.returncode}"
+        with _lock:
+            _status["crawl"].update(running=False, last_run=_now(), last_status=st, last_output=out)
+        logger.info("크롤 종료: %s", st)
+    except Exception as e:
+        with _lock:
+            _status["crawl"].update(running=False, last_run=_now(), last_status="error", last_output=str(e)[:500])
+        logger.exception("크롤 실패: %s", e)
+
+
+def _run_backup():
+    with _lock:
+        if _status["backup"]["running"]:
+            return
+        _status["backup"]["running"] = True
+    logger.info("백업 시작")
+    try:
+        _BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        fn = _BACKUP_DIR / f"policy_data_{ts}.tar.gz"
+        r = subprocess.run(["tar", "czf", str(fn), "-C", str(_DATA), "."],
+                           capture_output=True, text=True, timeout=600)
+        # 보존기간 정리
+        days = _load_cfg().get("backup_retention_days", 30)
+        cutoff = time.time() - days * 86400
+        for f in glob.glob(str(_BACKUP_DIR / "policy_data_*.tar.gz")):
+            try:
+                if os.path.getmtime(f) < cutoff:
+                    os.remove(f)
+            except OSError:
+                pass
+        if r.returncode == 0 and fn.exists():
+            out = f"{fn.name} ({fn.stat().st_size // 1024}KB)"
+            st = "ok"
+        else:
+            out = (r.stderr or "")[:300]
+            st = f"exit {r.returncode}"
+        with _lock:
+            _status["backup"].update(running=False, last_run=_now(), last_status=st, last_output=out)
+        logger.info("백업 종료: %s", st)
+    except Exception as e:
+        with _lock:
+            _status["backup"].update(running=False, last_run=_now(), last_status="error", last_output=str(e)[:500])
+        logger.exception("백업 실패: %s", e)
+
+
+def run_crawl_now():
+    with _lock:
+        if _status["crawl"]["running"]:
+            return {"started": False, "reason": "이미 실행 중"}
+    if not _sched:
+        return {"started": False, "reason": "스케줄러 미기동"}
+    _sched.add_job(_run_crawl, id="crawl_now", replace_existing=True)
+    return {"started": True}
+
+
+def run_backup_now():
+    with _lock:
+        if _status["backup"]["running"]:
+            return {"started": False, "reason": "이미 실행 중"}
+    if not _sched:
+        return {"started": False, "reason": "스케줄러 미기동"}
+    _sched.add_job(_run_backup, id="backup_now", replace_existing=True)
+    return {"started": True}
+
+
+def get_status():
+    with _lock:
+        st = json.loads(json.dumps(_status))
+    st["schedules"] = _load_cfg()
+    st["next"] = {}
+    if _sched:
+        for j in _sched.get_jobs():
+            st["next"][j.id] = j.next_run_time.isoformat() if j.next_run_time else None
+    return st
+
+
+def start():
+    global _sched
+    if _sched:
+        return
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.cron import CronTrigger
+    cfg = _load_cfg()
+    cc, bc = cfg["crawl_cron"], cfg["backup_cron"]
+    _sched = BackgroundScheduler(timezone="Asia/Seoul")
+    _sched.add_job(_run_crawl, CronTrigger(day=str(cc.get("day", "2,16")),
+                   hour=cc.get("hour", 9), minute=cc.get("minute", 0)),
+                   id="crawl_scheduled", replace_existing=True)
+    _sched.add_job(_run_backup, CronTrigger(hour=bc.get("hour", 4), minute=bc.get("minute", 0)),
+                   id="backup_scheduled", replace_existing=True)
+    _sched.start()
+    logger.info("스케줄러 기동 — crawl=%s backup=%s", cc, bc)
