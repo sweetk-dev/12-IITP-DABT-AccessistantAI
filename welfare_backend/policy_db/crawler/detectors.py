@@ -29,6 +29,15 @@ DEFAULT_HEADERS = {
 }
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 
+# JS 렌더링(SPA) 의심 임계 — httpx 가 받은 정규화 본문이 이보다 짧으면 본문을 못 받은 것으로 의심한다.
+# SPA 는 빈 셸(스크립트만)이 와서 본문이 매우 짧다. 운영 데이터에 맞춰 JS_SUSPECT_MIN_CHARS 로 조정.
+JS_SUSPECT_MIN_CHARS = int(os.environ.get("JS_SUSPECT_MIN_CHARS", "250"))
+
+
+def _js_suspect(body_len: int) -> bool:
+    """정규화 본문이 임계 미만이면 JS 렌더링(본문 미수신) 의심."""
+    return 0 <= body_len < JS_SUSPECT_MIN_CHARS
+
 
 @dataclass
 class ChangeResult:
@@ -41,6 +50,8 @@ class ChangeResult:
     url_used: Optional[str] = None      # 실제 성공한 URL (기본 또는 fallback)
     used_fallback: bool = False         # fallback_url 로 성공 → 기본 URL 점검 필요 신호
     status: str = "ok"                  # ok / fetch_failed / exception — 실패 분류용(reason 문자열 매칭 대체)
+    body_len: Optional[int] = None      # 정규화 본문 길이(HTML 출처) — JS 의심 판정용
+    js_suspect: bool = False            # 본문 과소 → JS 렌더링(SPA) 의심(httpx 가 빈 셸만 받음)
 
 
 def _hash_bytes(data: bytes) -> str:
@@ -323,6 +334,7 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
         new_hash=new_hash,
         chunk_diff=cdiff,
         new_chunks=new_chunks,
+        body_len=len(text), js_suspect=_js_suspect(len(text)),
     ), finfo)
 
 
@@ -380,6 +392,7 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
         reason="최초 스냅샷" if prev_hash is None else ("최종 수정 키 변경" if changed else "변경 없음"),
         new_content=resp.content if (changed or revalidate) else None,
         new_hash=new_hash,
+        body_len=len(text), js_suspect=_js_suspect(len(text)),
     ), finfo)
 
 
@@ -420,6 +433,7 @@ async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: 
         ),
         new_content=resp.content if (changed or revalidate) else None,
         new_hash=new_hash,
+        body_len=len(text), js_suspect=_js_suspect(len(text)),
     ), finfo)
 
 

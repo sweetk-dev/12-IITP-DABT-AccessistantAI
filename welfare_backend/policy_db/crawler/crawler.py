@@ -178,6 +178,7 @@ async def run(args):
     manual_targets = []   # manual_review 타겟 (#28)
     skipped_staged = []   # 이미 staging 대기라 LLM 생략된 정책 (#27 A안)
     fallback_used = []    # 기본 URL 실패 → fallback_url 로 수집된 타겟 (URL 점검 필요 신호)
+    js_suspect = []       # JS 렌더링(SPA) 의심 — httpx 본문 과소(변경 감지 무의미, 수동/grounding 권장)
 
     # ── 1) 변경 감지 동시 실행 (전역 동시성 5 + 호스트당 2 제한으로 예의) ──
     sem = asyncio.Semaphore(5)
@@ -223,6 +224,15 @@ async def run(args):
                 "title": t.get("title"),
                 "primary_url": t.get("url"),
                 "fallback_url": t.get("fallback_url"),
+                "used_by_items": t.get("used_by_items", []),
+            })
+        if getattr(r, "js_suspect", False) and getattr(r, "status", "ok") == "ok":
+            js_suspect.append({
+                "target_id": tid,
+                "title": t.get("title"),
+                "url": t.get("url"),
+                "method": t.get("change_detection_method"),
+                "body_len": getattr(r, "body_len", None),
                 "used_by_items": t.get("used_by_items", []),
             })
         if getattr(r, "status", "ok") != "ok":
@@ -333,6 +343,7 @@ async def run(args):
             "manual_review_targets": len(manual_targets),
             "skipped_already_staged": len(skipped_staged),
             "url_fallback_used": len(fallback_used),
+            "js_suspect": len(js_suspect),
         },
         "changes": changes,
         "failures": failures,
@@ -340,6 +351,7 @@ async def run(args):
         "manual_review_targets": manual_targets,
         "skipped_already_staged": skipped_staged,
         "url_fallback_used": fallback_used,
+        "js_suspect": js_suspect,
         "dry_run": args.dry_run,
         "skip_claude": args.skip_claude,
     }
@@ -409,6 +421,17 @@ def _format_report_md(d: dict) -> str:
         lines.append(f"  - fallback: {fb.get('fallback_url')}")
         lines.append(f"  - 영향 정책: {', '.join(fb.get('used_by_items', [])) or '(없음)'}")
     lines.append("")
+    lines.append("## JS 렌더링 의심 (httpx 본문 과소 — 수동 검토 / grounding 재취득 권장)")
+    jss = d.get("js_suspect", [])
+    if not jss:
+        lines.append("- 없음 — 모든 출처가 충분한 본문을 반환")
+    else:
+        lines.append("- 아래 출처는 httpx 가 받은 본문이 비정상적으로 짧음(SPA 가능성). 해시 변경 감지가 무의미하므로 수동 검토 또는 grounding 기반 본문 재취득 권장.")
+    for j in jss:
+        lines.append(f"- **{j['target_id']}** ({j.get('method')}) — 본문 {j.get('body_len')}자")
+        lines.append(f"  - URL: {j.get('url')}")
+        lines.append(f"  - 영향 정책: {', '.join(j.get('used_by_items', [])) or '(없음)'}")
+    lines.append("")
     lines.append("## 수동 검토 대상 (manual_review)")
     mts = d.get("manual_review_targets", [])
     if not mts:
@@ -448,6 +471,7 @@ def _short_console_summary(d: dict) -> str:
         f"  LLM 갱신: {s['items_updated_by_llm']}개\n"
         f"  실패: {s['failures']}건\n"
         f"  URL 폴백 사용: {s.get('url_fallback_used', 0)}개\n"
+        f"  JS 렌더 의심: {s.get('js_suspect', 0)}개\n"
         f"  수동 검토 대상: {s.get('manual_review_targets', 0)}개\n"
         f"  자세한 내용: policy_db/crawler/reports/{d['date']}.md\n"
         f"══════════════════════════════════════════\n"
