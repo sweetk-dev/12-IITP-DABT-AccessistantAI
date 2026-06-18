@@ -67,6 +67,7 @@
   <div class="tabs">
     <div class="tab on" id="tab-review" onclick="showTab('review')">검토 큐</div>
     <div class="tab" id="tab-policy" onclick="showTab('policy')">정책 관리</div>
+    <div class="tab" id="tab-unresolved" onclick="showTab('unresolved')">미답변 질의</div>
   </div>
   <button class="refresh" onclick="refresh()">새로고침</button>
 </header>
@@ -88,6 +89,25 @@
   </div>
 </div>
 
+<div id="view-unresolved" style="display:none">
+  <div class="pwrap">
+    <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <label>기간
+        <select id="uDays" onchange="loadUnresolved(true)">
+          <option value="">전체</option><option value="7">최근 7일</option>
+          <option value="30">최근 30일</option><option value="90">최근 90일</option>
+        </select>
+      </label>
+      <label>폴백사유
+        <select id="uReason" onchange="loadUnresolved(true)"><option value="">전체</option></select>
+      </label>
+      <span class="msg" id="usum"></span>
+    </div>
+    <div class="card"><table id="utable"><thead><tr><th style="width:140px">일시</th><th style="width:120px">폴백사유</th><th>사용자 질문</th><th>AI 답변(발췌)</th></tr></thead><tbody><tr><td colspan="4"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
+    <div style="margin-top:10px;text-align:center"><button id="uMore" onclick="loadUnresolved(false)" style="display:none">더 보기</button></div>
+  </div>
+</div>
+
 <div class="modal" id="modal">
   <div class="box">
     <div class="mhead"><b id="mtitle">정책 편집</b><span class="msg" id="modalmsg" style="margin-left:auto"></span></div>
@@ -104,14 +124,16 @@
 const SAPI="/admin/api/staging", PAPI="/admin/api/policy", PLIST="/admin/api/policies";
 let current=null, editingId=null;
 
+let curTab="review";
 function showTab(t){
-  document.getElementById("tab-review").classList.toggle("on", t==="review");
-  document.getElementById("tab-policy").classList.toggle("on", t==="policy");
-  document.getElementById("view-review").style.display = t==="review"?"":"none";
-  document.getElementById("view-policy").style.display = t==="policy"?"":"none";
-  if(t==="policy") loadPolicies(); else loadList();
+  curTab=t;
+  for(const k of ["review","policy","unresolved"]){
+    document.getElementById("tab-"+k).classList.toggle("on", t===k);
+    document.getElementById("view-"+k).style.display = t===k?"":"none";
+  }
+  if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else loadList();
 }
-function refresh(){ document.getElementById("tab-policy").classList.contains("on") ? loadPolicies() : loadList(); }
+function refresh(){ if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else loadList(); }
 function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 function fmt(v){ if(v===null||v===undefined) return "(없음)"; return (typeof v==="object")? JSON.stringify(v,null,2):String(v); }
 
@@ -218,6 +240,29 @@ async function saveEditor(){
     else { const d=j.detail||j; setMsg("modalmsg","실패: "+(d.error||"")+(d.details?" ("+d.details.join("; ")+")":""),true); document.getElementById("saveBtn").disabled=false; }
   }catch(e){ setMsg("modalmsg","오류: "+e,true); document.getElementById("saveBtn").disabled=false; }
   document.getElementById("saveBtn").disabled=false;
+}
+const UAPI="/admin/api/unresolved";
+let uOffset=0, uReasonsLoaded=false;
+async function loadUnresolved(reset){
+  if(reset){ uOffset=0; document.querySelector("#utable tbody").innerHTML='<tr><td colspan="4"><div class="empty">불러오는 중…</div></td></tr>'; }
+  if(!uReasonsLoaded){ try{ const sm=await (await fetch(UAPI+"/summary")).json();
+    const sel=document.getElementById("uReason"); (sm.reasons||[]).forEach(r=>{ const o=document.createElement("option"); o.value=r; o.textContent=r+(sm.by_reason&&sm.by_reason[r]?` (${sm.by_reason[r]})`:""); sel.appendChild(o); });
+    uReasonsLoaded=true; }catch(e){} }
+  const days=document.getElementById("uDays").value, reason=document.getElementById("uReason").value;
+  const qs=new URLSearchParams({limit:50, offset:uOffset}); if(days) qs.set("days",days); if(reason) qs.set("fallback_reason",reason);
+  try{ const d=await (await fetch(UAPI+"?"+qs)).json();
+    const tb=document.querySelector("#utable tbody"); if(reset) tb.innerHTML="";
+    if(!d.items.length && reset){ tb.innerHTML='<tr><td colspan="4"><div class="empty">미답변 질의 없음</div></td></tr>'; }
+    for(const it of d.items){ const tr=document.createElement("tr");
+      tr.innerHTML=`<td style="font-size:11px;color:var(--muted)">${escapeHtml((it.created_at||"").replace("T"," ").slice(0,16))}</td>
+        <td><span class="b warn">${escapeHtml(it.fallback_reason)}</span>${it.has_grounding?'<div style="font-size:10px;color:var(--muted)">검색폴백</div>':''}</td>
+        <td>${escapeHtml(it.user_query||"")}</td>
+        <td style="font-size:12px;color:#444">${escapeHtml(it.ai_final_answer||"")}</td>`;
+      tb.appendChild(tr); }
+    uOffset += d.items.length;
+    setMsg("usum",`총 ${d.total}건 (표시 ${uOffset})`);
+    document.getElementById("uMore").style.display = (uOffset < d.total) ? "" : "none";
+  }catch(e){ setMsg("usum","로드 실패: "+e,true); }
 }
 function setMsg(id,m,bad){ const el=document.getElementById(id); if(el){ el.textContent=m; el.style.color=bad?"var(--bad)":"var(--muted)"; } }
 loadList();

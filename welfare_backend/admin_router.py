@@ -10,12 +10,17 @@ from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import HTMLResponse
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+from sqlalchemy import select, desc, func as safunc
 
 _PDB = Path(__file__).resolve().parent / "policy_db"
 if str(_PDB) not in sys.path:
     sys.path.insert(0, str(_PDB))
 from crawler import review_core as rc  # noqa: E402
 from crawler import policy_core as pc  # noqa: E402
+from database import AsyncSessionLocal  # noqa: E402
+import models  # noqa: E402
 
 router = APIRouter(tags=["admin"])
 
@@ -98,6 +103,65 @@ def policy_reactivate(policy_id: str):
     if not r.get("ok"):
         raise HTTPException(status_code=400, detail=r)
     return r
+
+
+# ── 미답변 질의 조회 (읽기 전용) ──
+_FALLBACK_REASONS = ["low_similarity", "empty_result", "category_mismatch",
+                     "explicit_no_info", "google_search", "tool_error", "unknown"]
+
+
+def _ser_unresolved(r):
+    fr = r.fallback_reason
+    return {
+        "id": r.id,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "user_query": r.user_query,
+        "fallback_reason": getattr(fr, "value", str(fr)),
+        "ai_final_answer": (r.ai_final_answer or "")[:600],
+        "session_id": str(r.session_id),
+        "intent_group_id": str(r.intent_group_id),
+        "turn_in_group": r.turn_in_group,
+        "embedded": r.embedded_at is not None,
+        "has_grounding": bool(r.grounding_info),
+    }
+
+
+@router.get("/admin/api/unresolved/summary")
+async def unresolved_summary():
+    async with AsyncSessionLocal() as db:
+        total = (await db.execute(select(safunc.count()).select_from(models.UnresolvedQuery))).scalar_one()
+        rows = (await db.execute(
+            select(models.UnresolvedQuery.fallback_reason, safunc.count())
+            .group_by(models.UnresolvedQuery.fallback_reason)
+        )).all()
+        by = {getattr(k, "value", str(k)): v for k, v in rows}
+    return {"total": total, "by_reason": by, "reasons": _FALLBACK_REASONS}
+
+
+@router.get("/admin/api/unresolved")
+async def unresolved_list(limit: int = 50, offset: int = 0,
+                          fallback_reason: Optional[str] = None,
+                          days: Optional[int] = None):
+    lim = min(max(limit, 1), 200)
+    off = max(offset, 0)
+    conds = []
+    if fallback_reason:
+        try:
+            conds.append(models.UnresolvedQuery.fallback_reason == models.FallbackReason(fallback_reason))
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"잘못된 fallback_reason: {fallback_reason}")
+    if days:
+        conds.append(models.UnresolvedQuery.created_at >= datetime.now(timezone.utc) - timedelta(days=int(days)))
+    async with AsyncSessionLocal() as db:
+        base = select(models.UnresolvedQuery)
+        if conds:
+            base = base.where(*conds)
+        total = (await db.execute(select(safunc.count()).select_from(base.subquery()))).scalar_one()
+        rows = (await db.execute(
+            base.order_by(desc(models.UnresolvedQuery.created_at)).limit(lim).offset(off)
+        )).scalars().all()
+    return {"total": total, "count": len(rows), "limit": lim, "offset": off,
+            "items": [_ser_unresolved(r) for r in rows]}
 
 
 @router.get("/admin", response_class=HTMLResponse)
