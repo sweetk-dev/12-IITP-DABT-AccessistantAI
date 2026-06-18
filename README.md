@@ -78,7 +78,7 @@ python -m scripts.weekly_report --use-llm  # 주간 리포트 + 의도 클러스
 
 ## 버전
 
-- 레포 태그: **v0.14.3** (버그 — confirm_apply reject 시 .review/.triage 사이드카 누락 수정)
+- 레포 태그: **v0.14.4** (정리 — 코드펜스 정규식·status 필드·_add_by_path 제한·호스트 rate-limit·주석/README)
 - 백엔드 내부: v1.2
 - 인제스트 스크립트: `ingest_sync.py` (초기 구축 `--rebuild`, 증분 동기화 기본)
 

@@ -323,8 +323,10 @@ def _set_by_path(doc: dict, path: str, value, require_exists: bool = True) -> bo
 
 
 def _add_by_path(doc: dict, path: str, value) -> bool:
-    """add: 대상이 list 면 append, 없는 키면 신규 설정. 이미 스칼라면 거부."""
-    parent, last = _get_parent(doc, path, create=True)
+    """add: 대상이 list 면 append, 없는 키면 신규 설정. 이미 스칼라면 거부.
+    중간 경로(부모)가 없으면 새 dict 를 만들지 않고 실패시킨다 — LLM 의 잘못된 깊은
+    path 로 의도치 않은 구조가 생기는 것을 방지(마지막 키 1단계만 신설 허용)."""
+    parent, last = _get_parent(doc, path, create=False)
     if parent is None:
         return False
     if last in parent and isinstance(parent[last], list):
@@ -412,10 +414,10 @@ async def update_item_via_llm(
         user_message=user_msg,
         max_tokens=max_tokens,
     )
-    # 종종 코드블록 형태로 올 수 있어 stripping
+    # 종종 코드블록(```json ... ```)으로 올 수 있어 펜스 제거 (문자집합 strip 대신 정규식)
     raw = raw.strip()
-    if raw.startswith("```"):
-        raw = raw.strip("`").lstrip("json").strip()
+    raw = re.sub(r"^```(?:json)?\s*", "", raw)
+    raw = re.sub(r"\s*```$", "", raw).strip()
 
     try:
         patch_obj = json.loads(raw)
