@@ -32,6 +32,7 @@ DEFAULT_CFG = {
 _status = {
     "crawl":  {"running": False, "label": None, "last_run": None, "last_status": None, "last_output": None},
     "backup": {"running": False, "last_run": None, "last_status": None, "last_output": None},
+    "discovery": {"running": False, "last_run": None, "last_status": None, "last_output": None},
 }
 _lock = threading.Lock()
 _sched = None
@@ -146,6 +147,35 @@ def run_backup_now():
     return {"started": True}
 
 
+def _run_discovery():
+    with _lock:
+        if _status["discovery"]["running"]:
+            return
+        _status["discovery"]["running"] = True
+    logger.info("신규 발굴 시작")
+    try:
+        import discovery_core as dc
+        res = dc.run_discovery()
+        with _lock:
+            _status["discovery"].update(running=False, last_run=_now(), last_status="ok",
+                                        last_output=json.dumps(res, ensure_ascii=False)[:400])
+        logger.info("신규 발굴 완료: %s", res)
+    except Exception as e:
+        with _lock:
+            _status["discovery"].update(running=False, last_run=_now(), last_status="error", last_output=str(e)[:400])
+        logger.exception("신규 발굴 실패: %s", e)
+
+
+def run_discovery_now():
+    with _lock:
+        if _status["discovery"]["running"]:
+            return {"started": False, "reason": "이미 실행 중"}
+    if not _sched:
+        return {"started": False, "reason": "스케줄러 미기동"}
+    _sched.add_job(_run_discovery, id="discovery_now", replace_existing=True)
+    return {"started": True}
+
+
 def get_status():
     with _lock:
         st = json.loads(json.dumps(_status))
@@ -174,6 +204,10 @@ def start():
     _sched.add_job(_run_crawl, CronTrigger(day=str(rc.get("day", "25")),
                    hour=rc.get("hour", 9), minute=rc.get("minute", 0)),
                    args=[["--revalidate"], "재검증(정기)"], id="revalidate_scheduled", replace_existing=True)
+    dc_cron = cfg.get("discovery_cron", DEFAULT_CFG["discovery_cron"])
+    _sched.add_job(_run_discovery, CronTrigger(day=str(dc_cron.get("day", "1,15")),
+                   hour=dc_cron.get("hour", 9), minute=dc_cron.get("minute", 0)),
+                   id="discovery_scheduled", replace_existing=True)
     _sched.add_job(_run_backup, CronTrigger(hour=bc.get("hour", 4), minute=bc.get("minute", 0)),
                    id="backup_scheduled", replace_existing=True)
     _sched.start()
