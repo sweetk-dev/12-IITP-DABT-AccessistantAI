@@ -9,11 +9,11 @@ import tempfile
 from pathlib import Path
 
 try:
-    from .detectors import ChangeResult, SNAPSHOT_FILES, _read_prev_hash, save_snapshot, _normalize_html_text, _hash_bytes, _chunk_html, _chunk_diff
+    from .detectors import ChangeResult, SNAPSHOT_FILES, _read_prev_hash, save_snapshot, _normalize_html_text, _hash_bytes, _chunk_html, _chunk_diff, _js_suspect, JS_SUSPECT_MIN_CHARS
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from crawler.detectors import ChangeResult, SNAPSHOT_FILES, _read_prev_hash, save_snapshot, _normalize_html_text, _hash_bytes, _chunk_html, _chunk_diff  # type: ignore
+    from crawler.detectors import ChangeResult, SNAPSHOT_FILES, _read_prev_hash, save_snapshot, _normalize_html_text, _hash_bytes, _chunk_html, _chunk_diff, _js_suspect, JS_SUSPECT_MIN_CHARS  # type: ignore
 
 
 def _decide(prev_hash, new_hash):
@@ -97,6 +97,14 @@ def test_chunk_diff_detects_changed():
     d = _chunk_diff(old, new)
     assert len(d["changed"]) == 1, d
     assert d["added"] == [] and d["removed"] == []
+
+
+def test_js_suspect_threshold():
+    """본문 길이가 임계 미만이면 JS 의심(True), 이상이면 False."""
+    assert _js_suspect(10) is True
+    assert _js_suspect(JS_SUSPECT_MIN_CHARS - 1) is True
+    assert _js_suspect(JS_SUSPECT_MIN_CHARS) is False
+    assert _js_suspect(5000) is False
 
 
 def test_chunk_diff_unchanged():
