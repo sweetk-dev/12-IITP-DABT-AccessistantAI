@@ -1,6 +1,6 @@
 # 정책DB 정기 크롤러 (Phase 4 — 트랙 B)
 
-`crawl_targets.json` 의 출처들을 주기적으로 점검해 정책 변경을 감지하고, **LLM 백엔드(현 Claude API, 향후 온프레미스 Gemma)** 로 갱신 JSON 을 자동 생성한 뒤 staging 폴더에 저장합니다. 사용자가 검토 후 confirm 해야만 실제 DB(items/) 에 반영됩니다.
+`crawl_targets.json` 의 출처들을 주기적으로 점검해 정책 변경을 감지하고, **LLM 백엔드(현 Gemini API, Claude/온프레미스 Gemma 선택 가능)** 로 갱신 JSON 을 자동 생성한 뒤 staging 폴더에 저장합니다. 사용자가 검토 후 confirm 해야만 실제 DB(items/) 에 반영됩니다.
 
 > **운영 원칙**: LLM 자동 재적재 금지. 사용자가 매번 검토·승인하는 안전한 워크플로우.
 
@@ -11,10 +11,10 @@
 ```
 policy_db/crawler/
 ├── __init__.py
-├── detectors.py          # 5종 변경 감지
+├── detectors.py          # 6종 변경 감지(+ grounding)
 ├── crawler.py            # 메인 오케스트레이션 (CLI)
 ├── llm_backends.py       # ⭐ LLM 백엔드 추상화 — Claude/Gemma 교체 가능
-├── claude_updater.py     # 기존/변경 출처 → LLM → 갱신 JSON (백엔드 무관)
+├── llm_updater.py     # 기존/변경 출처 → LLM → 갱신 JSON (백엔드 무관)
 ├── confirm_apply.py      # 사용자 검토 후 items/ 반영 + ingest_sync.py 자동 호출
 ├── README.md             # 이 문서
 │
@@ -28,11 +28,19 @@ policy_db/crawler/
 
 ---
 
-## LLM 백엔드 (현재 Claude → 향후 온프레미스 Gemma)
+## LLM 백엔드 (현재 Gemini → Claude / 온프레미스 Gemma 선택 가능)
 
 `llm_backends.py` 가 LLM 호출을 추상화. 환경변수 `LLM_BACKEND` 로 교체.
 
-### 현재(Phase 4): Claude API (외부)
+### 현재: Gemini API (외부, 권장 — 외부 API 벤더 단일화)
+```env
+LLM_BACKEND=gemini
+GEMINI_API_KEY=AIza...                 # 임베딩과 동일 키 재사용
+GEMINI_LLM_MODEL=gemini-3.1-pro-preview   # (선택, 기본값 동일)
+```
+> 임베딩·Live 음성과 동일한 Google 키 하나로 통합되어 키·결제·쿼터 관리가 단일화됩니다.
+
+### 대안: Claude API (외부)
 ```env
 LLM_BACKEND=claude
 ANTHROPIC_API_KEY=sk-ant-...
@@ -48,7 +56,7 @@ GEMMA_API_STYLE=ollama          # 또는 openai (vLLM·LiteLLM 호환)
 GEMMA_API_KEY=...               # (선택, vLLM 등 Bearer 인증 필요 시)
 ```
 
-→ **코드 변경 없이 환경변수만 바꾸면 백엔드 교체 완료**. `claude_updater.py` 내부에서 `get_backend()` 가 자동으로 적절한 구현체를 반환.
+→ **코드 변경 없이 환경변수만 바꾸면 백엔드 교체 완료**. `llm_updater.py` 내부에서 `get_backend()` 가 자동으로 적절한 구현체를 반환.
 
 ### 추가 백엔드 작성
 `llm_backends.py` 의 `LLMBackend` 추상 클래스를 상속 → `generate_json_update()` 구현 → `get_backend()` 팩토리에 등록.
@@ -61,15 +69,16 @@ GEMMA_API_KEY=...               # (선택, vLLM 등 Bearer 인증 필요 시)
 
 `welfare_backend/.env` 에 다음 키가 있는지 확인 (이미 등록 완료):
 ```env
-LLM_BACKEND=claude
-ANTHROPIC_API_KEY=sk-ant-...    # 등록됨
-GEMINI_API_KEY=...               # 임베딩용
+LLM_BACKEND=gemini               # 현재 기본 백엔드
+GEMINI_API_KEY=...               # 갱신 LLM + 임베딩 공용 (Google 키 단일화)
+GEMINI_LLM_MODEL=gemini-3.1-pro-preview   # (선택)
+ANTHROPIC_API_KEY=sk-ant-...     # (선택) LLM_BACKEND=claude 로 전환 시에만 필요
 DB_HOST=<DB_HOST>           # 테스트 서버
 ```
 
 추가 패키지 (이미 requirements.txt 에 포함):
 ```bash
-pip install anthropic httpx jsonschema
+pip install google-genai anthropic httpx jsonschema beautifulsoup4 trafilatura readability-lxml pypdf
 ```
 
 ### 2. 크롤링 실행
@@ -252,7 +261,7 @@ if sc and sc.grounding_metadata:
 - **첫 실행은 변경 0건이 정상** — 모든 출처가 "최초 스냅샷" 으로 기록되어 비교 기준이 됨. 다음 회차부터 실제 감지 시작.
 - **LLM 응답이 schema 위배** — staging/ 에 `_FAILED_*.txt` 디버그 파일이 저장됨. 시스템 프롬프트 보강 필요.
 - **변경 감지 false positive** — 페이지에 동적 타임스탬프가 있으면 매번 변경됨. detectors.py 의 `_mask_dynamic_noise()` 마스킹 패턴을 보강(조회수·세션·날짜 등). page_hash 는 `_normalize_html_text()` 로 정규화한 본문만 비교하고, last_modified_field 는 날짜를 보존(`mask_dates=False`)한다.
-- **변경 감지 false negative** — JS 렌더링 페이지는 httpx 만으로는 못 잡음. 향후 Playwright 도입 검토.
+- **변경 감지 false negative (JS 렌더링/SPA)** — httpx 는 빈 셸만 받음. 크롤러가 본문 과소 출처를 리포트의 "JS 렌더링 의심" 섹션에 표면화한다(Step 1). 해당 출처는 `change_detection_method` 를 `grounding` 으로 바꾸면 Gemini google_search 로 공식 출처 기준 현재 본문을 받아 변경 감지·LLM 갱신에 사용한다(Step 2). grounding 본문은 `latest.txt` 로 저장되고 비결정적 프로즈는 LLM 필드패치+사람 confirm 이 흡수.
 - **LLM_BACKEND 전환 시 응답 품질 차이** — Claude → Gemma 교체 후 첫 회차는 `--skip-claude` 로 감지만 한 뒤 일부 항목만 수동 테스트하며 SI 튜닝 권장.
 
 ### 환경변수 누락 (드물지만 발생 시)
@@ -274,7 +283,7 @@ if sc and sc.grounding_metadata:
 2. **청크 기반 변경 감지 (v0.3, `_chunk_html` / `_chunk_diff`)**
    본문을 의미 단위(문단·리스트·표 행·제목)로 청킹해 이전 스냅샷과 비교하고, 추가/삭제/수정을 산출합니다. 유사도(difflib) 기반으로 "수정"을 분류해 add/remove 과대계상을 줄이며, 결과는 크롤러 리포트에 요약 출력됩니다.
 
-3. **필드 단위 패치 갱신 (v0.4, `claude_updater._apply_patch`)**
+3. **필드 단위 패치 갱신 (v0.4, `llm_updater._apply_patch`)**
    LLM 이 항목 전체 JSON 을 다시 쓰지 않고 변경된 필드만 패치(op/path/old/new/evidence/confidence)로 반환합니다. add/update 만 자동 적용하고 패치에 없는 필드는 불변으로 보존합니다. **delete 는 자동 적용하지 않고** 검토 항목(`.review.json`)으로 분리하며, 출처에 명시적 종료 문구(폐지·종료·미시행 등)가 있을 때만 `delete_candidate` 로 승격합니다.
 
 4. **반영 전 회귀 가드 (v0.5, `confirm_apply._regression_check`)**

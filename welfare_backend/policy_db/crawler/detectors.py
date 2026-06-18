@@ -1,5 +1,6 @@
 # crawler/detectors.py
-# 5종 변경 감지 메서드 — crawl_targets.json 의 change_detection_method 와 1:1 대응.
+# 6종 변경 감지 메서드 — crawl_targets.json 의 change_detection_method 와 1:1 대응.
+# (page_hash / pdf_hash / last_modified_field / css_selector_text / manual_review / grounding)
 #
 # 호출 시그니처 통일:
 #   async def detect_xxx(target: dict, snapshot_path: Path) -> ChangeResult
@@ -29,6 +30,20 @@ DEFAULT_HEADERS = {
 }
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 
+# JS 렌더링(SPA) 의심 임계 — httpx 가 받은 정규화 본문이 이보다 짧으면 본문을 못 받은 것으로 의심한다.
+# SPA 는 빈 셸(스크립트만)이 와서 본문이 매우 짧다. 운영 데이터에 맞춰 JS_SUSPECT_MIN_CHARS 로 조정.
+JS_SUSPECT_MIN_CHARS = int(os.environ.get("JS_SUSPECT_MIN_CHARS", "250"))
+
+# Gemini google_search grounding — JS 렌더링 등 httpx 로 본문을 못 받는 출처용 (Step 2)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_GROUNDING_MODEL = os.environ.get("GEMINI_LLM_MODEL", "gemini-3.1-pro-preview")
+GEMINI_API_URL = (os.environ.get("GEMINI_API_URL") or "https://generativelanguage.googleapis.com").rstrip("/")
+
+
+def _js_suspect(body_len: int) -> bool:
+    """정규화 본문이 임계 미만이면 JS 렌더링(본문 미수신) 의심."""
+    return 0 <= body_len < JS_SUSPECT_MIN_CHARS
+
 
 @dataclass
 class ChangeResult:
@@ -38,6 +53,11 @@ class ChangeResult:
     new_hash: Optional[str] = None
     chunk_diff: Optional[dict] = None
     new_chunks: Optional[list] = None
+    url_used: Optional[str] = None      # 실제 성공한 URL (기본 또는 fallback)
+    used_fallback: bool = False         # fallback_url 로 성공 → 기본 URL 점검 필요 신호
+    status: str = "ok"                  # ok / fetch_failed / exception — 실패 분류용(reason 문자열 매칭 대체)
+    body_len: Optional[int] = None      # 정규화 본문 길이(HTML 출처) — JS 의심 판정용
+    js_suspect: bool = False            # 본문 과소 → JS 렌더링(SPA) 의심(httpx 가 빈 셸만 받음)
 
 
 def _hash_bytes(data: bytes) -> str:
@@ -45,13 +65,14 @@ def _hash_bytes(data: bytes) -> str:
 
 
 # ── 스냅샷 파일 매핑 + 공통 비교 헬퍼 ─────────────────────────
-# 변경 감지 방식 → 스냅샷 파일명. 읽기(_read_prev_hash)와 쓰기(save_snapshot)가
+# 변경 감지 방식 → 스냅샷 파일명. 읽기(_read_prev_hash)와 쓰기(save_baseline_snapshot)가
 # 동일 매핑을 공유하므로 "저장=해시 / 비교=원문" 같은 불일치가 재발하지 않는다.
 SNAPSHOT_FILES = {
     "page_hash": "page_hash.txt",
     "pdf_hash": "pdf_hash.txt",
     "last_modified_field": "last_modified.txt",
     "css_selector_text": "selector.txt",
+    "grounding": "grounding_hash.txt",
 }
 
 
@@ -119,6 +140,11 @@ def _finalize_text(text: str, mask_dates: bool) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+# 의미 단위 청킹 블록 태그 (C8) — _chunks_from_soup / _chunk_html 공용
+BLOCK_TAGS = ["p", "li", "tr", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6",
+              "dt", "dd", "blockquote", "figcaption", "caption"]
+
+
 def _chunks_from_soup(soup) -> list:
     chunks = []
     for el in soup.find_all(BLOCK_TAGS):
@@ -152,11 +178,6 @@ def _normalize_html_text(html: bytes, mask_dates: bool = True) -> str:
     text = re.sub(r"<style[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
     return _finalize_text(text, mask_dates)
-
-
-# ── 의미 단위 청킹 (C8) ──────────────────────────────────────
-BLOCK_TAGS = ["p", "li", "tr", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6",
-              "dt", "dd", "blockquote", "figcaption", "caption"]
 
 
 def _chunk_html(html: bytes) -> list:
@@ -234,7 +255,8 @@ def _save_chunks(snapshot_dir: Path, chunks: list) -> None:
         _json.dumps(chunks, ensure_ascii=False), encoding="utf-8")
 
 
-async def _fetch(url: str, *, client: httpx.AsyncClient) -> Optional[httpx.Response]:
+async def _fetch_url(url: str, *, client: httpx.AsyncClient) -> Optional[httpx.Response]:
+    """단일 URL 1회 GET. 실패(예외/HTTP>=400) 시 None."""
     try:
         resp = await client.get(url, headers=DEFAULT_HEADERS, follow_redirects=True, timeout=TIMEOUT)
         if resp.status_code >= 400:
@@ -246,14 +268,61 @@ async def _fetch(url: str, *, client: httpx.AsyncClient) -> Optional[httpx.Respo
         return None
 
 
+async def _fetch(target: dict, *, client: httpx.AsyncClient):
+    """기본 url 실패 시 crawl_targets 의 fallback_url 로 자동 재시도.
+
+    반환: (resp, info). info = {url_used, used_fallback, primary_failed}.
+    - 기본 URL 성공: used_fallback=False
+    - 기본 실패 → fallback 성공: used_fallback=True (=기본 URL 점검 필요 신호)
+    - 둘 다 실패: resp=None (호출자가 _fetch_failed_reason 으로 사유 구성)
+    official_api 는 포맷이 출처마다 달라 자동 호출하지 않고, 전부 실패 시 사유에 표기해
+    수동 대체를 유도한다(향후 확장 지점)."""
+    info = {"url_used": None, "used_fallback": False, "primary_failed": False}
+    primary = target.get("url")
+    fallback = target.get("fallback_url")
+    for label, u in (("primary", primary), ("fallback", fallback)):
+        if not u:
+            continue
+        resp = await _fetch_url(u, client=client)
+        if resp is not None:
+            info["url_used"] = u
+            info["used_fallback"] = (label == "fallback")
+            if info["used_fallback"]:
+                logger.warning("⚠ 기본 URL 실패 → fallback_url 로 수집: %s (기본=%s)", u, primary)
+            return resp, info
+        if label == "primary":
+            info["primary_failed"] = True
+            if fallback:
+                logger.info("기본 URL 실패 → fallback_url 시도: %s", fallback)
+    return None, info
+
+
+def _fetch_failed_reason(target: dict, info: dict) -> str:
+    """수집 실패 사유 문자열. 'fetch_failed' 접두어는 유지(크롤러 실패 분류 호환)."""
+    parts = ["fetch_failed"]
+    if target.get("fallback_url"):
+        parts.append("fallback_also_failed")
+    if target.get("official_api"):
+        parts.append("has_official_api(수동 대체 검토)")
+    return " | ".join(parts)
+
+
+def _annotate(res: "ChangeResult", info: dict) -> "ChangeResult":
+    """수집에 쓰인 URL/폴백 여부를 결과에 부착. 폴백 사용 시 사유에 점검 신호 추가."""
+    res.url_used = info.get("url_used")
+    res.used_fallback = bool(info.get("used_fallback"))
+    if res.used_fallback and "fetch_failed" not in res.reason:
+        res.reason = f"{res.reason} (fallback_url 사용 — 기본 URL 점검 필요)"
+    return res
+
+
 # ─────────────────────────────────────────────────────────────
 # 1) page_hash — HTML 본문 텍스트 SHA-256 비교
 # ─────────────────────────────────────────────────────────────
-async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient) -> ChangeResult:
-    url = target["url"]
-    resp = await _fetch(url, client=client)
+async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
+    resp, finfo = await _fetch(target, client=client)
     if resp is None:
-        return ChangeResult(False, "fetch_failed")
+        return ChangeResult(False, _fetch_failed_reason(target, finfo), status="fetch_failed")
     # C6/#25: soup 1회 파싱으로 정규화 텍스트 + 청크 동시 산출 (이중 파싱 제거)
     text, new_chunks = _parse_page_hash(resp.content)
     new_hash = _hash_bytes(text.encode("utf-8"))
@@ -265,34 +334,34 @@ async def detect_page_hash(target: dict, snapshot_dir: Path, *, client: httpx.As
     prev_hash = _read_prev_hash(snapshot_dir, "page_hash")
     changed = (prev_hash is None) or (prev_hash != new_hash)
     reason = "최초 스냅샷" if prev_hash is None else ("해시 변경" if changed else "변경 없음")
-    return ChangeResult(
+    return _annotate(ChangeResult(
         changed=changed,
         reason=reason,
-        new_content=resp.content if changed else None,
+        new_content=resp.content if (changed or revalidate) else None,
         new_hash=new_hash,
         chunk_diff=cdiff,
         new_chunks=new_chunks,
-    )
+        body_len=len(text), js_suspect=_js_suspect(len(text)),
+    ), finfo)
 
 
 # ─────────────────────────────────────────────────────────────
 # 2) pdf_hash — PDF 바이트 SHA-256
 # ─────────────────────────────────────────────────────────────
-async def detect_pdf_hash(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient) -> ChangeResult:
-    url = target["url"]
-    resp = await _fetch(url, client=client)
+async def detect_pdf_hash(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
+    resp, finfo = await _fetch(target, client=client)
     if resp is None:
-        return ChangeResult(False, "fetch_failed")
+        return ChangeResult(False, _fetch_failed_reason(target, finfo), status="fetch_failed")
     new_hash = _hash_bytes(resp.content)
     prev_hash = _read_prev_hash(snapshot_dir, "pdf_hash")
     changed = (prev_hash is None) or (prev_hash != new_hash)
     # PDF 파일명 날짜 패턴 변화도 함께 모니터링 (예: _250623 → _260101)
-    return ChangeResult(
+    return _annotate(ChangeResult(
         changed=changed,
         reason="최초 스냅샷" if prev_hash is None else ("PDF 해시 변경" if changed else "변경 없음"),
-        new_content=resp.content if changed else None,
+        new_content=resp.content if (changed or revalidate) else None,
         new_hash=new_hash,
-    )
+    ), finfo)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -307,11 +376,10 @@ LAST_MOD_PATTERNS = [
 ]
 
 
-async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient) -> ChangeResult:
-    url = target["url"]
-    resp = await _fetch(url, client=client)
+async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
+    resp, finfo = await _fetch(target, client=client)
     if resp is None:
-        return ChangeResult(False, "fetch_failed")
+        return ChangeResult(False, _fetch_failed_reason(target, finfo), status="fetch_failed")
     text = _normalize_html_text(resp.content, mask_dates=False)
     # HTTP Last-Modified 헤더도 함께 본다
     http_lm = resp.headers.get("Last-Modified", "")
@@ -326,12 +394,13 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
     # 저장/비교 모두 해시 기준 — SNAPSHOT_FILES 매핑 공유로 불일치 재발 방지.
     prev_hash = _read_prev_hash(snapshot_dir, "last_modified_field")
     changed = (prev_hash is None) or (prev_hash != new_hash)
-    return ChangeResult(
+    return _annotate(ChangeResult(
         changed=changed,
         reason="최초 스냅샷" if prev_hash is None else ("최종 수정 키 변경" if changed else "변경 없음"),
-        new_content=resp.content if changed else None,
+        new_content=resp.content if (changed or revalidate) else None,
         new_hash=new_hash,
-    )
+        body_len=len(text), js_suspect=_js_suspect(len(text)),
+    ), finfo)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -339,13 +408,13 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
 #    crawl_targets 의 css_selector_hint 가 "re:<정규식>" 형태면 그 정규식 매칭 결과를,
 #    그 외(빈 값/설명/셀렉터)면 전체 본문(앞 5KB) 해시를 비교 키로 쓴다.
 #    (CSS 셀렉터 직접 지원은 의존성 최소화를 위해 향후 확장)
+#    ⚠️ 이름과 달리 실제 CSS 셀렉터 파싱은 아직 미지원 — re: 정규식 또는 5KB 해시 비교만.
 # ─────────────────────────────────────────────────────────────
-async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient) -> ChangeResult:
-    url = target["url"]
+async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
     hint = (target.get("css_selector_hint") or "").strip()
-    resp = await _fetch(url, client=client)
+    resp, finfo = await _fetch(target, client=client)
     if resp is None:
-        return ChangeResult(False, "fetch_failed")
+        return ChangeResult(False, _fetch_failed_reason(target, finfo), status="fetch_failed")
     text = _normalize_html_text(resp.content)
 
     # hint 가 "re:" 프리픽스면 정규식으로 해석, 그 외(빈 값/셀렉터 설명 등)는
@@ -364,23 +433,90 @@ async def detect_css_selector_text(target: dict, snapshot_dir: Path, *, client: 
     new_hash = _hash_bytes(target_text.encode("utf-8"))
     prev_hash = _read_prev_hash(snapshot_dir, "css_selector_text")
     changed = (prev_hash is None) or (prev_hash != new_hash)
-    return ChangeResult(
+    return _annotate(ChangeResult(
         changed=changed,
         reason="셀렉터 텍스트 변경" if changed and prev_hash else (
             "최초 스냅샷" if prev_hash is None else "변경 없음"
         ),
-        new_content=resp.content if changed else None,
+        new_content=resp.content if (changed or revalidate) else None,
         new_hash=new_hash,
-    )
+        body_len=len(text), js_suspect=_js_suspect(len(text)),
+    ), finfo)
 
 
 # ─────────────────────────────────────────────────────────────
 # 5) manual_review — 자동 감지 불가, 보고만
 # ─────────────────────────────────────────────────────────────
-async def detect_manual_review(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient) -> ChangeResult:
+async def detect_manual_review(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
     return ChangeResult(
         changed=False,
         reason="manual_review — 분기 1회 수동 검토 권장",
+    )
+
+
+# ─────────────────────────────────────────────────────────────
+# 6) grounding — Gemini google_search 로 현재 본문 취득 (JS 렌더링/SPA 출처용, Step 2)
+#    httpx 가 빈 셸만 받는 SPA 출처를, 정책DB 를 처음 만들 때처럼 웹검색(grounding)으로
+#    공식 출처 기준 현재 본문을 받아 변경 감지 + LLM 갱신 입력으로 쓴다. 비결정적 프로즈는
+#    하위 LLM 필드패치(증거 기반) + 사람 confirm 파이프라인이 흡수(자동 반영 없음).
+# ─────────────────────────────────────────────────────────────
+async def _gemini_grounded_text(query: str, *, client: httpx.AsyncClient) -> Optional[str]:
+    """Gemini generateContent + google_search tool 로 grounded 본문 텍스트를 받는다."""
+    if not GEMINI_API_KEY:
+        logger.warning("grounding: GEMINI_API_KEY 미설정 — 건너뜀")
+        return None
+    url = f"{GEMINI_API_URL}/v1beta/models/{GEMINI_GROUNDING_MODEL}:generateContent"
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": query}]}],
+        "tools": [{"google_search": {}}],
+        "generationConfig": {"temperature": 0, "maxOutputTokens": 8000},
+    }
+    try:
+        resp = await client.post(
+            url,
+            headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
+            json=payload, timeout=httpx.Timeout(120.0, connect=10.0),
+        )
+        if resp.status_code >= 400:
+            logger.warning("grounding HTTP %s", resp.status_code)
+            return None
+        data = resp.json()
+        cands = data.get("candidates") or []
+        if not cands:
+            return None
+        parts = (cands[0].get("content") or {}).get("parts") or []
+        # thinking 파트(thought=True) 제외, 실제 응답 텍스트만
+        text = "".join(p.get("text", "") for p in parts if p.get("text") and not p.get("thought")).strip()
+        return text or None
+    except Exception as e:
+        logger.warning("grounding 호출 실패: %s", e)
+        return None
+
+
+def _grounding_query(target: dict) -> str:
+    title = target.get("title") or ""
+    url = target.get("url") or ""
+    return (
+        f"대한민국 장애인 복지 정책 '{title}'의 현재 공식 내용을 알려줘. "
+        f"공식 출처(law.go.kr, 보건복지부 등 관할 부처, 운영기관 공식 페이지, 복지로)를 근거로 "
+        f"지원 금액·요율·자격 기준·시행일·신청 방법·신청처를 사실 위주로 정리해줘. "
+        f"참고 출처: {url}. 추측 금지 — 공식 출처에서 확인 안 되면 '확인 불가'로 표기."
+    )
+
+
+async def detect_grounding(target: dict, snapshot_dir: Path, *, client: httpx.AsyncClient, revalidate: bool = False) -> ChangeResult:
+    text = await _gemini_grounded_text(_grounding_query(target), client=client)
+    if not text:
+        return ChangeResult(False, "fetch_failed | grounding_unavailable", status="fetch_failed")
+    new_hash = _hash_bytes(text.encode("utf-8"))
+    prev_hash = _read_prev_hash(snapshot_dir, "grounding")
+    changed = (prev_hash is None) or (prev_hash != new_hash)
+    return ChangeResult(
+        changed=changed,
+        reason="최초 스냅샷" if prev_hash is None else ("grounding 본문 변경" if changed else "변경 없음"),
+        new_content=text.encode("utf-8") if (changed or revalidate) else None,
+        new_hash=new_hash,
+        body_len=len(text),
     )
 
 
@@ -393,6 +529,7 @@ DETECTORS = {
     "last_modified_field": detect_last_modified_field,
     "css_selector_text": detect_css_selector_text,
     "manual_review": detect_manual_review,
+    "grounding": detect_grounding,
 }
 
 
@@ -401,10 +538,10 @@ DETECTORS = {
 # confirm_apply 반영 성공 시 save_baseline_snapshot 로 전진시킨다. 따라서 리포트를 놓치거나
 # LLM/staging 이 실패하면 baseline 이 그대로 남아 다음 회차에 변경이 재노출된다.
 def save_content_snapshot(snapshot_dir: Path, method: str, result: ChangeResult):
-    """변경 본문만 저장 (claude_updater LLM 입력·진단용). baseline 은 건드리지 않는다."""
+    """변경 본문만 저장 (llm_updater LLM 입력·진단용). baseline 은 건드리지 않는다."""
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     if result.new_content is not None:
-        ext = "pdf" if method == "pdf_hash" else "html"
+        ext = "txt" if method == "grounding" else ("pdf" if method == "pdf_hash" else "html")
         (snapshot_dir / f"latest.{ext}").write_bytes(result.new_content)
     # page_hash 청크는 pending 으로만 저장 — confirm 시 chunks.json 으로 승격.
     if method == "page_hash" and result.new_chunks is not None:
@@ -429,8 +566,11 @@ def save_baseline_snapshot(snapshot_dir: Path, method: str, new_hash) -> bool:
 
 
 def save_snapshot(snapshot_dir: Path, method: str, result: ChangeResult):
-    """[호환] 본문 + baseline 을 한 번에 저장 (수동 도구·테스트용).
-    정기 크롤러는 #27 A안에 따라 save_content_snapshot(감지) + save_baseline_snapshot(confirm)
-    로 분리 호출한다."""
+    """[테스트 전용] 본문 + baseline 을 한 번에 저장하는 편의 래퍼.
+
+    ⚠️ 프로덕션/운영 코드에서 호출하지 말 것. 현재 호출처는 단위 테스트뿐이며
+    (test_detectors.py / test_snapshot_split.py), 정기 크롤러는 #27 A안에 따라
+    save_content_snapshot(감지 시점) + save_baseline_snapshot(confirm 반영 시점)
+    을 분리 호출한다."""
     save_content_snapshot(snapshot_dir, method, result)
     save_baseline_snapshot(snapshot_dir, method, result.new_hash)

@@ -9,7 +9,7 @@
   - `live_bridge.py` — 음성·텍스트 멀티모달 WebSocket 브릿지
   - `tool_handlers.py` — Function Calling 핸들러
   - `database.py` / `models.py` / `schemas.py` — DB 연결, ORM, 스키마
-  - `policy_db/` — 정책 데이터 정의 (`items/`, `schema.json`), 인제스트(`ingest_v1.5.py`), 자동 갱신 크롤러(`crawler/`)
+  - `policy_db/` — 정책 데이터 정의 (`items/`, `schema.json`), 인제스트(`ingest_sync.py`), 자동 갱신 크롤러(`crawler/`)
   - `scripts/` — 배치 작업 (임베딩 백필, 주간 리포트, 오래된 쿼리 정리 등)
   - `static/` — 마이크 워커, 라이브 테스트 페이지
   - `reports/unresolved/` — 미해결 질의 주간 리포트
@@ -56,8 +56,10 @@ python -m crawler.crawler                # 풀 실행 (감지+갱신안 staging 
 python -m crawler.confirm_apply          # staging → items 반영 (반영 성공 시 baseline 전진)
 python -m crawler.crawler --mark-reviewed all  # 수동 검토 타겟 검토일 기록
 
-# 신규 항목 인제스트 (임베딩 생성 + DB 적재)
-python ingest_v1.5.py
+# 빈 DB 초기 구축 (스키마 생성 + 전량 임베딩 적재)
+python ingest_sync.py --rebuild
+# 증분 동기화 (변경된 항목만 재적재)
+python ingest_sync.py
 ```
 
 원본 PDF/DOCX 자료는 본 레포에 포함되지 않습니다 (별도 보관소에서 동기화).
@@ -76,9 +78,9 @@ python -m scripts.weekly_report --use-llm  # 주간 리포트 + 의도 클러스
 
 ## 버전
 
-- 레포 태그: **v0.6.1** (정책DB 크롤러 — 감지/확정 baseline 분리, 수동 검토 표면화, 코드 정리)
+- 레포 태그: **v0.16.1** (자주 변경되는 정책 30개 출처를 grounding 으로 재분류 — crawl_targets v2.6.0)
 - 백엔드 내부: v1.2
-- 인제스트 스크립트: `ingest_v1.5.py`
+- 인제스트 스크립트: `ingest_sync.py` (초기 구축 `--rebuild`, 증분 동기화 기본)
 
 ## 라이선스
 

@@ -88,6 +88,25 @@ _static_dir = _pl.Path(__file__).parent / "static"
 if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
+# 관리자 콘솔 라우터 (검토 큐 v1-1)
+try:
+    from admin_router import router as _admin_router
+    app.include_router(_admin_router)
+except Exception as _e:  # 라우터 로드 실패가 본 서비스 기동을 막지 않도록
+    import logging as _lg
+    _lg.getLogger("main").warning("admin_router 로드 실패: %s", _e)
+
+
+# 운영 스케줄러(크롤/백업) 기동 — 단일 워커 전제
+@app.on_event("startup")
+def _start_ops_scheduler():
+    try:
+        import scheduler as _scheduler
+        _scheduler.start()
+    except Exception as _e:
+        import logging as _lg
+        _lg.getLogger("main").warning("scheduler 기동 실패: %s", _e)
+
 
 # ─────────────────────────────────────────────────────────────
 # Meta

@@ -1,18 +1,19 @@
 # crawler/llm_backends.py
 # LLM 갱신 엔진 추상화 — 외부 API(Anthropic)와 온프레미스 LLM(Gemma 등)을 동일 인터페이스로.
 #
-# 현재 단계: claude (Anthropic API) — 검증·기본값
-# 향후 단계: gemma (Ollama / vLLM / 자체 HTTP 서빙) — 온프레미스 서버 도입 시
+# 현재 단계: gemini (Google Generative Language API) — 기본값, 임베딩·Live 와 키 단일화
+# 대안: claude (Anthropic API), gemma (온프레미스 Ollama / vLLM / 자체 HTTP 서빙)
 #
 # 백엔드 선택은 환경변수 LLM_BACKEND 로:
-#   LLM_BACKEND=claude   (기본)
+#   LLM_BACKEND=gemini   (기본)
+#   LLM_BACKEND=claude
 #   LLM_BACKEND=gemma
 #
 # 각 백엔드는 동일한 generate_json_update() 시그니처를 따름:
 #   async def generate_json_update(system_prompt: str, user_message: str,
 #                                  max_tokens: int) -> str
 #
-# 반환은 "갱신된 JSON 본체 문자열" 1개. 파싱/검증은 호출자(claude_updater) 책임.
+# 반환은 "갱신된 JSON 본체 문자열" 1개. 파싱/검증은 호출자(llm_updater) 책임.
 import os
 import logging
 from abc import ABC, abstractmethod
@@ -151,13 +152,88 @@ class GemmaBackend(LLMBackend):
 
 
 # ─────────────────────────────────────────────────────────────
+# 3) Gemini (외부 API) — Google generativelanguage REST
+# ─────────────────────────────────────────────────────────────
+class GeminiBackend(LLMBackend):
+    """
+    Google Gemini API(generativelanguage REST) 호출. 임베딩과 동일한 GEMINI_API_KEY 재사용.
+
+    환경변수:
+      GEMINI_API_KEY    (필수) Google AI Studio 키 — 임베딩과 공유
+      GEMINI_LLM_MODEL  기본 gemini-3.1-pro-preview
+      GEMINI_API_URL    기본 https://generativelanguage.googleapis.com
+
+    generateContent 호출:
+      POST /v1beta/models/{model}:generateContent
+        { systemInstruction, contents,
+          generationConfig:{temperature:0, responseMimeType:'application/json'} }
+    응답 JSON 본문(문자열) 1개 반환 — 파싱/검증은 llm_updater 책임(백엔드 무관).
+    """
+
+    name = "gemini"
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        api_url: Optional[str] = None,
+    ):
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        if not self.api_key:
+            raise RuntimeError(
+                "GEMINI_API_KEY 환경변수가 비어 있습니다 — welfare_backend/.env 확인"
+            )
+        self.model = model or os.environ.get("GEMINI_LLM_MODEL", "gemini-3.1-pro-preview")
+        self.api_url = (
+            api_url or os.environ.get("GEMINI_API_URL")
+            or "https://generativelanguage.googleapis.com"
+        ).rstrip("/")
+        self._timeout = httpx.Timeout(180.0, connect=10.0)
+
+    async def generate_json_update(
+        self, *, system_prompt: str, user_message: str, max_tokens: int = 16000
+    ) -> str:
+        url = f"{self.api_url}/v1beta/models/{self.model}:generateContent"
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": self.api_key,
+        }
+        payload = {
+            "systemInstruction": {"parts": [{"text": system_prompt}]},
+            "contents": [{"role": "user", "parts": [{"text": user_message}]}],
+            "generationConfig": {
+                "temperature": 0,
+                "maxOutputTokens": max_tokens,
+                "responseMimeType": "application/json",
+            },
+        }
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            resp = await client.post(url, headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+        candidates = data.get("candidates") or []
+        if not candidates:
+            return ""
+        parts = (candidates[0].get("content") or {}).get("parts") or []
+        # thinking 파트(thought=True)는 제외하고 실제 응답 텍스트만 결합
+        texts = [
+            p.get("text", "")
+            for p in parts
+            if p.get("text") and not p.get("thought")
+        ]
+        return "".join(texts)
+
+
+# ─────────────────────────────────────────────────────────────
 # 팩토리
 # ─────────────────────────────────────────────────────────────
 def get_backend(name: Optional[str] = None) -> LLMBackend:
     """LLM_BACKEND 환경변수 또는 인자 기반으로 백엔드 인스턴스 반환."""
-    name = (name or os.environ.get("LLM_BACKEND", "claude")).lower()
+    name = (name or os.environ.get("LLM_BACKEND", "gemini")).lower()
     if name == "claude":
         return AnthropicBackend()
     if name in ("gemma", "ollama"):
         return GemmaBackend()
-    raise ValueError(f"unknown LLM_BACKEND: {name} (지원: claude, gemma)")
+    if name == "gemini":
+        return GeminiBackend()
+    raise ValueError(f"unknown LLM_BACKEND: {name} (지원: claude, gemma, gemini)")

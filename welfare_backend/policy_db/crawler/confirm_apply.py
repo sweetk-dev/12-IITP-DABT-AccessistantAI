@@ -15,6 +15,7 @@
 import argparse
 import json
 import logging
+import os
 import shutil
 import subprocess
 import sys
@@ -32,8 +33,10 @@ for _s in (sys.stdout, sys.stderr):
         pass
 
 ROOT = Path(__file__).resolve().parent.parent     # policy_db/
-ITEMS_DIR = ROOT / "items"
-STAGING_DIR = ROOT / "crawler" / "staging"
+# 가변 데이터 루트 — POLICY_DATA_DIR 설정 시 그 경로, 미설정 시 ROOT (하위호환)
+DATA_ROOT = Path(os.environ["POLICY_DATA_DIR"]).resolve() if os.environ.get("POLICY_DATA_DIR") else ROOT
+ITEMS_DIR = DATA_ROOT / "items"
+STAGING_DIR = DATA_ROOT / "crawler" / "staging"
 BACKUPS_DIR = ITEMS_DIR / ".backups"
 SCHEMA = ROOT / "schema.json"
 
@@ -149,7 +152,7 @@ def _advance_baselines(staged_path: Path):
     n = 0
     for s in sources or []:
         sd, method, nh = s.get("snapshot_dir"), s.get("method"), s.get("new_hash")
-        if sd and method and nh and save_baseline_snapshot(ROOT / sd, method, nh):
+        if sd and method and nh and save_baseline_snapshot(DATA_ROOT / sd, method, nh):
             n += 1
     logger.info("🔁 baseline 전진: %d개 출처", n)
 
@@ -167,9 +170,11 @@ def _apply_one(policy_id: str, *, diff_only: bool, reject: bool, auto_yes: bool)
         rej_dir = STAGING_DIR / ".rejected"
         rej_dir.mkdir(parents=True, exist_ok=True)
         shutil.move(str(latest), str(rej_dir / latest.name))
-        rej_sidecar = latest.parent / latest.name.replace(".staged.json", ".sources.json")
-        if rej_sidecar.exists():
-            shutil.move(str(rej_sidecar), str(rej_dir / rej_sidecar.name))
+        # 동반 사이드카 3종 모두 이동 (review_core.reject / _purge_staging 와 동일 — 고아 파일 방지)
+        for ext in (".sources.json", ".review.json", ".triage.json"):
+            side = latest.parent / latest.name.replace(".staged.json", ext)
+            if side.exists():
+                shutil.move(str(side), str(rej_dir / side.name))
         logger.info("🗑 reject 처리: %s → %s", latest.name, rej_dir)
         return True
 

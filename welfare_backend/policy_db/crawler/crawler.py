@@ -5,7 +5,7 @@
 #   1) crawl_targets.json 의 모든 타겟 로드 (현재 382개)
 #   2) 각 타겟별 change_detection_method 에 따라 detectors.DETECTORS[m] 호출
 #   3) 변경 감지된 타겟의 used_by_items[] 항목 ID 수집 (영향 정책 식별)
-#   4) 영향 정책마다 claude_updater.update_item_via_claude() 호출
+#   4) 영향 정책마다 llm_updater.update_item_via_llm() 호출
 #      → 기존 items/B0XX_*.json + 변경된 출처 본문 → Claude API → 갱신 JSON 생성
 #   5) staging/B0XX_*.json 저장 + reports/YYYY-MM-DD.md / .json 리포트
 #   6) 사람이 검토 후 confirm_apply.py 실행 → items/ 반영
@@ -25,6 +25,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 from dotenv import load_dotenv
@@ -40,25 +41,28 @@ for _s in (sys.stdout, sys.stderr):
 # ── 경로 설정 ────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent          # policy_db/
 BACKEND_ROOT = ROOT.parent                              # welfare_backend/
-CRAWL_TARGETS = ROOT / "crawl_targets.json"
-ITEMS_DIR = ROOT / "items"
-SCHEMA = ROOT / "schema.json"
-SNAPSHOTS_DIR = ROOT / "crawler" / "snapshots"
-STAGING_DIR = ROOT / "crawler" / "staging"
-REPORTS_DIR = ROOT / "crawler" / "reports"
-MANUAL_STATE = ROOT / "crawler" / "manual_review_state.json"
 
 load_dotenv(BACKEND_ROOT / ".env")
+
+# 가변 데이터 루트 — POLICY_DATA_DIR 설정 시 그 경로, 미설정 시 ROOT (하위호환)
+DATA_ROOT = Path(os.environ["POLICY_DATA_DIR"]).resolve() if os.environ.get("POLICY_DATA_DIR") else ROOT
+CRAWL_TARGETS = ROOT / "crawl_targets.json"            # 설정(읽기전용) — 코드 경로 유지
+SCHEMA = ROOT / "schema.json"                          # 설정(읽기전용) — 코드 경로 유지
+ITEMS_DIR = DATA_ROOT / "items"
+SNAPSHOTS_DIR = DATA_ROOT / "crawler" / "snapshots"
+STAGING_DIR = DATA_ROOT / "crawler" / "staging"
+REPORTS_DIR = DATA_ROOT / "crawler" / "reports"
+MANUAL_STATE = DATA_ROOT / "crawler" / "manual_review_state.json"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("crawler")
 
 # ── 동적 import (패키지/스크립트 양쪽 지원) ──────────────────
 try:
-    from .detectors import DETECTORS, save_content_snapshot, ChangeResult
+    from .detectors import DETECTORS, save_content_snapshot, save_baseline_snapshot, ChangeResult
 except ImportError:
     sys.path.insert(0, str(ROOT))
-    from crawler.detectors import DETECTORS, save_content_snapshot, ChangeResult  # type: ignore
+    from crawler.detectors import DETECTORS, save_content_snapshot, save_baseline_snapshot, ChangeResult  # type: ignore
 
 
 def _load_targets() -> dict:
@@ -118,13 +122,35 @@ async def _process_target(target: dict, client: httpx.AsyncClient, args) -> Chan
 
     target_id = target["target_id"]
     snapshot_dir = SNAPSHOTS_DIR / target_id
-    result = await detector(target, snapshot_dir, client=client)
+    result = await detector(target, snapshot_dir, client=client,
+                             revalidate=getattr(args, "revalidate", False))
 
-    # 변경 감지 시 본문만 저장 (baseline 은 confirm 반영 시 전진 — #27 A안)
-    if result.changed and not args.dry_run:
+    # 변경 감지 시 또는 재검증 모드에서 본문 저장 (baseline 은 confirm 반영 시 전진 — #27 A안).
+    # revalidate 면 detector 가 변경 없어도 new_content 를 채우므로 latest.* 가 현재 페이지로
+    # 갱신되어, LLM 재검증이 stale/누락 스냅샷이 아닌 현재 본문을 보게 된다.
+    if (result.changed or getattr(args, "revalidate", False)) and not args.dry_run:
         save_content_snapshot(snapshot_dir, method, result)
 
     return result
+
+
+def _purge_staging(scope_pids):
+    """staging 의 .staged.json(+사이드카)을 .rejected 로 이동. scope_pids 비면 전체."""
+    import shutil
+    rej = STAGING_DIR / ".rejected"
+    rej.mkdir(parents=True, exist_ok=True)
+    n = 0
+    for f in list(STAGING_DIR.glob("B0*.staged.json")):
+        pid = f.name.split("_")[0]
+        if scope_pids and pid not in scope_pids:
+            continue
+        shutil.move(str(f), str(rej / f.name))
+        for ext in (".sources.json", ".review.json", ".triage.json"):
+            side = f.parent / f.name.replace(".staged.json", ext)
+            if side.exists():
+                shutil.move(str(side), str(rej / side.name))
+        n += 1
+    return n
 
 
 async def run(args):
@@ -139,6 +165,9 @@ async def run(args):
     if args.only:
         targets = [t for t in targets if args.only.lower() in t["target_id"].lower()]
         logger.info("필터 적용 — %d개 타겟만 검사", len(targets))
+    if getattr(args, "policy", None):
+        targets = [t for t in targets if args.policy in (t.get("used_by_items") or [])]
+        logger.info("정책 필터(%s) — %d개 타겟만 검사", args.policy, len(targets))
 
     logger.info("🕷 크롤러 시작 — %d개 타겟, dry_run=%s, skip_claude=%s",
                 len(targets), args.dry_run, args.skip_claude)
@@ -148,24 +177,65 @@ async def run(args):
     affected_items = set()  # 영향받는 정책 ID
     manual_targets = []   # manual_review 타겟 (#28)
     skipped_staged = []   # 이미 staging 대기라 LLM 생략된 정책 (#27 A안)
+    fallback_used = []    # 기본 URL 실패 → fallback_url 로 수집된 타겟 (URL 점검 필요 신호)
+    js_suspect = []       # JS 렌더링(SPA) 의심 — httpx 본문 과소(변경 감지 무의미, 수동/grounding 권장)
 
-    # ── 1) 변경 감지 동시 실행 (rate limit 위해 동시성 5 제한) ──
+    # ── 1) 변경 감지 동시 실행 (전역 동시성 5 + 호스트당 2 제한으로 예의) ──
     sem = asyncio.Semaphore(5)
+    host_sems = defaultdict(lambda: asyncio.Semaphore(2))
+
+    def _host(t):
+        return urlparse(t.get("url") or "").netloc
+
     async with httpx.AsyncClient() as client:
         async def task(t):
             async with sem:
-                try:
-                    r = await _process_target(t, client, args)
-                    return t, r
-                except Exception as e:
-                    logger.exception("타겟 처리 실패 %s: %s", t.get("target_id"), e)
-                    return t, ChangeResult(False, f"exception: {e}")
+                async with host_sems[_host(t)]:
+                    try:
+                        r = await _process_target(t, client, args)
+                        return t, r
+                    except Exception as e:
+                        logger.exception("타겟 처리 실패 %s: %s", t.get("target_id"), e)
+                        return t, ChangeResult(False, f"exception: {e}", status="exception")
 
         results = await asyncio.gather(*[task(t) for t in targets])
 
+    # ── 기준 확정(baseline 초기화) 모드 — LLM/staging 없이 비교 기준만 설정 ──
+    if getattr(args, "init_baseline", False):
+        n_base = 0
+        for t, r in results:
+            method = t.get("change_detection_method")
+            if method == "manual_review" or not getattr(r, "new_hash", None):
+                continue
+            if save_baseline_snapshot(SNAPSHOTS_DIR / t["target_id"], method, r.new_hash):
+                n_base += 1
+        scope_pids = {args.policy} if getattr(args, "policy", None) else set()
+        purged = _purge_staging(scope_pids)
+        msg = f"기준 확정 완료 — baseline {n_base}개 설정, staging 정리 {purged}개"
+        logger.info("🧱 %s", msg)
+        print(msg)
+        return 0
+
     for t, r in results:
         tid = t["target_id"]
-        if "fetch_failed" in r.reason or "exception" in r.reason:
+        if getattr(r, "used_fallback", False):
+            fallback_used.append({
+                "target_id": tid,
+                "title": t.get("title"),
+                "primary_url": t.get("url"),
+                "fallback_url": t.get("fallback_url"),
+                "used_by_items": t.get("used_by_items", []),
+            })
+        if getattr(r, "js_suspect", False) and getattr(r, "status", "ok") == "ok":
+            js_suspect.append({
+                "target_id": tid,
+                "title": t.get("title"),
+                "url": t.get("url"),
+                "method": t.get("change_detection_method"),
+                "body_len": getattr(r, "body_len", None),
+                "used_by_items": t.get("used_by_items", []),
+            })
+        if getattr(r, "status", "ok") != "ok":
             failures.append({"target_id": tid, "reason": r.reason, "url": t.get("url")})
             continue
         if t.get("change_detection_method") == "manual_review":
@@ -177,7 +247,7 @@ async def run(args):
                 "used_by_items": t.get("used_by_items", []),
             })
             continue
-        if r.changed:
+        if r.changed or getattr(args, "revalidate", False):
             changes.append({
                 "target_id": tid,
                 "title": t.get("title"),
@@ -186,7 +256,7 @@ async def run(args):
                 "method": t.get("change_detection_method"),
                 "reason": r.reason,
                 "used_by_items": t.get("used_by_items", []),
-                "snapshot_dir": str((SNAPSHOTS_DIR / tid).relative_to(ROOT)),
+                "snapshot_dir": str((SNAPSHOTS_DIR / tid).relative_to(DATA_ROOT)),
                 "chunk_diff": r.chunk_diff,
                 "new_hash": r.new_hash,
             })
@@ -201,15 +271,18 @@ async def run(args):
     updated_items = []
     if changes and not args.dry_run and not args.skip_claude:
         try:
-            from .claude_updater import update_item_via_claude
+            from .llm_updater import update_item_via_llm
         except ImportError:
-            from crawler.claude_updater import update_item_via_claude  # type: ignore
+            from crawler.llm_updater import update_item_via_llm  # type: ignore
 
         items_idx = _items_index()
         # 영향 정책별로 그 정책의 변경된 출처들을 모음
         item_to_changes = defaultdict(list)
         for ch in changes:
             for pid in ch["used_by_items"]:
+                # 정책별 크롤(--policy): 공유 출처가 다른 정책까지 갱신하지 않도록 해당 정책만 처리
+                if getattr(args, "policy", None) and pid != args.policy:
+                    continue
                 item_to_changes[pid].append(ch)
 
         # 이미 staging 대기 중인 정책은 LLM 재호출 생략 (#27 A안 — 미확정 변경 중복 비용 방지)
@@ -225,8 +298,8 @@ async def run(args):
                 skipped_staged.append(pid)
                 continue
             try:
-                logger.info("🧠 Claude 갱신 호출: %s (%d개 변경 출처 반영)", pid, len(related_changes))
-                staged_path, diff_summary = await update_item_via_claude(
+                logger.info("🧠 LLM 갱신 호출: %s (%d개 변경 출처 반영)", pid, len(related_changes))
+                staged_path, diff_summary = await update_item_via_llm(
                     item_path=jf,
                     related_changes=related_changes,
                     staging_dir=STAGING_DIR,
@@ -235,7 +308,7 @@ async def run(args):
                 if staged_path:
                     updated_items.append({
                         "policy_id": pid,
-                        "staged": str(staged_path.relative_to(ROOT)),
+                        "staged": str(staged_path.relative_to(DATA_ROOT)),
                         "diff": diff_summary,
                         "sources_changed": [c["target_id"] for c in related_changes],
                     })
@@ -266,15 +339,19 @@ async def run(args):
             "changes_detected": len(changes),
             "failures": len(failures),
             "affected_items": sorted(affected_items),
-            "items_updated_by_claude": len(updated_items),
+            "items_updated_by_llm": len(updated_items),
             "manual_review_targets": len(manual_targets),
             "skipped_already_staged": len(skipped_staged),
+            "url_fallback_used": len(fallback_used),
+            "js_suspect": len(js_suspect),
         },
         "changes": changes,
         "failures": failures,
         "updated_items": updated_items,
         "manual_review_targets": manual_targets,
         "skipped_already_staged": skipped_staged,
+        "url_fallback_used": fallback_used,
+        "js_suspect": js_suspect,
         "dry_run": args.dry_run,
         "skip_claude": args.skip_claude,
     }
@@ -297,7 +374,7 @@ def _format_report_md(d: dict) -> str:
     lines.append(f"- 변경 감지: **{s['changes_detected']}건**")
     lines.append(f"- 영향 정책: {len(s['affected_items'])}개 — {', '.join(s['affected_items']) or '없음'}")
     lines.append(f"- 실패: {s['failures']}건")
-    lines.append(f"- Claude 갱신: {s['items_updated_by_claude']}개")
+    lines.append(f"- LLM 갱신: {s['items_updated_by_llm']}개")
     if d.get("dry_run"):
         lines.append("- (DRY RUN: 다운로드/저장만 시도, 스냅샷 갱신 안 함)")
     if d.get("skip_claude"):
@@ -319,7 +396,7 @@ def _format_report_md(d: dict) -> str:
                 f"(유지 {cd.get('unchanged', 0)})"
             )
     lines.append("")
-    lines.append("## Claude API 갱신 결과")
+    lines.append("## LLM 갱신 결과")
     if not d["updated_items"]:
         lines.append("- (Claude 호출 안 됨 또는 갱신 대상 없음)")
     for u in d["updated_items"]:
@@ -333,6 +410,27 @@ def _format_report_md(d: dict) -> str:
     lines.append("## 실패 목록")
     for f in d["failures"]:
         lines.append(f"- {f['target_id']} — {f['reason']} ({f.get('url')})")
+    lines.append("")
+    lines.append("## URL 점검 필요 (fallback_url 로 수집됨)")
+    fbs = d.get("url_fallback_used", [])
+    if not fbs:
+        lines.append("- 없음 — 모든 출처가 기본 URL 로 정상 수집")
+    for fb in fbs:
+        lines.append(f"- **{fb['target_id']}** — 기본 URL 실패, fallback_url 로 수집됨 (기본 URL 교체 검토)")
+        lines.append(f"  - 기본: {fb.get('primary_url')}")
+        lines.append(f"  - fallback: {fb.get('fallback_url')}")
+        lines.append(f"  - 영향 정책: {', '.join(fb.get('used_by_items', [])) or '(없음)'}")
+    lines.append("")
+    lines.append("## JS 렌더링 의심 (httpx 본문 과소 — 수동 검토 / grounding 재취득 권장)")
+    jss = d.get("js_suspect", [])
+    if not jss:
+        lines.append("- 없음 — 모든 출처가 충분한 본문을 반환")
+    else:
+        lines.append("- 아래 출처는 httpx 가 받은 본문이 비정상적으로 짧음(SPA 가능성). 해시 변경 감지가 무의미하므로 수동 검토 또는 grounding 기반 본문 재취득 권장.")
+    for j in jss:
+        lines.append(f"- **{j['target_id']}** ({j.get('method')}) — 본문 {j.get('body_len')}자")
+        lines.append(f"  - URL: {j.get('url')}")
+        lines.append(f"  - 영향 정책: {', '.join(j.get('used_by_items', [])) or '(없음)'}")
     lines.append("")
     lines.append("## 수동 검토 대상 (manual_review)")
     mts = d.get("manual_review_targets", [])
@@ -370,8 +468,10 @@ def _short_console_summary(d: dict) -> str:
         f"  총 타겟: {s['total_targets']}\n"
         f"  변경 감지: {s['changes_detected']}건\n"
         f"  영향 정책: {len(s['affected_items'])}개\n"
-        f"  Claude 갱신: {s['items_updated_by_claude']}개\n"
+        f"  LLM 갱신: {s['items_updated_by_llm']}개\n"
         f"  실패: {s['failures']}건\n"
+        f"  URL 폴백 사용: {s.get('url_fallback_used', 0)}개\n"
+        f"  JS 렌더 의심: {s.get('js_suspect', 0)}개\n"
         f"  수동 검토 대상: {s.get('manual_review_targets', 0)}개\n"
         f"  자세한 내용: policy_db/crawler/reports/{d['date']}.md\n"
         f"══════════════════════════════════════════\n"
@@ -383,6 +483,12 @@ def main():
     p.add_argument("--dry-run", action="store_true", help="다운로드/스냅샷 갱신 없이 감지만")
     p.add_argument("--skip-claude", action="store_true", help="Claude API 호출 생략, 감지·리포트만")
     p.add_argument("--only", type=str, default=None, help="target_id 부분일치 필터")
+    p.add_argument("--policy", type=str, default=None,
+                   help="used_by_items 에 해당 정책 ID 가 포함된 출처만 점검 (예: B001)")
+    p.add_argument("--init-baseline", dest="init_baseline", action="store_true",
+                   help="현재 출처 상태를 비교 baseline 으로 확정(LLM/staging 없음) + 관련 staging 정리")
+    p.add_argument("--revalidate", action="store_true",
+                   help="해시 변경 여부와 무관하게 모든(또는 --policy) 정책을 현재 출처로 재검증 (무변경은 staging 미생성)")
     p.add_argument("--mark-reviewed", type=str, default=None,
                    help="수동 검토 완료 표시 — target_id(또는 all)의 마지막 검토일을 오늘로 기록 후 종료")
     args = p.parse_args()

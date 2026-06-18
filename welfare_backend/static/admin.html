@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>정책 운영 콘솔</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --line:#e3e6ea; --ink:#1f2430; --muted:#6b7280; --accent:#2563eb; --ok:#16a34a; --warn:#d97706; --bad:#dc2626; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:var(--card); border-bottom:1px solid var(--line); padding:12px 20px; display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:10; }
+  header h1 { font-size:16px; margin:0; }
+  .tabs { display:flex; gap:4px; }
+  .tab { padding:7px 14px; border-radius:8px; cursor:pointer; font-size:14px; border:1px solid transparent; color:var(--muted); }
+  .tab.on { background:#eff4ff; color:var(--accent); border-color:#c7dbff; font-weight:600; }
+  .refresh { margin-left:auto; }
+  button { font:inherit; border:1px solid var(--line); background:#fff; padding:7px 13px; border-radius:8px; cursor:pointer; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.danger { background:#fff; color:var(--bad); border-color:#fecaca; }
+  button.warn { background:#fff; color:var(--warn); border-color:#fde68a; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; }
+  .b { font-size:11px; padding:2px 7px; border-radius:999px; border:1px solid var(--line); }
+  .b.changes{background:#eef2ff;color:#3730a3;} .b.ok{background:#ecfdf5;color:var(--ok);} .b.warn{background:#fffbeb;color:var(--warn);} .b.bad{background:#fef2f2;color:var(--bad);}
+  .b.off{background:#f3f4f6;color:#6b7280;}
+  .empty { color:var(--muted); text-align:center; padding:40px 0; }
+  /* review */
+  .wrap { display:grid; grid-template-columns:340px 1fr; gap:16px; padding:16px; align-items:start; }
+  .list { padding:8px; max-height:calc(100vh - 120px); overflow:auto; }
+  .item { padding:10px 12px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; cursor:pointer; }
+  .item:hover{border-color:var(--accent);} .item.active{border-color:var(--accent);background:#eff4ff;}
+  .item .pid{font-weight:600;} .item .ttl{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.3;}
+  .badges{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;}
+  .detail{padding:16px;min-height:300px;}
+  .detail h2{font-size:15px;margin:0 0 2px;} .detail .meta{color:var(--muted);font-size:12px;margin-bottom:12px;}
+  .alert{padding:8px 12px;border-radius:8px;font-size:13px;margin-bottom:10px;}
+  .alert.bad{background:#fef2f2;color:var(--bad);border:1px solid #fecaca;}
+  .diff{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden;}
+  .diff .head{padding:8px 10px;background:#fafbfc;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);}
+  .diff .head .key{font-weight:600;font-family:ui-monospace,monospace;font-size:13px;}
+  .diff .body{display:grid;grid-template-columns:1fr 1fr;}
+  .diff .col{padding:8px 10px;font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;}
+  .diff .old{background:#fff7f7;border-right:1px solid var(--line);} .diff .new{background:#f4fbf6;}
+  .col .lbl{font-size:10px;color:var(--muted);display:block;margin-bottom:3px;}
+  .review{font-size:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px;}
+  .bar{display:flex;gap:10px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);}
+  label.chk{display:flex;align-items:center;gap:6px;cursor:pointer;}
+  /* policies */
+  .pwrap{padding:16px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);}
+  th{font-size:12px;color:var(--muted);background:#fafbfc;}
+  td .act{display:flex;gap:6px;}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:50;}
+  .modal.on{display:flex;}
+  .modal .box{background:#fff;border-radius:10px;width:min(820px,92vw);max-height:88vh;display:flex;flex-direction:column;}
+  .modal .mhead{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;}
+  .modal .mbody{padding:12px 16px;overflow:auto;}
+  .modal textarea{width:100%;height:52vh;font-family:ui-monospace,monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:10px;}
+  .modal .mfoot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;}
+  .msg{font-size:12px;color:var(--muted);}
+</style>
+</head>
+<body>
+<header>
+  <h1>정책 운영 콘솔</h1>
+  <div class="tabs">
+    <div class="tab on" id="tab-review" onclick="showTab('review')">검토 큐</div>
+    <div class="tab" id="tab-policy" onclick="showTab('policy')">정책 관리</div>
+    <div class="tab" id="tab-unresolved" onclick="showTab('unresolved')">미답변 질의</div>
+    <div class="tab" id="tab-ops" onclick="showTab('ops')">운영</div>
+    <div class="tab" id="tab-discovery" onclick="showTab('discovery')">신규 후보</div>
+  </div>
+  <button class="refresh" onclick="refresh()">새로고침</button>
+</header>
+
+<div id="view-review">
+  <div class="wrap">
+    <div class="card"><div class="list" id="list"><div class="empty">불러오는 중…</div></div></div>
+    <div class="card"><div class="detail" id="detail"><div class="empty">왼쪽에서 정책을 선택하세요.</div></div></div>
+  </div>
+</div>
+
+<div id="view-policy" style="display:none">
+  <div class="pwrap">
+    <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;">
+      <button class="primary" onclick="openEditor(null)">+ 새 정책 추가</button>
+      <span class="msg" id="pmsg"></span>
+    </div>
+    <div class="card"><table id="ptable"><thead><tr><th>ID</th><th>제목</th><th>분류</th><th>상태</th><th>버전</th><th>작업</th></tr></thead><tbody><tr><td colspan="6"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
+  </div>
+</div>
+
+<div id="view-unresolved" style="display:none">
+  <div class="pwrap">
+    <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <label>기간
+        <select id="uDays" onchange="loadUnresolved(true)">
+          <option value="">전체</option><option value="7">최근 7일</option>
+          <option value="30">최근 30일</option><option value="90">최근 90일</option>
+        </select>
+      </label>
+      <label>폴백사유
+        <select id="uReason" onchange="loadUnresolved(true)"><option value="">전체</option></select>
+      </label>
+      <span class="msg" id="usum"></span>
+    </div>
+    <div class="card"><table id="utable"><thead><tr><th style="width:140px">일시</th><th style="width:120px">폴백사유</th><th>사용자 질문</th><th>AI 답변(발췌)</th></tr></thead><tbody><tr><td colspan="4"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
+    <div style="margin-top:10px;text-align:center"><button id="uMore" onclick="loadUnresolved(false)" style="display:none">더 보기</button></div>
+  </div>
+</div>
+
+<div id="view-ops" style="display:none">
+  <div class="pwrap" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px;">
+    <div class="card" style="padding:16px;">
+      <h2 style="margin:0 0 4px;font-size:15px;">정책 크롤링</h2>
+      <div class="msg">재검증: 해시 무관 전 정책을 현재 출처로 검증(무변경은 staging 미생성). 해시검사: 변경된 출처만. 백그라운드.</div>
+      <div id="ops-crawl" style="margin:12px 0;font-size:13px;">…</div>
+      <button class="primary" id="btnCrawl" onclick="runOp('crawl')">지금 재검증 실행</button>
+      <button id="btnHash" onclick="runHashcheck()" style="margin-left:6px">해시 빠른검사</button>
+      <button id="btnInitBase" onclick="initBaselineAll()" style="margin-left:6px">전체 기준 확정</button>
+    </div>
+    <div class="card" style="padding:16px;">
+      <h2 style="margin:0 0 4px;font-size:15px;">데이터 백업</h2>
+      <div class="msg">/data(정본) tar 백업. 보존기간 경과분 자동 정리.</div>
+      <div id="ops-backup" style="margin:12px 0;font-size:13px;">…</div>
+      <button class="primary" id="btnBackup" onclick="runOp('backup')">지금 백업 실행</button>
+    </div>
+    <div class="card" style="padding:16px;grid-column:1/3;">
+      <h2 style="margin:0 0 4px;font-size:15px;">신규 정책 발굴</h2>
+      <div class="msg">미답변 질의 → 군집·분류 → 외부검색 → 신규 정책 초안(검토 전용). '신규 후보' 탭에서 검토/승인.</div>
+      <div id="ops-discovery" style="margin:12px 0;font-size:13px;">…</div>
+      <button class="primary" id="btnDisc" onclick="runDiscovery()">지금 발굴 실행</button>
+    </div>
+    <div class="card" style="padding:16px;grid-column:1/3;">
+      <h2 style="margin:0 0 4px;font-size:15px;">스케줄</h2>
+      <div id="ops-sched" class="msg">…</div>
+    </div>
+  </div>
+</div>
+
+<div id="view-discovery" style="display:none">
+  <div class="pwrap">
+    <div style="margin-bottom:10px;"><span class="msg" id="dmsg">미답변 질의 기반 신규 정책 후보. 초안 검토 후 승인 시 정책으로 등록됩니다.</span></div>
+    <div class="card"><table id="dtable"><thead><tr><th>주제</th><th>초안 제목</th><th>분류</th><th>유사질문</th><th>상태</th><th>작업</th></tr></thead><tbody><tr><td colspan="6"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
+  </div>
+</div>
+
+<div class="modal" id="dmodal">
+  <div class="box">
+    <div class="mhead"><b id="dtitle">신규 후보</b><span class="msg" id="dmodalmsg" style="margin-left:auto"></span></div>
+    <div class="mbody">
+      <div id="dmeta" class="msg" style="margin-bottom:8px"></div>
+      <div class="msg" style="margin-bottom:4px">초안(JSON) — 승인 전 자유 편집 가능:</div>
+      <textarea id="deditor" spellcheck="false"></textarea>
+    </div>
+    <div class="mfoot">
+      <button class="primary" id="dApprove" onclick="approveCand()">승인(정책 등록)</button>
+      <button class="danger" onclick="rejectCand()">반려</button>
+      <button onclick="document.getElementById('dmodal').classList.remove('on')">닫기</button>
+      <span class="msg">승인 시 스키마 검증 후 items 등록 + DB 재적재</span>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="box">
+    <div class="mhead"><b id="mtitle">정책 편집</b><span class="msg" id="modalmsg" style="margin-left:auto"></span></div>
+    <div class="mbody"><textarea id="editor" spellcheck="false"></textarea></div>
+    <div class="mfoot">
+      <button class="primary" id="saveBtn" onclick="saveEditor()">저장</button>
+      <button onclick="closeModal()">닫기</button>
+      <span class="msg">저장 시 스키마 검증 + 회귀 가드 + DB 자동 재적재</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const SAPI="/admin/api/staging", PAPI="/admin/api/policy", PLIST="/admin/api/policies";
+let current=null, editingId=null;
+
+let curTab="review";
+function showTab(t){
+  curTab=t;
+  for(const k of ["review","policy","unresolved","ops","discovery"]){
+    document.getElementById("tab-"+k).classList.toggle("on", t===k);
+    document.getElementById("view-"+k).style.display = t===k?"":"none";
+  }
+  if(opsTimer){ clearInterval(opsTimer); opsTimer=null; }
+  if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else if(t==="ops") loadOps(); else if(t==="discovery") loadDiscovery(); else loadList();
+}
+function refresh(){ if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else if(curTab==="ops") loadOps(); else if(curTab==="discovery") loadDiscovery(); else loadList(); }
+function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function fmt(v){ if(v===null||v===undefined) return "(없음)"; return (typeof v==="object")? JSON.stringify(v,null,2):String(v); }
+
+/* ===== 검토 큐 ===== */
+async function loadList(){
+  const el=document.getElementById("list"); el.innerHTML='<div class="empty">불러오는 중…</div>';
+  try{ const items=await (await fetch(SAPI)).json();
+    if(!items.length){ el.innerHTML='<div class="empty">검토 대기 항목이 없습니다.</div>'; return; }
+    el.innerHTML="";
+    for(const it of items){ const div=document.createElement("div");
+      div.className="item"+(current===it.policy_id?" active":"");
+      const reg=it.regression&&it.regression.length;
+      div.innerHTML=`<div class="pid">${it.policy_id}</div><div class="ttl">${escapeHtml(it.title||"")}</div>
+        <div class="badges"><span class="b changes">${it.n_changes} 변경</span>
+        ${it.schema_ok?'<span class="b ok">스키마 OK</span>':'<span class="b bad">스키마 오류</span>'}
+        ${reg?'<span class="b bad">회귀 차단</span>':''}${it.review_count?`<span class="b warn">검토 ${it.review_count}</span>`:''}
+        ${it.priority?`<span class="b ${it.priority==='high'?'bad':(it.priority==='medium'?'warn':'off')}">${it.priority}</span>`:''}${it.hold?'<span class="b off">보류</span>':''}</div>`;
+      div.onclick=()=>loadDetail(it.policy_id); el.appendChild(div);
+    }
+  }catch(e){ el.innerHTML='<div class="empty">로드 실패: '+e+'</div>'; }
+}
+async function loadDetail(pid){ current=pid; loadList();
+  const el=document.getElementById("detail"); el.innerHTML='<div class="empty">불러오는 중…</div>';
+  try{ const r=await fetch(SAPI+"/"+pid); if(!r.ok){el.innerHTML='<div class="empty">로드 실패</div>';return;}
+    const d=await r.json(); const reg=d.regression&&d.regression.length; const tri=d.triage||{};
+    let h=`<h2>${d.policy_id} <span style="font-weight:400">${escapeHtml(d.title||"")}</span></h2>
+      <div class="meta">${escapeHtml(d.staged_name)}${d.sources_changed&&d.sources_changed.length?" · 출처: "+escapeHtml(d.sources_changed.join(", ")):""}</div>`;
+    if(reg) h+=`<div class="alert bad">회귀 가드 차단: ${escapeHtml(d.regression.join(" / "))}</div>`;
+    if(!d.schema_ok) h+=`<div class="alert bad">스키마 오류: ${escapeHtml((d.schema_errors||[]).join(" / "))}</div>`;
+    if(d.review&&d.review.length) h+=`<div class="review"><b>검토 필요 ${d.review.length}건</b>: `+escapeHtml(d.review.map(x=>`${x.reason||x.classification||""} ${x.path||""}`).join(" · "))+`</div>`;
+    const content=d.diffs.filter(x=>!x.is_meta), metas=d.diffs.filter(x=>x.is_meta);
+    if(!content.length) h+='<div class="empty">내용 변경 없음(메타만).</div>';
+    for(const df of content){ h+=`<div class="diff"><div class="head">
+        <label class="chk"><input type="checkbox" class="selkey" value="${escapeHtml(df.key)}" checked> <span class="key">${escapeHtml(df.key)}</span></label></div>
+        <div class="body"><div class="col old"><span class="lbl">기존</span>${escapeHtml(fmt(df.old))}</div>
+        <div class="col new"><span class="lbl">갱신</span>${escapeHtml(fmt(df.new))}</div></div></div>`; }
+    if(metas.length) h+=`<div class="meta">메타 자동 반영: ${escapeHtml(metas.map(m=>m.key).join(", "))}</div>`;
+    h+=`<div class="bar"><label class="chk"><input type="checkbox" id="reingest" checked> 승인 시 DB 자동 재적재</label>
+      <button class="primary" id="btnApply" onclick="applySel('${pid}')">선택 반영</button>
+      <button class="danger" onclick="rejectOne('${pid}')">반려</button><span class="msg" id="msg"></span></div>`;
+    h+=`<div class="bar" style="padding-top:8px">
+      <span class="msg">분류</span>
+      <select id="trPriority"><option value="">우선순위-</option><option value="high">high</option><option value="medium">medium</option><option value="low">low</option></select>
+      <label class="chk"><input type="checkbox" id="trHold"> 보류</label>
+      <input id="trNote" placeholder="메모(선택)" style="flex:1;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit">
+      <button class="warn" onclick="saveTriage('${pid}')">분류 저장</button></div>`;
+    el.innerHTML=h;
+    if(document.getElementById("trPriority")){ document.getElementById("trPriority").value=tri.priority||""; document.getElementById("trHold").checked=!!tri.hold; document.getElementById("trNote").value=tri.note||""; }
+  }catch(e){ el.innerHTML='<div class="empty">로드 실패: '+e+'</div>'; }
+}
+async function applySel(pid){ const keys=Array.from(document.querySelectorAll(".selkey:checked")).map(x=>x.value);
+  if(!keys.length){ setMsg("msg","선택된 변경이 없습니다.",true); return; }
+  const reingest=document.getElementById("reingest").checked; document.getElementById("btnApply").disabled=true; setMsg("msg","반영 중…");
+  try{ const r=await fetch(SAPI+"/"+pid+"/apply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({selected_keys:keys,reingest})});
+    const j=await r.json();
+    if(r.ok){ setMsg("msg","반영 완료: "+(j.applied_keys||[]).join(", ")+(j.reingested?" · 재적재됨":"")); current=null;
+      setTimeout(()=>{loadList(); document.getElementById("detail").innerHTML='<div class="empty">반영 완료.</div>';},800); }
+    else{ const d=j.detail||j; setMsg("msg","실패: "+(d.error||"")+(d.details?" ("+d.details.join("; ")+")":""),true); document.getElementById("btnApply").disabled=false; }
+  }catch(e){ setMsg("msg","오류: "+e,true); document.getElementById("btnApply").disabled=false; }
+}
+async function saveTriage(pid){
+  const priority=document.getElementById("trPriority").value||null;
+  const hold=document.getElementById("trHold").checked;
+  const note=document.getElementById("trNote").value;
+  try{ const r=await fetch(SAPI+"/"+pid+"/triage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({priority,hold,note})});
+    if(r.ok){ setMsg("msg","분류 저장됨"); loadList(); } else setMsg("msg","분류 저장 실패",true);
+  }catch(e){ setMsg("msg","오류: "+e,true); }
+}
+async function rejectOne(pid){ if(!confirm(pid+" staging을 반려할까요?"))return;
+  const r=await fetch(SAPI+"/"+pid+"/reject",{method:"POST"});
+  if(r.ok){ current=null; loadList(); document.getElementById("detail").innerHTML='<div class="empty">반려됨.</div>'; } else setMsg("msg","반려 실패",true);
+}
+
+/* ===== 정책 관리 ===== */
+async function loadPolicies(){
+  const tb=document.querySelector("#ptable tbody"); tb.innerHTML='<tr><td colspan="6"><div class="empty">불러오는 중…</div></td></tr>';
+  try{ const rows=await (await fetch(PLIST)).json();
+    if(!rows.length){ tb.innerHTML='<tr><td colspan="6"><div class="empty">정책 없음</div></td></tr>'; return; }
+    tb.innerHTML="";
+    for(const p of rows){ const tr=document.createElement("tr");
+      const active = p.active!==false;
+      tr.innerHTML=`<td><b>${p.policy_id}</b></td><td>${escapeHtml(p.title||"")}</td><td>${escapeHtml(p.category||"")}</td>
+        <td>${active?'<span class="b ok">활성</span>':'<span class="b off">비활성</span>'}${p.deactivated_at?`<div style="font-size:10px;color:var(--muted)">${escapeHtml(p.deactivated_at)}</div>`:''}</td>
+        <td>${escapeHtml(p.version||"")}</td>
+        <td><div class="act">
+          <button onclick="openEditor('${p.policy_id}')">편집</button>
+          <button onclick="crawlPolicy('${p.policy_id}')">재검증</button>
+          <button onclick="initBaselinePolicy('${p.policy_id}')">기준확정</button>
+          ${active?`<button class="warn" onclick="toggleActive('${p.policy_id}',false)">비활성</button>`
+                  :`<button class="primary" onclick="toggleActive('${p.policy_id}',true)">재활성</button>`}
+        </div></td>`;
+      tb.appendChild(tr);
+    }
+  }catch(e){ tb.innerHTML='<tr><td colspan="6"><div class="empty">로드 실패: '+e+'</div></td></tr>'; }
+}
+async function crawlPolicy(pid){
+  if(!confirm(pid+" 정책 출처만 크롤할까요? (백그라운드 실행, 변경 시 검토 큐에 생성됨)")) return;
+  setMsg("pmsg", pid+" 크롤 시작 요청…");
+  try{ const j=await (await fetch(PAPI+"/"+pid+"/crawl",{method:"POST"})).json();
+    setMsg("pmsg", j.started? (pid+" 크롤 시작됨 — '운영' 탭에서 진행 확인, 완료 후 '검토 큐' 확인") : ("시작 안 됨: "+(j.reason||"")), j.started===false);
+  }catch(e){ setMsg("pmsg","오류: "+e,true); }
+}
+async function initBaselinePolicy(pid){
+  if(!confirm(pid+" 현재 출처를 기준(baseline)으로 확정할까요? 해당 정책의 대기 staging은 정리됩니다. (LLM 없음)")) return;
+  setMsg("pmsg", pid+" 기준 확정 시작…");
+  try{ const j=await (await fetch(PAPI+"/"+pid+"/init-baseline",{method:"POST"})).json();
+    setMsg("pmsg", j.started? (pid+" 기준 확정 시작됨 ('운영' 탭에서 상태 확인)") : ("시작 안 됨: "+(j.reason||"")), j.started===false);
+  }catch(e){ setMsg("pmsg","오류: "+e,true); }
+}
+async function toggleActive(pid, activate){
+  const verb=activate?"재활성":"비활성"; if(!confirm(`${pid}을(를) ${verb}할까요? (DB 재적재 1회 실행)`))return;
+  setMsg("pmsg",`${pid} ${verb} 중… (재적재)`);
+  try{ const r=await fetch(PAPI+"/"+pid+"/"+(activate?"reactivate":"deactivate"),{method:"POST"});
+    const j=await r.json();
+    if(r.ok){ setMsg("pmsg",`${pid} ${verb} 완료`+(j.reingested?" · 재적재됨":(j.reingest_error?" · 재적재 실패:"+j.reingest_error:""))); loadPolicies(); }
+    else setMsg("pmsg","실패: "+((j.detail||j).error||""),true);
+  }catch(e){ setMsg("pmsg","오류: "+e,true); }
+}
+async function openEditor(pid){
+  editingId=pid; document.getElementById("modalmsg").textContent="";
+  document.getElementById("mtitle").textContent= pid? `정책 편집 — ${pid}` : "새 정책 추가";
+  const ta=document.getElementById("editor");
+  if(pid){ ta.value="불러오는 중…"; const d=await (await fetch(PAPI+"/"+pid)).json(); ta.value=JSON.stringify(d,null,2); }
+  else { ta.value=JSON.stringify({id:"",leaflet_section:"",leaflet_number:0,title:"",short_summary:"",category:"",benefit_type:"",supported_amount:{},eligibility:{},legal_basis:[],how_to_use:{},application:{},sources:[],last_verified:"",version:"1.0.0",active:true},null,2); }
+  document.getElementById("modal").classList.add("on");
+}
+function closeModal(){ document.getElementById("modal").classList.remove("on"); }
+async function saveEditor(){
+  let data; try{ data=JSON.parse(document.getElementById("editor").value); }catch(e){ setMsg("modalmsg","JSON 파싱 오류: "+e,true); return; }
+  document.getElementById("saveBtn").disabled=true; setMsg("modalmsg","저장 중… (재적재)");
+  try{ let r;
+    if(editingId){ r=await fetch(PAPI+"/"+editingId,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}); }
+    else { r=await fetch(PAPI,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({data})}); }
+    const j=await r.json();
+    if(r.ok){ setMsg("modalmsg","저장 완료"+(j.reingested?" · 재적재됨":"")); setTimeout(()=>{closeModal(); loadPolicies();},700); }
+    else { const d=j.detail||j; setMsg("modalmsg","실패: "+(d.error||"")+(d.details?" ("+d.details.join("; ")+")":""),true); document.getElementById("saveBtn").disabled=false; }
+  }catch(e){ setMsg("modalmsg","오류: "+e,true); document.getElementById("saveBtn").disabled=false; }
+  document.getElementById("saveBtn").disabled=false;
+}
+const OAPI="/admin/api/ops";
+let opsTimer=null;
+function _renderOp(name, d){
+  const s=d[name]||{}; const run=s.running;
+  const badge = run?('<span class="b warn">실행 중…'+(s.label?(' ('+escapeHtml(s.label)+')'):'')+'</span>') : (s.last_status==="ok"?'<span class="b ok">정상</span>':(s.last_status?'<span class="b bad">'+escapeHtml(s.last_status)+'</span>':'<span class="b off">기록 없음</span>'));
+  let h=badge;
+  if(s.last_run) h+=`<div style="margin-top:6px;color:var(--muted)">마지막 실행: ${escapeHtml((s.last_run||"").replace("T"," "))}</div>`;
+  if(s.last_output) h+=`<pre style="margin-top:6px;background:#fafbfc;border:1px solid var(--line);border-radius:6px;padding:8px;font-size:11px;max-height:160px;overflow:auto;white-space:pre-wrap">${escapeHtml(s.last_output)}</pre>`;
+  const nextId = name==="crawl"?"crawl_scheduled":(name==="backup"?"backup_scheduled":"discovery_scheduled");
+  const nx=(d.next||{})[nextId]; if(nx) h+=`<div style="margin-top:4px;color:var(--muted)">다음 예약: ${escapeHtml(nx.replace("T"," ").slice(0,16))}</div>`;
+  document.getElementById("ops-"+name).innerHTML=h;
+  const btnmap={crawl:"btnCrawl",backup:"btnBackup",discovery:"btnDisc"}; const btn=document.getElementById(btnmap[name]); if(btn) btn.disabled=run;
+  if(name==="crawl"){ const ib=document.getElementById("btnInitBase"); if(ib) ib.disabled=run; const hb=document.getElementById("btnHash"); if(hb) hb.disabled=run; }
+}
+async function loadOps(){
+  try{ const d=await (await fetch(OAPI+"/status")).json();
+    _renderOp("crawl",d); _renderOp("backup",d); _renderOp("discovery",d);
+    const sc=d.schedules||{};
+    document.getElementById("ops-sched").innerHTML =
+      `크롤: 매월 ${escapeHtml(String((sc.crawl_cron||{}).day||""))}일 ${String((sc.crawl_cron||{}).hour||0).padStart(2,"0")}:${String((sc.crawl_cron||{}).minute||0).padStart(2,"0")} · `+
+      `백업: 매일 ${String((sc.backup_cron||{}).hour||0).padStart(2,"0")}:${String((sc.backup_cron||{}).minute||0).padStart(2,"0")} (보존 ${escapeHtml(String(sc.backup_retention_days||30))}일) · 편집 UI는 추후`;
+    const anyRun=(d.crawl&&d.crawl.running)||(d.backup&&d.backup.running)||(d.discovery&&d.discovery.running);
+    if(anyRun && !opsTimer){ opsTimer=setInterval(loadOps,4000); }
+    if(!anyRun && opsTimer){ clearInterval(opsTimer); opsTimer=null; }
+  }catch(e){ document.getElementById("ops-sched").textContent="상태 로드 실패: "+e; }
+}
+async function runHashcheck(){
+  try{ const j=await (await fetch(OAPI+"/crawl/hashcheck",{method:"POST"})).json();
+    if(j.started===false) alert("시작 안 됨: "+(j.reason||"")); loadOps();
+  }catch(e){ alert("오류: "+e); }
+}
+async function initBaselineAll(){
+  if(!confirm("전체 출처를 현재 상태로 기준 확정할까요?\n- 최초 1회 권장\n- 모든 대기 staging 정리\n- LLM 호출 없음(감지/해시만)")) return;
+  try{ const j=await (await fetch(OAPI+"/init-baseline",{method:"POST"})).json();
+    if(j.started===false) alert("시작 안 됨: "+(j.reason||"")); loadOps();
+  }catch(e){ alert("오류: "+e); }
+}
+async function runOp(name){
+  const url=OAPI+"/"+name+"/run";
+  try{ const r=await fetch(url,{method:"POST"}); const j=await r.json();
+    if(j.started===false) alert((name==="crawl"?"크롤":"백업")+" 시작 안 됨: "+(j.reason||""));
+    loadOps();
+  }catch(e){ alert("오류: "+e); }
+}
+const UAPI="/admin/api/unresolved";
+let uOffset=0, uReasonsLoaded=false;
+async function loadUnresolved(reset){
+  if(reset){ uOffset=0; document.querySelector("#utable tbody").innerHTML='<tr><td colspan="4"><div class="empty">불러오는 중…</div></td></tr>'; }
+  if(!uReasonsLoaded){ try{ const sm=await (await fetch(UAPI+"/summary")).json();
+    const sel=document.getElementById("uReason"); (sm.reasons||[]).forEach(r=>{ const o=document.createElement("option"); o.value=r; o.textContent=r+(sm.by_reason&&sm.by_reason[r]?` (${sm.by_reason[r]})`:""); sel.appendChild(o); });
+    uReasonsLoaded=true; }catch(e){} }
+  const days=document.getElementById("uDays").value, reason=document.getElementById("uReason").value;
+  const qs=new URLSearchParams({limit:50, offset:uOffset}); if(days) qs.set("days",days); if(reason) qs.set("fallback_reason",reason);
+  try{ const d=await (await fetch(UAPI+"?"+qs)).json();
+    const tb=document.querySelector("#utable tbody"); if(reset) tb.innerHTML="";
+    if(!d.items.length && reset){ tb.innerHTML='<tr><td colspan="4"><div class="empty">미답변 질의 없음</div></td></tr>'; }
+    for(const it of d.items){ const tr=document.createElement("tr");
+      tr.innerHTML=`<td style="font-size:11px;color:var(--muted)">${escapeHtml((it.created_at||"").replace("T"," ").slice(0,16))}</td>
+        <td><span class="b warn">${escapeHtml(it.fallback_reason)}</span>${it.has_grounding?'<div style="font-size:10px;color:var(--muted)">검색폴백</div>':''}</td>
+        <td>${escapeHtml(it.user_query||"")}</td>
+        <td style="font-size:12px;color:#444">${escapeHtml(it.ai_final_answer||"")}</td>`;
+      tb.appendChild(tr); }
+    uOffset += d.items.length;
+    setMsg("usum",`총 ${d.total}건 (표시 ${uOffset})`);
+    document.getElementById("uMore").style.display = (uOffset < d.total) ? "" : "none";
+  }catch(e){ setMsg("usum","로드 실패: "+e,true); }
+}
+const DAPI="/admin/api/discovery";
+async function runDiscovery(){
+  try{ const j=await (await fetch(DAPI+"/run",{method:"POST"})).json();
+    if(j.started===false) alert("시작 안 됨: "+(j.reason||"")); loadOps();
+  }catch(e){ alert("오류: "+e); }
+}
+async function loadDiscovery(){
+  const tb=document.querySelector("#dtable tbody"); tb.innerHTML='<tr><td colspan="6"><div class="empty">불러오는 중…</div></td></tr>';
+  try{ const rows=await (await fetch(DAPI+"/candidates")).json();
+    if(!rows.length){ tb.innerHTML='<tr><td colspan="6"><div class="empty">신규 후보 없음 (운영 탭에서 발굴 실행)</div></td></tr>'; return; }
+    tb.innerHTML="";
+    for(const c of rows){ const tr=document.createElement("tr");
+      const st=c.status||"pending";
+      const badge = st==="approved"?'<span class="b ok">승인</span>':(st==="rejected"?'<span class="b off">반려</span>':'<span class="b warn">검토대기</span>');
+      tr.innerHTML=`<td>${escapeHtml(c.topic||"")}</td><td>${escapeHtml(c.title||"(초안없음)")}</td>
+        <td>${escapeHtml(c.category||"")}</td><td>${c.n_queries||0}</td><td>${badge}</td>
+        <td><div class="act"><button onclick="openCand('${c.candidate_id}')">검토</button></div></td>`;
+      tb.appendChild(tr); }
+  }catch(e){ tb.innerHTML='<tr><td colspan="6"><div class="empty">로드 실패: '+e+'</div></td></tr>'; }
+}
+let curCand=null;
+async function openCand(cid){
+  curCand=cid; document.getElementById("dmodalmsg").textContent="";
+  const d=await (await fetch(DAPI+"/candidate/"+cid)).json();
+  document.getElementById("dtitle").textContent="신규 후보 — "+(d.topic||cid);
+  document.getElementById("dmeta").innerHTML="유사질문: "+escapeHtml((d.cluster_queries||[]).join(" / "))+"<br>분류: "+escapeHtml(JSON.stringify(d.classification||{}));
+  document.getElementById("deditor").value=JSON.stringify(d.draft_item||{},null,2);
+  document.getElementById("dmodal").classList.add("on");
+}
+async function approveCand(){
+  let draft; try{ draft=JSON.parse(document.getElementById("deditor").value); }catch(e){ setMsg("dmodalmsg","JSON 오류: "+e,true); return; }
+  document.getElementById("dApprove").disabled=true; setMsg("dmodalmsg","승인 중…");
+  try{ const r=await fetch(DAPI+"/candidate/"+curCand+"/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({draft_item:draft})});
+    const j=await r.json();
+    if(r.ok){ setMsg("dmodalmsg","등록 완료: "+(j.policy_id||"")); setTimeout(()=>{document.getElementById("dmodal").classList.remove("on"); loadDiscovery();},800); }
+    else { const dt=j.detail||j; setMsg("dmodalmsg","실패: "+(dt.error||"")+(dt.details?" ("+dt.details.join("; ")+")":""),true); document.getElementById("dApprove").disabled=false; }
+  }catch(e){ setMsg("dmodalmsg","오류: "+e,true); document.getElementById("dApprove").disabled=false; }
+}
+async function rejectCand(){
+  if(!confirm("이 후보를 반려할까요?"))return;
+  try{ const r=await fetch(DAPI+"/candidate/"+curCand+"/reject",{method:"POST"});
+    if(r.ok){ document.getElementById("dmodal").classList.remove("on"); loadDiscovery(); }
+  }catch(e){ setMsg("dmodalmsg","오류: "+e,true); }
+}
+function setMsg(id,m,bad){ const el=document.getElementById(id); if(el){ el.textContent=m; el.style.color=bad?"var(--bad)":"var(--muted)"; } }
+loadList();
+</script>
+</body>
+</html>

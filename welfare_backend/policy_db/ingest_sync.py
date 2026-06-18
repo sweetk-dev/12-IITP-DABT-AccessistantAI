@@ -5,6 +5,7 @@ import re
 import hashlib
 import logging
 import sys
+import argparse
 from time import sleep
 import psycopg2
 from psycopg2.extras import Json
@@ -112,8 +113,8 @@ def process_file(file_path, file_hash, cur, conn):
         insert_master_query = """
             INSERT INTO welfare_policies 
             (id, leaflet_section, leaflet_number, title, short_summary, category, benefit_type, 
-             severity_levels, has_companion_benefit, has_income_criteria, age_min, age_max, full_data, last_verified, version)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+             severity_levels, has_companion_benefit, has_income_criteria, age_min, age_max, full_data, last_verified, version, active, deactivated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE SET
                 leaflet_section = EXCLUDED.leaflet_section, leaflet_number = EXCLUDED.leaflet_number,
                 title = EXCLUDED.title, short_summary = EXCLUDED.short_summary,
@@ -121,7 +122,8 @@ def process_file(file_path, file_hash, cur, conn):
                 severity_levels = EXCLUDED.severity_levels, has_companion_benefit = EXCLUDED.has_companion_benefit,
                 has_income_criteria = EXCLUDED.has_income_criteria, age_min = EXCLUDED.age_min,
                 age_max = EXCLUDED.age_max, full_data = EXCLUDED.full_data,
-                last_verified = EXCLUDED.last_verified, version = EXCLUDED.version, updated_at = NOW();
+                last_verified = EXCLUDED.last_verified, version = EXCLUDED.version,
+                active = EXCLUDED.active, deactivated_at = EXCLUDED.deactivated_at, updated_at = NOW();
         """
         cur.execute(insert_master_query, (
             policy_id, data.get("leaflet_section"), data.get("leaflet_number"),
@@ -129,10 +131,17 @@ def process_file(file_path, file_hash, cur, conn):
             eligibility.get("severity_levels", []), True if eligibility.get("companion_allowed") else False, 
             True if eligibility.get("income_criteria") else False, *parse_age_criteria(eligibility.get("age_criteria")), 
             Json(data), data.get("last_verified"), 
-            file_hash # 32글자 해시값이 에러 없이 쏙 들어갑니다!
+            file_hash, # 32글자 해시값이 에러 없이 쏙 들어갑니다!
+            data.get("active", True), data.get("deactivated_at"),
         ))
 
         cur.execute("DELETE FROM policy_chunks WHERE policy_id = %s;", (policy_id,))
+
+        # soft delete: 비활성 정책은 청크 재생성하지 않음 → 검색/답변에서 제외
+        if not data.get("active", True):
+            conn.commit()
+            logging.info(f"[{policy_id}] ⏸ 비활성 정책 — 청크 삭제(검색 제외) 후 종료")
+            return True
 
         chunks = extract_chunks(data)
         insert_chunk_query = """
@@ -186,28 +195,110 @@ def process_file(file_path, file_hash, cur, conn):
         return False
 
 # =====================================================================
-# 4. 메인 실행부
+# 4. 스키마 보장 (구 ingest_v1.5.init_schema 흡수 — 스키마 SoT 단일화)
 # =====================================================================
-def main():
-    logging.info("♻️ 스마트 동기화(Smart Sync) 모드를 시작합니다...")
-    
+DDL_POLICIES = """
+CREATE TABLE IF NOT EXISTS welfare_policies (
+    id VARCHAR(10) PRIMARY KEY,
+    leaflet_section VARCHAR(50),
+    leaflet_number INT,
+    title VARCHAR(200),
+    short_summary TEXT,
+    category VARCHAR(20),
+    benefit_type VARCHAR(20),
+    severity_levels TEXT[],
+    has_companion_benefit BOOLEAN,
+    has_income_criteria BOOLEAN,
+    age_min INT,
+    age_max INT,
+    full_data JSONB,
+    last_verified DATE,
+    version VARCHAR(50),
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    deactivated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+"""
+DDL_CHUNKS = """
+CREATE TABLE IF NOT EXISTS policy_chunks (
+    id BIGSERIAL PRIMARY KEY,
+    policy_id VARCHAR(10) REFERENCES welfare_policies(id) ON DELETE CASCADE,
+    chunk_type VARCHAR(30) NOT NULL,
+    chunk_subtype VARCHAR(100),
+    content TEXT NOT NULL,
+    embedding VECTOR(768),
+    embedding_model_version VARCHAR(50) NOT NULL DEFAULT 'models/gemini-embedding-001',
+    metadata JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+"""
+
+
+def ensure_schema(cur, conn, rebuild=False):
+    """welfare_policies / policy_chunks 스키마를 보장한다.
+    rebuild=True 면 DROP 후 재생성(빈 DB 초기 구축 = 구 ingest_v1.5 역할).
+    멱등: 기존 DB 에서는 CREATE TABLE IF NOT EXISTS 가 no-op."""
+    cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+    if rebuild:
+        logging.warning("⚠️ --rebuild: welfare_policies / policy_chunks 를 DROP 후 재생성합니다.")
+        cur.execute("DROP TABLE IF EXISTS policy_chunks CASCADE;")
+        cur.execute("DROP TABLE IF EXISTS welfare_policies CASCADE;")
+    cur.execute(DDL_POLICIES)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_policies_category ON welfare_policies(category);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_policies_severity ON welfare_policies USING GIN(severity_levels);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_policies_jsonb ON welfare_policies USING GIN(full_data);")
+    cur.execute(DDL_CHUNKS)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_chunks_policy ON policy_chunks(policy_id);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_chunks_type ON policy_chunks(chunk_type);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_chunks_hnsw ON policy_chunks "
+                "USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);")
+    conn.commit()
+    logging.info("스키마 보장 완료%s.", " (재구축)" if rebuild else "")
+
+
+def _parse_args(argv=None):
+    p = argparse.ArgumentParser(description="정책 DB 스마트 동기화 / 초기 구축(--rebuild)")
+    p.add_argument("--rebuild", action="store_true",
+                   help="welfare_policies·policy_chunks 를 DROP 후 재생성하고 전량 재적재 (빈 DB 초기 구축)")
+    return p.parse_args(argv)
+
+
+# =====================================================================
+# 5. 메인 실행부
+# =====================================================================
+def main(argv=None):
+    args = _parse_args(argv)
+    logging.info("♻️ 스마트 동기화(Smart Sync) 모드를 시작합니다...%s",
+                 " [--rebuild]" if args.rebuild else "")
+
     try:
         conn = psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST, port=DB_PORT)
         register_vector(conn)
         cur = conn.cursor()
-
-        # [자동 패치] 해시값(32자)이 들어갈 수 있도록 version 컬럼 길이를 안전하게 확장합니다.
-        cur.execute("ALTER TABLE welfare_policies ALTER COLUMN version TYPE VARCHAR(50);")
-        conn.commit()
-        
     except Exception as e:
         logging.error(f"DB 접속 실패: {e}")
+        return
+
+    # 스키마 보장(없으면 생성, --rebuild 면 재구축) — 구 ingest_v1.5.init_schema 흡수.
+    # 빈 DB 도 `python ingest_sync.py --rebuild` 한 번으로 구축 가능.
+    try:
+        ensure_schema(cur, conn, rebuild=args.rebuild)
+        # [레거시 호환] 구 스키마(version VARCHAR(10)·active 없음) 자동 패치 — 멱등
+        cur.execute("ALTER TABLE welfare_policies ALTER COLUMN version TYPE VARCHAR(50);")
+        cur.execute("ALTER TABLE welfare_policies ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;")
+        cur.execute("ALTER TABLE welfare_policies ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMPTZ;")
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        logging.error(f"스키마 준비 실패: {e}")
         return
 
     cur.execute("SELECT id, version FROM welfare_policies;")
     db_versions = {row[0]: row[1] for row in cur.fetchall()}
 
-    json_files = sorted(glob.glob("items/B0*.json"))
+    _data_root = os.environ.get("POLICY_DATA_DIR") or os.path.dirname(os.path.abspath(__file__))
+    json_files = sorted(glob.glob(os.path.join(_data_root, "items", "B0*.json")))
     if not json_files:
         logging.warning("items 폴더 내에 처리할 JSON 파일(B0*.json)이 없습니다.")
         return
