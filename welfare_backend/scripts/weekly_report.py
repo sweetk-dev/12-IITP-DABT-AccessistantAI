@@ -9,8 +9,8 @@ Track A — 주간 미해결 질의 분석 리포트.
     - Top intent_group_id (turn 수 많은 의도)
   결과: welfare_backend/reports/unresolved/weekly_YYYY-MM-DD.md
 
-선택 모드 (--use-llm, Anthropic Claude 비용 발생):
-  위 통계 + 누적 질문들을 Claude 에 던져 의도 클러스터링 + 신규 정책 후보 도출.
+선택 모드 (--use-llm, LLM API 비용 발생):
+  위 통계 + 누적 질문들을 LLM(기본 Gemini)에 던져 의도 클러스터링 + 신규 정책 후보 도출.
 
 실행:
   python -m scripts.weekly_report                 # 통계만
@@ -163,7 +163,7 @@ def render_markdown(stats: dict, days: int, llm_section: str = "") -> str:
             lines.append(f"| `{gid[:8]}…` | {c} |")
 
     if llm_section:
-        lines.append("\n## LLM 클러스터링 (Claude 분석)\n")
+        lines.append("\n## LLM 클러스터링\n")
         lines.append(llm_section)
 
     lines.append("\n---\n")
@@ -175,12 +175,9 @@ def render_markdown(stats: dict, days: int, llm_section: str = "") -> str:
 # LLM 클러스터링 (옵션)
 # ─────────────────────────────────────────────────────────────
 async def llm_cluster(stats: dict) -> str:
-    """Anthropic Claude 로 의도 클러스터링 + 신규 정책 후보 도출."""
+    """LLM(기본 Gemini)으로 의도 클러스터링 + 신규 정책 후보 도출. 백엔드는 LLM_BACKEND 로 선택."""
     if stats["total"] == 0:
         return "_데이터 없음 — LLM 분석 생략_"
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return "_ANTHROPIC_API_KEY 미설정 — LLM 분석 생략_"
 
     queries_text = "\n".join(f"- ({c}회) {q}" for q, c in stats["top_queries"])
     prompt = f"""아래는 한국 장애인 복지 정책 AI 상담봇에서 최근 답변하지 못한 질문 목록입니다.
@@ -195,16 +192,15 @@ async def llm_cluster(stats: dict) -> str:
 마크다운 표 형태로 답해주세요."""
 
     try:
-        from anthropic import AsyncAnthropic
-        client = AsyncAnthropic(api_key=api_key)
-        resp = await client.messages.create(
-            model="claude-sonnet-4-5",
-            max_tokens=4000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return resp.content[0].text
+        try:
+            from policy_db.crawler.llm_backends import get_backend
+        except ImportError:
+            sys.path.insert(0, str(_ROOT / "policy_db" / "crawler"))
+            from llm_backends import get_backend  # type: ignore
+        backend = get_backend()
+        return await backend.generate_text(prompt=prompt, max_tokens=4000)
     except Exception as e:
-        logger.warning("Claude 호출 실패: %s", e)
+        logger.warning("LLM 클러스터링 호출 실패: %s", e)
         return f"_LLM 분석 실패: {e}_"
 
 
@@ -219,7 +215,7 @@ async def main(days: int, use_llm: bool) -> int:
 
         llm_section = ""
         if use_llm and stats["total"] > 0:
-            logger.info("Claude 클러스터링 호출 중...")
+            logger.info("LLM 클러스터링 호출 중...")
             llm_section = await llm_cluster(stats)
 
         md = render_markdown(stats, days, llm_section)
@@ -240,7 +236,7 @@ def _parse_args():
     p = argparse.ArgumentParser(description="UnresolvedQuery 주간 분석 리포트")
     p.add_argument("--days", type=int, default=7, help="분석 기간 (일, 기본 7)")
     p.add_argument("--use-llm", action="store_true",
-                   help="Claude API 로 의도 클러스터링 추가 (비용 발생)")
+                   help="LLM(기본 Gemini)으로 의도 클러스터링 추가 (비용 발생)")
     return p.parse_args()
 
 

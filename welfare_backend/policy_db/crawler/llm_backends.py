@@ -1,12 +1,12 @@
 # crawler/llm_backends.py
-# LLM 갱신 엔진 추상화 — 외부 API(Anthropic)와 온프레미스 LLM(Gemma 등)을 동일 인터페이스로.
+# LLM 엔진 추상화 — 외부 API(Google Gemini)와 온프레미스 LLM(Gemma 등)을 동일 인터페이스로.
 #
 # 현재 단계: gemini (Google Generative Language API) — 기본값, 임베딩·Live 와 키 단일화
-# 대안: claude (Anthropic API), gemma (온프레미스 Ollama / vLLM / 자체 HTTP 서빙)
+# 대안: gemma (온프레미스 Ollama / vLLM / 자체 HTTP 서빙)
+# (향후 다른 벤더 추가 시: LLMBackend 하위 클래스 + get_backend 분기만 추가하면 됨)
 #
 # 백엔드 선택은 환경변수 LLM_BACKEND 로:
 #   LLM_BACKEND=gemini   (기본)
-#   LLM_BACKEND=claude
 #   LLM_BACKEND=gemma
 #
 # 각 백엔드는 동일한 generate_json_update() 시그니처를 따름:
@@ -36,44 +36,16 @@ class LLMBackend(ABC):
     ) -> str:
         ...
 
-
-# ─────────────────────────────────────────────────────────────
-# 1) Anthropic Claude — 외부 API
-# ─────────────────────────────────────────────────────────────
-class AnthropicBackend(LLMBackend):
-    name = "claude"
-
-    def __init__(self, model: Optional[str] = None):
-        self.model = model or os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-5")
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            raise RuntimeError(
-                "ANTHROPIC_API_KEY 환경변수가 비어 있습니다 — welfare_backend/.env 확인"
-            )
-        try:
-            from anthropic import Anthropic
-        except ImportError as e:
-            raise RuntimeError("anthropic SDK 미설치 — pip install anthropic") from e
-        self._client = Anthropic(api_key=api_key)
-
-    async def generate_json_update(
-        self, *, system_prompt: str, user_message: str, max_tokens: int = 16000
+    @abstractmethod
+    async def generate_text(
+        self, *, prompt: str, max_tokens: int = 4000, temperature: float = 0.2
     ) -> str:
-        # anthropic SDK 는 sync — to_thread 로 비동기화
-        import asyncio
-        resp = await asyncio.to_thread(
-            self._client.messages.create,
-            model=self.model,
-            max_tokens=max_tokens,
-            temperature=0,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
-        )
-        return resp.content[0].text if resp.content else ""
+        """자유형식(마크다운/프로즈) 텍스트 생성 — JSON 강제 없음(리포트 클러스터링 등)."""
+        ...
 
 
 # ─────────────────────────────────────────────────────────────
-# 2) Gemma (온프레미스) — Ollama / vLLM / 자체 HTTP 서빙 호환
+# 1) Gemma (온프레미스) — Ollama / vLLM / 자체 HTTP 서빙 호환
 # ─────────────────────────────────────────────────────────────
 class GemmaBackend(LLMBackend):
     """
@@ -150,9 +122,39 @@ class GemmaBackend(LLMBackend):
                 data = resp.json()
                 return data.get("message", {}).get("content", "")
 
+    async def generate_text(
+        self, *, prompt: str, max_tokens: int = 4000, temperature: float = 0.2
+    ) -> str:
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        if self.api_style == "openai":
+            url = f"{self.api_url}/v1/chat/completions"
+            payload = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                resp = await client.post(url, headers=headers, json=payload)
+                resp.raise_for_status()
+                return resp.json()["choices"][0]["message"]["content"]
+        url = f"{self.api_url}/api/chat"
+        payload = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "options": {"temperature": temperature, "num_predict": max_tokens},
+            "stream": False,
+        }
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            resp = await client.post(url, headers=headers, json=payload)
+            resp.raise_for_status()
+            return resp.json().get("message", {}).get("content", "")
+
 
 # ─────────────────────────────────────────────────────────────
-# 3) Gemini (외부 API) — Google generativelanguage REST
+# 2) Gemini (외부 API) — Google generativelanguage REST
 # ─────────────────────────────────────────────────────────────
 class GeminiBackend(LLMBackend):
     """
@@ -223,6 +225,26 @@ class GeminiBackend(LLMBackend):
         ]
         return "".join(texts)
 
+    async def generate_text(
+        self, *, prompt: str, max_tokens: int = 4000, temperature: float = 0.2
+    ) -> str:
+        url = f"{self.api_url}/v1beta/models/{self.model}:generateContent"
+        headers = {"Content-Type": "application/json", "x-goog-api-key": self.api_key}
+        payload = {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
+        }
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            resp = await client.post(url, headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+        candidates = data.get("candidates") or []
+        if not candidates:
+            return ""
+        parts = (candidates[0].get("content") or {}).get("parts") or []
+        texts = [p.get("text", "") for p in parts if p.get("text") and not p.get("thought")]
+        return "".join(texts)
+
 
 # ─────────────────────────────────────────────────────────────
 # 팩토리
@@ -230,10 +252,13 @@ class GeminiBackend(LLMBackend):
 def get_backend(name: Optional[str] = None) -> LLMBackend:
     """LLM_BACKEND 환경변수 또는 인자 기반으로 백엔드 인스턴스 반환."""
     name = (name or os.environ.get("LLM_BACKEND", "gemini")).lower()
-    if name == "claude":
-        return AnthropicBackend()
     if name in ("gemma", "ollama"):
         return GemmaBackend()
     if name == "gemini":
         return GeminiBackend()
-    raise ValueError(f"unknown LLM_BACKEND: {name} (지원: claude, gemma, gemini)")
+    if name == "claude":
+        raise ValueError(
+            "LLM_BACKEND=claude 는 더 이상 지원하지 않습니다 (외부 LLM 은 Google 로 단일화). "
+            "LLM_BACKEND=gemini(기본) 또는 gemma 를 사용하세요."
+        )
+    raise ValueError(f"unknown LLM_BACKEND: {name} (지원: gemini, gemma)")

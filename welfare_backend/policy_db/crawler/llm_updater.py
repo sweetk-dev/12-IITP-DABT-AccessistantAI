@@ -3,7 +3,6 @@
 #
 # 백엔드 옵션 (환경변수 LLM_BACKEND):
 #   - "gemini" (기본, 외부 Google Generative Language API — 임베딩·Live 와 키 단일화)
-#   - "claude" (외부 Anthropic API)
 #   - "gemma"  (온프레미스 — Ollama / vLLM 호환)
 #
 # 흐름:
@@ -17,8 +16,8 @@
 #   - last_verified·version 자동 갱신
 #   - LLM 의 의역·추가 정보 노이즈 방지: temperature 0
 #
-# (구 claude_updater.py → llm_updater.py 리네임. 백엔드 기본값이 gemini 로 전환됨.
-#  공개 함수는 update_item_via_llm, 하위호환 별칭 update_item_via_claude 유지.)
+# (구 claude_updater.py → llm_updater.py 리네임. 외부 LLM 은 Google(Gemini) 로 단일화.
+#  공개 함수는 update_item_via_llm.)
 import json
 import logging
 import os
@@ -397,8 +396,7 @@ async def update_item_via_llm(
 ) -> Tuple[Optional[Path], str]:
     """단일 항목 JSON 을 LLM 으로 갱신해 staging/ 에 저장.
 
-    실제 LLM 은 환경변수 LLM_BACKEND (gemini[기본]/claude/gemma) 에 따라 선택됨.
-    하위호환 별칭 update_item_via_claude 로도 호출 가능.
+    실제 LLM 은 환경변수 LLM_BACKEND (gemini[기본]/gemma) 에 따라 선택됨.
     """
     existing = json.loads(item_path.read_text(encoding="utf-8"))
     existing_json_str = json.dumps(existing, ensure_ascii=False, indent=2)
@@ -477,6 +475,3 @@ async def update_item_via_llm(
     diff = _diff_summary(existing, new_data)
     return staged_path, diff
 
-
-# ── 하위호환 별칭 (구 함수명) ──
-update_item_via_claude = update_item_via_llm
