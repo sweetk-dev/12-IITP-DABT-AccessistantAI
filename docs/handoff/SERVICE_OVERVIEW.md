@@ -2,7 +2,7 @@
 
 > 한국 장애인 복지 정책을 음성으로 안내하는 실시간 AI 상담 시스템.
 > 사용자 음성 → DB 검색 → 음성 답변까지 전 과정 + 운영 자동화(크롤러·관리자 콘솔·데이터 플라이휠)를 정리.
-> 작성: 2026-06-19 갱신 · 기준 v0.16.1 (Phase 5-A: 데이터 플라이휠 + 관리자 콘솔 + ServerA 배포) 시점
+> 작성: 2026-06-19 갱신 · 기준 v0.16.1 (Phase 5-A: 데이터 플라이휠 + 관리자 콘솔 + 컨테이너 배포) 시점
 
 ---
 
@@ -89,7 +89,7 @@
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-> 배포: ServerA Docker(`deploy/serverA/`) — 호스트 12321 → 컨테이너 18000, DB는 compose 내부 `postgres:5432`. LLM/임베딩은 Gemini 클라우드 유지.
+> 배포: 컨테이너(Docker) 기반 — 백엔드 컨테이너 + 내부망 DB. 상세 배포 절차는 내부 배포 가이드 참조(레포 비포함). LLM/임베딩은 Gemini 클라우드 유지.
 
 ---
 
@@ -237,7 +237,7 @@
 - **PostgreSQL + pgvector** — 내부망 VPN 직결 테스트서버 (<DB_HOST>:5432)
 - **HNSW partial 인덱스** — embedding IS NOT NULL 대상, cosine 거리
 - **GIN 인덱스** — severity_levels(ARRAY), full_data(JSONB)
-- **ServerA Docker 배포** — `deploy/serverA/`, 호스트 12321→컨테이너 18000, DB는 compose 내부 `postgres:5432`(외부 미공개)
+- **컨테이너(Docker) 배포** — 백엔드 컨테이너화, DB는 내부망(외부 미공개). 상세 절차는 내부 배포 가이드(레포 비포함)
 
 ---
 
@@ -266,7 +266,7 @@
 | **3** | FastAPI 5종 도구 + Gemini Live 음성 챗봇 | ✅ |
 | **4-A** | AudioWorklet + 인터럽션 안정화 | ✅ |
 | **4-B** | 정기 크롤러 + LLM 갱신 + confirm 워크플로우 | ✅ |
-| **5-A** | 데이터 플라이휠(미해결 적재) + 관리자 콘솔(HITL) + ServerA 배포 | ✅ |
+| **5-A** | 데이터 플라이휠(미해결 적재) + 관리자 콘솔(HITL) + 컨테이너 배포 | ✅ |
 | **5-B** | 신규 정책 발굴(discovery, Track B) — 후보 초안 생성 | ✅ (운영 데이터 축적 중) |
 | **6** | 온프레미스 Gemma 전환, 관계 기반 추론 | 🔜 |
 
@@ -321,10 +321,7 @@ python -m scripts.purge_old_queries
 python -m scripts.show_recent_unresolved
 python -m scripts.weekly_report --use-llm
 
-# ServerA Docker 배포 (요약 — deploy/serverA/README.md 참조)
-cd ~/stacks
-docker compose build accessistant && docker compose up -d accessistant
-curl -fsS http://127.0.0.1:12321/health
+# 컨테이너(Docker) 배포는 내부 배포 가이드 참조 (레포 비포함)
 ```
 
 > 스케줄은 OS cron 이 아니라 백엔드 인앱 APScheduler(`scheduler.py`)로 구동됩니다. 기본값:

@@ -18,7 +18,7 @@
 ```
 
 - 각 항목은 **JSON(시스템·AI용)** 과 **Markdown(사람용)** 을 **쌍**으로 생성.
-- 항목 ID 체계: `B001` ~ `B040+` (전단지 항목 순서).
+- 항목 ID 체계: `B001` ~ `B043` (전단지 항목 순서, 이후 B044+ 확장).
 - `schema.json` 은 JSON 스키마 Draft-07. CI에서 모든 `items/*.json` 을 검증.
 
 ## 항목 목록 (작성 진행 상태)
@@ -116,11 +116,11 @@
 
 ## 데이터 확장 작업 순서 (다음 항목 작성 시)
 
-1. 새 항목 ID(예: B039) 결정 → 전단지에서 원문 짧은 요약 확보.
+1. 새 항목 ID(예: B044) 결정 → 전단지에서 원문 짧은 요약 확보.
 2. WebSearch + 국가법령정보·관할 부처·운영기관 공식 페이지 조사.
-3. `items/B039_xxx.json` 작성 (`schema.json` 준수).
-4. `items/B039_xxx.md` 작성 (위 B001 문서 구조를 그대로 따름).
-5. `crawl_targets.json` 의 `targets[]` 에 새 출처 추가 (`used_by_items` 에 B039 추가).
+3. `items/B044_xxx.json` 작성 (`schema.json` 준수).
+4. `items/B044_xxx.md` 작성 (위 B001 문서 구조를 그대로 따름).
+5. `crawl_targets.json` 의 `targets[]` 에 새 출처 추가 (`used_by_items` 에 B044 추가).
 6. 검증: 스키마 검증 + 핵심 사실 교차 확인.
 7. 이 README의 표에 ✅ 표시.
 
