@@ -82,7 +82,7 @@
 │ 자동화 레이어 — policy_db/crawler/ (APScheduler 스케줄)               │
 │  · detectors.py    (6종 변경 감지 — grounding 포함)                  │
 │  · crawler.py      (메인 오케스트레이션)                             │
-│  · llm_backends.py (LLM 추상화 — gemini[기본]/claude/gemma)          │
+│  · llm_backends.py (LLM 추상화 — gemini[기본]/gemma)                │
 │  · llm_updater.py  (기존+변경출처 → LLM → 갱신 JSON, staging 저장)   │
 │  · confirm_apply.py(검토 → 백업 → 반영 → ingest_sync 호출)           │
 │  · review_core.py / policy_core.py (검토·CRUD 공용 로직)             │
@@ -153,7 +153,7 @@
    - snapshots/ 비교
 3. 변경 감지된 출처 → used_by_items 식별 (예: B015)
 4. llm_updater.update_item(B015):
-   - get_backend() → 기본 GeminiBackend(gemini-3.1-pro-preview) (또는 claude/gemma)
+   - get_backend() → 기본 GeminiBackend(gemini-3.1-pro-preview) (또는 gemma)
    - 기존 B015 JSON + 변경 출처 본문 → LLM 호출 (temperature=0)
    - schema 재검증 → staging/B015_*.staged.json 저장
 5. reports/2026-06-02.md 자동 생성 (변경 출처·영향 항목·diff)
@@ -203,7 +203,7 @@
 |---|---|
 | `detectors.py` | 6종 변경 감지: page_hash, pdf_hash, last_modified_field, css_selector_text, grounding, manual_review |
 | `crawler.py` | 메인 CLI — 감지 → 다운로드 → llm_updater 호출 → 리포트 |
-| `llm_backends.py` | LLM 추상화 — `GeminiBackend`(기본) / `AnthropicBackend` / `GemmaBackend`(온프레미스) |
+| `llm_backends.py` | LLM 추상화 — `GeminiBackend`(기본) / `GemmaBackend`(온프레미스) |
 | `llm_updater.py` | LLM 호출(백엔드 무관) → 갱신 JSON 생성, PDF 본문 추출 (구 `claude_updater.py`) |
 | `confirm_apply.py` | 검토 후 items/ 반영 + ingest_sync 자동 호출 (반영 성공 시 baseline 전진) |
 | `review_core.py` / `policy_core.py` | 검토·CRUD 공용 로직 (admin_router 와 공유) |
@@ -225,12 +225,11 @@
 ### 4.1 Google AI (기본)
 - **gemini-2.0-flash-live-001** — 음성 대화 (Live API, WebSocket) · 환경변수 `GEMINI_LIVE_MODEL`
 - **gemini-embedding-001** — 768차원 임베딩 (검색·청크 적재) · `GEMINI_EMBED_MODEL`
-- **gemini-3.1-pro-preview** — 크롤러 갱신 LLM + grounding 감지 + discovery · `GEMINI_LLM_MODEL`
+- **gemini-3.1-pro-preview** — 크롤러 갱신 + grounding 감지 + discovery + 주간 리포트 클러스터링 · `GEMINI_LLM_MODEL`
 - **google_search** — Gemini 내장 외부 검색 (폴백)
 
-### 4.2 크롤러 LLM 백엔드 (교체 가능, `LLM_BACKEND`)
-- **gemini** (기본) — 임베딩·Live 와 키 단일화
-- **claude** — `claude-sonnet-4-5` (`ANTHROPIC_MODEL`)
+### 4.2 LLM 백엔드 (교체 가능, `LLM_BACKEND`) — 크롤러 갱신 + 주간 리포트 클러스터링 공용
+- **gemini** (기본) — 임베딩·Live 와 키 단일화 (외부 API = Google 단일)
 - **gemma** — 온프레미스 Ollama/vLLM (`GEMMA_MODEL`, 기본 `gemma-3n`)
 
 ### 4.3 인프라
@@ -306,7 +305,7 @@ python ingest_sync.py --rebuild   # 빈 DB 전량 적재
 python ingest_sync.py             # 변경된 항목만 증분 동기화
 
 # 크롤러 — 감지만(무비용) / 풀 실행
-python -m crawler.crawler --skip-claude
+python -m crawler.crawler --skip-llm
 python -m crawler.crawler
 
 # staging 검토 + 반영

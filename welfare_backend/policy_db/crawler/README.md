@@ -1,6 +1,6 @@
 # 정책DB 정기 크롤러 (트랙 B — 정책 변경 감지·갱신)
 
-`crawl_targets.json` 의 출처들을 주기적으로 점검해 정책 변경을 감지하고, **LLM 백엔드(현 Gemini API, Claude/온프레미스 Gemma 선택 가능)** 로 갱신 JSON 을 자동 생성한 뒤 staging 폴더에 저장합니다. 사용자가 검토 후 confirm 해야만 실제 DB(items/) 에 반영됩니다.
+`crawl_targets.json` 의 출처들을 주기적으로 점검해 정책 변경을 감지하고, **LLM 백엔드(현 Gemini API, 온프레미스 Gemma 선택 가능)** 로 갱신 JSON 을 자동 생성한 뒤 staging 폴더에 저장합니다. 사용자가 검토 후 confirm 해야만 실제 DB(items/) 에 반영됩니다.
 
 > **운영 원칙**: LLM 자동 재적재 금지. 사용자가 매번 검토·승인하는 안전한 워크플로우.
 
@@ -13,7 +13,7 @@ policy_db/crawler/
 ├── __init__.py
 ├── detectors.py          # 6종 변경 감지(+ grounding)
 ├── crawler.py            # 메인 오케스트레이션 (CLI)
-├── llm_backends.py       # ⭐ LLM 백엔드 추상화 — Gemini(기본)/Claude/Gemma 교체 가능
+├── llm_backends.py       # ⭐ LLM 백엔드 추상화 — Gemini(기본)/Gemma 교체 가능
 ├── llm_updater.py     # 기존/변경 출처 → LLM → 갱신 JSON (백엔드 무관)
 ├── confirm_apply.py      # 사용자 검토 후 items/ 반영 + ingest_sync.py 자동 호출
 ├── README.md             # 이 문서
@@ -28,7 +28,7 @@ policy_db/crawler/
 
 ---
 
-## LLM 백엔드 (현재 Gemini → Claude / 온프레미스 Gemma 선택 가능)
+## LLM 백엔드 (기본 Gemini / 온프레미스 Gemma 선택 가능)
 
 `llm_backends.py` 가 LLM 호출을 추상화. 환경변수 `LLM_BACKEND` 로 교체.
 
@@ -39,13 +39,6 @@ GEMINI_API_KEY=AIza...                 # 임베딩과 동일 키 재사용
 GEMINI_LLM_MODEL=gemini-3.1-pro-preview   # (선택, 기본값 동일)
 ```
 > 임베딩·Live 음성과 동일한 Google 키 하나로 통합되어 키·결제·쿼터 관리가 단일화됩니다.
-
-### 대안: Claude API (외부)
-```env
-LLM_BACKEND=claude
-ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-sonnet-4-5    # (선택, 기본값 동일)
-```
 
 ### 향후(Phase 5+): 온프레미스 Gemma (Ollama / vLLM)
 ```env
@@ -72,13 +65,12 @@ GEMMA_API_KEY=...               # (선택, vLLM 등 Bearer 인증 필요 시)
 LLM_BACKEND=gemini               # 현재 기본 백엔드
 GEMINI_API_KEY=...               # 갱신 LLM + 임베딩 공용 (Google 키 단일화)
 GEMINI_LLM_MODEL=gemini-3.1-pro-preview   # (선택)
-ANTHROPIC_API_KEY=sk-ant-...     # (선택) LLM_BACKEND=claude 로 전환 시에만 필요
 DB_HOST=<DB_HOST>           # 테스트 서버
 ```
 
 추가 패키지 (이미 requirements.txt 에 포함):
 ```bash
-pip install google-genai anthropic httpx jsonschema beautifulsoup4 trafilatura readability-lxml pypdf
+pip install google-genai httpx jsonschema beautifulsoup4 trafilatura readability-lxml pypdf
 ```
 
 ### 2. 크롤링 실행
@@ -93,7 +85,7 @@ python -m crawler.crawler
 python -m crawler.crawler --dry-run
 
 # (c) 변경 감지 + 다운로드만 (LLM 호출 생략 — 비용 절약)
-python -m crawler.crawler --skip-claude
+python -m crawler.crawler --skip-llm
 
 # (d) 특정 출처만
 python -m crawler.crawler --only law
@@ -251,7 +243,7 @@ if sc and sc.grounding_metadata:
 | **schema 재검증** | LLM 출력도 Draft-07 통과해야 staging·반영 모두 가능 |
 | **Hallucination 방지 SI** | "schema 보존·추측 금지·문장 스타일 유지" 강제, temperature=0 |
 | **staging 히스토리** | .applied/ + .rejected/ 보존 — 사후 추적 |
-| **dry-run / skip-claude** | 비용·영향 0 으로 테스트 가능 |
+| **dry-run / skip-llm** | 비용·영향 0 으로 테스트 가능 |
 | **ingest_sync 부분 재적재** | 변경된 파일만 재임베딩 — 전체 재적재 비용 절감 |
 
 ---
@@ -262,10 +254,10 @@ if sc and sc.grounding_metadata:
 - **LLM 응답이 schema 위배** — staging/ 에 `_FAILED_*.txt` 디버그 파일이 저장됨. 시스템 프롬프트 보강 필요.
 - **변경 감지 false positive** — 페이지에 동적 타임스탬프가 있으면 매번 변경됨. detectors.py 의 `_mask_dynamic_noise()` 마스킹 패턴을 보강(조회수·세션·날짜 등). page_hash 는 `_normalize_html_text()` 로 정규화한 본문만 비교하고, last_modified_field 는 날짜를 보존(`mask_dates=False`)한다.
 - **변경 감지 false negative (JS 렌더링/SPA)** — httpx 는 빈 셸만 받음. 크롤러가 본문 과소 출처를 리포트의 "JS 렌더링 의심" 섹션에 표면화한다(Step 1). 해당 출처는 `change_detection_method` 를 `grounding` 으로 바꾸면 Gemini google_search 로 공식 출처 기준 현재 본문을 받아 변경 감지·LLM 갱신에 사용한다(Step 2). grounding 본문은 `latest.txt` 로 저장되고 비결정적 프로즈는 LLM 필드패치+사람 confirm 이 흡수.
-- **LLM_BACKEND 전환 시 응답 품질 차이** — Claude → Gemma 교체 후 첫 회차는 `--skip-claude` 로 감지만 한 뒤 일부 항목만 수동 테스트하며 SI 튜닝 권장.
+- **LLM_BACKEND 전환 시 응답 품질 차이** — Gemini → Gemma 교체 후 첫 회차는 `--skip-llm` 로 감지만 한 뒤 일부 항목만 수동 테스트하며 SI 튜닝 권장.
 
 ### 환경변수 누락 (드물지만 발생 시)
-- `ANTHROPIC_API_KEY 환경변수가 비어 있습니다` 에러 → `.env` 의 키가 실제로 로드되는지 확인 (`echo $ANTHROPIC_API_KEY` 또는 Python 측 `os.environ.get`). 본 프로젝트는 이미 등록 완료된 상태입니다.
+- `GEMINI_API_KEY 환경변수가 비어 있습니다` 에러 → `.env` 의 키가 실제로 로드되는지 확인 (`echo $GEMINI_API_KEY` 또는 Python 측 `os.environ.get`). 임베딩·Live 와 동일 키입니다.
 
 ---
 
