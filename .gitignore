@@ -47,6 +47,9 @@ disability_voice_qa.html
 # 대용량 원본 자료
 정책데이터/
 
+# 내부 배포 산출물 (서버별 배포 가이드/compose — 공개 금지)
+deploy/
+
 # IDE/OS
 .vscode/
 .idea/

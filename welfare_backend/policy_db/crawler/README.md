@@ -1,4 +1,4 @@
-# 정책DB 정기 크롤러 (Phase 4 — 트랙 B)
+# 정책DB 정기 크롤러 (트랙 B — 정책 변경 감지·갱신)
 
 `crawl_targets.json` 의 출처들을 주기적으로 점검해 정책 변경을 감지하고, **LLM 백엔드(현 Gemini API, Claude/온프레미스 Gemma 선택 가능)** 로 갱신 JSON 을 자동 생성한 뒤 staging 폴더에 저장합니다. 사용자가 검토 후 confirm 해야만 실제 DB(items/) 에 반영됩니다.
 
@@ -13,7 +13,7 @@ policy_db/crawler/
 ├── __init__.py
 ├── detectors.py          # 6종 변경 감지(+ grounding)
 ├── crawler.py            # 메인 오케스트레이션 (CLI)
-├── llm_backends.py       # ⭐ LLM 백엔드 추상화 — Claude/Gemma 교체 가능
+├── llm_backends.py       # ⭐ LLM 백엔드 추상화 — Gemini(기본)/Claude/Gemma 교체 가능
 ├── llm_updater.py     # 기존/변경 출처 → LLM → 갱신 JSON (백엔드 무관)
 ├── confirm_apply.py      # 사용자 검토 후 items/ 반영 + ingest_sync.py 자동 호출
 ├── README.md             # 이 문서

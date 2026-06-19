@@ -23,7 +23,8 @@
 - DB: PostgreSQL + pgvector (`welfare_db`)
 - 외부 API:
   - Gemini Multimodal Live API (음성·텍스트 멀티모달 대화 + 임베딩)
-  - Anthropic Claude API (정기 정책 크롤러: 변경 감지·정규화·청크 비교 → 필드 단위 갱신안 생성, 주간 리포트 클러스터링)
+  - 정기 정책 크롤러 LLM: 기본 Gemini (변경 감지·정규화·청크 비교 → 필드 단위 갱신안 생성). 환경변수 `LLM_BACKEND` 로 Claude/온프레미스 Gemma 교체 가능
+  - Anthropic Claude API (주간 리포트 의도 클러스터링 `weekly_report --use-llm`)
 - 데이터 처리: trafilatura, beautifulsoup4, readability-lxml, pypdf
 - 빌드(별도 데모): PyInstaller
 
@@ -78,7 +79,7 @@ python -m scripts.weekly_report --use-llm  # 주간 리포트 + 의도 클러스
 
 ## 버전
 
-- 레포 태그: **v0.16.2** (핸드오프 문서 현행화 — SERVICE_OVERVIEW v2.0 / system_architecture Phase 5-A 동기화)
+- 레포 태그: **v0.16.3** (공개 문서 정정 — 배포 항목 추상화 / 크롤러 LLM·항목수 현행화)
 - 백엔드 내부: v1.2
 - 인제스트 스크립트: `ingest_sync.py` (초기 구축 `--rebuild`, 증분 동기화 기본)
 
