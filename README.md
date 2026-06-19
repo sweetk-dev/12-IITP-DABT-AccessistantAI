@@ -78,7 +78,7 @@ python -m scripts.weekly_report --use-llm  # 주간 리포트 + 의도 클러스
 
 ## 버전
 
-- 레포 태그: **v0.16.1** (자주 변경되는 정책 30개 출처를 grounding 으로 재분류 — crawl_targets v2.6.0)
+- 레포 태그: **v0.16.2** (핸드오프 문서 현행화 — SERVICE_OVERVIEW v2.0 / system_architecture Phase 5-A 동기화)
 - 백엔드 내부: v1.2
 - 인제스트 스크립트: `ingest_sync.py` (초기 구축 `--rebuild`, 증분 동기화 기본)
 
