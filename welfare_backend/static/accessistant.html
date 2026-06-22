@@ -139,11 +139,11 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     document.querySelector(".who").style.display="";
   }
   function enterChat(){
-    document.getElementById("chatDay").textContent=chatDayLabel();
+    var _cd=document.getElementById("chatDay"); if(_cd)_cd.textContent=chatDayLabel();
     show("view-chat");
   }
   function connect(voice,textOnly){
-    document.getElementById("chat").innerHTML="";
+    var _ch=document.getElementById("chat"); if(_ch){_ch.querySelectorAll(".bubble").forEach(function(b){b.remove();});}
     window.__textOnly=!!textOnly;
     var sel=textOnly?".agent-btn.male":(voice==="female"?".agent-btn.female":".agent-btn.male");
     var btn=document.querySelector(sel);
