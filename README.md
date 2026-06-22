@@ -23,8 +23,7 @@
 - DB: PostgreSQL + pgvector (`welfare_db`)
 - 외부 API:
   - Gemini Multimodal Live API (음성·텍스트 멀티모달 대화 + 임베딩)
-  - 정기 정책 크롤러 LLM: 기본 Gemini (변경 감지·정규화·청크 비교 → 필드 단위 갱신안 생성). 환경변수 `LLM_BACKEND` 로 Claude/온프레미스 Gemma 교체 가능
-  - Anthropic Claude API (주간 리포트 의도 클러스터링 `weekly_report --use-llm`)
+  - LLM (정기 크롤러 갱신안 생성 + 주간 리포트 의도 클러스터링): 기본 Gemini. 환경변수 `LLM_BACKEND` 로 온프레미스 Gemma 교체 가능 (외부 API는 Google로 단일화)
 - 데이터 처리: trafilatura, beautifulsoup4, readability-lxml, pypdf
 - 빌드(별도 데모): PyInstaller
 
@@ -35,10 +34,10 @@ cd welfare_backend
 
 # 1) 환경변수 준비
 cp .env.example .env
-# .env 를 열어 DB_PASS, GEMINI_API_KEY, ANTHROPIC_API_KEY 채우기
+# .env 를 열어 DB_PASS, GEMINI_API_KEY 채우기
 
 # 2) 의존성 설치 (필요 시)
-pip install fastapi uvicorn psycopg2-binary pgvector google-genai anthropic
+pip install fastapi uvicorn psycopg2-binary pgvector google-genai
 pip install trafilatura beautifulsoup4 readability-lxml pypdf jsonschema httpx
 
 # 3) 서버 기동
@@ -52,7 +51,7 @@ uvicorn main:app --reload --host 127.0.0.1 --port 18000
 ```bash
 # (선택) 정기 정책 변경 감지 + 갱신안 생성
 cd welfare_backend/policy_db
-python -m crawler.crawler --skip-claude  # 감지+다운로드만 (비용 0)
+python -m crawler.crawler --skip-llm  # 감지+다운로드만 (비용 0)
 python -m crawler.crawler                # 풀 실행 (감지+갱신안 staging 저장)
 python -m crawler.confirm_apply          # staging → items 반영 (반영 성공 시 baseline 전진)
 python -m crawler.crawler --mark-reviewed all  # 수동 검토 타겟 검토일 기록
@@ -79,7 +78,7 @@ python -m scripts.weekly_report --use-llm  # 주간 리포트 + 의도 클러스
 
 ## 버전
 
-- 레포 태그: **v0.16.3** (공개 문서 정정 — 배포 항목 추상화 / 크롤러 LLM·항목수 현행화)
+- 레포 태그: **v0.17.0** (외부 LLM Google 단일화 — 주간 리포트 클러스터링 Gemini 이관, Anthropic 백엔드/의존성 제거, LLM 명칭 일반화)
 - 백엔드 내부: v1.2
 - 인제스트 스크립트: `ingest_sync.py` (초기 구축 `--rebuild`, 증분 동기화 기본)
 

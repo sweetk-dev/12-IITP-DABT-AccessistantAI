@@ -6,15 +6,15 @@
 #   2) 각 타겟별 change_detection_method 에 따라 detectors.DETECTORS[m] 호출
 #   3) 변경 감지된 타겟의 used_by_items[] 항목 ID 수집 (영향 정책 식별)
 #   4) 영향 정책마다 llm_updater.update_item_via_llm() 호출
-#      → 기존 items/B0XX_*.json + 변경된 출처 본문 → Claude API → 갱신 JSON 생성
+#      → 기존 items/B0XX_*.json + 변경된 출처 본문 → LLM(기본 Gemini) → 갱신 JSON 생성
 #   5) staging/B0XX_*.json 저장 + reports/YYYY-MM-DD.md / .json 리포트
 #   6) 사람이 검토 후 confirm_apply.py 실행 → items/ 반영
 #
 # 사용법:
 #   python -m crawler.crawler                       # 전체 타겟 점검 (현재 382개)
-#   python -m crawler.crawler --dry-run             # 다운로드/Claude 호출 없이 변경 감지만
+#   python -m crawler.crawler --dry-run             # 다운로드/LLM 호출 없이 변경 감지만
 #   python -m crawler.crawler --only law            # target_id 에 'law' 포함된 것만
-#   python -m crawler.crawler --skip-claude         # Claude API 호출 생략 (감지 + 리포트만)
+#   python -m crawler.crawler --skip-llm            # LLM 호출 생략 (감지 + 리포트만)
 #   python -m crawler.crawler --mark-reviewed all   # manual_review 타겟 검토일 기록 (크롤링 안 함)
 import argparse
 import asyncio
@@ -169,8 +169,8 @@ async def run(args):
         targets = [t for t in targets if args.policy in (t.get("used_by_items") or [])]
         logger.info("정책 필터(%s) — %d개 타겟만 검사", args.policy, len(targets))
 
-    logger.info("🕷 크롤러 시작 — %d개 타겟, dry_run=%s, skip_claude=%s",
-                len(targets), args.dry_run, args.skip_claude)
+    logger.info("🕷 크롤러 시작 — %d개 타겟, dry_run=%s, skip_llm=%s",
+                len(targets), args.dry_run, args.skip_llm)
 
     changes = []          # 변경 감지된 타겟 리스트
     failures = []         # 실패한 타겟
@@ -267,9 +267,9 @@ async def run(args):
     logger.info("📊 감지 결과: 변경 %d건 / 실패 %d건 / 영향 정책 %d개",
                 len(changes), len(failures), len(affected_items))
 
-    # ── 2) 변경된 영향 정책에 대해 Claude API 호출 (옵션) ──
+    # ── 2) 변경된 영향 정책에 대해 LLM 호출 (옵션) ──
     updated_items = []
-    if changes and not args.dry_run and not args.skip_claude:
+    if changes and not args.dry_run and not args.skip_llm:
         try:
             from .llm_updater import update_item_via_llm
         except ImportError:
@@ -313,7 +313,7 @@ async def run(args):
                         "sources_changed": [c["target_id"] for c in related_changes],
                     })
             except Exception as e:
-                logger.exception("Claude 갱신 실패 %s: %s", pid, e)
+                logger.exception("LLM 갱신 실패 %s: %s", pid, e)
                 updated_items.append({"policy_id": pid, "error": str(e)})
 
     # ── 3) 리포트 작성 ──
@@ -353,7 +353,7 @@ async def run(args):
         "url_fallback_used": fallback_used,
         "js_suspect": js_suspect,
         "dry_run": args.dry_run,
-        "skip_claude": args.skip_claude,
+        "skip_llm": args.skip_llm,
     }
     report_json = REPORTS_DIR / f"{today}.json"
     report_md = REPORTS_DIR / f"{today}.md"
@@ -377,8 +377,8 @@ def _format_report_md(d: dict) -> str:
     lines.append(f"- LLM 갱신: {s['items_updated_by_llm']}개")
     if d.get("dry_run"):
         lines.append("- (DRY RUN: 다운로드/저장만 시도, 스냅샷 갱신 안 함)")
-    if d.get("skip_claude"):
-        lines.append("- (Claude API 호출 생략됨)")
+    if d.get("skip_llm"):
+        lines.append("- (LLM 호출 생략됨)")
     lines.append("")
     lines.append("## 변경 감지된 출처")
     if not d["changes"]:
@@ -398,7 +398,7 @@ def _format_report_md(d: dict) -> str:
     lines.append("")
     lines.append("## LLM 갱신 결과")
     if not d["updated_items"]:
-        lines.append("- (Claude 호출 안 됨 또는 갱신 대상 없음)")
+        lines.append("- (LLM 호출 안 됨 또는 갱신 대상 없음)")
     for u in d["updated_items"]:
         if "error" in u:
             lines.append(f"- ❌ **{u['policy_id']}** — {u['error']}")
@@ -481,7 +481,7 @@ def _short_console_summary(d: dict) -> str:
 def main():
     p = argparse.ArgumentParser(description="정책DB 정기 크롤러")
     p.add_argument("--dry-run", action="store_true", help="다운로드/스냅샷 갱신 없이 감지만")
-    p.add_argument("--skip-claude", action="store_true", help="Claude API 호출 생략, 감지·리포트만")
+    p.add_argument("--skip-llm", "--skip-claude", dest="skip_llm", action="store_true", help="LLM 호출 생략, 감지·리포트만 (--skip-claude 별칭 유지)")
     p.add_argument("--only", type=str, default=None, help="target_id 부분일치 필터")
     p.add_argument("--policy", type=str, default=None,
                    help="used_by_items 에 해당 정책 ID 가 포함된 출처만 점검 (예: B001)")
