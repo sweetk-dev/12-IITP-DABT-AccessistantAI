@@ -115,7 +115,7 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 <script>
 // ===== additive view shell (separate from grafted WS script) =====
 var fs=3;
-function setFont(d){fs=Math.min(5,Math.max(1,fs+d));document.documentElement.setAttribute("data-fontsize",fs);document.querySelectorAll(".fontctl .dots i").forEach(function(el,i){el.classList.toggle("on",i<fs);});}
+function setFont(d){fs=Math.min(5,Math.max(1,fs+d));document.documentElement.setAttribute("data-fontsize",fs);document.querySelectorAll(".fontctl .dots").forEach(function(g){g.querySelectorAll("i").forEach(function(el,i){el.classList.toggle("on",i<fs);});});}
 function show(id){document.querySelectorAll(".view").forEach(function(v){v.classList.toggle("active",v.id===id);});}
 function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.getMonth()+1)+"\uc6d4 "+d.getDate()+"\uc77c";}
 (function(){
@@ -146,7 +146,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     el.addEventListener("click",function(){
       var go=el.getAttribute("data-go");
       if(go==="text"){connect("male",true);}
-      else if(go==="mic"){pendingVoice=el.getAttribute("data-voice");setVoiceMode(pendingVoice);show("view-mic");}
+      else if(go==="mic"){pendingVoice=el.getAttribute("data-voice");setVoiceMode(pendingVoice);(async function(){var g=false;try{if(navigator.permissions&&navigator.permissions.query){var st=await navigator.permissions.query({name:"microphone"});g=(st.state==="granted");}}catch(e){}if(g){connect(pendingVoice,false);}else{show("view-mic");}})();}
     });
   });
   // mic-permission buttons
@@ -164,6 +164,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     }).observe(controls,{attributes:true,attributeFilter:["class"]});
   }
   // splash -> mode-select
+  setFont(0);
   show("view-splash");
   setTimeout(function(){show("view-mode");},1500);
 })();
@@ -325,6 +326,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     ws.onclose = (e) => {
       addBubble("sys", `상담 종료${e.reason ? `: ${e.reason}` : ""}`);
       stopMic();
+      stopAllPlayback();
       finalizeAiBubble(); finalizeUserBubble();
       $("textInput").disabled = true;
       $("sendTextBtn").disabled = true;
@@ -403,7 +405,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
 
   // ────── 응답 오디오 재생 (인터럽션 가능) ──────
   const playAudioChunk = async (b64, mimeType) => {
-    if (interruptedFlag) return;
+    if (interruptedFlag || textOnly) return;
     pendingPlayback = pendingPlayback.then(async () => {
       if (interruptedFlag) return;
       try {
