@@ -117,6 +117,9 @@ class UnresolvedQuery(Base):
     embedding   = Column(Vector(768), nullable=True)
     embedded_at = Column(DateTime(timezone=True), nullable=True)
 
+    # 발굴(군집·분류) 처리 시각 — discovery_core 가 ALTER 로 추가. '반영' 판정 보조.
+    discovery_processed_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True),
                         server_default=func.now(), nullable=False, index=True)
 
