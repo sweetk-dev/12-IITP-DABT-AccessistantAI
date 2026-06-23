@@ -469,9 +469,13 @@ async def handle_live_chat(
     #   - 단, 백엔드 로그에는 재연결 소요시간(ms) 기록 → 운영자 확인용
     session_handle = None
     reconnect_count = 0
+    consecutive_failures = 0            # 연속 '무진전' 재연결 횟수 (handle 손상 추정)
+    session_progressed = False          # 이번 세션에서 응답/handle 진전이 있었는지
+    MAX_CONSECUTIVE_FAILURES = 5        # 초과 시 silent 헛돌이 중단(무한 1007 루프 방지)
 
     try:
       while True:
+        session_progressed = False  # 이번 연결 시도의 진전 여부 초기화
         # session_resumption config 매 연결 시 갱신 (handle 이 None → 새 세션, 있으면 이어받기)
         try:
             config_kwargs["session_resumption"] = types.SessionResumptionConfig(handle=session_handle)
@@ -537,7 +541,7 @@ async def handle_live_chat(
                 # turn_complete 시점에 tracker 를 새 인스턴스로 교체하기 때문에
                 # outer scope 의 tracker 를 재바인딩 — nonlocal 선언 필수.
                 # session_handle 도 server 가 SessionResumptionUpdate 보낼 때마다 갱신.
-                nonlocal tracker, session_handle
+                nonlocal tracker, session_handle, session_progressed
                 total_responses = 0
                 turn_count = 0
                 while True:
@@ -546,6 +550,7 @@ async def handle_live_chat(
                     try:
                         async for response in session.receive():
                             total_responses += 1
+                            session_progressed = True  # 1건이라도 응답 수신 → 정상 진전
 
                             # session_resumption_update — server 가 주기적으로 새 handle 발행.
                             # 이 handle 을 outer 변수에 저장해두면 GoAway 발생 후 같은 handle 로
@@ -668,7 +673,14 @@ async def handle_live_chat(
                         logger.info("Gemini 수신 루프 취소됨")
                         break
                     except Exception as e:
-                        logger.exception("Gemini 수신 오류 (turn #%d): %s", turn_count, e)
+                        # 진단: 1007(invalid argument) 등 근본 원인 특정용 상세 로그
+                        logger.error(
+                            "Gemini 수신 오류 (turn #%d) — type=%s code=%s msg=%s | "
+                            "total_responses=%d handle=%s resumed=%s model=%s",
+                            turn_count, type(e).__name__, getattr(e, "code", None), str(e),
+                            total_responses, "있음" if session_handle else "없음",
+                            (reconnect_count > 0), model_name)
+                        logger.exception("Gemini 수신 오류 상세 트레이스 (turn #%d)", turn_count)
                         break
                 logger.info("Gemini 수신 루프 최종 종료 (총 %d턴, %d응답)", turn_count, total_responses)
 
@@ -747,10 +759,29 @@ async def handle_live_chat(
             logger.info("클라이언트 측 종료 감지 — 재연결 루프 종료 (총 재연결 %d회)",
                         reconnect_count)
             break
+        # 직전 세션이 무진전(즉시 무응답 종료)이면 handle 손상 의심 → 연속 실패 누적
+        if session_progressed:
+            consecutive_failures = 0
+        else:
+            consecutive_failures += 1
+        # 무한 silent 헛돌이 방지 — 연속 무진전이 상한 초과면 사용자에게 안내 후 종료
+        if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+            logger.error("⛔ silent 재연결 %d회 연속 무진전 — handle 손상 추정. 루프 중단 (총 재연결 %d회)",
+                         consecutive_failures, reconnect_count)
+            try:
+                await _safe_send_json(websocket, {"type": "error",
+                    "message": "연결이 불안정하여 상담을 이어가지 못했습니다. 잠시 후 다시 시도해 주세요."})
+                await websocket.close()
+            except Exception:
+                pass
+            break
         reconnect_count += 1
-        # ⚠️ silent — 클라이언트에 reconnecting 알림 안 보냄, sleep 도 없이 즉시 재시도
-        logger.info("🔇 Gemini 세션 종료 감지 → silent 재연결 시도 #%d (handle=%s)",
-                    reconnect_count, "이어받음" if session_handle else "신규")
+        # 점증 백오프(최대 2초) — 무한 tight-loop 방지하되 사용자 체감 지연 최소화(silent 유지)
+        _backoff = min(0.3 * consecutive_failures, 2.0)
+        if _backoff > 0:
+            await asyncio.sleep(_backoff)
+        logger.info("🔇 Gemini 세션 종료 감지 → silent 재연결 시도 #%d (handle=%s, 연속무진전 %d)",
+                    reconnect_count, "이어받음" if session_handle else "신규", consecutive_failures)
         # while True 가 다시 돌면서 새 connect (handle 사용 시 컨텍스트 이어받음)
 
     except Exception as e:
