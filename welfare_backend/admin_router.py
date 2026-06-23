@@ -131,8 +131,21 @@ _FALLBACK_REASONS = ["low_similarity", "empty_result", "category_mismatch",
                      "explicit_no_info", "google_search", "tool_error", "unknown"]
 
 
-def _ser_unresolved(r):
+def _reflect_status(user_query, processed_at, cand_idx):
+    """반영 구분: 신규 후보로 분류됨=reflected / 발굴 처리만 됨(후보 아님)=reviewed / 미처리=pending."""
+    info = cand_idx.get(user_query)
+    if info:
+        return "reflected", info
+    if processed_at is not None:
+        return "reviewed", None
+    return "pending", None
+
+
+def _ser_unresolved(r, cand_idx=None):
     fr = r.fallback_reason
+    cand_idx = cand_idx or {}
+    dpa = getattr(r, "discovery_processed_at", None)
+    status, info = _reflect_status(r.user_query, dpa, cand_idx)
     return {
         "id": r.id,
         "created_at": r.created_at.isoformat() if r.created_at else None,
@@ -144,6 +157,11 @@ def _ser_unresolved(r):
         "turn_in_group": r.turn_in_group,
         "embedded": r.embedded_at is not None,
         "has_grounding": bool(r.grounding_info),
+        "discovery_processed_at": dpa.isoformat() if dpa else None,
+        "reflected": status,
+        "candidate_id": (info or {}).get("candidate_id"),
+        "candidate_status": (info or {}).get("status"),
+        "candidate_topic": (info or {}).get("topic"),
     }
 
 
@@ -156,7 +174,15 @@ async def unresolved_summary():
             .group_by(models.UnresolvedQuery.fallback_reason)
         )).all()
         by = {getattr(k, "value", str(k)): v for k, v in rows}
-    return {"total": total, "by_reason": by, "reasons": _FALLBACK_REASONS}
+        qrows = (await db.execute(
+            select(models.UnresolvedQuery.user_query, models.UnresolvedQuery.discovery_processed_at)
+        )).all()
+    cand_idx = dc.candidate_query_index()
+    by_reflected = {"reflected": 0, "reviewed": 0, "pending": 0}
+    for uq, dpa in qrows:
+        st, _ = _reflect_status(uq, dpa, cand_idx)
+        by_reflected[st] = by_reflected.get(st, 0) + 1
+    return {"total": total, "by_reason": by, "reasons": _FALLBACK_REASONS, "by_reflected": by_reflected}
 
 
 @router.get("/admin/api/unresolved")
@@ -181,8 +207,9 @@ async def unresolved_list(limit: int = 50, offset: int = 0,
         rows = (await db.execute(
             base.order_by(desc(models.UnresolvedQuery.created_at)).limit(lim).offset(off)
         )).scalars().all()
+    cand_idx = dc.candidate_query_index()
     return {"total": total, "count": len(rows), "limit": lim, "offset": off,
-            "items": [_ser_unresolved(r) for r in rows]}
+            "items": [_ser_unresolved(r, cand_idx) for r in rows]}
 
 
 # ── 운영(크롤/백업 지금 실행 + 상태) ──
@@ -243,6 +270,11 @@ def discovery_approve(cid: str, payload: dict = Body(default={})):
     cand = dc.get_candidate(cid)
     if cand.get("error"):
         raise HTTPException(status_code=404, detail=cand["error"])
+    # 이미 승인된 후보의 재승인 차단 — 중복 정책 등록 방지
+    if cand.get("status") == "approved":
+        raise HTTPException(status_code=400, detail={
+            "error": "이미 승인된 후보입니다 (중복 등록 방지)",
+            "policy_id": cand.get("approved_policy_id")})
     # 관리자가 편집한 초안을 보내면 그걸 사용(저장도 갱신), 아니면 저장된 초안
     draft = payload.get("draft_item") or cand.get("draft_item")
     if not draft:
@@ -250,7 +282,7 @@ def discovery_approve(cid: str, payload: dict = Body(default={})):
     r = pc.create_policy(draft, slug=(draft.get("title") or "new"))
     if not r.get("ok"):
         raise HTTPException(status_code=400, detail=r)
-    dc.set_status(cid, "approved")
+    dc.set_status(cid, "approved", policy_id=r.get("policy_id"))
     return {"ok": True, "policy_id": r.get("policy_id"), "candidate": cid}
 
 

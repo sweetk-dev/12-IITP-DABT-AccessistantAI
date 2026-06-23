@@ -1,0 +1,45 @@
+{
+  "id": "B045",
+  "leaflet_section": "심한장애(중증)/심하지 않은 장애(경증) 전국공통",
+  "leaflet_number": 0,
+  "title": "장애인 편의시설 안내 서비스(복지지도)",
+  "short_summary": "복지로 웹사이트 및 모바일 앱의 '복지지도'를 통해 주민센터 등 전국 건축물의 휠체어 접근성 및 장애인 편의시설 설치 정보를 제공하는 서비스입니다.",
+  "category": "공공시설",
+  "benefit_type": "서비스제공",
+  "supported_amount": {
+    "rate": "",
+    "amount": "",
+    "scope": "전국 건축물의 8종 편의시설(출입구 경사로, 장애인전용주차구역, 장애인용 승강기, 장애인용 화장실, 주출입구 접근로, 출입구(문), 장애인객실, 시각장애인 안내표시) 설치 유무 및 BF(장애물 없는 생활환경) 인증 정보 제공"
+  },
+  "eligibility": {
+    "target": "장애인, 노인, 임산부 등 편의시설 정보가 필요한 모든 국민"
+  },
+  "legal_basis": [
+    {
+      "name": "장애인ㆍ노인ㆍ임산부 등의 편의증진 보장에 관한 법률",
+      "article": "제3조(편의시설 설치의 기본 원칙)",
+      "url": "https://www.law.go.kr/법령/장애인ㆍ노인ㆍ임산부등의편의증진보장에관한법률"
+    }
+  ],
+  "how_to_use": {
+    "default": "복지로 웹사이트(www.bokjiro.go.kr) 또는 복지로 모바일 앱 접속 후 '복지지도' 메뉴에서 방문하고자 하는 장소(예: 주민센터)를 검색하여 휠체어 접근성 및 편의시설 설치 현황 확인"
+  },
+  "application": {},
+  "last_verified": "2026-06-18",
+  "version": "1.0.0",
+  "sources": [
+    {
+      "title": "장애인 편의시설 안내 서비스(복지지도) 시범 운영",
+      "publisher": "보건복지부",
+      "url": "https://www.mohw.go.kr/react/al/sal0301vw.jsp?PAR_MENU_ID=04&MENU_ID=0403&page=1&CONT_SEQ=374465",
+      "priority": "primary"
+    },
+    {
+      "title": "복지로 복지지도",
+      "publisher": "복지로",
+      "url": "https://www.bokjiro.go.kr",
+      "priority": "secondary"
+    }
+  ],
+  "active": true
+}

@@ -65,7 +65,8 @@
 <header>
   <h1>정책 운영 콘솔</h1>
   <div class="tabs">
-    <div class="tab on" id="tab-review" onclick="showTab('review')">검토 큐</div>
+    <div class="tab on" id="tab-overview" onclick="showTab('overview')">운영 개요</div>
+    <div class="tab" id="tab-review" onclick="showTab('review')">검토 큐</div>
     <div class="tab" id="tab-policy" onclick="showTab('policy')">정책 관리</div>
     <div class="tab" id="tab-unresolved" onclick="showTab('unresolved')">미답변 질의</div>
     <div class="tab" id="tab-ops" onclick="showTab('ops')">운영</div>
@@ -74,7 +75,23 @@
   <button class="refresh" onclick="refresh()">새로고침</button>
 </header>
 
-<div id="view-review">
+<div id="view-overview">
+  <div class="pwrap">
+    <div id="ov-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+      <div class="card" style="padding:14px"><div class="msg">정책(활성)</div><div id="ov-policies" style="font-size:24px;font-weight:700;margin-top:4px">…</div></div>
+      <div class="card" style="padding:14px"><div class="msg">미답변 질의</div><div id="ov-unresolved" style="font-size:24px;font-weight:700;margin-top:4px">…</div></div>
+      <div class="card" style="padding:14px"><div class="msg">검토 대기(신규후보)</div><div id="ov-cands" style="font-size:24px;font-weight:700;margin-top:4px">…</div></div>
+      <div class="card" style="padding:14px"><div class="msg">최근 백업</div><div id="ov-backup" style="font-size:15px;font-weight:600;margin-top:8px">…</div></div>
+    </div>
+    <div class="card" style="padding:18px">
+      <h2 style="font-size:15px;margin:0 0 4px">운영 프로세스 흐름</h2>
+      <div class="msg" style="margin-bottom:14px">미답변 질의에서 출발해 신규 정책이 등록되고, 기존 정책은 출처 변경을 반영하며 매일 백업됩니다. 각 단계는 아래 탭에서 처리합니다.</div>
+      <div id="ov-flow"></div>
+    </div>
+  </div>
+</div>
+
+<div id="view-review" style="display:none">
   <div class="wrap">
     <div class="card"><div class="list" id="list"><div class="empty">불러오는 중…</div></div></div>
     <div class="card"><div class="detail" id="detail"><div class="empty">왼쪽에서 정책을 선택하세요.</div></div></div>
@@ -87,7 +104,7 @@
       <button class="primary" onclick="openEditor(null)">+ 새 정책 추가</button>
       <span class="msg" id="pmsg"></span>
     </div>
-    <div class="card"><table id="ptable"><thead><tr><th>ID</th><th>제목</th><th>분류</th><th>상태</th><th>버전</th><th>작업</th></tr></thead><tbody><tr><td colspan="6"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
+    <div class="card"><table id="ptable"><thead><tr><th>ID</th><th>제목</th><th>분류</th><th>상태</th><th>버전</th><th>마지막 적용</th><th>작업</th></tr></thead><tbody><tr><td colspan="7"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
   </div>
 </div>
 
@@ -103,9 +120,12 @@
       <label>폴백사유
         <select id="uReason" onchange="loadUnresolved(true)"><option value="">전체</option></select>
       </label>
+      <label>반영상태
+        <select id="uReflected" onchange="filterReflected()"><option value="">전체</option><option value="reflected">반영</option><option value="reviewed">검토됨</option><option value="pending">미반영</option></select>
+      </label>
       <span class="msg" id="usum"></span>
     </div>
-    <div class="card"><table id="utable"><thead><tr><th style="width:140px">일시</th><th style="width:120px">폴백사유</th><th>사용자 질문</th><th>AI 답변(발췌)</th></tr></thead><tbody><tr><td colspan="4"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
+    <div class="card"><table id="utable"><thead><tr><th style="width:140px">일시</th><th style="width:120px">폴백사유</th><th style="width:84px">반영</th><th>사용자 질문</th><th>AI 답변(발췌)</th></tr></thead><tbody><tr><td colspan="5"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
     <div style="margin-top:10px;text-align:center"><button id="uMore" onclick="loadUnresolved(false)" style="display:none">더 보기</button></div>
   </div>
 </div>
@@ -142,7 +162,7 @@
 <div id="view-discovery" style="display:none">
   <div class="pwrap">
     <div style="margin-bottom:10px;"><span class="msg" id="dmsg">미답변 질의 기반 신규 정책 후보. 초안 검토 후 승인 시 정책으로 등록됩니다.</span></div>
-    <div class="card"><table id="dtable"><thead><tr><th>주제</th><th>초안 제목</th><th>분류</th><th>유사질문</th><th>상태</th><th>작업</th></tr></thead><tbody><tr><td colspan="6"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
+    <div class="card"><table id="dtable"><thead><tr><th>주제</th><th>초안 제목</th><th>분류</th><th>유사질문</th><th>상태</th><th>마지막 상태변경</th><th>작업</th></tr></thead><tbody><tr><td colspan="7"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
   </div>
 </div>
 
@@ -179,17 +199,17 @@
 const SAPI="/admin/api/staging", PAPI="/admin/api/policy", PLIST="/admin/api/policies";
 let current=null, editingId=null;
 
-let curTab="review";
+let curTab="overview";
 function showTab(t){
   curTab=t;
-  for(const k of ["review","policy","unresolved","ops","discovery"]){
+  for(const k of ["overview","review","policy","unresolved","ops","discovery"]){
     document.getElementById("tab-"+k).classList.toggle("on", t===k);
     document.getElementById("view-"+k).style.display = t===k?"":"none";
   }
   if(opsTimer){ clearInterval(opsTimer); opsTimer=null; }
-  if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else if(t==="ops") loadOps(); else if(t==="discovery") loadDiscovery(); else loadList();
+  if(t==="overview") loadOverview(); else if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else if(t==="ops") loadOps(); else if(t==="discovery") loadDiscovery(); else loadList();
 }
-function refresh(){ if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else if(curTab==="ops") loadOps(); else if(curTab==="discovery") loadDiscovery(); else loadList(); }
+function refresh(){ if(curTab==="overview") loadOverview(); else if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else if(curTab==="ops") loadOps(); else if(curTab==="discovery") loadDiscovery(); else loadList(); }
 function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 function fmt(v){ if(v===null||v===undefined) return "(없음)"; return (typeof v==="object")? JSON.stringify(v,null,2):String(v); }
 
@@ -265,15 +285,16 @@ async function rejectOne(pid){ if(!confirm(pid+" staging을 반려할까요?"))r
 
 /* ===== 정책 관리 ===== */
 async function loadPolicies(){
-  const tb=document.querySelector("#ptable tbody"); tb.innerHTML='<tr><td colspan="6"><div class="empty">불러오는 중…</div></td></tr>';
+  const tb=document.querySelector("#ptable tbody"); tb.innerHTML='<tr><td colspan="7"><div class="empty">불러오는 중…</div></td></tr>';
   try{ const rows=await (await fetch(PLIST)).json();
-    if(!rows.length){ tb.innerHTML='<tr><td colspan="6"><div class="empty">정책 없음</div></td></tr>'; return; }
+    if(!rows.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">정책 없음</div></td></tr>'; return; }
     tb.innerHTML="";
     for(const p of rows){ const tr=document.createElement("tr");
       const active = p.active!==false;
       tr.innerHTML=`<td><b>${p.policy_id}</b></td><td>${escapeHtml(p.title||"")}</td><td>${escapeHtml(p.category||"")}</td>
         <td>${active?'<span class="b ok">활성</span>':'<span class="b off">비활성</span>'}${p.deactivated_at?`<div style="font-size:10px;color:var(--muted)">${escapeHtml(p.deactivated_at)}</div>`:''}</td>
         <td>${escapeHtml(p.version||"")}</td>
+        <td style="font-size:11px;color:var(--muted)">${escapeHtml((p.last_applied_at||"").replace("T"," ").slice(0,16))}</td>
         <td><div class="act">
           <button onclick="openEditor('${p.policy_id}')">편집</button>
           <button onclick="crawlPolicy('${p.policy_id}')">재검증</button>
@@ -283,7 +304,7 @@ async function loadPolicies(){
         </div></td>`;
       tb.appendChild(tr);
     }
-  }catch(e){ tb.innerHTML='<tr><td colspan="6"><div class="empty">로드 실패: '+e+'</div></td></tr>'; }
+  }catch(e){ tb.innerHTML='<tr><td colspan="7"><div class="empty">로드 실패: '+e+'</div></td></tr>'; }
 }
 async function crawlPolicy(pid){
   if(!confirm(pid+" 정책 출처만 크롤할까요? (백그라운드 실행, 변경 시 검토 큐에 생성됨)")) return;
@@ -374,25 +395,29 @@ async function runOp(name){
   }catch(e){ alert("오류: "+e); }
 }
 const UAPI="/admin/api/unresolved";
-let uOffset=0, uReasonsLoaded=false;
+let uOffset=0, uReasonsLoaded=false, uReflectedCounts=null;
 async function loadUnresolved(reset){
-  if(reset){ uOffset=0; document.querySelector("#utable tbody").innerHTML='<tr><td colspan="4"><div class="empty">불러오는 중…</div></td></tr>'; }
+  if(reset){ uOffset=0; document.querySelector("#utable tbody").innerHTML='<tr><td colspan="5"><div class="empty">불러오는 중…</div></td></tr>'; }
   if(!uReasonsLoaded){ try{ const sm=await (await fetch(UAPI+"/summary")).json();
     const sel=document.getElementById("uReason"); (sm.reasons||[]).forEach(r=>{ const o=document.createElement("option"); o.value=r; o.textContent=r+(sm.by_reason&&sm.by_reason[r]?` (${sm.by_reason[r]})`:""); sel.appendChild(o); });
-    uReasonsLoaded=true; }catch(e){} }
+    if(sm.by_reflected) uReflectedCounts=sm.by_reflected; uReasonsLoaded=true; }catch(e){} }
   const days=document.getElementById("uDays").value, reason=document.getElementById("uReason").value;
   const qs=new URLSearchParams({limit:50, offset:uOffset}); if(days) qs.set("days",days); if(reason) qs.set("fallback_reason",reason);
   try{ const d=await (await fetch(UAPI+"?"+qs)).json();
     const tb=document.querySelector("#utable tbody"); if(reset) tb.innerHTML="";
-    if(!d.items.length && reset){ tb.innerHTML='<tr><td colspan="4"><div class="empty">미답변 질의 없음</div></td></tr>'; }
+    if(!d.items.length && reset){ tb.innerHTML='<tr><td colspan="5"><div class="empty">미답변 질의 없음</div></td></tr>'; }
     for(const it of d.items){ const tr=document.createElement("tr");
+      tr.dataset.reflected = it.reflected||"pending";
+      const rb = it.reflected==="reflected" ? `<span class="b ok" title="후보: ${escapeHtml(it.candidate_topic||"")}">반영</span>`
+               : (it.reflected==="reviewed" ? '<span class="b off">검토됨</span>' : '<span class="b warn">미반영</span>');
       tr.innerHTML=`<td style="font-size:11px;color:var(--muted)">${escapeHtml((it.created_at||"").replace("T"," ").slice(0,16))}</td>
         <td><span class="b warn">${escapeHtml(it.fallback_reason)}</span>${it.has_grounding?'<div style="font-size:10px;color:var(--muted)">검색폴백</div>':''}</td>
+        <td>${rb}</td>
         <td>${escapeHtml(it.user_query||"")}</td>
         <td style="font-size:12px;color:#444">${escapeHtml(it.ai_final_answer||"")}</td>`;
       tb.appendChild(tr); }
     uOffset += d.items.length;
-    setMsg("usum",`총 ${d.total}건 (표시 ${uOffset})`);
+    const rc=uReflectedCounts||{}; setMsg("usum",`총 ${d.total}건 · 반영 ${rc.reflected||0} / 검토됨 ${rc.reviewed||0} / 미반영 ${rc.pending||0} (표시 ${uOffset})`);
     document.getElementById("uMore").style.display = (uOffset < d.total) ? "" : "none";
   }catch(e){ setMsg("usum","로드 실패: "+e,true); }
 }
@@ -403,18 +428,19 @@ async function runDiscovery(){
   }catch(e){ alert("오류: "+e); }
 }
 async function loadDiscovery(){
-  const tb=document.querySelector("#dtable tbody"); tb.innerHTML='<tr><td colspan="6"><div class="empty">불러오는 중…</div></td></tr>';
+  const tb=document.querySelector("#dtable tbody"); tb.innerHTML='<tr><td colspan="7"><div class="empty">불러오는 중…</div></td></tr>';
   try{ const rows=await (await fetch(DAPI+"/candidates")).json();
-    if(!rows.length){ tb.innerHTML='<tr><td colspan="6"><div class="empty">신규 후보 없음 (운영 탭에서 발굴 실행)</div></td></tr>'; return; }
+    if(!rows.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">신규 후보 없음 (운영 탭에서 발굴 실행)</div></td></tr>'; return; }
     tb.innerHTML="";
     for(const c of rows){ const tr=document.createElement("tr");
       const st=c.status||"pending";
       const badge = st==="approved"?'<span class="b ok">승인</span>':(st==="rejected"?'<span class="b off">반려</span>':'<span class="b warn">검토대기</span>');
       tr.innerHTML=`<td>${escapeHtml(c.topic||"")}</td><td>${escapeHtml(c.title||"(초안없음)")}</td>
         <td>${escapeHtml(c.category||"")}</td><td>${c.n_queries||0}</td><td>${badge}</td>
+        <td style="font-size:11px;color:var(--muted)">${escapeHtml(((c.status_at||c.created_at)||"").replace("T"," ").slice(0,16))}</td>
         <td><div class="act"><button onclick="openCand('${c.candidate_id}')">검토</button></div></td>`;
       tb.appendChild(tr); }
-  }catch(e){ tb.innerHTML='<tr><td colspan="6"><div class="empty">로드 실패: '+e+'</div></td></tr>'; }
+  }catch(e){ tb.innerHTML='<tr><td colspan="7"><div class="empty">로드 실패: '+e+'</div></td></tr>'; }
 }
 let curCand=null;
 async function openCand(cid){
@@ -440,8 +466,39 @@ async function rejectCand(){
     if(r.ok){ document.getElementById("dmodal").classList.remove("on"); loadDiscovery(); }
   }catch(e){ setMsg("dmodalmsg","오류: "+e,true); }
 }
+function filterReflected(){
+  const v=document.getElementById("uReflected").value;
+  document.querySelectorAll("#utable tbody tr").forEach(tr=>{ if(tr.dataset.reflected!==undefined) tr.style.display=(!v||tr.dataset.reflected===v)?"":"none"; });
+}
+const OV_STEPS=[
+  ["1","미답변 질의 수집","상담 중 AI가 답하지 못한 질문이 자동 적재됩니다.","미답변 질의"],
+  ["2","신규 정책 발굴","미답변 질의를 군집·분류해 신규 정책 후보 초안을 만듭니다. (매월 1·15일 / 수동 실행)","운영"],
+  ["3","신규 후보 검토·승인","후보 초안을 검토·수정 후 승인하면 정책으로 등록됩니다.","신규 후보"],
+  ["4","정책 관리","등록된 정책을 조회·편집·비활성화합니다.","정책 관리"],
+  ["5","출처 변경 감지·재검증","크롤이 정책 출처 변경을 감지해 갱신안을 만듭니다. (매월 2·16일 해시 / 25일 전수 재검증)","운영"],
+  ["6","검토 큐 반영","크롤이 만든 갱신안을 필드 단위로 검토·반영합니다.","검토 큐"],
+  ["7","데이터 백업","매일 04:00(KST) 정본 데이터를 백업합니다.","운영"],
+];
+async function loadOverview(){
+  const flow=document.getElementById("ov-flow");
+  flow.innerHTML=OV_STEPS.map((st,i)=>`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:${i<OV_STEPS.length-1?'10':'0'}px">
+    <div style="flex:0 0 26px;height:26px;border-radius:50%;background:#eff4ff;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${st[0]}</div>
+    <div style="flex:1"><div style="font-weight:600">${st[1]} <span class="b changes" style="margin-left:4px">${st[3]} 탭</span></div>
+      <div class="msg" style="margin-top:2px">${st[2]}</div></div></div>`).join("")
+    + '<div class="msg" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">※ 2~6은 순환 구조입니다 — 운영하며 미답변이 쌓이면 다시 신규 발굴로 이어집니다.</div>';
+  try{ const pols=await (await fetch(PLIST)).json(); const act=pols.filter(p=>p.active!==false).length;
+    document.getElementById("ov-policies").textContent=`${act} / ${pols.length}`; }catch(e){ document.getElementById("ov-policies").textContent="-"; }
+  try{ const sm=await (await fetch(UAPI+"/summary")).json(); const r=sm.by_reflected||{};
+    document.getElementById("ov-unresolved").innerHTML=`${sm.total||0}<div class="msg" style="font-size:11px;font-weight:400">미반영 ${r.pending||0}</div>`; }catch(e){ document.getElementById("ov-unresolved").textContent="-"; }
+  try{ const cs=await (await fetch(DAPI+"/candidates")).json(); const pend=cs.filter(c=>(c.status||"pending")==="pending").length;
+    document.getElementById("ov-cands").innerHTML=`${pend}<div class="msg" style="font-size:11px;font-weight:400">전체 ${cs.length}</div>`; }catch(e){ document.getElementById("ov-cands").textContent="-"; }
+  try{ const d=await (await fetch(OAPI+"/status")).json(); const b=d.backup||{}; const nx=(d.next||{}).backup_scheduled;
+    let t = b.last_run ? ("마지막 "+b.last_run.replace("T"," ").slice(5,16)) : "기록 없음";
+    if(nx) t += `<div class="msg" style="font-size:11px;font-weight:400">다음 ${nx.replace("T"," ").slice(5,16)}</div>`;
+    document.getElementById("ov-backup").innerHTML=t; }catch(e){ document.getElementById("ov-backup").textContent="-"; }
+}
 function setMsg(id,m,bad){ const el=document.getElementById(id); if(el){ el.textContent=m; el.style.color=bad?"var(--bad)":"var(--muted)"; } }
-loadList();
+showTab("overview");
 </script>
 </body>
 </html>
