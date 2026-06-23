@@ -287,7 +287,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       textOnly = !!window.__textOnly;  // [GRAFT] shell sets this before dispatching click
       // 상담원 버튼 잠금
       document.querySelectorAll(".agent-btn").forEach(b => b.disabled = true);
-      const label = selectedVoice === "male" ? "🙋‍♂️ 남성 정책상담원" : "🙋‍♀️ 여성 정책상담원";
+      const label = textOnly ? "🧑‍💼 정책상담원" : (selectedVoice === "male" ? "🙋‍♂️ 남성 정책상담원" : "🙋‍♀️ 여성 정책상담원");
       $("agentBadge").textContent = `상담원: ${label}`;
       addBubble("sys", `${label} 연결 중...`);
       await connectWs(selectedVoice);
@@ -351,7 +351,11 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     };
 
     ws.onclose = (e) => {
-      addBubble("sys", `상담 종료${e.reason ? `: ${e.reason}` : ""}`);
+      if (e && e.code && e.code !== 1000 && !e.wasClean) {
+        addBubble("err", `⚠ 연결이 예기치 않게 끊어졌습니다${e.reason ? ` (${e.reason})` : ""}. 상담원을 다시 선택하면 이어서 상담할 수 있습니다.`);
+      } else {
+        addBubble("sys", `상담 종료${e.reason ? `: ${e.reason}` : ""}`);
+      }
       stopMic();
       stopAllPlayback();
       finalizeAiBubble(); finalizeUserBubble();
