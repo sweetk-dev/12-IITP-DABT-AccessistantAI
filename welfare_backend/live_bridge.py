@@ -474,10 +474,32 @@ async def handle_live_chat(
     consecutive_failures = 0            # 연속 '무진전' 재연결 횟수 (handle 손상 추정)
     session_progressed = False          # 이번 세션에서 응답/handle 진전이 있었는지
     MAX_CONSECUTIVE_FAILURES = 5        # 초과 시 silent 헛돌이 중단(무한 1007 루프 방지)
+    # 컨텍스트 보존 복구(2단계) — handle 폐기 후 새 세션에 직전 대화 맥락을 silent 주입
+    convo_history = []                  # [(role, text)] 확정된 대화 턴
+    _ai_buf = ""                        # 현재 AI 턴 전사 누적
+    _user_buf = ""                      # 현재 사용자 턴 입력 누적
+    reseed_context = False              # 새 세션에 맥락 re-seed 필요 여부
+    _BASE_SYS = SYSTEM_INSTRUCTION
+    RESEED_MAX_TURNS = 8                # 주입할 최근 대화 턴 수(컨텍스트 비대화 방지)
 
     try:
       while True:
         session_progressed = False  # 이번 연결 시도의 진전 여부 초기화
+        # 복구 재시작 시: handle 없이 새 세션을 열되 직전 대화 맥락을 system instruction 에
+        # silent 주입(음성 재생/안내 없이 배경 컨텍스트로만) → 대화 내용 보존.
+        if reseed_context and convo_history:
+            _recent = [(r, t) for r, t in convo_history[-RESEED_MAX_TURNS:] if t.strip()]
+            if _recent:
+                _ctx = "\n".join(("사용자: " if r == "user" else "상담원: ") + t[:250] for r, t in _recent)
+                _sys_text = _BASE_SYS + ("\n\n[복구된 이전 대화 맥락 — 사용자에게 다시 언급하거나 "
+                    "반복 발화하지 말고, 이미 나눈 대화로 간주해 자연스럽게 이어가세요]\n" + _ctx)
+            else:
+                _sys_text = _BASE_SYS
+            config_kwargs["system_instruction"] = types.Content(parts=[types.Part.from_text(text=_sys_text)])
+            logger.info("🧩 복구 새 세션에 이전 대화 맥락 %d턴 re-seed", len(_recent))
+        else:
+            config_kwargs["system_instruction"] = types.Content(parts=[types.Part.from_text(text=_BASE_SYS)])
+        reseed_context = False
         # session_resumption config 매 연결 시 갱신 (handle 이 None → 새 세션, 있으면 이어받기)
         try:
             config_kwargs["session_resumption"] = types.SessionResumptionConfig(handle=session_handle)
@@ -503,6 +525,7 @@ async def handle_live_chat(
 
             # ─── 클라이언트 → Gemini ───
             async def pump_client_to_gemini():
+                nonlocal _user_buf
                 try:
                     while True:
                         raw = await websocket.receive_text()
@@ -519,6 +542,7 @@ async def handle_live_chat(
                             )
                             # audio_chunk 자체는 무음 포함이라 활동 신호로 부적합 — 무시.
                         elif msg.get("type") == "text":
+                            _user_buf += msg.get("content", "")
                             await session.send_client_content(
                                 turns=[types.Content(
                                     role="user",
@@ -543,7 +567,7 @@ async def handle_live_chat(
                 # turn_complete 시점에 tracker 를 새 인스턴스로 교체하기 때문에
                 # outer scope 의 tracker 를 재바인딩 — nonlocal 선언 필수.
                 # session_handle 도 server 가 SessionResumptionUpdate 보낼 때마다 갱신.
-                nonlocal tracker, session_handle, session_progressed
+                nonlocal tracker, session_handle, session_progressed, _ai_buf, _user_buf
                 total_responses = 0
                 turn_count = 0
                 while True:
@@ -589,6 +613,14 @@ async def handle_live_chat(
                                             "data": audio_b64,
                                         })
                             if sc and getattr(sc, "turn_complete", False):
+                                # 대화 맥락 버퍼에 이번 턴 확정 기록(복구 re-seed 용)
+                                if _user_buf.strip():
+                                    convo_history.append(("user", _user_buf.strip()))
+                                if _ai_buf.strip():
+                                    convo_history.append(("model", _ai_buf.strip()))
+                                _user_buf = ""; _ai_buf = ""
+                                if len(convo_history) > 100:
+                                    del convo_history[:-100]
                                 logger.info("✅ AI turn #%d 완료", turn_count)
                                 await _safe_send_json(websocket,{"type": "turn_complete"})
                                 # ── Phase 5 Track A: turn 단위 폴백 적재 ─────────
@@ -617,6 +649,7 @@ async def handle_live_chat(
                                 it = sc.input_transcription
                                 text = getattr(it, "text", None)
                                 if text:
+                                    _user_buf += text
                                     logger.info("🎤 사용자 음성→텍스트: %s", text)
                                     tracker.on_user_transcript(text, raw=it)
                                     # ✅ 실제 사용자 발화 — 무입력 타이머 reset
@@ -628,6 +661,7 @@ async def handle_live_chat(
                                 ot = sc.output_transcription
                                 text = getattr(ot, "text", None)
                                 if text:
+                                    _ai_buf += text
                                     logger.info("음성→텍스트: %s", text)
                                     tracker.on_ai_transcript(text)
                                     await _safe_send_json(websocket,{"type": "ai_transcript", "content": text})
@@ -771,8 +805,9 @@ async def handle_live_chat(
             # 재개(handle) 재연결이 무진전이면 handle/컨텍스트 손상 추정 →
             # 다음 시도는 handle 폐기 후 새 세션으로 복구(컨텍스트 초기화되나 영구 멈춤 방지).
             if session_handle is not None:
-                logger.warning("⚠️ handle 재개 재연결이 무진전 — handle 폐기 후 새 세션으로 복구 시도")
+                logger.warning("⚠️ handle 재개 재연결이 무진전 — handle 폐기 후 새 세션으로 복구(맥락 re-seed) 시도")
                 session_handle = None
+                reseed_context = True
         # 무한 silent 헛돌이 방지 — 연속 무진전이 상한 초과면 사용자에게 안내 후 종료
         if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
             logger.error("⛔ silent 재연결 %d회 연속 무진전 — handle 손상 추정. 루프 중단 (총 재연결 %d회)",
