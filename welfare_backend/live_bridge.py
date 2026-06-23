@@ -333,9 +333,11 @@ async def handle_live_chat(
         tools=all_tools,
     )
     # SDK 버전에 따라 transcription 설정 명칭이 다름 — 호환성 시도
+    _has_output_transcription = False
     try:
         config_kwargs["input_audio_transcription"] = types.AudioTranscriptionConfig()
         config_kwargs["output_audio_transcription"] = types.AudioTranscriptionConfig()
+        _has_output_transcription = True
     except AttributeError:
         logger.warning("⚠️ SDK 가 transcription 미지원 — 음성→텍스트 변환 비활성")
 
@@ -575,7 +577,9 @@ async def handle_live_chat(
                             # A) 일반 콘텐츠 (텍스트/오디오)
                             if sc and getattr(sc, "model_turn", None):
                                 for part in sc.model_turn.parts:
-                                    if getattr(part, "text", None):
+                                    # AUDIO 모드 + output transcription 활성 시 model_turn 텍스트는
+                                    # ai_transcript 와 동일 내용이라 이중 렌더 → 전송 생략(전사 비활성 시에만 사용)
+                                    if getattr(part, "text", None) and not _has_output_transcription:
                                         await _safe_send_json(websocket,{"type": "text", "content": part.text})
                                     if getattr(part, "inline_data", None):
                                         audio_b64 = base64.b64encode(part.inline_data.data).decode()
@@ -764,6 +768,11 @@ async def handle_live_chat(
             consecutive_failures = 0
         else:
             consecutive_failures += 1
+            # 재개(handle) 재연결이 무진전이면 handle/컨텍스트 손상 추정 →
+            # 다음 시도는 handle 폐기 후 새 세션으로 복구(컨텍스트 초기화되나 영구 멈춤 방지).
+            if session_handle is not None:
+                logger.warning("⚠️ handle 재개 재연결이 무진전 — handle 폐기 후 새 세션으로 복구 시도")
+                session_handle = None
         # 무한 silent 헛돌이 방지 — 연속 무진전이 상한 초과면 사용자에게 안내 후 종료
         if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
             logger.error("⛔ silent 재연결 %d회 연속 무진전 — handle 손상 추정. 루프 중단 (총 재연결 %d회)",
