@@ -241,6 +241,42 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     $("chat").scrollTop = $("chat").scrollHeight;
   };
   const finalizeAiBubble = () => { activeAiBubble = null; activeAiText = ""; };
+  // ────── 출처 표시 (#화면의 출처) ──────
+  // 도구/검색 결과의 출처(기관명+URL)를 답변 아래 클릭 가능한 링크로 표시.
+  const renderSources = (items) => {
+    if (!Array.isArray(items) || !items.length) return;
+    const seen = new Set();
+    const rows = [];
+    items.forEach((it) => {
+      const url = (it && it.url ? String(it.url) : "").trim();
+      if (!url || seen.has(url)) return;
+      if (!/^https?:\/\//i.test(url)) return;
+      seen.add(url);
+      rows.push({ pub: (it.publisher ? String(it.publisher) : "출처").trim() || "출처", url });
+    });
+    if (!rows.length) return;
+    const el = document.createElement("div");
+    el.className = "bubble bubble--tool";
+    const lbl = document.createElement("span");
+    lbl.className = "label";
+    lbl.textContent = "📎 출처";
+    el.appendChild(lbl);
+    rows.slice(0, 5).forEach((r) => {
+      const row = document.createElement("div");
+      row.style.margin = "2px 0";
+      const a = document.createElement("a");
+      a.href = r.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+      a.textContent = r.pub;
+      a.style.color = "var(--c-primary, #1565c0)";
+      a.style.textDecoration = "underline";
+      a.style.wordBreak = "break-all";
+      row.appendChild(a);
+      el.appendChild(row);
+    });
+    $("chat").appendChild(el);
+    $("chat").scrollTop = $("chat").scrollHeight;
+  };
+
 
   // 사용자 입력 transcript 도 chunk 단위 가능 — 누적
   let activeUserBubble = null;
@@ -325,6 +361,9 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           break;
         case "grounding":
           addBubble("tool", `🔍 외부 검색 결과 사용됨`);
+          break;
+        case "sources":
+          renderSources(msg.items);
           break;
         case "turn_complete":
           finalizeUserBubble();

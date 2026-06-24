@@ -26,6 +26,22 @@ async def _with_session(handler):
 # ─────────────────────────────────────────────────────────────
 # 도구 #1
 # ─────────────────────────────────────────────────────────────
+def _top_sources_from_fd(fd, n: int = 3) -> list:
+    """정책 full_data 의 sources 에서 화면 표시용 출처(기관명+URL) top-N 추출."""
+    out, seen = [], set()
+    for sc in (fd or {}).get("sources", []) or []:
+        if not isinstance(sc, dict):
+            continue
+        url = (sc.get("url") or "").strip()
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        out.append({"publisher": sc.get("publisher") or "출처", "url": url, "priority": sc.get("priority")})
+        if len(out) >= n:
+            break
+    return out
+
+
 async def tool_search_policies_by_metadata(
     category: Optional[str] = None,
     severity: Optional[str] = None,
@@ -48,6 +64,7 @@ async def tool_search_policies_by_metadata(
         rows = (await db.execute(stmt)).scalars().all()
         return {
             "matched_count": len(rows),
+            "sources_top3": _top_sources_from_fd(rows[0].full_data) if rows else [],
             "results": [
                 {
                     "policy_id": p.id,
@@ -87,6 +104,7 @@ async def tool_search_by_keyword(query: str, top_k: int = 5, *, embed_fn) -> dic
                 models.WelfarePolicy.title,
                 models.WelfarePolicy.short_summary,
                 models.WelfarePolicy.category,
+                models.WelfarePolicy.full_data,
             )
             .join(models.WelfarePolicy, models.PolicyChunk.policy_id == models.WelfarePolicy.id)
             .order_by(models.PolicyChunk.embedding.cosine_distance(qvec))
@@ -95,6 +113,7 @@ async def tool_search_by_keyword(query: str, top_k: int = 5, *, embed_fn) -> dic
         rows = (await db.execute(stmt)).all()
         return {
             "query": query,
+            "sources_top3": _top_sources_from_fd(rows[0].full_data) if rows else [],
             "results": [
                 {
                     "policy_id": r.policy_id,
