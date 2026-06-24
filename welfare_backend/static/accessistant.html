@@ -316,7 +316,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     ws.onmessage = async (ev) => {
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
       switch (msg.type) {
-        case "user_transcript": appendUserTranscript(msg.content); break;
+        case "user_transcript": if (!sttActive) appendUserTranscript(msg.content); break;  // #105 STT 활성 시 중복 억제
         case "ai_transcript":   appendAiTranscript(msg.content); break;
         case "text":            appendAiTranscript(msg.content); break;
         case "audio":           await playAudioChunk(msg.data, msg.mime_type); break;
@@ -329,6 +329,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
         case "turn_complete":
           finalizeUserBubble();
           finalizeAiBubble();
+          sttFinal = "";   // #105 사용자 턴 누적 초기화
           break;
         case "interrupted":
           stopAllPlayback();
@@ -405,9 +406,11 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       }
     };
     micNode.connect(micProcessor);
+    startSTT();   // #105 실시간 자막
   };
 
   const stopMic = () => {
+    stopSTT();   // #105
     if (micProcessor) {
       try { micProcessor.port.onmessage = null; } catch{}
       try { micProcessor.disconnect(); } catch{}
@@ -416,6 +419,60 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     if (micNode) { try { micNode.disconnect(); } catch{} micNode = null; }
     if (audioCtx) { try { audioCtx.close(); } catch{} audioCtx = null; }
     if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  };
+
+  // ────── 브라우저 음성인식(STT) — 사용자 발화 실시간 자막 (#105) ──────
+  // Gemini Live 입력 전사는 턴 종료 시 한 번에(batch) 도착해 "단어 단위 실시간"이
+  // 아니므로, 브라우저 Web Speech API로 사용자 발화를 실시간 표시한다.
+  // 미지원/거부 시에는 백엔드 user_transcript 표시로 자동 폴백.
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let sttActive = false;   // STT 동작 중 → 백엔드 user_transcript 중복표시 억제
+  let sttWantOn = false;   // 세션 동안 STT 유지(자동 재시작)
+  let sttFinal = "";       // 현재 사용자 턴 확정 누적
+
+  const renderUserLive = (interim) => {
+    if (!activeUserBubble) appendUserTranscript("");
+    activeUserBubble._textNode.textContent = sttFinal + interim;
+    $("chat").scrollTop = $("chat").scrollHeight;
+  };
+
+  const startSTT = () => {
+    if (!SpeechRec) return false;           // 미지원 → 백엔드 전사 폴백
+    try {
+      recognition = new SpeechRec();
+      recognition.lang = "ko-KR";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+      recognition.onresult = (e) => {
+        let interim = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          if (r.isFinal) { sttFinal += r[0].transcript; renderUserLive(""); }
+          else { interim += r[0].transcript; }
+        }
+        if (interim) renderUserLive(interim);
+      };
+      recognition.onerror = (e) => {
+        if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+          sttActive = false; sttWantOn = false;   // 권한 거부 → 백엔드 전사로 폴백
+        }
+      };
+      recognition.onend = () => { if (sttWantOn) { try { recognition.start(); } catch {} } };
+      sttWantOn = true;
+      recognition.start();
+      sttActive = true;
+      return true;
+    } catch (err) {
+      sttActive = false; sttWantOn = false; recognition = null;
+      return false;
+    }
+  };
+
+  const stopSTT = () => {
+    sttWantOn = false; sttActive = false; sttFinal = "";
+    if (recognition) { try { recognition.onend = null; recognition.stop(); } catch {} recognition = null; }
   };
 
   // ────── 텍스트 전송 ──────
