@@ -17,9 +17,7 @@ import argparse
 import asyncio
 import json
 import logging
-import os
 import sys
-import textwrap
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -135,15 +133,15 @@ def render_table(rows: list[dict], hours: int, reason: str | None) -> str:
         if r["ai_final_answer"]:
             out.append(f"      답변: {_shorten(r['ai_final_answer'], 200)}")
         else:
-            out.append(f"      답변: (텍스트 없음 — 음성만 출력했을 가능성)")
+            out.append("      답변: (텍스트 없음 — 음성만 출력했을 가능성)")
         out.append(f"      🛠 도구: {_format_tool_chain(r['tool_chain'])}")
         if r["has_grounding"]:
-            out.append(f"      🔍 외부 검색 사용됨")
+            out.append("      🔍 외부 검색 사용됨")
 
     out.append("")
     out.append("=" * 100)
-    out.append(f"※ 임베딩이 비어있으면 매일 23:00 백필 cron (scripts/backfill_embeddings.py) 으로 채워집니다.")
-    out.append(f"※ 90일 지나면 자동 파기됩니다 (scripts/purge_old_queries.py).")
+    out.append("※ 임베딩이 비어있으면 매일 23:00 백필 cron (scripts/backfill_embeddings.py) 으로 채워집니다.")
+    out.append("※ 90일 지나면 자동 파기됩니다 (scripts/purge_old_queries.py).")
     return "\n".join(out)
 
 

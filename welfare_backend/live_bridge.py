@@ -46,6 +46,38 @@ async def _safe_send_json(websocket: WebSocket, payload: dict) -> bool:
         return False
 
 
+def _extract_sources(result) -> list:
+    """도구 결과에서 화면 표시용 출처(기관명+URL) 추출."""
+    if not isinstance(result, dict):
+        return []
+    raw = result.get("sources_top3") or result.get("sources") or []
+    out, seen = [], set()
+    for sc in raw:
+        if not isinstance(sc, dict):
+            continue
+        url = (sc.get("url") or "").strip()
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        out.append({"publisher": (sc.get("publisher") or "출처"), "url": url})
+    return out[:5]
+
+
+def _extract_grounding_sources(gm) -> list:
+    """google_search grounding_metadata 에서 웹 출처(title+uri) 추출."""
+    out, seen = [], set()
+    for ch in (getattr(gm, "grounding_chunks", None) or []):
+        web = getattr(ch, "web", None)
+        if not web:
+            continue
+        uri = getattr(web, "uri", None)
+        title = getattr(web, "title", None)
+        if uri and uri not in seen:
+            seen.add(uri)
+            out.append({"publisher": (title or uri), "url": uri})
+    return out[:5]
+
+
 # ─────────────────────────────────────────────────────────────
 # System Instruction — 보고서 v1.2 §7.2 (Fat Tool Response 원칙)
 # ─────────────────────────────────────────────────────────────
@@ -126,20 +158,21 @@ DB 도구 응답을 받으면 다음을 판단:
 이 규칙으로 AI가 의역·추측할 여지를 차단하면서도, 같은 멘트가 반복되어 사용자가 답답함을 느끼지 않게 합니다.
 
 ### 3단계 — **외부 검색 폴백 (google_search)**
-DB 결과가 부족하면 다음 순서로 정확히 수행:
+DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽게 이어서 수행:
 
-(a) **반드시 먼저 안내 음성 출력**:
-> "저희 정책 DB에서는 정확한 정보를 찾지 못했어요. 외부 검색으로 확인해 드리겠습니다."
+(a) 외부 검색으로 확인하겠다고 **짧게 한 번만** 안내. 상황에 맞게 자연스럽게 표현하되, 같은 안내를 **두 번 말하거나 예시 문구를 따옴표째 그대로 다시 읽지 말 것**. (안내 취지: 정책 DB에 정확한 정보가 없어 외부 검색으로 확인한다 — 이 문장을 그대로 외워 읽지 말고 자연스럽게.)
 
-(b) 그 다음 `google_search` 도구를 자동으로 호출 (Gemini 내장).
+(b) 곧바로 `google_search` 도구를 호출 (Gemini 내장).
 
-(c) 검색 결과로 답변하되, 반드시 답변 끝에 출처 명시:
-> "이 정보는 외부 웹 검색 결과 기준이며, 정확도는 공식 기관에 재확인 부탁드립니다. 자세한 안내는 보건복지부 129로 문의하세요."
+(c) **검색 결과의 핵심 내용을 반드시 같은 답변에서 구체적으로 전달**. 안내만 하고 결과 없이 끝내지 말 것.
+- 결과가 있으면: 핵심을 요약해 답한 뒤 **마지막에 한 번만** 출처 주의를 덧붙임 (외부 웹 검색 결과라 정확도는 공식 기관 재확인 권장, 보건복지부 129 안내).
+- 결과가 없거나 불확실하면: 출처 주의 보일러플레이트를 붙이지 말고, 정직하게 정확한 정보를 찾지 못했다고 말한 뒤 관련 콜센터(보건복지부 129)를 안내.
 
 ### 금지사항
 - DB 도구를 건너뛰고 바로 `google_search` 부르지 말 것.
 - DB 결과 있는데 추가로 자체 지식·외부 검색 섞지 말 것.
-- 안내 음성 없이 외부 검색 결과를 자연스럽게 끼워넣지 말 것 (사용자가 출처를 알아야 함).
+- 안내만 하고 **외부 검색 결과 본문을 빠뜨리지 말 것**.
+- 같은 안내 문구를 반복하거나, 예시로 제시된 문장을 **따옴표째 그대로 다시 발화하지 말 것**.
 
 ## 단계적 라우팅
 - 첫 호출로 정보 부족하면 한 번 더 다른 도구를 연쇄 호출해도 됩니다. 단, 음성 침묵을 줄이기 위해 가능한 한 1~2회 안에 답변을 완성하세요.
@@ -333,9 +366,11 @@ async def handle_live_chat(
         tools=all_tools,
     )
     # SDK 버전에 따라 transcription 설정 명칭이 다름 — 호환성 시도
+    _has_output_transcription = False
     try:
         config_kwargs["input_audio_transcription"] = types.AudioTranscriptionConfig()
         config_kwargs["output_audio_transcription"] = types.AudioTranscriptionConfig()
+        _has_output_transcription = True
     except AttributeError:
         logger.warning("⚠️ SDK 가 transcription 미지원 — 음성→텍스트 변환 비활성")
 
@@ -366,7 +401,6 @@ async def handle_live_chat(
     except (AttributeError, TypeError) as e:
         logger.warning("⚠️ SDK 가 SpeechConfig 미지원 — 기본 음성 사용: %s", e)
 
-    aad_applied = False
     try:
         aad_kwargs = {"disabled": False}
         # 감도 enum — SDK 버전마다 명칭 약간 다를 수 있어 안전하게 시도
@@ -387,7 +421,6 @@ async def handle_live_chat(
         config_kwargs["realtime_input_config"] = types.RealtimeInputConfig(
             automatic_activity_detection=aad,
         )
-        aad_applied = True
         logger.info("✅ Gemini AAD 명시 설정 적용 (prefix=200ms, silence=1200ms)")
     except (AttributeError, TypeError) as e:
         logger.warning("⚠️ SDK 가 AAD 명시 설정 미지원 — 기본값 사용: %s", e)
@@ -469,9 +502,35 @@ async def handle_live_chat(
     #   - 단, 백엔드 로그에는 재연결 소요시간(ms) 기록 → 운영자 확인용
     session_handle = None
     reconnect_count = 0
+    consecutive_failures = 0            # 연속 '무진전' 재연결 횟수 (handle 손상 추정)
+    session_progressed = False          # 이번 세션에서 응답/handle 진전이 있었는지
+    MAX_CONSECUTIVE_FAILURES = 5        # 초과 시 silent 헛돌이 중단(무한 1007 루프 방지)
+    # 컨텍스트 보존 복구(2단계) — handle 폐기 후 새 세션에 직전 대화 맥락을 silent 주입
+    convo_history = []                  # [(role, text)] 확정된 대화 턴
+    _ai_buf = ""                        # 현재 AI 턴 전사 누적
+    _user_buf = ""                      # 현재 사용자 턴 입력 누적
+    reseed_context = False              # 새 세션에 맥락 re-seed 필요 여부
+    _BASE_SYS = SYSTEM_INSTRUCTION
+    RESEED_MAX_TURNS = 8                # 주입할 최근 대화 턴 수(컨텍스트 비대화 방지)
 
     try:
       while True:
+        session_progressed = False  # 이번 연결 시도의 진전 여부 초기화
+        # 복구 재시작 시: handle 없이 새 세션을 열되 직전 대화 맥락을 system instruction 에
+        # silent 주입(음성 재생/안내 없이 배경 컨텍스트로만) → 대화 내용 보존.
+        if reseed_context and convo_history:
+            _recent = [(r, t) for r, t in convo_history[-RESEED_MAX_TURNS:] if t.strip()]
+            if _recent:
+                _ctx = "\n".join(("사용자: " if r == "user" else "상담원: ") + t[:250] for r, t in _recent)
+                _sys_text = _BASE_SYS + ("\n\n[복구된 이전 대화 맥락 — 사용자에게 다시 언급하거나 "
+                    "반복 발화하지 말고, 이미 나눈 대화로 간주해 자연스럽게 이어가세요]\n" + _ctx)
+            else:
+                _sys_text = _BASE_SYS
+            config_kwargs["system_instruction"] = types.Content(parts=[types.Part.from_text(text=_sys_text)])
+            logger.info("🧩 복구 새 세션에 이전 대화 맥락 %d턴 re-seed", len(_recent))
+        else:
+            config_kwargs["system_instruction"] = types.Content(parts=[types.Part.from_text(text=_BASE_SYS)])
+        reseed_context = False
         # session_resumption config 매 연결 시 갱신 (handle 이 None → 새 세션, 있으면 이어받기)
         try:
             config_kwargs["session_resumption"] = types.SessionResumptionConfig(handle=session_handle)
@@ -497,6 +556,7 @@ async def handle_live_chat(
 
             # ─── 클라이언트 → Gemini ───
             async def pump_client_to_gemini():
+                nonlocal _user_buf
                 try:
                     while True:
                         raw = await websocket.receive_text()
@@ -513,6 +573,7 @@ async def handle_live_chat(
                             )
                             # audio_chunk 자체는 무음 포함이라 활동 신호로 부적합 — 무시.
                         elif msg.get("type") == "text":
+                            _user_buf += msg.get("content", "")
                             await session.send_client_content(
                                 turns=[types.Content(
                                     role="user",
@@ -537,7 +598,7 @@ async def handle_live_chat(
                 # turn_complete 시점에 tracker 를 새 인스턴스로 교체하기 때문에
                 # outer scope 의 tracker 를 재바인딩 — nonlocal 선언 필수.
                 # session_handle 도 server 가 SessionResumptionUpdate 보낼 때마다 갱신.
-                nonlocal tracker, session_handle
+                nonlocal tracker, session_handle, session_progressed, _ai_buf, _user_buf
                 total_responses = 0
                 turn_count = 0
                 while True:
@@ -546,6 +607,7 @@ async def handle_live_chat(
                     try:
                         async for response in session.receive():
                             total_responses += 1
+                            session_progressed = True  # 1건이라도 응답 수신 → 정상 진전
 
                             # session_resumption_update — server 가 주기적으로 새 handle 발행.
                             # 이 handle 을 outer 변수에 저장해두면 GoAway 발생 후 같은 handle 로
@@ -570,7 +632,9 @@ async def handle_live_chat(
                             # A) 일반 콘텐츠 (텍스트/오디오)
                             if sc and getattr(sc, "model_turn", None):
                                 for part in sc.model_turn.parts:
-                                    if getattr(part, "text", None):
+                                    # AUDIO 모드 + output transcription 활성 시 model_turn 텍스트는
+                                    # ai_transcript 와 동일 내용이라 이중 렌더 → 전송 생략(전사 비활성 시에만 사용)
+                                    if getattr(part, "text", None) and not _has_output_transcription:
                                         await _safe_send_json(websocket,{"type": "text", "content": part.text})
                                     if getattr(part, "inline_data", None):
                                         audio_b64 = base64.b64encode(part.inline_data.data).decode()
@@ -580,6 +644,14 @@ async def handle_live_chat(
                                             "data": audio_b64,
                                         })
                             if sc and getattr(sc, "turn_complete", False):
+                                # 대화 맥락 버퍼에 이번 턴 확정 기록(복구 re-seed 용)
+                                if _user_buf.strip():
+                                    convo_history.append(("user", _user_buf.strip()))
+                                if _ai_buf.strip():
+                                    convo_history.append(("model", _ai_buf.strip()))
+                                _user_buf = ""; _ai_buf = ""
+                                if len(convo_history) > 100:
+                                    del convo_history[:-100]
                                 logger.info("✅ AI turn #%d 완료", turn_count)
                                 await _safe_send_json(websocket,{"type": "turn_complete"})
                                 # ── Phase 5 Track A: turn 단위 폴백 적재 ─────────
@@ -602,12 +674,16 @@ async def handle_live_chat(
                                 logger.info("🔍 google_search 사용 감지: %s", str(gm)[:200])
                                 tracker.on_grounding(gm)
                                 await _safe_send_json(websocket,{"type": "grounding", "info": str(gm)[:500]})
+                                _gsrc = _extract_grounding_sources(gm)
+                                if _gsrc:
+                                    await _safe_send_json(websocket, {"type": "sources", "items": _gsrc})
 
                             # 입력 transcription (사용자 음성→텍스트)
                             if sc and getattr(sc, "input_transcription", None):
                                 it = sc.input_transcription
                                 text = getattr(it, "text", None)
                                 if text:
+                                    _user_buf += text
                                     logger.info("🎤 사용자 음성→텍스트: %s", text)
                                     tracker.on_user_transcript(text, raw=it)
                                     # ✅ 실제 사용자 발화 — 무입력 타이머 reset
@@ -619,6 +695,7 @@ async def handle_live_chat(
                                 ot = sc.output_transcription
                                 text = getattr(ot, "text", None)
                                 if text:
+                                    _ai_buf += text
                                     logger.info("음성→텍스트: %s", text)
                                     tracker.on_ai_transcript(text)
                                     await _safe_send_json(websocket,{"type": "ai_transcript", "content": text})
@@ -642,6 +719,9 @@ async def handle_live_chat(
                                             result = {"error": str(e)}
                                     # Phase 5 Track A — 도구 호출 시퀀스 추적
                                     tracker.on_tool_call(fname, fargs, result)
+                                    _src = _extract_sources(result)
+                                    if _src:
+                                        await _safe_send_json(websocket, {"type": "sources", "items": _src})
                                     responses.append(types.FunctionResponse(
                                         id=fc.id,
                                         name=fname,
@@ -668,7 +748,14 @@ async def handle_live_chat(
                         logger.info("Gemini 수신 루프 취소됨")
                         break
                     except Exception as e:
-                        logger.exception("Gemini 수신 오류 (turn #%d): %s", turn_count, e)
+                        # 진단: 1007(invalid argument) 등 근본 원인 특정용 상세 로그
+                        logger.error(
+                            "Gemini 수신 오류 (turn #%d) — type=%s code=%s msg=%s | "
+                            "total_responses=%d handle=%s resumed=%s model=%s",
+                            turn_count, type(e).__name__, getattr(e, "code", None), str(e),
+                            total_responses, "있음" if session_handle else "없음",
+                            (reconnect_count > 0), model_name)
+                        logger.exception("Gemini 수신 오류 상세 트레이스 (turn #%d)", turn_count)
                         break
                 logger.info("Gemini 수신 루프 최종 종료 (총 %d턴, %d응답)", turn_count, total_responses)
 
@@ -747,10 +834,35 @@ async def handle_live_chat(
             logger.info("클라이언트 측 종료 감지 — 재연결 루프 종료 (총 재연결 %d회)",
                         reconnect_count)
             break
+        # 직전 세션이 무진전(즉시 무응답 종료)이면 handle 손상 의심 → 연속 실패 누적
+        if session_progressed:
+            consecutive_failures = 0
+        else:
+            consecutive_failures += 1
+            # 재개(handle) 재연결이 무진전이면 handle/컨텍스트 손상 추정 →
+            # 다음 시도는 handle 폐기 후 새 세션으로 복구(컨텍스트 초기화되나 영구 멈춤 방지).
+            if session_handle is not None:
+                logger.warning("⚠️ handle 재개 재연결이 무진전 — handle 폐기 후 새 세션으로 복구(맥락 re-seed) 시도")
+                session_handle = None
+                reseed_context = True
+        # 무한 silent 헛돌이 방지 — 연속 무진전이 상한 초과면 사용자에게 안내 후 종료
+        if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+            logger.error("⛔ silent 재연결 %d회 연속 무진전 — handle 손상 추정. 루프 중단 (총 재연결 %d회)",
+                         consecutive_failures, reconnect_count)
+            try:
+                await _safe_send_json(websocket, {"type": "error",
+                    "message": "연결이 불안정하여 상담을 이어가지 못했습니다. 잠시 후 다시 시도해 주세요."})
+                await websocket.close()
+            except Exception:
+                pass
+            break
         reconnect_count += 1
-        # ⚠️ silent — 클라이언트에 reconnecting 알림 안 보냄, sleep 도 없이 즉시 재시도
-        logger.info("🔇 Gemini 세션 종료 감지 → silent 재연결 시도 #%d (handle=%s)",
-                    reconnect_count, "이어받음" if session_handle else "신규")
+        # 점증 백오프(최대 2초) — 무한 tight-loop 방지하되 사용자 체감 지연 최소화(silent 유지)
+        _backoff = min(0.3 * consecutive_failures, 2.0)
+        if _backoff > 0:
+            await asyncio.sleep(_backoff)
+        logger.info("🔇 Gemini 세션 종료 감지 → silent 재연결 시도 #%d (handle=%s, 연속무진전 %d)",
+                    reconnect_count, "이어받음" if session_handle else "신규", consecutive_failures)
         # while True 가 다시 돌면서 새 connect (handle 사용 시 컨텍스트 이어받음)
 
     except Exception as e:

@@ -1,0 +1,45 @@
+{
+  "id": "B044",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "경기도 장애인 기회소득",
+  "short_summary": "스스로 건강을 챙기는 경기도 내 정도가 심한 장애인에게 가치활동(주 2회 이상 운동 등) 인증 시 월 10만 원을 지급하는 맞춤형 정책입니다.",
+  "category": "소득지원",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": "",
+    "amount": "월 10만 원 (1인 최대 연 120만 원, 최대 30개월 지원)",
+    "scope": "스마트워치를 활용한 건강상태 변화 등록, 건강 콘텐츠 수강, 주 2회 이상 가치활동 및 월 1회 사회참여 활동 인증 시 지급"
+  },
+  "eligibility": {
+    "target": "경기도에 주민등록을 둔 13세 이상 64세 이하 '정도가 심한 장애인' 중 가구 기준 중위소득 120% 이하인 자"
+  },
+  "legal_basis": [
+    {
+      "name": "경기도 장애인 기회소득 지원 조례",
+      "article": "",
+      "url": ""
+    }
+  ],
+  "how_to_use": {
+    "default": "경기민원24 누리집(gg24.gg.go.kr) 온라인 접수 또는 주민등록상 주소지 읍·면·동 행정복지센터 방문 신청"
+  },
+  "application": {},
+  "last_verified": "2026-06-18",
+  "version": "1.0.0",
+  "sources": [
+    {
+      "title": "경기도 장애인 기회소득 참여자 모집 공고",
+      "publisher": "경기도청",
+      "url": "https://www.gg.go.kr",
+      "priority": "primary"
+    },
+    {
+      "title": "경기민원24 (장애인 기회소득 신청)",
+      "publisher": "경기도청",
+      "url": "https://gg24.gg.go.kr",
+      "priority": "secondary"
+    }
+  ],
+  "active": true
+}

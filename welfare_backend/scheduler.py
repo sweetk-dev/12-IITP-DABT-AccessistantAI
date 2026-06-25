@@ -10,7 +10,13 @@ import os
 import subprocess
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+try:
+    from zoneinfo import ZoneInfo
+    KST = ZoneInfo("Asia/Seoul")
+except Exception:  # tzdata 미설치 컨테이너 대비 — 한국은 DST 없음(고정 +9)
+    KST = timezone(timedelta(hours=9))
 from pathlib import Path
 
 logger = logging.getLogger("scheduler")
@@ -46,7 +52,7 @@ def _load_cfg():
 
 
 def _now():
-    return datetime.now().isoformat(timespec="seconds")
+    return datetime.now(KST).isoformat(timespec="seconds")
 
 
 def _run_crawl(extra_args=None, label="full"):
@@ -80,7 +86,7 @@ def _run_backup():
     logger.info("백업 시작")
     try:
         _BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
         fn = _BACKUP_DIR / f"policy_data_{ts}.tar.gz"
         r = subprocess.run(["tar", "czf", str(fn), "-C", str(_DATA), "."],
                            capture_output=True, text=True, timeout=600)
@@ -195,20 +201,20 @@ def start():
     from apscheduler.triggers.cron import CronTrigger
     cfg = _load_cfg()
     cc = cfg["crawl_cron"]; rc = cfg.get("revalidate_cron", DEFAULT_CFG["revalidate_cron"]); bc = cfg["backup_cron"]
-    _sched = BackgroundScheduler(timezone="Asia/Seoul")
+    _sched = BackgroundScheduler(timezone=KST)
     # 해시 감지(2·16) — args 없음(=변경된 출처만)
     _sched.add_job(_run_crawl, CronTrigger(day=str(cc.get("day", "2,16")),
-                   hour=cc.get("hour", 9), minute=cc.get("minute", 0)),
+                   hour=cc.get("hour", 9), minute=cc.get("minute", 0), timezone=KST),
                    args=[[], "해시검사(정기)"], id="crawl_scheduled", replace_existing=True)
     # 전체 재검증(25) — --revalidate
     _sched.add_job(_run_crawl, CronTrigger(day=str(rc.get("day", "25")),
-                   hour=rc.get("hour", 9), minute=rc.get("minute", 0)),
+                   hour=rc.get("hour", 9), minute=rc.get("minute", 0), timezone=KST),
                    args=[["--revalidate"], "재검증(정기)"], id="revalidate_scheduled", replace_existing=True)
     dc_cron = cfg.get("discovery_cron", DEFAULT_CFG["discovery_cron"])
     _sched.add_job(_run_discovery, CronTrigger(day=str(dc_cron.get("day", "1,15")),
-                   hour=dc_cron.get("hour", 9), minute=dc_cron.get("minute", 0)),
+                   hour=dc_cron.get("hour", 9), minute=dc_cron.get("minute", 0), timezone=KST),
                    id="discovery_scheduled", replace_existing=True)
-    _sched.add_job(_run_backup, CronTrigger(hour=bc.get("hour", 4), minute=bc.get("minute", 0)),
+    _sched.add_job(_run_backup, CronTrigger(hour=bc.get("hour", 4), minute=bc.get("minute", 0), timezone=KST),
                    id="backup_scheduled", replace_existing=True)
     _sched.start()
     logger.info("스케줄러 기동 — 해시=%s 재검증=%s 백업=%s", cc, rc, bc)

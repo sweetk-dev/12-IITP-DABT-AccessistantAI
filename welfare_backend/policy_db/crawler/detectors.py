@@ -247,12 +247,6 @@ def _read_prev_chunks(snapshot_dir: Path) -> list:
         return []
 
 
-def _save_chunks(snapshot_dir: Path, chunks: list) -> None:
-    """이번 회차 청크를 chunks.json 에 저장 (다음 회차 비교 기준)."""
-    import json as _json
-    snapshot_dir.mkdir(parents=True, exist_ok=True)
-    (snapshot_dir / "chunks.json").write_text(
-        _json.dumps(chunks, ensure_ascii=False), encoding="utf-8")
 
 
 async def _fetch_url(url: str, *, client: httpx.AsyncClient) -> Optional[httpx.Response]:

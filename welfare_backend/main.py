@@ -81,7 +81,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 테스트용 정적 페이지 서빙 (welfare_backend/static/test_live.html)
+# 정적 페이지 서빙 (welfare_backend/static/ — accessistant.html 진입 페이지 등)
 from fastapi.staticfiles import StaticFiles
 import pathlib as _pl
 _static_dir = _pl.Path(__file__).parent / "static"

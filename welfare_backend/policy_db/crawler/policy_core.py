@@ -7,7 +7,6 @@
 import json
 import re
 from datetime import datetime
-from pathlib import Path
 
 import jsonschema
 
@@ -53,6 +52,7 @@ def list_policies():
             "deactivated_at": d.get("deactivated_at"),
             "version": d.get("version"),
             "file": f.name,
+            "last_applied_at": datetime.fromtimestamp(f.stat().st_mtime).isoformat(timespec="seconds"),
         })
     return sorted(out, key=lambda x: (x["policy_id"] or ""))
 

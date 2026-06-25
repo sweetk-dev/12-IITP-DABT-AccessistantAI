@@ -247,10 +247,28 @@ def list_candidates():
             out.append({"candidate_id": d["candidate_id"], "topic": d.get("topic"),
                         "title": di.get("title"), "category": di.get("category"),
                         "status": d.get("status"), "n_queries": len(d.get("cluster_queries") or []),
-                        "has_draft": bool(d.get("draft_item")), "created_at": d.get("created_at")})
+                        "has_draft": bool(d.get("draft_item")), "created_at": d.get("created_at"),
+                        "status_at": d.get("status_at")})
         except Exception:
             pass
     return out
+
+
+def candidate_query_index():
+    """후보 파일의 cluster_queries 역색인 → {질의문: {candidate_id,status,topic}}.
+    미답변질의 '반영'(=신규 후보로 분류된 질의) 판정에 사용. approved 후보를 우선."""
+    _CAND_DIR.mkdir(parents=True, exist_ok=True)
+    idx = {}
+    for f in _CAND_DIR.glob("C*.json"):
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        info = {"candidate_id": d.get("candidate_id"), "status": d.get("status"), "topic": d.get("topic")}
+        for q in (d.get("cluster_queries") or []):
+            if q not in idx or info.get("status") == "approved":
+                idx[q] = info
+    return idx
 
 
 def get_candidate(cid):
@@ -258,12 +276,14 @@ def get_candidate(cid):
     return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {"error": "후보 없음"}
 
 
-def set_status(cid, status):
+def set_status(cid, status, policy_id=None):
     f = _CAND_DIR / f"{cid}.json"
     if not f.exists():
         return {"ok": False, "error": "후보 없음"}
     d = json.loads(f.read_text(encoding="utf-8"))
     d["status"] = status
     d["status_at"] = datetime.now().isoformat(timespec="seconds")
+    if policy_id:
+        d["approved_policy_id"] = policy_id
     f.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
     return {"ok": True, "status": status}

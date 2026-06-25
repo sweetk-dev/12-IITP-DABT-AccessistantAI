@@ -331,12 +331,12 @@ def main(argv=None):
             sync_fail += 1
             failed_ids.append(policy_id)
 
-    logging.info(f"==========================================")
-    logging.info(f"🎯 스마트 동기화 완료!")
+    logging.info("==========================================")
+    logging.info("🎯 스마트 동기화 완료!")
     logging.info(f" - 성공 반영: {sync_ok}건")
     logging.info(f" - 실패(롤백): {sync_fail}건" + (f" -> {', '.join(failed_ids)}" if failed_ids else ""))
     logging.info(f" - 변경 없어 건너뛴 정책: {skip_count}건")
-    logging.info(f"==========================================")
+    logging.info("==========================================")
 
     cur.close()
     conn.close()
