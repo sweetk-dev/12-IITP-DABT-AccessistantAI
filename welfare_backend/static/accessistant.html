@@ -77,7 +77,7 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 #chat .bubble--tool{align-self:center;background:var(--c-success-soft);color:var(--c-success);border:1px solid #CDE9D6;font-size:.8rem;font-weight:700;padding:6px 12px;border-radius:var(--r-pill);max-width:90%;}
 #chat .bubble--src{align-self:flex-start;background:var(--c-success-soft);color:var(--c-success);border:1px solid #CDE9D6;border-top-left-radius:4px;}
 #chat .bubble--src .label{display:block;font-size:.72rem;margin-bottom:4px;font-weight:700;color:var(--c-success);opacity:.95;}
-#chat .bubble--src a{color:var(--c-success);text-decoration:underline;word-break:break-all;}
+#chat .bubble--src a{color:var(--c-success);text-decoration:underline;word-break:break-all;font-size:.86rem;}
 #chat .bubble--sys{align-self:center;background:#fff;border:1px solid var(--c-border);color:var(--c-text-muted);font-size:.72rem;padding:3px 12px;border-radius:var(--r-pill);max-width:90%;}
 #chat .bubble--err{align-self:center;background:#fff;border:1px solid #F3C2C2;color:var(--c-danger);font-weight:700;font-size:.9rem;padding:10px 14px;border-radius:var(--r-md);max-width:90%;text-align:center;}
 /* hidden functional controls (script toggles .active) keep design tokens */
@@ -247,6 +247,11 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   // ────── 출처 표시 (#화면의 출처) ──────
   // 도구/검색 결과의 출처(기관명+URL)를 답변 아래 클릭 가능한 링크로 표시.
   let pendingSources = [];
+  let srcFlushTimer = null;
+  const flushSources = () => {
+    if (srcFlushTimer) { clearTimeout(srcFlushTimer); srcFlushTimer = null; }
+    if (pendingSources.length) { renderSources(pendingSources); pendingSources = []; }
+  };
   const renderSources = (items) => {
     if (!Array.isArray(items) || !items.length) return;
     const seen = new Set();
@@ -354,7 +359,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
       switch (msg.type) {
         case "user_transcript": if (!sttActive) appendUserTranscript(msg.content); break;  // #105 STT 활성 시 중복 억제
-        case "ai_transcript":   appendAiTranscript(msg.content); break;
+        case "ai_transcript":   appendAiTranscript(msg.content); if (pendingSources.length) { clearTimeout(srcFlushTimer); srcFlushTimer = setTimeout(flushSources, 800); } break;
         case "text":            appendAiTranscript(msg.content); break;
         case "audio":           await playAudioChunk(msg.data, msg.mime_type); break;
         case "tool_call":
@@ -370,11 +375,12 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           finalizeUserBubble();
           finalizeAiBubble();
           sttFinal = "";   // #105 사용자 턴 누적 초기화
-          if (pendingSources.length) { renderSources(pendingSources); pendingSources = []; }   // #120 출처를 답변 아래 표시
+          flushSources();   // #120 출처 표시(답변 텍스트 완료 후, 음성과 무관 — fallback)
           break;
         case "interrupted":
           stopAllPlayback();
           finalizeAiBubble();
+          pendingSources = []; if (srcFlushTimer) { clearTimeout(srcFlushTimer); srcFlushTimer = null; }
           break;
         case "idle_warning":
           addBubble("sys", `⏱ ${msg.message || "3분간 응답이 없습니다 — 곧 상담이 자동 종료됩니다."}`);
