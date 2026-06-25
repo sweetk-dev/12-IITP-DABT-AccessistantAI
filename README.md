@@ -11,7 +11,7 @@
   - `database.py` / `models.py` / `schemas.py` — DB 연결, ORM, 스키마
   - `policy_db/` — 정책 데이터 정의 (`items/`, `schema.json`), 인제스트(`ingest_sync.py`), 자동 갱신 크롤러(`crawler/`)
   - `scripts/` — 배치 작업 (임베딩 백필, 주간 리포트, 오래된 쿼리 정리 등)
-  - `static/` — 마이크 워커, 라이브 테스트 페이지
+  - `static/` — 마이크 워커, 진입 페이지(accessistant.html)·관리자 콘솔
   - `reports/unresolved/` — 미해결 질의 주간 리포트
 - **`docs/handoff/`** — 설계·아키텍처 문서
   - `SERVICE_OVERVIEW.md` — 서비스 전반 개요 (구성·플로우·운영 가이드)
@@ -78,7 +78,7 @@ python -m scripts.weekly_report --use-llm  # 주간 리포트 + 의도 클러스
 
 ## 버전
 
-- 레포 태그: **v0.17.0** (외부 LLM Google 단일화 — 주간 리포트 클러스터링 Gemini 이관, Anthropic 백엔드/의존성 제거, LLM 명칭 일반화)
+- 레포 태그: **v1.1.9** (라이브 안정화·실시간 자막·운영 콘솔 + 코드/데이터 경량화)
 - 백엔드 내부: v1.2
 - 인제스트 스크립트: `ingest_sync.py` (초기 구축 `--rebuild`, 증분 동기화 기본)
 
