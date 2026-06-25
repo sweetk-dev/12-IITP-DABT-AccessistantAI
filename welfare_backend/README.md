@@ -44,7 +44,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ## 사전 준비
 1. PostgreSQL + pgvector 확장 활성화 (welfare_db 생성)
-2. `ingest_v1.5.py` 로 정책 데이터 적재 (`items/` 디렉터리의 모든 B0xx 항목)
+2. `ingest_sync.py --rebuild` 로 정책 데이터 적재 (`items/` 디렉터리의 모든 B0xx 항목)
 3. `.env` 작성
 
 ## 제공 도구 (Function Calling)

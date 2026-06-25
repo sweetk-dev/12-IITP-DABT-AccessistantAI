@@ -10,7 +10,6 @@
 # 설계 원칙:
 #   - live_bridge.py 의 hot path 를 가능한 한 짧게 (5~6 곳의 짧은 호출만 추가)
 #   - DB 적재 실패가 음성 대화를 끊으면 안 됨 — 모든 예외는 logger.warning 으로 흡수
-import asyncio
 import logging
 import re
 import uuid
@@ -230,7 +229,3 @@ def _extract_top_sim(result: Any) -> Optional[float]:
     return None
 
 
-def make_session_factory():
-    """asyncpg engine 으로 sessionmaker 생성 — TurnTracker 에 주입."""
-    from database import engine
-    return async_sessionmaker(engine, expire_on_commit=False)

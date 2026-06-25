@@ -230,7 +230,6 @@ def _read_latest_snapshot(ch: dict) -> str:
       - PDF : 메시지만 반환 → pypdf 로 실제 텍스트 추출
     """
     try:
-        from pathlib import Path as _P
         snap_dir = _DATA_ROOT / ch.get("snapshot_dir", "")
         for ext in ("txt", "html", "pdf"):
             f = snap_dir / f"latest.{ext}"

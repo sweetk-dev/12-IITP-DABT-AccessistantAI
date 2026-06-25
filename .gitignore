@@ -23,6 +23,7 @@ welfare_backend/.health_stdout.log
 welfare_backend/.health_stderr.log
 welfare_backend/backfill_out.log
 welfare_backend/reports/unresolved/*.log
+welfare_backend/reports/unresolved/*.md
 *.log
 
 # 백업/임시
