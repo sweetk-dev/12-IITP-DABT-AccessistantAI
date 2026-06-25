@@ -75,6 +75,9 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 #chat .bubble--ai .label,#chat .bubble--user .label{display:block;font-size:.72rem;margin-bottom:4px;opacity:.85;color:var(--c-text-muted);font-weight:700;}
 #chat .bubble--user .label{color:#dbe6ff;}
 #chat .bubble--tool{align-self:center;background:var(--c-success-soft);color:var(--c-success);border:1px solid #CDE9D6;font-size:.8rem;font-weight:700;padding:6px 12px;border-radius:var(--r-pill);max-width:90%;}
+#chat .bubble--src{align-self:flex-start;background:var(--c-success-soft);color:var(--c-success);border:1px solid #CDE9D6;border-top-left-radius:4px;}
+#chat .bubble--src .label{display:block;font-size:.72rem;margin-bottom:4px;font-weight:700;color:var(--c-success);opacity:.95;}
+#chat .bubble--src a{color:var(--c-success);text-decoration:underline;word-break:break-all;font-size:.86rem;}
 #chat .bubble--sys{align-self:center;background:#fff;border:1px solid var(--c-border);color:var(--c-text-muted);font-size:.72rem;padding:3px 12px;border-radius:var(--r-pill);max-width:90%;}
 #chat .bubble--err{align-self:center;background:#fff;border:1px solid #F3C2C2;color:var(--c-danger);font-weight:700;font-size:.9rem;padding:10px 14px;border-radius:var(--r-md);max-width:90%;text-align:center;}
 /* hidden functional controls (script toggles .active) keep design tokens */
@@ -241,6 +244,45 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     $("chat").scrollTop = $("chat").scrollHeight;
   };
   const finalizeAiBubble = () => { activeAiBubble = null; activeAiText = ""; };
+  // ────── 출처 표시 (#화면의 출처) ──────
+  // 도구/검색 결과의 출처(기관명+URL)를 답변 아래 클릭 가능한 링크로 표시.
+  let pendingSources = [];
+  let srcFlushTimer = null;
+  const flushSources = () => {
+    if (srcFlushTimer) { clearTimeout(srcFlushTimer); srcFlushTimer = null; }
+    if (pendingSources.length) { renderSources(pendingSources); pendingSources = []; }
+  };
+  const renderSources = (items) => {
+    if (!Array.isArray(items) || !items.length) return;
+    const seen = new Set();
+    const rows = [];
+    items.forEach((it) => {
+      const url = (it && it.url ? String(it.url) : "").trim();
+      if (!url || seen.has(url)) return;
+      if (!/^https?:\/\//i.test(url)) return;
+      seen.add(url);
+      rows.push({ pub: (it.publisher ? String(it.publisher) : "출처").trim() || "출처", url });
+    });
+    if (!rows.length) return;
+    const el = document.createElement("div");
+    el.className = "bubble bubble--src";
+    const lbl = document.createElement("span");
+    lbl.className = "label";
+    lbl.textContent = "📎 출처";
+    el.appendChild(lbl);
+    rows.slice(0, 5).forEach((r) => {
+      const row = document.createElement("div");
+      row.style.margin = "2px 0";
+      const a = document.createElement("a");
+      a.href = r.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+      a.textContent = r.pub;
+      row.appendChild(a);
+      el.appendChild(row);
+    });
+    $("chat").appendChild(el);
+    $("chat").scrollTop = $("chat").scrollHeight;
+  };
+
 
   // 사용자 입력 transcript 도 chunk 단위 가능 — 누적
   let activeUserBubble = null;
@@ -317,23 +359,28 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
       switch (msg.type) {
         case "user_transcript": if (!sttActive) appendUserTranscript(msg.content); break;  // #105 STT 활성 시 중복 억제
-        case "ai_transcript":   appendAiTranscript(msg.content); break;
+        case "ai_transcript":   appendAiTranscript(msg.content); if (pendingSources.length) { clearTimeout(srcFlushTimer); srcFlushTimer = setTimeout(flushSources, 800); } break;
         case "text":            appendAiTranscript(msg.content); break;
         case "audio":           await playAudioChunk(msg.data, msg.mime_type); break;
         case "tool_call":
-          addBubble("tool", `🛠 ${msg.name}`);
-          break;
+          break;  // 도구 호출 칩은 사용자에게 비노출
+
         case "grounding":
           addBubble("tool", `🔍 외부 검색 결과 사용됨`);
+          break;
+        case "sources":
+          if (Array.isArray(msg.items)) pendingSources = pendingSources.concat(msg.items);
           break;
         case "turn_complete":
           finalizeUserBubble();
           finalizeAiBubble();
           sttFinal = "";   // #105 사용자 턴 누적 초기화
+          flushSources();   // #120 출처 표시(답변 텍스트 완료 후, 음성과 무관 — fallback)
           break;
         case "interrupted":
           stopAllPlayback();
           finalizeAiBubble();
+          pendingSources = []; if (srcFlushTimer) { clearTimeout(srcFlushTimer); srcFlushTimer = null; }
           break;
         case "idle_warning":
           addBubble("sys", `⏱ ${msg.message || "3분간 응답이 없습니다 — 곧 상담이 자동 종료됩니다."}`);

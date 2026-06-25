@@ -46,6 +46,38 @@ async def _safe_send_json(websocket: WebSocket, payload: dict) -> bool:
         return False
 
 
+def _extract_sources(result) -> list:
+    """도구 결과에서 화면 표시용 출처(기관명+URL) 추출."""
+    if not isinstance(result, dict):
+        return []
+    raw = result.get("sources_top3") or result.get("sources") or []
+    out, seen = [], set()
+    for sc in raw:
+        if not isinstance(sc, dict):
+            continue
+        url = (sc.get("url") or "").strip()
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        out.append({"publisher": (sc.get("publisher") or "출처"), "url": url})
+    return out[:5]
+
+
+def _extract_grounding_sources(gm) -> list:
+    """google_search grounding_metadata 에서 웹 출처(title+uri) 추출."""
+    out, seen = [], set()
+    for ch in (getattr(gm, "grounding_chunks", None) or []):
+        web = getattr(ch, "web", None)
+        if not web:
+            continue
+        uri = getattr(web, "uri", None)
+        title = getattr(web, "title", None)
+        if uri and uri not in seen:
+            seen.add(uri)
+            out.append({"publisher": (title or uri), "url": uri})
+    return out[:5]
+
+
 # ─────────────────────────────────────────────────────────────
 # System Instruction — 보고서 v1.2 §7.2 (Fat Tool Response 원칙)
 # ─────────────────────────────────────────────────────────────
@@ -644,6 +676,9 @@ async def handle_live_chat(
                                 logger.info("🔍 google_search 사용 감지: %s", str(gm)[:200])
                                 tracker.on_grounding(gm)
                                 await _safe_send_json(websocket,{"type": "grounding", "info": str(gm)[:500]})
+                                _gsrc = _extract_grounding_sources(gm)
+                                if _gsrc:
+                                    await _safe_send_json(websocket, {"type": "sources", "items": _gsrc})
 
                             # 입력 transcription (사용자 음성→텍스트)
                             if sc and getattr(sc, "input_transcription", None):
@@ -686,6 +721,9 @@ async def handle_live_chat(
                                             result = {"error": str(e)}
                                     # Phase 5 Track A — 도구 호출 시퀀스 추적
                                     tracker.on_tool_call(fname, fargs, result)
+                                    _src = _extract_sources(result)
+                                    if _src:
+                                        await _safe_send_json(websocket, {"type": "sources", "items": _src})
                                     responses.append(types.FunctionResponse(
                                         id=fc.id,
                                         name=fname,
