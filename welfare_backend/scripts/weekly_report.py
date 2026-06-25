@@ -24,9 +24,7 @@ cron 등록 예 (Linux):
 import argparse
 import asyncio
 import logging
-import os
 import sys
-from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -39,7 +37,7 @@ from sqlalchemy import text
 
 load_dotenv(_ROOT / ".env")
 
-from database import engine, AsyncSessionLocal  # noqa: E402
+from database import engine  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,

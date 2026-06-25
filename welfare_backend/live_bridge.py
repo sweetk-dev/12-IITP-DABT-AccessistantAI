@@ -401,7 +401,6 @@ async def handle_live_chat(
     except (AttributeError, TypeError) as e:
         logger.warning("⚠️ SDK 가 SpeechConfig 미지원 — 기본 음성 사용: %s", e)
 
-    aad_applied = False
     try:
         aad_kwargs = {"disabled": False}
         # 감도 enum — SDK 버전마다 명칭 약간 다를 수 있어 안전하게 시도
@@ -422,7 +421,6 @@ async def handle_live_chat(
         config_kwargs["realtime_input_config"] = types.RealtimeInputConfig(
             automatic_activity_detection=aad,
         )
-        aad_applied = True
         logger.info("✅ Gemini AAD 명시 설정 적용 (prefix=200ms, silence=1200ms)")
     except (AttributeError, TypeError) as e:
         logger.warning("⚠️ SDK 가 AAD 명시 설정 미지원 — 기본값 사용: %s", e)
