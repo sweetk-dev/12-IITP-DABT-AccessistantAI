@@ -370,6 +370,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           finalizeUserBubble();
           finalizeAiBubble();
           sttFinal = "";   // #105 사용자 턴 누적 초기화
+          if (pendingSources.length) { renderSources(pendingSources); pendingSources = []; }   // #120 출처를 답변 아래 표시
           break;
         case "interrupted":
           stopAllPlayback();
