@@ -38,10 +38,23 @@
   .diff{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden;}
   .diff .head{padding:8px 10px;background:#fafbfc;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);}
   .diff .head .key{font-weight:600;font-family:ui-monospace,monospace;font-size:13px;}
-  .diff .body{display:grid;grid-template-columns:1fr 1fr;}
-  .diff .col{padding:8px 10px;font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;}
-  .diff .old{background:#fff7f7;border-right:1px solid var(--line);} .diff .new{background:#f4fbf6;}
-  .col .lbl{font-size:10px;color:var(--muted);display:block;margin-bottom:3px;}
+  .diff .body{display:grid;grid-template-columns:1fr 1fr;max-height:320px;overflow:auto;font-size:12px;}
+  .dl{padding:1px 8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word;line-height:1.5;border-bottom:1px solid #f4f5f7;min-width:0;}
+  .dl.same{color:#9ca3af;}
+  .dl.del{background:#fff5f5;color:#7f1d1d;}
+  .dl.add{background:#f1fcf5;color:#14532d;}
+  .dl.emp{background:#fafbfc;}
+  .dl.gap{grid-column:1/3;background:#eef4ff;color:#2563eb;text-align:center;cursor:pointer;font-family:system-ui,sans-serif;font-size:11px;border-bottom:1px solid var(--line);}
+  .dl.gap:hover{background:#dbe8ff;}
+  .dl.hid{display:none;}
+  .wdel{background:#fecaca;color:#991b1b;border-radius:2px;}
+  .wadd{background:#bbf7d0;color:#166534;border-radius:2px;}
+  .dhdr{grid-column:1/3;display:grid;grid-template-columns:1fr 1fr;background:#fafbfc;border-bottom:1px solid var(--line);position:sticky;top:0;}
+  .dhdr span{padding:3px 8px;font-size:10px;color:var(--muted);}
+  .difftools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 10px;}
+  .leg{margin-left:auto;display:flex;gap:5px;align-items:center;}
+  .leg .lg{font-size:10px;padding:1px 6px;border-radius:3px;}
+  .leg .lg.del{background:#fecaca;color:#991b1b;} .leg .lg.add{background:#bbf7d0;color:#166534;} .leg .lg.same{background:#f3f4f6;color:#9ca3af;}
   .review{font-size:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px;}
   .bar{display:flex;gap:10px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);}
   label.chk{display:flex;align-items:center;gap:6px;cursor:pointer;}
@@ -59,6 +72,17 @@
   .modal textarea{width:100%;height:52vh;font-family:ui-monospace,monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:10px;}
   .modal .mfoot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;}
   .msg{font-size:12px;color:var(--muted);}
+  .bulkbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border-bottom:1px solid var(--line);background:#fafbfc;position:sticky;top:0;z-index:5;}
+  .bulkbar .qsel{display:flex;gap:8px;} .bulkbar .qsel a{font-size:11px;color:var(--accent);cursor:pointer;text-decoration:underline;}
+  .bulkbar .grow{margin-left:auto;}
+  .item .selrow{display:flex;align-items:flex-start;gap:8px;}
+  .item .selbox{margin-top:3px;flex:0 0 auto;}
+  .item .selbody{flex:1;min-width:0;}
+  .metahint{padding:7px 9px;margin:8px;border:1px dashed var(--line);border-radius:8px;background:#fbfbfd;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .b.suggest{background:#fff7ed;color:#c2410c;}
+  .bulkprog{padding:6px 9px;font-size:12px;max-height:200px;overflow:auto;border-bottom:1px solid var(--line);}
+  .bulkprog .row{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid #f3f4f6;padding:2px 0;}
+  .bulkprog .ok2{color:var(--ok);} .bulkprog .bad2{color:var(--bad);} .bulkprog .skip2{color:var(--warn);}
 </style>
 </head>
 <body>
@@ -66,10 +90,10 @@
   <h1>정책 운영 콘솔</h1>
   <div class="tabs">
     <div class="tab on" id="tab-overview" onclick="showTab('overview')">운영 개요</div>
-    <div class="tab" id="tab-review" onclick="showTab('review')">검토 큐</div>
-    <div class="tab" id="tab-policy" onclick="showTab('policy')">정책 관리</div>
-    <div class="tab" id="tab-unresolved" onclick="showTab('unresolved')">미답변 질의</div>
     <div class="tab" id="tab-ops" onclick="showTab('ops')">운영</div>
+    <div class="tab" id="tab-policy" onclick="showTab('policy')">정책 관리</div>
+    <div class="tab" id="tab-review" onclick="showTab('review')">검토 큐</div>
+    <div class="tab" id="tab-unresolved" onclick="showTab('unresolved')">미답변 질의</div>
     <div class="tab" id="tab-discovery" onclick="showTab('discovery')">신규 후보</div>
   </div>
   <button class="refresh" onclick="refresh()">새로고침</button>
@@ -93,7 +117,19 @@
 
 <div id="view-review" style="display:none">
   <div class="wrap">
-    <div class="card"><div class="list" id="list"><div class="empty">불러오는 중…</div></div></div>
+    <div class="card">
+      <div class="bulkbar">
+        <label class="chk"><input type="checkbox" id="selAll" onchange="toggleSelAll(this.checked)"> 전체</label>
+        <span class="qsel"><a onclick="quickSel('chg')">내용변경</a><a onclick="quickSel('sug')">보강제안</a><a onclick="quickSel('none')">해제</a></span>
+        <span id="bulkcount" class="msg grow">선택 0</span>
+        <label class="chk"><input type="checkbox" id="bulkReingest" checked> 재적재</label>
+        <button class="primary" id="bulkApplyBtn" onclick="bulkApply()" disabled>일괄 반영</button>
+        <button class="danger" id="bulkRejectBtn" onclick="bulkReject()" disabled>반려</button>
+      </div>
+      <div id="metahint" class="metahint" style="display:none"></div>
+      <div id="bulkprog" class="bulkprog" style="display:none"></div>
+      <div class="list" id="list"><div class="empty">불러오는 중…</div></div>
+    </div>
     <div class="card"><div class="detail" id="detail"><div class="empty">왼쪽에서 정책을 선택하세요.</div></div></div>
   </div>
 </div>
@@ -126,7 +162,7 @@
       <span class="msg" id="usum"></span>
     </div>
     <div class="card"><table id="utable"><thead><tr><th style="width:140px">일시</th><th style="width:120px">폴백사유</th><th style="width:84px">반영</th><th>사용자 질문</th><th>AI 답변(발췌)</th></tr></thead><tbody><tr><td colspan="5"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
-    <div style="margin-top:10px;text-align:center"><button id="uMore" onclick="loadUnresolved(false)" style="display:none">더 보기</button></div>
+    <div id="upager" style="margin-top:10px;text-align:center;display:flex;gap:6px;justify-content:center;align-items:center"></div>
   </div>
 </div>
 
@@ -213,22 +249,113 @@ function refresh(){ if(curTab==="overview") loadOverview(); else if(curTab==="po
 function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 function fmt(v){ if(v===null||v===undefined) return "(없음)"; return (typeof v==="object")? JSON.stringify(v,null,2):String(v); }
 
+/* ===== 필드 단위 diff(줄/단어) 렌더 ===== */
+let curDetail=null, diffCollapse=true, _gid=0;
+function _diffSeq(a,b){
+  const n=a.length, m=b.length;
+  const dp=[]; for(let i=0;i<=n;i++){ dp.push(new Array(m+1).fill(0)); }
+  for(let i=n-1;i>=0;i--){ for(let j=m-1;j>=0;j--){
+    dp[i][j]= a[i]===b[j] ? dp[i+1][j+1]+1 : (dp[i+1][j]>=dp[i][j+1]?dp[i+1][j]:dp[i][j+1]);
+  }}
+  const ops=[]; let i=0,j=0;
+  while(i<n&&j<m){
+    if(a[i]===b[j]){ ops.push(["eq",a[i],b[j]]); i++; j++; }
+    else if(dp[i+1][j]>=dp[i][j+1]){ ops.push(["del",a[i],null]); i++; }
+    else { ops.push(["add",null,b[j]]); j++; }
+  }
+  while(i<n){ ops.push(["del",a[i],null]); i++; }
+  while(j<m){ ops.push(["add",null,b[j]]); j++; }
+  return ops;
+}
+function _pairRows(ops){
+  const rows=[]; let k=0;
+  while(k<ops.length){
+    if(ops[k][0]==="eq"){ rows.push({t:"eq",l:ops[k][1]}); k++; continue; }
+    const dels=[], adds=[];
+    while(k<ops.length && ops[k][0]!=="eq"){ if(ops[k][0]==="del") dels.push(ops[k][1]); else adds.push(ops[k][2]); k++; }
+    const mx=Math.max(dels.length,adds.length);
+    for(let z=0;z<mx;z++){
+      const l=z<dels.length?dels[z]:null, r=z<adds.length?adds[z]:null;
+      if(l!==null&&r!==null) rows.push({t:"mod",l:l,r:r});
+      else if(l!==null) rows.push({t:"del",l:l});
+      else rows.push({t:"add",r:r});
+    }
+  }
+  return rows;
+}
+function _wtok(s){ return String(s).match(/\s+|[^\s]+/g) || []; }
+function _wordDiff(l,r){
+  const ops=_diffSeq(_wtok(l),_wtok(r));
+  let lh="", rh="";
+  for(const o of ops){
+    if(o[0]==="eq"){ lh+=escapeHtml(o[1]); rh+=escapeHtml(o[2]); }
+    else if(o[0]==="del"){ lh+='<span class="wdel">'+escapeHtml(o[1])+'</span>'; }
+    else { rh+='<span class="wadd">'+escapeHtml(o[2])+'</span>'; }
+  }
+  return [lh, rh];
+}
+function _cell(cls,html){ return '<div class="dl '+cls+'">'+(html===""?"&nbsp;":html)+'</div>'; }
+function renderFieldBody(oldV,newV,collapse){
+  const rows=_pairRows(_diffSeq(fmt(oldV).split("\n"), fmt(newV).split("\n")));
+  let html='<div class="dhdr"><span>기존</span><span>갱신</span></div>';
+  const CTX=2, MIN=5;
+  let i=0;
+  while(i<rows.length){
+    if(collapse && rows[i].t==="eq"){
+      let j=i; while(j<rows.length && rows[j].t==="eq") j++;
+      const run=j-i;
+      if(run>MIN){
+        for(let z=i; z<i+CTX; z++){ const t=escapeHtml(rows[z].l); html+=_cell("same",t)+_cell("same",t); }
+        const gid="dg"+(_gid++); const hidden=run-2*CTX;
+        html+='<div class="dl gap" onclick="document.querySelectorAll(\'.'+gid+'\').forEach(function(e){e.classList.remove(\'hid\');});this.remove();">··· 동일 '+hidden+'줄 펼치기 ···</div>';
+        for(let z=i+CTX; z<j-CTX; z++){ const t=escapeHtml(rows[z].l); html+=_cell("same hid "+gid,t)+_cell("same hid "+gid,t); }
+        for(let z=j-CTX; z<j; z++){ const t=escapeHtml(rows[z].l); html+=_cell("same",t)+_cell("same",t); }
+        i=j; continue;
+      }
+    }
+    const row=rows[i];
+    if(row.t==="eq"){ const t=escapeHtml(row.l); html+=_cell("same",t)+_cell("same",t); }
+    else if(row.t==="mod"){ const wd=_wordDiff(row.l,row.r); html+=_cell("del",wd[0])+_cell("add",wd[1]); }
+    else if(row.t==="del"){ html+=_cell("del",'<span class="wdel">'+escapeHtml(row.l)+'</span>')+_cell("emp",""); }
+    else { html+=_cell("emp","")+_cell("add",'<span class="wadd">'+escapeHtml(row.r)+'</span>'); }
+    i++;
+  }
+  return html;
+}
+function buildDiffsHtml(d, collapse){
+  const content=d.diffs.filter(function(x){return !x.is_meta;});
+  const metas=d.diffs.filter(function(x){return x.is_meta;});
+  let h="";
+  if(!content.length){ h+='<div class="empty">내용 변경 없음(메타만).</div>'; }
+  for(const df of content){
+    h+='<div class="diff"><div class="head">'
+      +'<label class="chk"><input type="checkbox" class="selkey" value="'+escapeHtml(df.key)+'" checked> <span class="key">'+escapeHtml(df.key)+'</span></label>'
+      +'<span class="leg"><span class="lg del">삭제</span><span class="lg add">추가</span><span class="lg same">동일</span></span>'
+      +'</div><div class="body">'+renderFieldBody(df.old, df.new, collapse)+'</div></div>';
+  }
+  if(metas.length) h+='<div class="meta">메타 자동 반영: '+escapeHtml(metas.map(function(m){return m.key;}).join(", "))+'</div>';
+  return h;
+}
+function toggleCollapse(){
+  const c=document.getElementById("diffCollapseChk");
+  diffCollapse=c?c.checked:true;
+  if(curDetail){ const w=document.getElementById("diffwrap"); if(w) w.innerHTML=buildDiffsHtml(curDetail, diffCollapse); }
+}
+
+
 /* ===== 검토 큐 ===== */
 async function loadList(){
   const el=document.getElementById("list"); el.innerHTML='<div class="empty">불러오는 중…</div>';
   try{ const items=await (await fetch(SAPI)).json();
-    if(!items.length){ el.innerHTML='<div class="empty">검토 대기 항목이 없습니다.</div>'; return; }
+    pendingItems=items||[];
+    if(!pendingItems.length){ el.innerHTML='<div class="empty">검토 대기 항목이 없습니다.</div>'; metaOnlyItems=[]; renderMetaHint(); updateBulkCount(); return; }
+    metaOnlyItems = pendingItems.filter(function(it){ return (it.n_changes||0)===0 && !it.review_count; });
+    const shown = pendingItems.filter(function(it){ return !((it.n_changes||0)===0 && !it.review_count); });
     el.innerHTML="";
-    for(const it of items){ const div=document.createElement("div");
-      div.className="item"+(current===it.policy_id?" active":"");
-      const reg=it.regression&&it.regression.length;
-      div.innerHTML=`<div class="pid">${it.policy_id}</div><div class="ttl">${escapeHtml(it.title||"")}</div>
-        <div class="badges"><span class="b changes">${it.n_changes} 변경</span>
-        ${it.schema_ok?'<span class="b ok">스키마 OK</span>':'<span class="b bad">스키마 오류</span>'}
-        ${reg?'<span class="b bad">회귀 차단</span>':''}${it.review_count?`<span class="b warn">검토 ${it.review_count}</span>`:''}
-        ${it.priority?`<span class="b ${it.priority==='high'?'bad':(it.priority==='medium'?'warn':'off')}">${it.priority}</span>`:''}${it.hold?'<span class="b off">보류</span>':''}</div>`;
-      div.onclick=()=>loadDetail(it.policy_id); el.appendChild(div);
-    }
+    if(!shown.length) el.innerHTML='<div class="empty">표시할 변경/제안 항목이 없습니다. (아래 재검증 항목 참고)</div>';
+    for(const it of shown) el.appendChild(makeCard(it));
+    renderMetaHint();
+    updateBulkCount();
   }catch(e){ el.innerHTML='<div class="empty">로드 실패: '+e+'</div>'; }
 }
 async function loadDetail(pid){ current=pid; loadList();
@@ -240,15 +367,11 @@ async function loadDetail(pid){ current=pid; loadList();
     if(reg) h+=`<div class="alert bad">회귀 가드 차단: ${escapeHtml(d.regression.join(" / "))}</div>`;
     if(!d.schema_ok) h+=`<div class="alert bad">스키마 오류: ${escapeHtml((d.schema_errors||[]).join(" / "))}</div>`;
     if(d.review&&d.review.length) h+=`<div class="review"><b>검토 필요 ${d.review.length}건</b>: `+escapeHtml(d.review.map(x=>`${x.reason||x.classification||""} ${x.path||""}`).join(" · "))+`</div>`;
-    const content=d.diffs.filter(x=>!x.is_meta), metas=d.diffs.filter(x=>x.is_meta);
-    if(!content.length) h+='<div class="empty">내용 변경 없음(메타만).</div>';
-    for(const df of content){ h+=`<div class="diff"><div class="head">
-        <label class="chk"><input type="checkbox" class="selkey" value="${escapeHtml(df.key)}" checked> <span class="key">${escapeHtml(df.key)}</span></label></div>
-        <div class="body"><div class="col old"><span class="lbl">기존</span>${escapeHtml(fmt(df.old))}</div>
-        <div class="col new"><span class="lbl">갱신</span>${escapeHtml(fmt(df.new))}</div></div></div>`; }
-    if(metas.length) h+=`<div class="meta">메타 자동 반영: ${escapeHtml(metas.map(m=>m.key).join(", "))}</div>`;
+    curDetail=d; _gid=0; const hasContent=(d.diffs||[]).some(function(x){return !x.is_meta;});
+    h+=`<div class="difftools"><label class="chk"><input type="checkbox" id="diffCollapseChk" ${diffCollapse?"checked":""} onchange="toggleCollapse()"> 변경된 줄만 보기(동일 줄 접기)</label><span class="leg"><span class="lg del">삭제</span><span class="lg add">추가</span><span class="lg same">동일</span></span></div>`;
+    h+=`<div id="diffwrap">${buildDiffsHtml(d, diffCollapse)}</div>`;
     h+=`<div class="bar"><label class="chk"><input type="checkbox" id="reingest" checked> 승인 시 DB 자동 재적재</label>
-      <button class="primary" id="btnApply" onclick="applySel('${pid}')">선택 반영</button>
+      <button class="primary" id="btnApply" onclick="applySel('${pid}')">${hasContent?'선택 반영':'재검증 확정'}</button>
       <button class="danger" onclick="rejectOne('${pid}')">반려</button><span class="msg" id="msg"></span></div>`;
     h+=`<div class="bar" style="padding-top:8px">
       <span class="msg">분류</span>
@@ -261,7 +384,9 @@ async function loadDetail(pid){ current=pid; loadList();
   }catch(e){ el.innerHTML='<div class="empty">로드 실패: '+e+'</div>'; }
 }
 async function applySel(pid){ const keys=Array.from(document.querySelectorAll(".selkey:checked")).map(x=>x.value);
-  if(!keys.length){ setMsg("msg","선택된 변경이 없습니다.",true); return; }
+  const _tot=document.querySelectorAll(".selkey").length;
+  if(_tot>0 && !keys.length){ setMsg("msg","선택된 변경이 없습니다.",true); return; }
+  if(_tot===0 && curDetail && curDetail.review && curDetail.review.length){ if(!confirm("보강 제안 "+curDetail.review.length+"건은 자동 반영되지 않고 재검증만 확정됩니다. 계속할까요?")) return; }
   const reingest=document.getElementById("reingest").checked; document.getElementById("btnApply").disabled=true; setMsg("msg","반영 중…");
   try{ const r=await fetch(SAPI+"/"+pid+"/apply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({selected_keys:keys,reingest})});
     const j=await r.json();
@@ -396,16 +521,19 @@ async function runOp(name){
 }
 const UAPI="/admin/api/unresolved";
 let uOffset=0, uReasonsLoaded=false, uReflectedCounts=null;
+const UPAGE=100; let uPage=0, uTotal=0;
 async function loadUnresolved(reset){
-  if(reset){ uOffset=0; document.querySelector("#utable tbody").innerHTML='<tr><td colspan="5"><div class="empty">불러오는 중…</div></td></tr>'; }
+  if(reset){ uPage=0; }
+  document.querySelector("#utable tbody").innerHTML='<tr><td colspan="5"><div class="empty">불러오는 중…</div></td></tr>';
   if(!uReasonsLoaded){ try{ const sm=await (await fetch(UAPI+"/summary")).json();
     const sel=document.getElementById("uReason"); (sm.reasons||[]).forEach(r=>{ const o=document.createElement("option"); o.value=r; o.textContent=r+(sm.by_reason&&sm.by_reason[r]?` (${sm.by_reason[r]})`:""); sel.appendChild(o); });
     if(sm.by_reflected) uReflectedCounts=sm.by_reflected; uReasonsLoaded=true; }catch(e){} }
   const days=document.getElementById("uDays").value, reason=document.getElementById("uReason").value;
-  const qs=new URLSearchParams({limit:50, offset:uOffset}); if(days) qs.set("days",days); if(reason) qs.set("fallback_reason",reason);
+  const qs=new URLSearchParams({limit:UPAGE, offset:uPage*UPAGE}); if(days) qs.set("days",days); if(reason) qs.set("fallback_reason",reason);
   try{ const d=await (await fetch(UAPI+"?"+qs)).json();
-    const tb=document.querySelector("#utable tbody"); if(reset) tb.innerHTML="";
-    if(!d.items.length && reset){ tb.innerHTML='<tr><td colspan="5"><div class="empty">미답변 질의 없음</div></td></tr>'; }
+    uTotal=d.total||0;
+    const tb=document.querySelector("#utable tbody"); tb.innerHTML="";
+    if(!d.items.length){ tb.innerHTML='<tr><td colspan="5"><div class="empty">미답변 질의 없음</div></td></tr>'; }
     for(const it of d.items){ const tr=document.createElement("tr");
       tr.dataset.reflected = it.reflected||"pending";
       const rb = it.reflected==="reflected" ? `<span class="b ok" title="후보: ${escapeHtml(it.candidate_topic||"")}">반영</span>`
@@ -416,56 +544,28 @@ async function loadUnresolved(reset){
         <td>${escapeHtml(it.user_query||"")}</td>
         <td style="font-size:12px;color:#444">${escapeHtml(it.ai_final_answer||"")}</td>`;
       tb.appendChild(tr); }
-    uOffset += d.items.length;
-    const rc=uReflectedCounts||{}; setMsg("usum",`총 ${d.total}건 · 반영 ${rc.reflected||0} / 검토됨 ${rc.reviewed||0} / 미반영 ${rc.pending||0} (표시 ${uOffset})`);
-    document.getElementById("uMore").style.display = (uOffset < d.total) ? "" : "none";
+    filterReflected();
+    const rc=uReflectedCounts||{};
+    const from=uTotal?(uPage*UPAGE+1):0, to=uPage*UPAGE+d.items.length;
+    setMsg("usum",`총 ${uTotal}건 · 반영 ${rc.reflected||0} / 검토됨 ${rc.reviewed||0} / 미반영 ${rc.pending||0} · 표시 ${from}–${to}`);
+    renderUPager();
   }catch(e){ setMsg("usum","로드 실패: "+e,true); }
 }
-const DAPI="/admin/api/discovery";
-async function runDiscovery(){
-  try{ const j=await (await fetch(DAPI+"/run",{method:"POST"})).json();
-    if(j.started===false) alert("시작 안 됨: "+(j.reason||"")); loadOps();
-  }catch(e){ alert("오류: "+e); }
+function renderUPager(){
+  const el=document.getElementById("upager"); if(!el) return;
+  const pages=Math.max(1, Math.ceil(uTotal/UPAGE));
+  if(uTotal<=UPAGE){ el.innerHTML=""; return; }
+  el.innerHTML='<button '+(uPage<=0?'disabled':'')+' onclick="goUPage(-1)">이전</button>'
+    +'<span class="msg" style="margin:0 10px">'+(uPage+1)+' / '+pages+'</span>'
+    +'<button '+((uPage+1)>=pages?'disabled':'')+' onclick="goUPage(1)">다음</button>';
 }
-async function loadDiscovery(){
-  const tb=document.querySelector("#dtable tbody"); tb.innerHTML='<tr><td colspan="7"><div class="empty">불러오는 중…</div></td></tr>';
-  try{ const rows=await (await fetch(DAPI+"/candidates")).json();
-    if(!rows.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">신규 후보 없음 (운영 탭에서 발굴 실행)</div></td></tr>'; return; }
-    tb.innerHTML="";
-    for(const c of rows){ const tr=document.createElement("tr");
-      const st=c.status||"pending";
-      const badge = st==="approved"?'<span class="b ok">승인</span>':(st==="rejected"?'<span class="b off">반려</span>':'<span class="b warn">검토대기</span>');
-      tr.innerHTML=`<td>${escapeHtml(c.topic||"")}</td><td>${escapeHtml(c.title||"(초안없음)")}</td>
-        <td>${escapeHtml(c.category||"")}</td><td>${c.n_queries||0}</td><td>${badge}</td>
-        <td style="font-size:11px;color:var(--muted)">${escapeHtml(((c.status_at||c.created_at)||"").replace("T"," ").slice(0,16))}</td>
-        <td><div class="act"><button onclick="openCand('${c.candidate_id}')">검토</button></div></td>`;
-      tb.appendChild(tr); }
-  }catch(e){ tb.innerHTML='<tr><td colspan="7"><div class="empty">로드 실패: '+e+'</div></td></tr>'; }
+function goUPage(delta){
+  const pages=Math.max(1, Math.ceil(uTotal/UPAGE));
+  const np=Math.min(pages-1, Math.max(0, uPage+delta));
+  if(np===uPage) return;
+  uPage=np; loadUnresolved(false);
 }
-let curCand=null;
-async function openCand(cid){
-  curCand=cid; document.getElementById("dmodalmsg").textContent="";
-  const d=await (await fetch(DAPI+"/candidate/"+cid)).json();
-  document.getElementById("dtitle").textContent="신규 후보 — "+(d.topic||cid);
-  document.getElementById("dmeta").innerHTML="유사질문: "+escapeHtml((d.cluster_queries||[]).join(" / "))+"<br>분류: "+escapeHtml(JSON.stringify(d.classification||{}));
-  document.getElementById("deditor").value=JSON.stringify(d.draft_item||{},null,2);
-  document.getElementById("dmodal").classList.add("on");
-}
-async function approveCand(){
-  let draft; try{ draft=JSON.parse(document.getElementById("deditor").value); }catch(e){ setMsg("dmodalmsg","JSON 오류: "+e,true); return; }
-  document.getElementById("dApprove").disabled=true; setMsg("dmodalmsg","승인 중…");
-  try{ const r=await fetch(DAPI+"/candidate/"+curCand+"/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({draft_item:draft})});
-    const j=await r.json();
-    if(r.ok){ setMsg("dmodalmsg","등록 완료: "+(j.policy_id||"")); setTimeout(()=>{document.getElementById("dmodal").classList.remove("on"); loadDiscovery();},800); }
-    else { const dt=j.detail||j; setMsg("dmodalmsg","실패: "+(dt.error||"")+(dt.details?" ("+dt.details.join("; ")+")":""),true); document.getElementById("dApprove").disabled=false; }
-  }catch(e){ setMsg("dmodalmsg","오류: "+e,true); document.getElementById("dApprove").disabled=false; }
-}
-async function rejectCand(){
-  if(!confirm("이 후보를 반려할까요?"))return;
-  try{ const r=await fetch(DAPI+"/candidate/"+curCand+"/reject",{method:"POST"});
-    if(r.ok){ document.getElementById("dmodal").classList.remove("on"); loadDiscovery(); }
-  }catch(e){ setMsg("dmodalmsg","오류: "+e,true); }
-}
+
 function filterReflected(){
   const v=document.getElementById("uReflected").value;
   document.querySelectorAll("#utable tbody tr").forEach(tr=>{ if(tr.dataset.reflected!==undefined) tr.style.display=(!v||tr.dataset.reflected===v)?"":"none"; });
@@ -498,6 +598,113 @@ async function loadOverview(){
     document.getElementById("ov-backup").innerHTML=t; }catch(e){ document.getElementById("ov-backup").textContent="-"; }
 }
 function setMsg(id,m,bad){ const el=document.getElementById(id); if(el){ el.textContent=m; el.style.color=bad?"var(--bad)":"var(--muted)"; } }
+/* ===== 검토 큐 다중선택·일괄 반영 ===== */
+let pendingItems=[], metaOnlyItems=[];
+function badgeFor(it){
+  const nc=it.n_changes||0;
+  if(nc>0) return '<span class="b changes">'+nc+' 변경</span>';
+  if(it.review_count) return '<span class="b suggest">보강 제안 '+it.review_count+'</span>';
+  return '<span class="b off">재검증</span>';
+}
+function makeCard(it){
+  const div=document.createElement("div");
+  div.className="item"+(current===it.policy_id?" active":"");
+  const reg=it.regression&&it.regression.length; const nc=it.n_changes||0;
+  div.innerHTML='<div class="selrow">'
+    +'<input type="checkbox" class="selbox selpid" value="'+it.policy_id+'" onclick="event.stopPropagation()" onchange="updateBulkCount()">'
+    +'<div class="selbody"><div class="pid">'+it.policy_id+'</div><div class="ttl">'+escapeHtml(it.title||"")+'</div>'
+    +'<div class="badges">'+badgeFor(it)
+    +(it.schema_ok?'<span class="b ok">스키마 OK</span>':'<span class="b bad">스키마 오류</span>')
+    +(reg?'<span class="b bad">회귀 차단</span>':'')+((nc>0&&it.review_count)?'<span class="b warn">검토 '+it.review_count+'</span>':'')
+    +(it.priority?'<span class="b '+(it.priority==='high'?'bad':(it.priority==='medium'?'warn':'off'))+'">'+it.priority+'</span>':'')+(it.hold?'<span class="b off">보류</span>':'')
+    +'</div></div></div>';
+  div.querySelector(".selbody").onclick=function(){ loadDetail(it.policy_id); };
+  return div;
+}
+function renderMetaHint(){
+  const el=document.getElementById("metahint"); if(!el) return;
+  const list=metaOnlyItems||[];
+  if(!list.length){ el.style.display="none"; el.innerHTML=""; return; }
+  el.style.display="";
+  el.innerHTML='재검증만 대기 '+list.length+'건 (내용 변경 없음) '
+    +'<button class="warn" style="padding:3px 9px" onclick="confirmMetaOnly()">일괄 재검증 확정</button> '
+    +'<a style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="showMetaList()">목록 보기</a>';
+}
+function showMetaList(){
+  const el=document.getElementById("list");
+  for(const it of (metaOnlyItems||[])){ if(!el.querySelector('.selpid[value="'+it.policy_id+'"]')) el.appendChild(makeCard(it)); }
+  const h=document.getElementById("metahint"); if(h){ const a=h.querySelector("a"); if(a) a.remove(); }
+  updateBulkCount();
+}
+function selectedPids(){ return Array.from(document.querySelectorAll(".selpid:checked")).map(function(x){return x.value;}); }
+function updateBulkCount(){
+  const n=document.querySelectorAll(".selpid:checked").length;
+  const tot=document.querySelectorAll(".selpid").length;
+  const c=document.getElementById("bulkcount"); if(c) c.textContent="선택 "+n;
+  const ab=document.getElementById("bulkApplyBtn"); if(ab) ab.disabled=!n;
+  const rb=document.getElementById("bulkRejectBtn"); if(rb) rb.disabled=!n;
+  const sa=document.getElementById("selAll"); if(sa) sa.checked=tot>0 && n===tot;
+}
+function toggleSelAll(ck){ document.querySelectorAll(".selpid").forEach(function(x){ x.checked=ck; }); updateBulkCount(); }
+function quickSel(kind){
+  document.querySelectorAll(".selpid").forEach(function(x){
+    const it=pendingItems.find(function(p){return p.policy_id===x.value;})||{};
+    const nc=it.n_changes||0; let on=false;
+    if(kind==='chg') on=nc>0; else if(kind==='sug') on=(nc===0 && !!it.review_count); else on=false;
+    x.checked=on;
+  });
+  updateBulkCount();
+}
+async function applyOnePid(pid, reingest){
+  let d=null; try{ d=await (await fetch(SAPI+"/"+pid)).json(); }catch(e){}
+  if(d && d.regression && d.regression.length) return {skipped:true, reason:'회귀 차단'};
+  if(d && d.schema_ok===false) return {skipped:true, reason:'스키마 오류'};
+  const keys=(d && d.diffs)?d.diffs.filter(function(x){return !x.is_meta;}).map(function(x){return x.key;}):[];
+  const res=await fetch(SAPI+"/"+pid+"/apply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({selected_keys:keys,reingest:reingest})});
+  const raw=await res.text(); let j=null; try{ j=JSON.parse(raw); }catch(e){}
+  if(res.ok && j && j.ok!==false) return {ok:true};
+  if(!j) return {ok:false, reason:'서버 지연(비정상 응답) — 새로고침 후 확인'};
+  return {ok:false, reason:((j.detail&&j.detail.error)||j.error||('HTTP '+res.status))};
+}
+async function rejectOnePid(pid){
+  const res=await fetch(SAPI+"/"+pid+"/reject",{method:"POST"});
+  return res.ok?{ok:true}:{ok:false, reason:'HTTP '+res.status};
+}
+async function runBulk(pids, mode){
+  if(!pids.length) return;
+  const rg=document.getElementById("bulkReingest"); const reingest=rg?rg.checked:true;
+  const prog=document.getElementById("bulkprog"); prog.style.display=""; prog.innerHTML="";
+  const ab=document.getElementById("bulkApplyBtn"), rb=document.getElementById("bulkRejectBtn");
+  if(ab) ab.disabled=true; if(rb) rb.disabled=true;
+  let ok=0, fail=0, skip=0;
+  for(let i=0;i<pids.length;i++){
+    const pid=pids[i];
+    const row=document.createElement("div"); row.className="row";
+    row.innerHTML='<span>'+(i+1)+'/'+pids.length+' '+pid+'</span><span>처리 중…</span>';
+    prog.appendChild(row); prog.scrollTop=prog.scrollHeight;
+    let res;
+    try{ res=(mode==='apply')?await applyOnePid(pid,reingest):await rejectOnePid(pid); }
+    catch(e){ res={ok:false, reason:'오류'}; }
+    const cell=row.lastChild;
+    if(res.ok){ ok++; cell.innerHTML='<span class="ok2">완료</span>'; }
+    else if(res.skipped){ skip++; cell.innerHTML='<span class="skip2">건너뜀: '+escapeHtml(res.reason||'')+'</span>'; }
+    else { fail++; cell.innerHTML='<span class="bad2">실패: '+escapeHtml(res.reason||'')+'</span>'; }
+  }
+  const sum=document.createElement("div"); sum.className="row"; sum.style.fontWeight="600";
+  sum.innerHTML='<span>완료</span><span>성공 '+ok+' · 실패 '+fail+(skip?(' · 건너뜀 '+skip):'')+'</span>';
+  prog.appendChild(sum);
+  current=null;
+  setTimeout(function(){ loadList(); document.getElementById("detail").innerHTML='<div class="empty">일괄 처리 완료 — 성공 '+ok+' / 실패 '+fail+(skip?(' / 건너뜀 '+skip):'')+'</div>'; }, 600);
+}
+async function bulkApply(){ const p=selectedPids(); if(!p.length) return;
+  if(!confirm(p.length+'건을 일괄 반영할까요? (한 건씩 순차 처리, 회귀·스키마오류는 건너뜀)')) return;
+  await runBulk(p,'apply'); }
+async function bulkReject(){ const p=selectedPids(); if(!p.length) return;
+  if(!confirm(p.length+'건을 일괄 반려할까요? (staging 후보 폐기)')) return;
+  await runBulk(p,'reject'); }
+async function confirmMetaOnly(){ const p=(metaOnlyItems||[]).map(function(x){return x.policy_id;}); if(!p.length) return;
+  if(!confirm('재검증만 대기 '+p.length+'건을 일괄 확정할까요? (내용 변경 없음, last_verified 갱신)')) return;
+  await runBulk(p,'apply'); }
 showTab("overview");
 </script>
 </body>
