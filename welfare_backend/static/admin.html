@@ -38,10 +38,23 @@
   .diff{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden;}
   .diff .head{padding:8px 10px;background:#fafbfc;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);}
   .diff .head .key{font-weight:600;font-family:ui-monospace,monospace;font-size:13px;}
-  .diff .body{display:grid;grid-template-columns:1fr 1fr;}
-  .diff .col{padding:8px 10px;font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;}
-  .diff .old{background:#fff7f7;border-right:1px solid var(--line);} .diff .new{background:#f4fbf6;}
-  .col .lbl{font-size:10px;color:var(--muted);display:block;margin-bottom:3px;}
+  .diff .body{display:grid;grid-template-columns:1fr 1fr;max-height:320px;overflow:auto;font-size:12px;}
+  .dl{padding:1px 8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word;line-height:1.5;border-bottom:1px solid #f4f5f7;min-width:0;}
+  .dl.same{color:#9ca3af;}
+  .dl.del{background:#fff5f5;color:#7f1d1d;}
+  .dl.add{background:#f1fcf5;color:#14532d;}
+  .dl.emp{background:#fafbfc;}
+  .dl.gap{grid-column:1/3;background:#eef4ff;color:#2563eb;text-align:center;cursor:pointer;font-family:system-ui,sans-serif;font-size:11px;border-bottom:1px solid var(--line);}
+  .dl.gap:hover{background:#dbe8ff;}
+  .dl.hid{display:none;}
+  .wdel{background:#fecaca;color:#991b1b;border-radius:2px;}
+  .wadd{background:#bbf7d0;color:#166534;border-radius:2px;}
+  .dhdr{grid-column:1/3;display:grid;grid-template-columns:1fr 1fr;background:#fafbfc;border-bottom:1px solid var(--line);position:sticky;top:0;}
+  .dhdr span{padding:3px 8px;font-size:10px;color:var(--muted);}
+  .difftools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 10px;}
+  .leg{margin-left:auto;display:flex;gap:5px;align-items:center;}
+  .leg .lg{font-size:10px;padding:1px 6px;border-radius:3px;}
+  .leg .lg.del{background:#fecaca;color:#991b1b;} .leg .lg.add{background:#bbf7d0;color:#166534;} .leg .lg.same{background:#f3f4f6;color:#9ca3af;}
   .review{font-size:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px;}
   .bar{display:flex;gap:10px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);}
   label.chk{display:flex;align-items:center;gap:6px;cursor:pointer;}
@@ -213,6 +226,100 @@ function refresh(){ if(curTab==="overview") loadOverview(); else if(curTab==="po
 function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 function fmt(v){ if(v===null||v===undefined) return "(없음)"; return (typeof v==="object")? JSON.stringify(v,null,2):String(v); }
 
+/* ===== 필드 단위 diff(줄/단어) 렌더 ===== */
+let curDetail=null, diffCollapse=true, _gid=0;
+function _diffSeq(a,b){
+  const n=a.length, m=b.length;
+  const dp=[]; for(let i=0;i<=n;i++){ dp.push(new Array(m+1).fill(0)); }
+  for(let i=n-1;i>=0;i--){ for(let j=m-1;j>=0;j--){
+    dp[i][j]= a[i]===b[j] ? dp[i+1][j+1]+1 : (dp[i+1][j]>=dp[i][j+1]?dp[i+1][j]:dp[i][j+1]);
+  }}
+  const ops=[]; let i=0,j=0;
+  while(i<n&&j<m){
+    if(a[i]===b[j]){ ops.push(["eq",a[i],b[j]]); i++; j++; }
+    else if(dp[i+1][j]>=dp[i][j+1]){ ops.push(["del",a[i],null]); i++; }
+    else { ops.push(["add",null,b[j]]); j++; }
+  }
+  while(i<n){ ops.push(["del",a[i],null]); i++; }
+  while(j<m){ ops.push(["add",null,b[j]]); j++; }
+  return ops;
+}
+function _pairRows(ops){
+  const rows=[]; let k=0;
+  while(k<ops.length){
+    if(ops[k][0]==="eq"){ rows.push({t:"eq",l:ops[k][1]}); k++; continue; }
+    const dels=[], adds=[];
+    while(k<ops.length && ops[k][0]!=="eq"){ if(ops[k][0]==="del") dels.push(ops[k][1]); else adds.push(ops[k][2]); k++; }
+    const mx=Math.max(dels.length,adds.length);
+    for(let z=0;z<mx;z++){
+      const l=z<dels.length?dels[z]:null, r=z<adds.length?adds[z]:null;
+      if(l!==null&&r!==null) rows.push({t:"mod",l:l,r:r});
+      else if(l!==null) rows.push({t:"del",l:l});
+      else rows.push({t:"add",r:r});
+    }
+  }
+  return rows;
+}
+function _wtok(s){ return String(s).match(/\s+|[^\s]+/g) || []; }
+function _wordDiff(l,r){
+  const ops=_diffSeq(_wtok(l),_wtok(r));
+  let lh="", rh="";
+  for(const o of ops){
+    if(o[0]==="eq"){ lh+=escapeHtml(o[1]); rh+=escapeHtml(o[2]); }
+    else if(o[0]==="del"){ lh+='<span class="wdel">'+escapeHtml(o[1])+'</span>'; }
+    else { rh+='<span class="wadd">'+escapeHtml(o[2])+'</span>'; }
+  }
+  return [lh, rh];
+}
+function _cell(cls,html){ return '<div class="dl '+cls+'">'+(html===""?"&nbsp;":html)+'</div>'; }
+function renderFieldBody(oldV,newV,collapse){
+  const rows=_pairRows(_diffSeq(fmt(oldV).split("\n"), fmt(newV).split("\n")));
+  let html='<div class="dhdr"><span>기존</span><span>갱신</span></div>';
+  const CTX=2, MIN=5;
+  let i=0;
+  while(i<rows.length){
+    if(collapse && rows[i].t==="eq"){
+      let j=i; while(j<rows.length && rows[j].t==="eq") j++;
+      const run=j-i;
+      if(run>MIN){
+        for(let z=i; z<i+CTX; z++){ const t=escapeHtml(rows[z].l); html+=_cell("same",t)+_cell("same",t); }
+        const gid="dg"+(_gid++); const hidden=run-2*CTX;
+        html+='<div class="dl gap" onclick="document.querySelectorAll(\'.'+gid+'\').forEach(function(e){e.classList.remove(\'hid\');});this.remove();">··· 동일 '+hidden+'줄 펼치기 ···</div>';
+        for(let z=i+CTX; z<j-CTX; z++){ const t=escapeHtml(rows[z].l); html+=_cell("same hid "+gid,t)+_cell("same hid "+gid,t); }
+        for(let z=j-CTX; z<j; z++){ const t=escapeHtml(rows[z].l); html+=_cell("same",t)+_cell("same",t); }
+        i=j; continue;
+      }
+    }
+    const row=rows[i];
+    if(row.t==="eq"){ const t=escapeHtml(row.l); html+=_cell("same",t)+_cell("same",t); }
+    else if(row.t==="mod"){ const wd=_wordDiff(row.l,row.r); html+=_cell("del",wd[0])+_cell("add",wd[1]); }
+    else if(row.t==="del"){ html+=_cell("del",'<span class="wdel">'+escapeHtml(row.l)+'</span>')+_cell("emp",""); }
+    else { html+=_cell("emp","")+_cell("add",'<span class="wadd">'+escapeHtml(row.r)+'</span>'); }
+    i++;
+  }
+  return html;
+}
+function buildDiffsHtml(d, collapse){
+  const content=d.diffs.filter(function(x){return !x.is_meta;});
+  const metas=d.diffs.filter(function(x){return x.is_meta;});
+  let h="";
+  if(!content.length){ h+='<div class="empty">내용 변경 없음(메타만).</div>'; }
+  for(const df of content){
+    h+='<div class="diff"><div class="head">'
+      +'<label class="chk"><input type="checkbox" class="selkey" value="'+escapeHtml(df.key)+'" checked> <span class="key">'+escapeHtml(df.key)+'</span></label>'
+      +'<span class="leg"><span class="lg del">삭제</span><span class="lg add">추가</span><span class="lg same">동일</span></span>'
+      +'</div><div class="body">'+renderFieldBody(df.old, df.new, collapse)+'</div></div>';
+  }
+  if(metas.length) h+='<div class="meta">메타 자동 반영: '+escapeHtml(metas.map(function(m){return m.key;}).join(", "))+'</div>';
+  return h;
+}
+function toggleCollapse(){
+  const c=document.getElementById("diffCollapseChk");
+  diffCollapse=c?c.checked:true;
+  if(curDetail){ const w=document.getElementById("diffwrap"); if(w) w.innerHTML=buildDiffsHtml(curDetail, diffCollapse); }
+}
+
+
 /* ===== 검토 큐 ===== */
 async function loadList(){
   const el=document.getElementById("list"); el.innerHTML='<div class="empty">불러오는 중…</div>';
@@ -240,13 +347,9 @@ async function loadDetail(pid){ current=pid; loadList();
     if(reg) h+=`<div class="alert bad">회귀 가드 차단: ${escapeHtml(d.regression.join(" / "))}</div>`;
     if(!d.schema_ok) h+=`<div class="alert bad">스키마 오류: ${escapeHtml((d.schema_errors||[]).join(" / "))}</div>`;
     if(d.review&&d.review.length) h+=`<div class="review"><b>검토 필요 ${d.review.length}건</b>: `+escapeHtml(d.review.map(x=>`${x.reason||x.classification||""} ${x.path||""}`).join(" · "))+`</div>`;
-    const content=d.diffs.filter(x=>!x.is_meta), metas=d.diffs.filter(x=>x.is_meta);
-    if(!content.length) h+='<div class="empty">내용 변경 없음(메타만).</div>';
-    for(const df of content){ h+=`<div class="diff"><div class="head">
-        <label class="chk"><input type="checkbox" class="selkey" value="${escapeHtml(df.key)}" checked> <span class="key">${escapeHtml(df.key)}</span></label></div>
-        <div class="body"><div class="col old"><span class="lbl">기존</span>${escapeHtml(fmt(df.old))}</div>
-        <div class="col new"><span class="lbl">갱신</span>${escapeHtml(fmt(df.new))}</div></div></div>`; }
-    if(metas.length) h+=`<div class="meta">메타 자동 반영: ${escapeHtml(metas.map(m=>m.key).join(", "))}</div>`;
+    curDetail=d; _gid=0;
+    h+=`<div class="difftools"><label class="chk"><input type="checkbox" id="diffCollapseChk" ${diffCollapse?"checked":""} onchange="toggleCollapse()"> 변경된 줄만 보기(동일 줄 접기)</label><span class="leg"><span class="lg del">삭제</span><span class="lg add">추가</span><span class="lg same">동일</span></span></div>`;
+    h+=`<div id="diffwrap">${buildDiffsHtml(d, diffCollapse)}</div>`;
     h+=`<div class="bar"><label class="chk"><input type="checkbox" id="reingest" checked> 승인 시 DB 자동 재적재</label>
       <button class="primary" id="btnApply" onclick="applySel('${pid}')">선택 반영</button>
       <button class="danger" onclick="rejectOne('${pid}')">반려</button><span class="msg" id="msg"></span></div>`;
