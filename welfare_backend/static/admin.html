@@ -72,6 +72,17 @@
   .modal textarea{width:100%;height:52vh;font-family:ui-monospace,monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:10px;}
   .modal .mfoot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;}
   .msg{font-size:12px;color:var(--muted);}
+  .bulkbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border-bottom:1px solid var(--line);background:#fafbfc;position:sticky;top:0;z-index:5;}
+  .bulkbar .qsel{display:flex;gap:8px;} .bulkbar .qsel a{font-size:11px;color:var(--accent);cursor:pointer;text-decoration:underline;}
+  .bulkbar .grow{margin-left:auto;}
+  .item .selrow{display:flex;align-items:flex-start;gap:8px;}
+  .item .selbox{margin-top:3px;flex:0 0 auto;}
+  .item .selbody{flex:1;min-width:0;}
+  .metahint{padding:7px 9px;margin:8px;border:1px dashed var(--line);border-radius:8px;background:#fbfbfd;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .b.suggest{background:#fff7ed;color:#c2410c;}
+  .bulkprog{padding:6px 9px;font-size:12px;max-height:200px;overflow:auto;border-bottom:1px solid var(--line);}
+  .bulkprog .row{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid #f3f4f6;padding:2px 0;}
+  .bulkprog .ok2{color:var(--ok);} .bulkprog .bad2{color:var(--bad);} .bulkprog .skip2{color:var(--warn);}
 </style>
 </head>
 <body>
@@ -106,7 +117,19 @@
 
 <div id="view-review" style="display:none">
   <div class="wrap">
-    <div class="card"><div class="list" id="list"><div class="empty">불러오는 중…</div></div></div>
+    <div class="card">
+      <div class="bulkbar">
+        <label class="chk"><input type="checkbox" id="selAll" onchange="toggleSelAll(this.checked)"> 전체</label>
+        <span class="qsel"><a onclick="quickSel('chg')">내용변경</a><a onclick="quickSel('sug')">보강제안</a><a onclick="quickSel('none')">해제</a></span>
+        <span id="bulkcount" class="msg grow">선택 0</span>
+        <label class="chk"><input type="checkbox" id="bulkReingest" checked> 재적재</label>
+        <button class="primary" id="bulkApplyBtn" onclick="bulkApply()" disabled>일괄 반영</button>
+        <button class="danger" id="bulkRejectBtn" onclick="bulkReject()" disabled>반려</button>
+      </div>
+      <div id="metahint" class="metahint" style="display:none"></div>
+      <div id="bulkprog" class="bulkprog" style="display:none"></div>
+      <div class="list" id="list"><div class="empty">불러오는 중…</div></div>
+    </div>
     <div class="card"><div class="detail" id="detail"><div class="empty">왼쪽에서 정책을 선택하세요.</div></div></div>
   </div>
 </div>
@@ -324,18 +347,15 @@ function toggleCollapse(){
 async function loadList(){
   const el=document.getElementById("list"); el.innerHTML='<div class="empty">불러오는 중…</div>';
   try{ const items=await (await fetch(SAPI)).json();
-    if(!items.length){ el.innerHTML='<div class="empty">검토 대기 항목이 없습니다.</div>'; return; }
+    pendingItems=items||[];
+    if(!pendingItems.length){ el.innerHTML='<div class="empty">검토 대기 항목이 없습니다.</div>'; metaOnlyItems=[]; renderMetaHint(); updateBulkCount(); return; }
+    metaOnlyItems = pendingItems.filter(function(it){ return (it.n_changes||0)===0 && !it.review_count; });
+    const shown = pendingItems.filter(function(it){ return !((it.n_changes||0)===0 && !it.review_count); });
     el.innerHTML="";
-    for(const it of items){ const div=document.createElement("div");
-      div.className="item"+(current===it.policy_id?" active":"");
-      const reg=it.regression&&it.regression.length;
-      div.innerHTML=`<div class="pid">${it.policy_id}</div><div class="ttl">${escapeHtml(it.title||"")}</div>
-        <div class="badges"><span class="b changes">${it.n_changes} 변경</span>
-        ${it.schema_ok?'<span class="b ok">스키마 OK</span>':'<span class="b bad">스키마 오류</span>'}
-        ${reg?'<span class="b bad">회귀 차단</span>':''}${it.review_count?`<span class="b warn">검토 ${it.review_count}</span>`:''}
-        ${it.priority?`<span class="b ${it.priority==='high'?'bad':(it.priority==='medium'?'warn':'off')}">${it.priority}</span>`:''}${it.hold?'<span class="b off">보류</span>':''}</div>`;
-      div.onclick=()=>loadDetail(it.policy_id); el.appendChild(div);
-    }
+    if(!shown.length) el.innerHTML='<div class="empty">표시할 변경/제안 항목이 없습니다. (아래 재검증 항목 참고)</div>';
+    for(const it of shown) el.appendChild(makeCard(it));
+    renderMetaHint();
+    updateBulkCount();
   }catch(e){ el.innerHTML='<div class="empty">로드 실패: '+e+'</div>'; }
 }
 async function loadDetail(pid){ current=pid; loadList();
@@ -347,11 +367,11 @@ async function loadDetail(pid){ current=pid; loadList();
     if(reg) h+=`<div class="alert bad">회귀 가드 차단: ${escapeHtml(d.regression.join(" / "))}</div>`;
     if(!d.schema_ok) h+=`<div class="alert bad">스키마 오류: ${escapeHtml((d.schema_errors||[]).join(" / "))}</div>`;
     if(d.review&&d.review.length) h+=`<div class="review"><b>검토 필요 ${d.review.length}건</b>: `+escapeHtml(d.review.map(x=>`${x.reason||x.classification||""} ${x.path||""}`).join(" · "))+`</div>`;
-    curDetail=d; _gid=0;
+    curDetail=d; _gid=0; const hasContent=(d.diffs||[]).some(function(x){return !x.is_meta;});
     h+=`<div class="difftools"><label class="chk"><input type="checkbox" id="diffCollapseChk" ${diffCollapse?"checked":""} onchange="toggleCollapse()"> 변경된 줄만 보기(동일 줄 접기)</label><span class="leg"><span class="lg del">삭제</span><span class="lg add">추가</span><span class="lg same">동일</span></span></div>`;
     h+=`<div id="diffwrap">${buildDiffsHtml(d, diffCollapse)}</div>`;
     h+=`<div class="bar"><label class="chk"><input type="checkbox" id="reingest" checked> 승인 시 DB 자동 재적재</label>
-      <button class="primary" id="btnApply" onclick="applySel('${pid}')">선택 반영</button>
+      <button class="primary" id="btnApply" onclick="applySel('${pid}')">${hasContent?'선택 반영':'재검증 확정'}</button>
       <button class="danger" onclick="rejectOne('${pid}')">반려</button><span class="msg" id="msg"></span></div>`;
     h+=`<div class="bar" style="padding-top:8px">
       <span class="msg">분류</span>
@@ -364,7 +384,9 @@ async function loadDetail(pid){ current=pid; loadList();
   }catch(e){ el.innerHTML='<div class="empty">로드 실패: '+e+'</div>'; }
 }
 async function applySel(pid){ const keys=Array.from(document.querySelectorAll(".selkey:checked")).map(x=>x.value);
-  if(!keys.length){ setMsg("msg","선택된 변경이 없습니다.",true); return; }
+  const _tot=document.querySelectorAll(".selkey").length;
+  if(_tot>0 && !keys.length){ setMsg("msg","선택된 변경이 없습니다.",true); return; }
+  if(_tot===0 && curDetail && curDetail.review && curDetail.review.length){ if(!confirm("보강 제안 "+curDetail.review.length+"건은 자동 반영되지 않고 재검증만 확정됩니다. 계속할까요?")) return; }
   const reingest=document.getElementById("reingest").checked; document.getElementById("btnApply").disabled=true; setMsg("msg","반영 중…");
   try{ const r=await fetch(SAPI+"/"+pid+"/apply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({selected_keys:keys,reingest})});
     const j=await r.json();
@@ -601,6 +623,113 @@ async function loadOverview(){
     document.getElementById("ov-backup").innerHTML=t; }catch(e){ document.getElementById("ov-backup").textContent="-"; }
 }
 function setMsg(id,m,bad){ const el=document.getElementById(id); if(el){ el.textContent=m; el.style.color=bad?"var(--bad)":"var(--muted)"; } }
+/* ===== 검토 큐 다중선택·일괄 반영 ===== */
+let pendingItems=[], metaOnlyItems=[];
+function badgeFor(it){
+  const nc=it.n_changes||0;
+  if(nc>0) return '<span class="b changes">'+nc+' 변경</span>';
+  if(it.review_count) return '<span class="b suggest">보강 제안 '+it.review_count+'</span>';
+  return '<span class="b off">재검증</span>';
+}
+function makeCard(it){
+  const div=document.createElement("div");
+  div.className="item"+(current===it.policy_id?" active":"");
+  const reg=it.regression&&it.regression.length; const nc=it.n_changes||0;
+  div.innerHTML='<div class="selrow">'
+    +'<input type="checkbox" class="selbox selpid" value="'+it.policy_id+'" onclick="event.stopPropagation()" onchange="updateBulkCount()">'
+    +'<div class="selbody"><div class="pid">'+it.policy_id+'</div><div class="ttl">'+escapeHtml(it.title||"")+'</div>'
+    +'<div class="badges">'+badgeFor(it)
+    +(it.schema_ok?'<span class="b ok">스키마 OK</span>':'<span class="b bad">스키마 오류</span>')
+    +(reg?'<span class="b bad">회귀 차단</span>':'')+((nc>0&&it.review_count)?'<span class="b warn">검토 '+it.review_count+'</span>':'')
+    +(it.priority?'<span class="b '+(it.priority==='high'?'bad':(it.priority==='medium'?'warn':'off'))+'">'+it.priority+'</span>':'')+(it.hold?'<span class="b off">보류</span>':'')
+    +'</div></div></div>';
+  div.querySelector(".selbody").onclick=function(){ loadDetail(it.policy_id); };
+  return div;
+}
+function renderMetaHint(){
+  const el=document.getElementById("metahint"); if(!el) return;
+  const list=metaOnlyItems||[];
+  if(!list.length){ el.style.display="none"; el.innerHTML=""; return; }
+  el.style.display="";
+  el.innerHTML='재검증만 대기 '+list.length+'건 (내용 변경 없음) '
+    +'<button class="warn" style="padding:3px 9px" onclick="confirmMetaOnly()">일괄 재검증 확정</button> '
+    +'<a style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="showMetaList()">목록 보기</a>';
+}
+function showMetaList(){
+  const el=document.getElementById("list");
+  for(const it of (metaOnlyItems||[])){ if(!el.querySelector('.selpid[value="'+it.policy_id+'"]')) el.appendChild(makeCard(it)); }
+  const h=document.getElementById("metahint"); if(h){ const a=h.querySelector("a"); if(a) a.remove(); }
+  updateBulkCount();
+}
+function selectedPids(){ return Array.from(document.querySelectorAll(".selpid:checked")).map(function(x){return x.value;}); }
+function updateBulkCount(){
+  const n=document.querySelectorAll(".selpid:checked").length;
+  const tot=document.querySelectorAll(".selpid").length;
+  const c=document.getElementById("bulkcount"); if(c) c.textContent="선택 "+n;
+  const ab=document.getElementById("bulkApplyBtn"); if(ab) ab.disabled=!n;
+  const rb=document.getElementById("bulkRejectBtn"); if(rb) rb.disabled=!n;
+  const sa=document.getElementById("selAll"); if(sa) sa.checked=tot>0 && n===tot;
+}
+function toggleSelAll(ck){ document.querySelectorAll(".selpid").forEach(function(x){ x.checked=ck; }); updateBulkCount(); }
+function quickSel(kind){
+  document.querySelectorAll(".selpid").forEach(function(x){
+    const it=pendingItems.find(function(p){return p.policy_id===x.value;})||{};
+    const nc=it.n_changes||0; let on=false;
+    if(kind==='chg') on=nc>0; else if(kind==='sug') on=(nc===0 && !!it.review_count); else on=false;
+    x.checked=on;
+  });
+  updateBulkCount();
+}
+async function applyOnePid(pid, reingest){
+  let d=null; try{ d=await (await fetch(SAPI+"/"+pid)).json(); }catch(e){}
+  if(d && d.regression && d.regression.length) return {skipped:true, reason:'회귀 차단'};
+  if(d && d.schema_ok===false) return {skipped:true, reason:'스키마 오류'};
+  const keys=(d && d.diffs)?d.diffs.filter(function(x){return !x.is_meta;}).map(function(x){return x.key;}):[];
+  const res=await fetch(SAPI+"/"+pid+"/apply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({selected_keys:keys,reingest:reingest})});
+  const raw=await res.text(); let j=null; try{ j=JSON.parse(raw); }catch(e){}
+  if(res.ok && j && j.ok!==false) return {ok:true};
+  if(!j) return {ok:false, reason:'서버 지연(비정상 응답) — 새로고침 후 확인'};
+  return {ok:false, reason:((j.detail&&j.detail.error)||j.error||('HTTP '+res.status))};
+}
+async function rejectOnePid(pid){
+  const res=await fetch(SAPI+"/"+pid+"/reject",{method:"POST"});
+  return res.ok?{ok:true}:{ok:false, reason:'HTTP '+res.status};
+}
+async function runBulk(pids, mode){
+  if(!pids.length) return;
+  const rg=document.getElementById("bulkReingest"); const reingest=rg?rg.checked:true;
+  const prog=document.getElementById("bulkprog"); prog.style.display=""; prog.innerHTML="";
+  const ab=document.getElementById("bulkApplyBtn"), rb=document.getElementById("bulkRejectBtn");
+  if(ab) ab.disabled=true; if(rb) rb.disabled=true;
+  let ok=0, fail=0, skip=0;
+  for(let i=0;i<pids.length;i++){
+    const pid=pids[i];
+    const row=document.createElement("div"); row.className="row";
+    row.innerHTML='<span>'+(i+1)+'/'+pids.length+' '+pid+'</span><span>처리 중…</span>';
+    prog.appendChild(row); prog.scrollTop=prog.scrollHeight;
+    let res;
+    try{ res=(mode==='apply')?await applyOnePid(pid,reingest):await rejectOnePid(pid); }
+    catch(e){ res={ok:false, reason:'오류'}; }
+    const cell=row.lastChild;
+    if(res.ok){ ok++; cell.innerHTML='<span class="ok2">완료</span>'; }
+    else if(res.skipped){ skip++; cell.innerHTML='<span class="skip2">건너뜀: '+escapeHtml(res.reason||'')+'</span>'; }
+    else { fail++; cell.innerHTML='<span class="bad2">실패: '+escapeHtml(res.reason||'')+'</span>'; }
+  }
+  const sum=document.createElement("div"); sum.className="row"; sum.style.fontWeight="600";
+  sum.innerHTML='<span>완료</span><span>성공 '+ok+' · 실패 '+fail+(skip?(' · 건너뜀 '+skip):'')+'</span>';
+  prog.appendChild(sum);
+  current=null;
+  setTimeout(function(){ loadList(); document.getElementById("detail").innerHTML='<div class="empty">일괄 처리 완료 — 성공 '+ok+' / 실패 '+fail+(skip?(' / 건너뜀 '+skip):'')+'</div>'; }, 600);
+}
+async function bulkApply(){ const p=selectedPids(); if(!p.length) return;
+  if(!confirm(p.length+'건을 일괄 반영할까요? (한 건씩 순차 처리, 회귀·스키마오류는 건너뜀)')) return;
+  await runBulk(p,'apply'); }
+async function bulkReject(){ const p=selectedPids(); if(!p.length) return;
+  if(!confirm(p.length+'건을 일괄 반려할까요? (staging 후보 폐기)')) return;
+  await runBulk(p,'reject'); }
+async function confirmMetaOnly(){ const p=(metaOnlyItems||[]).map(function(x){return x.policy_id;}); if(!p.length) return;
+  if(!confirm('재검증만 대기 '+p.length+'건을 일괄 확정할까요? (내용 변경 없음, last_verified 갱신)')) return;
+  await runBulk(p,'apply'); }
 showTab("overview");
 </script>
 </body>
