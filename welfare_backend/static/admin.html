@@ -90,10 +90,10 @@
   <h1>정책 운영 콘솔</h1>
   <div class="tabs">
     <div class="tab on" id="tab-overview" onclick="showTab('overview')">운영 개요</div>
-    <div class="tab" id="tab-review" onclick="showTab('review')">검토 큐</div>
-    <div class="tab" id="tab-policy" onclick="showTab('policy')">정책 관리</div>
-    <div class="tab" id="tab-unresolved" onclick="showTab('unresolved')">미답변 질의</div>
     <div class="tab" id="tab-ops" onclick="showTab('ops')">운영</div>
+    <div class="tab" id="tab-policy" onclick="showTab('policy')">정책 관리</div>
+    <div class="tab" id="tab-review" onclick="showTab('review')">검토 큐</div>
+    <div class="tab" id="tab-unresolved" onclick="showTab('unresolved')">미답변 질의</div>
     <div class="tab" id="tab-discovery" onclick="showTab('discovery')">신규 후보</div>
   </div>
   <button class="refresh" onclick="refresh()">새로고침</button>
@@ -162,7 +162,7 @@
       <span class="msg" id="usum"></span>
     </div>
     <div class="card"><table id="utable"><thead><tr><th style="width:140px">일시</th><th style="width:120px">폴백사유</th><th style="width:84px">반영</th><th>사용자 질문</th><th>AI 답변(발췌)</th></tr></thead><tbody><tr><td colspan="5"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
-    <div style="margin-top:10px;text-align:center"><button id="uMore" onclick="loadUnresolved(false)" style="display:none">더 보기</button></div>
+    <div id="upager" style="margin-top:10px;text-align:center;display:flex;gap:6px;justify-content:center;align-items:center"></div>
   </div>
 </div>
 
@@ -521,16 +521,19 @@ async function runOp(name){
 }
 const UAPI="/admin/api/unresolved";
 let uOffset=0, uReasonsLoaded=false, uReflectedCounts=null;
+const UPAGE=100; let uPage=0, uTotal=0;
 async function loadUnresolved(reset){
-  if(reset){ uOffset=0; document.querySelector("#utable tbody").innerHTML='<tr><td colspan="5"><div class="empty">불러오는 중…</div></td></tr>'; }
+  if(reset){ uPage=0; }
+  document.querySelector("#utable tbody").innerHTML='<tr><td colspan="5"><div class="empty">불러오는 중…</div></td></tr>';
   if(!uReasonsLoaded){ try{ const sm=await (await fetch(UAPI+"/summary")).json();
     const sel=document.getElementById("uReason"); (sm.reasons||[]).forEach(r=>{ const o=document.createElement("option"); o.value=r; o.textContent=r+(sm.by_reason&&sm.by_reason[r]?` (${sm.by_reason[r]})`:""); sel.appendChild(o); });
     if(sm.by_reflected) uReflectedCounts=sm.by_reflected; uReasonsLoaded=true; }catch(e){} }
   const days=document.getElementById("uDays").value, reason=document.getElementById("uReason").value;
-  const qs=new URLSearchParams({limit:50, offset:uOffset}); if(days) qs.set("days",days); if(reason) qs.set("fallback_reason",reason);
+  const qs=new URLSearchParams({limit:UPAGE, offset:uPage*UPAGE}); if(days) qs.set("days",days); if(reason) qs.set("fallback_reason",reason);
   try{ const d=await (await fetch(UAPI+"?"+qs)).json();
-    const tb=document.querySelector("#utable tbody"); if(reset) tb.innerHTML="";
-    if(!d.items.length && reset){ tb.innerHTML='<tr><td colspan="5"><div class="empty">미답변 질의 없음</div></td></tr>'; }
+    uTotal=d.total||0;
+    const tb=document.querySelector("#utable tbody"); tb.innerHTML="";
+    if(!d.items.length){ tb.innerHTML='<tr><td colspan="5"><div class="empty">미답변 질의 없음</div></td></tr>'; }
     for(const it of d.items){ const tr=document.createElement("tr");
       tr.dataset.reflected = it.reflected||"pending";
       const rb = it.reflected==="reflected" ? `<span class="b ok" title="후보: ${escapeHtml(it.candidate_topic||"")}">반영</span>`
@@ -541,56 +544,28 @@ async function loadUnresolved(reset){
         <td>${escapeHtml(it.user_query||"")}</td>
         <td style="font-size:12px;color:#444">${escapeHtml(it.ai_final_answer||"")}</td>`;
       tb.appendChild(tr); }
-    uOffset += d.items.length;
-    const rc=uReflectedCounts||{}; setMsg("usum",`총 ${d.total}건 · 반영 ${rc.reflected||0} / 검토됨 ${rc.reviewed||0} / 미반영 ${rc.pending||0} (표시 ${uOffset})`);
-    document.getElementById("uMore").style.display = (uOffset < d.total) ? "" : "none";
+    filterReflected();
+    const rc=uReflectedCounts||{};
+    const from=uTotal?(uPage*UPAGE+1):0, to=uPage*UPAGE+d.items.length;
+    setMsg("usum",`총 ${uTotal}건 · 반영 ${rc.reflected||0} / 검토됨 ${rc.reviewed||0} / 미반영 ${rc.pending||0} · 표시 ${from}–${to}`);
+    renderUPager();
   }catch(e){ setMsg("usum","로드 실패: "+e,true); }
 }
-const DAPI="/admin/api/discovery";
-async function runDiscovery(){
-  try{ const j=await (await fetch(DAPI+"/run",{method:"POST"})).json();
-    if(j.started===false) alert("시작 안 됨: "+(j.reason||"")); loadOps();
-  }catch(e){ alert("오류: "+e); }
+function renderUPager(){
+  const el=document.getElementById("upager"); if(!el) return;
+  const pages=Math.max(1, Math.ceil(uTotal/UPAGE));
+  if(uTotal<=UPAGE){ el.innerHTML=""; return; }
+  el.innerHTML='<button '+(uPage<=0?'disabled':'')+' onclick="goUPage(-1)">이전</button>'
+    +'<span class="msg" style="margin:0 10px">'+(uPage+1)+' / '+pages+'</span>'
+    +'<button '+((uPage+1)>=pages?'disabled':'')+' onclick="goUPage(1)">다음</button>';
 }
-async function loadDiscovery(){
-  const tb=document.querySelector("#dtable tbody"); tb.innerHTML='<tr><td colspan="7"><div class="empty">불러오는 중…</div></td></tr>';
-  try{ const rows=await (await fetch(DAPI+"/candidates")).json();
-    if(!rows.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">신규 후보 없음 (운영 탭에서 발굴 실행)</div></td></tr>'; return; }
-    tb.innerHTML="";
-    for(const c of rows){ const tr=document.createElement("tr");
-      const st=c.status||"pending";
-      const badge = st==="approved"?'<span class="b ok">승인</span>':(st==="rejected"?'<span class="b off">반려</span>':'<span class="b warn">검토대기</span>');
-      tr.innerHTML=`<td>${escapeHtml(c.topic||"")}</td><td>${escapeHtml(c.title||"(초안없음)")}</td>
-        <td>${escapeHtml(c.category||"")}</td><td>${c.n_queries||0}</td><td>${badge}</td>
-        <td style="font-size:11px;color:var(--muted)">${escapeHtml(((c.status_at||c.created_at)||"").replace("T"," ").slice(0,16))}</td>
-        <td><div class="act"><button onclick="openCand('${c.candidate_id}')">검토</button></div></td>`;
-      tb.appendChild(tr); }
-  }catch(e){ tb.innerHTML='<tr><td colspan="7"><div class="empty">로드 실패: '+e+'</div></td></tr>'; }
+function goUPage(delta){
+  const pages=Math.max(1, Math.ceil(uTotal/UPAGE));
+  const np=Math.min(pages-1, Math.max(0, uPage+delta));
+  if(np===uPage) return;
+  uPage=np; loadUnresolved(false);
 }
-let curCand=null;
-async function openCand(cid){
-  curCand=cid; document.getElementById("dmodalmsg").textContent="";
-  const d=await (await fetch(DAPI+"/candidate/"+cid)).json();
-  document.getElementById("dtitle").textContent="신규 후보 — "+(d.topic||cid);
-  document.getElementById("dmeta").innerHTML="유사질문: "+escapeHtml((d.cluster_queries||[]).join(" / "))+"<br>분류: "+escapeHtml(JSON.stringify(d.classification||{}));
-  document.getElementById("deditor").value=JSON.stringify(d.draft_item||{},null,2);
-  document.getElementById("dmodal").classList.add("on");
-}
-async function approveCand(){
-  let draft; try{ draft=JSON.parse(document.getElementById("deditor").value); }catch(e){ setMsg("dmodalmsg","JSON 오류: "+e,true); return; }
-  document.getElementById("dApprove").disabled=true; setMsg("dmodalmsg","승인 중…");
-  try{ const r=await fetch(DAPI+"/candidate/"+curCand+"/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({draft_item:draft})});
-    const j=await r.json();
-    if(r.ok){ setMsg("dmodalmsg","등록 완료: "+(j.policy_id||"")); setTimeout(()=>{document.getElementById("dmodal").classList.remove("on"); loadDiscovery();},800); }
-    else { const dt=j.detail||j; setMsg("dmodalmsg","실패: "+(dt.error||"")+(dt.details?" ("+dt.details.join("; ")+")":""),true); document.getElementById("dApprove").disabled=false; }
-  }catch(e){ setMsg("dmodalmsg","오류: "+e,true); document.getElementById("dApprove").disabled=false; }
-}
-async function rejectCand(){
-  if(!confirm("이 후보를 반려할까요?"))return;
-  try{ const r=await fetch(DAPI+"/candidate/"+curCand+"/reject",{method:"POST"});
-    if(r.ok){ document.getElementById("dmodal").classList.remove("on"); loadDiscovery(); }
-  }catch(e){ setMsg("dmodalmsg","오류: "+e,true); }
-}
+
 function filterReflected(){
   const v=document.getElementById("uReflected").value;
   document.querySelectorAll("#utable tbody tr").forEach(tr=>{ if(tr.dataset.reflected!==undefined) tr.style.display=(!v||tr.dataset.reflected===v)?"":"none"; });
