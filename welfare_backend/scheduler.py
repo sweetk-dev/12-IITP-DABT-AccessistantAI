@@ -32,6 +32,7 @@ DEFAULT_CFG = {
     "revalidate_cron": {"day": "25", "hour": 9, "minute": 0},    # 전체 재검증(전수)
     "discovery_cron": {"day": "1,15", "hour": 9, "minute": 0},   # 신규 발굴(B, 별도 구현)
     "backup_cron": {"hour": 4, "minute": 0},
+    "embed_cron": {"minute": "*/15"},  # 미답변 질의 임베딩 백필(발굴 전처리)
     "backup_retention_days": 30,
 }
 
@@ -39,6 +40,7 @@ _status = {
     "crawl":  {"running": False, "label": None, "last_run": None, "last_status": None, "last_output": None},
     "backup": {"running": False, "last_run": None, "last_status": None, "last_output": None},
     "discovery": {"running": False, "last_run": None, "last_status": None, "last_output": None},
+    "embed": {"running": False, "last_run": None, "last_status": None, "last_output": None},
 }
 _lock = threading.Lock()
 _sched = None
@@ -112,6 +114,27 @@ def _run_backup():
         with _lock:
             _status["backup"].update(running=False, last_run=_now(), last_status="error", last_output=str(e)[:500])
         logger.exception("백업 실패: %s", e)
+
+
+def _run_embed():
+    with _lock:
+        if _status["embed"]["running"]:
+            return
+        _status["embed"]["running"] = True
+    logger.info("미답변 임베딩 백필 시작")
+    try:
+        cmd = ["python", "-m", "scripts.backfill_embeddings", "--batch-size", "50", "--max-rows", "500"]
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        combined = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
+        out = "\n".join(combined.splitlines()[-8:])
+        st = "ok" if r.returncode == 0 else f"exit {r.returncode}"
+        with _lock:
+            _status["embed"].update(running=False, last_run=_now(), last_status=st, last_output=out)
+        logger.info("임베딩 백필 종료: %s", st)
+    except Exception as e:
+        with _lock:
+            _status["embed"].update(running=False, last_run=_now(), last_status="error", last_output=str(e)[:500])
+        logger.exception("임베딩 백필 실패: %s", e)
 
 
 def _start_crawl(extra_args, label):
@@ -216,5 +239,9 @@ def start():
                    id="discovery_scheduled", replace_existing=True)
     _sched.add_job(_run_backup, CronTrigger(hour=bc.get("hour", 4), minute=bc.get("minute", 0), timezone=KST),
                    id="backup_scheduled", replace_existing=True)
+    ec = cfg.get("embed_cron", DEFAULT_CFG["embed_cron"])
+    _sched.add_job(_run_embed, CronTrigger(minute=str(ec.get("minute", "*/15")), timezone=KST),
+                   id="embed_scheduled", replace_existing=True)
+    _sched.add_job(_run_embed, id="embed_startup", replace_existing=True)  # 기동 직후 1회 catch-up
     _sched.start()
     logger.info("스케줄러 기동 — 해시=%s 재검증=%s 백업=%s", cc, rc, bc)

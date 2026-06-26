@@ -566,6 +566,69 @@ function goUPage(delta){
   uPage=np; loadUnresolved(false);
 }
 
+const DAPI="/admin/api/discovery";
+async function runDiscovery(){
+  const btn=document.getElementById("btnDisc"); const orig=btn?btn.textContent:"";
+  try{
+    const j=await (await fetch(DAPI+"/run",{method:"POST"})).json();
+    if(j.started===false){ alert("시작 안 됨: "+(j.reason||"")); return; }
+    if(btn){ btn.disabled=true; btn.textContent="발굴 중…"; }
+    let out=null;
+    for(let i=0;i<40;i++){
+      await new Promise(function(r){ setTimeout(r,3000); });
+      try{ const s2=await (await fetch(OAPI+"/status")).json(); const d=s2.discovery||{};
+        if(d.running===false){ out=d.last_output; break; } }catch(e){}
+    }
+    if(btn){ btn.disabled=false; btn.textContent=orig||"지금 발굴 실행"; }
+    let msg="발굴 완료";
+    try{ const o=JSON.parse(out||"{}");
+      if(o.error) msg="발굴 오류: "+o.error;
+      else if(o.note) msg="발굴 완료 — "+o.note;
+      else msg="발굴 완료 — 군집 "+(o.clusters||0)+" · 신규 후보 "+(o.candidates||0)+"건";
+    }catch(e){}
+    alert(msg);
+    loadOps(); loadDiscovery();
+  }catch(e){ alert("오류: "+e); if(btn){ btn.disabled=false; btn.textContent=orig||"지금 발굴 실행"; } }
+}
+async function loadDiscovery(){
+  const tb=document.querySelector("#dtable tbody"); tb.innerHTML='<tr><td colspan="7"><div class="empty">불러오는 중…</div></td></tr>';
+  try{ const rows=await (await fetch(DAPI+"/candidates")).json();
+    if(!rows.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">신규 후보 없음 (운영 탭에서 발굴 실행)</div></td></tr>'; return; }
+    tb.innerHTML="";
+    for(const c of rows){ const tr=document.createElement("tr");
+      const st=c.status||"pending";
+      const badge = st==="approved"?'<span class="b ok">승인</span>':(st==="rejected"?'<span class="b off">반려</span>':'<span class="b warn">검토대기</span>');
+      tr.innerHTML=`<td>${escapeHtml(c.topic||"")}</td><td>${escapeHtml(c.title||"(초안없음)")}</td>
+        <td>${escapeHtml(c.category||"")}</td><td>${c.n_queries||0}</td><td>${badge}</td>
+        <td style="font-size:11px;color:var(--muted)">${escapeHtml(((c.status_at||c.created_at)||"").replace("T"," ").slice(0,16))}</td>
+        <td><div class="act"><button onclick="openCand('${c.candidate_id}')">검토</button></div></td>`;
+      tb.appendChild(tr); }
+  }catch(e){ tb.innerHTML='<tr><td colspan="7"><div class="empty">로드 실패: '+e+'</div></td></tr>'; }
+}
+let curCand=null;
+async function openCand(cid){
+  curCand=cid; document.getElementById("dmodalmsg").textContent="";
+  const d=await (await fetch(DAPI+"/candidate/"+cid)).json();
+  document.getElementById("dtitle").textContent="신규 후보 — "+(d.topic||cid);
+  document.getElementById("dmeta").innerHTML="유사질문: "+escapeHtml((d.cluster_queries||[]).join(" / "))+"<br>분류: "+escapeHtml(JSON.stringify(d.classification||{}));
+  document.getElementById("deditor").value=JSON.stringify(d.draft_item||{},null,2);
+  document.getElementById("dmodal").classList.add("on");
+}
+async function approveCand(){
+  let draft; try{ draft=JSON.parse(document.getElementById("deditor").value); }catch(e){ setMsg("dmodalmsg","JSON 오류: "+e,true); return; }
+  document.getElementById("dApprove").disabled=true; setMsg("dmodalmsg","승인 중…");
+  try{ const r=await fetch(DAPI+"/candidate/"+curCand+"/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({draft_item:draft})});
+    const j=await r.json();
+    if(r.ok){ setMsg("dmodalmsg","등록 완료: "+(j.policy_id||"")); setTimeout(()=>{document.getElementById("dmodal").classList.remove("on"); loadDiscovery();},800); }
+    else { const dt=j.detail||j; setMsg("dmodalmsg","실패: "+(dt.error||"")+(dt.details?" ("+dt.details.join("; ")+")":""),true); document.getElementById("dApprove").disabled=false; }
+  }catch(e){ setMsg("dmodalmsg","오류: "+e,true); document.getElementById("dApprove").disabled=false; }
+}
+async function rejectCand(){
+  if(!confirm("이 후보를 반려할까요?"))return;
+  try{ const r=await fetch(DAPI+"/candidate/"+curCand+"/reject",{method:"POST"});
+    if(r.ok){ document.getElementById("dmodal").classList.remove("on"); loadDiscovery(); }
+  }catch(e){ setMsg("dmodalmsg","오류: "+e,true); }
+}
 function filterReflected(){
   const v=document.getElementById("uReflected").value;
   document.querySelectorAll("#utable tbody tr").forEach(tr=>{ if(tr.dataset.reflected!==undefined) tr.style.display=(!v||tr.dataset.reflected===v)?"":"none"; });
