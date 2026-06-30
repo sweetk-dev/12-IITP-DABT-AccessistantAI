@@ -19,6 +19,7 @@ _APP = Path(__file__).resolve().parent
 _DATA = Path(os.environ.get("POLICY_DATA_DIR") or str(_APP / "policy_db"))
 _ITEMS = _DATA / "items"
 _CAND_DIR = _DATA / "discovery" / "candidates"
+_STAGING_DIR = _DATA / "crawler" / "staging"  # 기존 검토 큐(staging) 재사용 — 보강(gap) 업데이트 적재
 _REPORT_DIR = _DATA / "discovery" / "reports"
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -196,9 +197,10 @@ def run_discovery():
         f"[기존 정책]\n{titles_txt}\n\n"
         "[질문 군집]\n" + "\n".join(f'{r["idx"]}: "{r["query"]}" (유사 {r["count"]}건)' for r in reps) + "\n\n"
         "JSON 배열로만 답: "
-        '[{"idx":0,"policy_related":true,"covered_by":"B0xx 또는 null","novel":true,"topic":"주제 한 줄"}]\n'
+        '[{"idx":0,"policy_related":true,"klass":"new|gap|covered","covered_by":"B0xx 또는 null","gap_detail":"klass=gap일 때 빠진 세부","topic":"주제 한 줄"}]\n'
         "policy_related=장애인 지원정책/제도 관련(아이돌·영화·잡담은 false). "
-        "novel=정책관련이며 기존 정책에 없는 새 정책이면 true."
+        "klass: 기존 정책에 전혀 없는 새 주제=new / 기존 정책 B0xx가 주제는 다루나 질문이 요구하는 세부가 빠짐=gap(covered_by 필수, gap_detail 기재) / 기존 정책이 이미 충분히 답함=covered. "
+        "보수적으로: 확신 없으면 gap 으로 분류하지 말고 new 또는 covered 로(신뢰된 기존 정책을 잘못 건드리지 않도록)."
     )
     try:
         clf = _parse_json(_gemini(clf_prompt))
@@ -206,16 +208,18 @@ def run_discovery():
         return {"clusters": len(clusters), "candidates": 0, "error": f"분류 실패: {e}"}
 
     enums = _schema_enums()
-    novel = [c for c in clf if c.get("policy_related") and c.get("novel")]
+    new_cl = [c for c in clf if c.get("policy_related") and c.get("klass") == "new"]
+    gap_cl = [c for c in clf if c.get("policy_related") and c.get("klass") == "gap" and c.get("covered_by")]
     _CAND_DIR.mkdir(parents=True, exist_ok=True)
     created = []
-    for c in novel:
+    for c in new_cl:
         try:
             cl = clusters[c["idx"]]
         except (KeyError, IndexError):
             continue
         topic = c.get("topic", "")
         member_qs = [m["q"] for m in cl["members"]]
+        member_ids = [m["id"] for m in cl["members"]]
         draft_prompt = (
             "대한민국 장애인 지원 정책 중 다음 주제의 신규 정책 항목 초안을 작성하세요. "
             "공식 출처(law.go.kr·보건복지부·복지로 등)를 웹에서 찾아 근거로 쓰고, 추측 금지.\n"
@@ -237,10 +241,26 @@ def run_discovery():
             logger.warning("초안 실패(topic=%s): %s", topic, e)
         cid = "C" + datetime.now().strftime("%Y%m%d%H%M%S%f")[:18]
         cand = {"candidate_id": cid, "topic": topic, "cluster_queries": member_qs,
-                "classification": c, "draft_item": draft, "status": "pending",
+                "query_ids": member_ids, "classification": c, "draft_item": draft, "status": "pending",
                 "created_at": datetime.now().isoformat(timespec="seconds")}
         (_CAND_DIR / f"{cid}.json").write_text(json.dumps(cand, ensure_ascii=False, indent=2), encoding="utf-8")
         created.append(cid)
+
+    # 보강(gap): 기존 정책 B0xx 누락 세부를 채워 기존 검토 큐(staging)로 적재(사람 승인 필요)
+    gaps = []
+    for c in gap_cl:
+        try:
+            cl = clusters[c["idx"]]
+        except (KeyError, IndexError):
+            continue
+        try:
+            r = _make_gap_staged(c.get("covered_by"), [m["q"] for m in cl["members"]],
+                                 [m["id"] for m in cl["members"]],
+                                 c.get("gap_detail") or c.get("topic") or "")
+            if r.get("ok"):
+                gaps.append({"policy_id": r["policy_id"], "changed": r.get("changed")})
+        except Exception as e:
+            logger.warning("보강 staged 실패(pid=%s): %s", c.get("covered_by"), e)
 
     # 처리한 질의는 '발굴됨'으로 표시 → 다음 발굴에서 제외(중복 후보 방지)
     processed_ids = [m["id"] for cl in clusters for m in cl["members"]]
@@ -251,10 +271,10 @@ def run_discovery():
 
     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
     summary = {"date": date.today().isoformat(), "clusters": len(clusters),
-               "classified": clf, "novel": len(novel), "candidates": created}
+               "classified": clf, "new": len(new_cl), "gap": len(gap_cl), "candidates": created, "gaps": gaps}
     (_REPORT_DIR / f"{date.today().isoformat()}.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"clusters": len(clusters), "policy_novel": len(novel), "candidates": len(created), "processed": len(processed_ids)}
+    return {"clusters": len(clusters), "new_candidates": len(created), "gap_staged": len(gaps), "processed": len(processed_ids)}
 
 
 def list_candidates():
@@ -306,7 +326,13 @@ def set_status(cid, status, policy_id=None):
     if policy_id:
         d["approved_policy_id"] = policy_id
     f.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"ok": True, "status": status}
+    reopened = 0
+    if status == "rejected" and d.get("query_ids"):
+        try:
+            reopened = _reopen_queries(d["query_ids"])
+        except Exception as e:
+            logger.warning("질의 재오픈 실패(%s): %s", cid, e)
+    return {"ok": True, "status": status, "reopened": reopened}
 
 
 # ── 후보 보강(재보강) — 승인 전 핵심 운영 정보 채우기 (이슈 #143) ──
@@ -370,7 +396,7 @@ def enrich_candidate(cid, draft_override=None):
         f"사용자가 실제로 궁금해한 질문(이 질문들에 답할 수 있도록 보강): {queries}\n\n"
         "[기존 초안 JSON]\n" + json.dumps(draft, ensure_ascii=False) + "\n\n"
         "다음 키를 가능한 한 구체적으로 채운 JSON 하나만 출력(설명·코드블록 없이):\n"
-        "- operating_agencies: 실제 운영/취급 기관 목록(상품 안내면 취급 은행·기관명)\n"
+        "- operating_agencies: 실제 운영/취급 기관. 각 항목은 객체 {agency:기관·업체명, region, apply_channel, url, notes}(상품이면 agency 에 취급 은행명)\n"
         "- supported_amount{rate,amount,scope}: 실제 수치(금리·금액). 변동되는 값은 기준 시점을 scope 에 명시\n"
         "- how_to_use{default, ...}: 실제 이용·가입 절차\n"
         "- application{where[{channel,method,url}], required_documents[], processing_period, fee, online_available, proxy_allowed}: 신청·가입 방법\n"
@@ -422,3 +448,139 @@ def enrich_candidate(cid, draft_override=None):
     cand["enrich_count"] = int(cand.get("enrich_count") or 0) + 1
     f.write_text(json.dumps(cand, ensure_ascii=False, indent=2), encoding="utf-8")
     return {"ok": True, "draft_item": draft, "added_fields": filled, "faq_added": faq_added, "faq_total": len(draft.get("faq") or []), "grounded": True}
+
+
+# ── 보강(gap) 경로: 기존 정책 누락 세부를 기존 검토 큐(staging)로 적재 (이슈 후속) ──
+def _reopen_queries(ids):
+    """반려된 제안의 원 미답변 질의를 재분류 대기로 되돌림(discovery_processed_at=NULL)."""
+    ids = [i for i in (ids or []) if i is not None]
+    if not ids:
+        return 0
+    con = _db(); cur = con.cursor()
+    cur.execute("UPDATE unresolved_queries SET discovery_processed_at = NULL WHERE id = ANY(%s)", (ids,))
+    n = cur.rowcount
+    con.commit(); con.close()
+    return n
+
+
+def reopen_for_staging(staged_name):
+    """staging 보강 제안 반려 시 — 동반 .disc.json 의 query_ids 를 재오픈(best-effort)."""
+    try:
+        side = _STAGING_DIR / staged_name.replace(".staged.json", ".disc.json")
+        if not side.exists():
+            return 0
+        info = json.loads(side.read_text(encoding="utf-8"))
+        return _reopen_queries(info.get("query_ids"))
+    except Exception as e:
+        logger.warning("staging 재오픈 실패(%s): %s", staged_name, e)
+        return 0
+
+
+def _load_existing_policy(pid):
+    files = list(_ITEMS.glob(f"{pid}_*.json"))
+    if not files:
+        return None
+    try:
+        return json.loads(files[0].read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _norm_txt(x):
+    if isinstance(x, dict):
+        x = x.get("q") or x.get("url") or json.dumps(x, ensure_ascii=False)
+    return "".join(ch for ch in str(x or "").lower() if ch.isalnum())
+
+
+def _merge_additive(base, add):
+    """기존 정책(base)에 보강(add)을 추가 병합(기존 보존). 변경된 최상위 키 목록 반환.
+    faq/operating_agencies/sources 는 비중복 append, 그 외는 빈 칸만 채움."""
+    changed = []
+    if not isinstance(add, dict):
+        return changed
+    add = dict(add)
+    if isinstance(add.get("faq"), list):
+        ex = base.get("faq") if isinstance(base.get("faq"), list) else []
+        seen = {_norm_txt(it) for it in ex if isinstance(it, dict)}
+        merged = list(ex); n = 0
+        for it in add["faq"]:
+            if isinstance(it, dict) and it.get("q") and it.get("a") and _norm_txt(it) not in seen:
+                seen.add(_norm_txt(it)); merged.append({"q": it["q"], "a": it["a"]}); n += 1
+        if n:
+            base["faq"] = merged; changed.append("faq")
+        add.pop("faq", None)
+    for k, keyfn in (("operating_agencies", lambda it: _norm_txt(it.get("agency") if isinstance(it, dict) else it)),
+                     ("sources", lambda it: (it.get("url") if isinstance(it, dict) else _norm_txt(it)))):
+        if isinstance(add.get(k), list):
+            ex = base.get(k) if isinstance(base.get(k), list) else []
+            seen = {keyfn(it) for it in ex}
+            merged = list(ex); n = 0
+            for it in add[k]:
+                kk = keyfn(it)
+                if kk and kk not in seen:
+                    seen.add(kk); merged.append(it); n += 1
+            if n:
+                base[k] = merged; changed.append(k)
+            add.pop(k, None)
+    changed += _deep_fill(base, add)
+    return list(dict.fromkeys(changed))
+
+
+def _make_gap_staged(pid, member_qs, member_ids, gap_detail):
+    """기존 정책 pid 의 누락 세부를 외부검색으로 보강해, 변경분이 있으면 staging 적재.
+    직접 적용/등록 없음 — 기존 검토 큐에서 사람이 승인해야 반영."""
+    if not GEMINI_API_KEY:
+        return {"ok": False, "error": "GEMINI_API_KEY 없음"}
+    existing = _load_existing_policy(pid)
+    if not existing:
+        return {"ok": False, "error": f"기존 정책 {pid} 없음"}
+    prompt = (
+        f"대한민국 장애인 지원 정책 '{existing.get('title')}'({pid})에 빠진 세부 정보를 보강합니다.\n"
+        f"빠진 것으로 의심되는 세부: {gap_detail}\n"
+        f"사용자가 답을 못 받은 질문: {member_qs}\n\n"
+        "[기존 정책 JSON]\n" + json.dumps(existing, ensure_ascii=False) + "\n\n"
+        "공식·신뢰 출처를 웹에서 찾아, 위 정책에 '추가되어야 할' 부분만 JSON 하나로 출력(설명·코드블록 없이). "
+        "기존에 이미 있는 내용은 반복하지 말 것. 추측·창작 금지(확인 안 되면 비움).\n"
+        "채울 수 있는 키: operating_agencies(추가 기관·업체. 각 항목은 객체 {agency:기관·업체명(필수), region, apply_channel, url, notes}), supported_amount{rate,amount,scope}, "
+        "how_to_use{...}, application{where[{channel,method,url}],required_documents[],processing_period,fee}, "
+        "validity, exceptions_and_caveats, contact, faq([{q,a}]), "
+        "sources(각 항목 title·publisher·url + priority 는 primary/secondary/supplementary 중 하나, 실제 URL). "
+        "확인 안 되는 키는 넣지 말 것."
+    )
+    raw = _gemini(prompt, grounding=True)
+    if not raw.strip():
+        return {"ok": False, "error": f"보강 응답 없음 — {_LAST_GEMINI_ERR or '외부검색 실패'}"}
+    try:
+        add = _parse_json(raw)
+    except Exception as e:
+        return {"ok": False, "error": f"보강 응답 파싱 실패: {e}"}
+    if not isinstance(add, dict):
+        return {"ok": False, "error": "보강 응답 형식 오류"}
+    allowed = _schema_keys() or set(ENRICH_FIELDS)
+    add = {k: v for k, v in add.items() if k in allowed}
+    import copy as _copy
+    updated = _copy.deepcopy(existing)
+    changed = _merge_additive(updated, add)
+    if not changed:
+        return {"ok": False, "skipped": True, "error": "실제 추가될 내용 없음(오탐 가능)"}
+    updated["last_verified"] = date.today().isoformat()
+    try:
+        import jsonschema
+        schema = json.loads((_APP / "policy_db" / "schema.json").read_text(encoding="utf-8"))
+        jsonschema.validate(updated, schema)
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning("보강 스키마 검증 실패(%s): %s", pid, e)
+        return {"ok": False, "error": f"스키마 검증 실패: {e}"}
+    _STAGING_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d%H%M%S")
+    staged = _STAGING_DIR / f"{pid}_disc{ts}.staged.json"
+    staged.write_text(json.dumps(updated, ensure_ascii=False, indent=2), encoding="utf-8")
+    (_STAGING_DIR / f"{pid}_disc{ts}.disc.json").write_text(json.dumps({
+        "source": "discovery_gap", "policy_id": pid, "gap_detail": gap_detail,
+        "query_ids": member_ids, "cluster_queries": member_qs, "changed_fields": changed,
+        "created_at": datetime.now().isoformat(timespec="seconds")},
+        ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.info("보강 staged 적재: %s (변경 %s)", staged.name, changed)
+    return {"ok": True, "policy_id": pid, "changed": changed, "staged": staged.name}

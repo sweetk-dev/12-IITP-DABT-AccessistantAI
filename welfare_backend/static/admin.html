@@ -368,6 +368,7 @@ async function loadDetail(pid){ current=pid; loadList();
     if(reg) h+=`<div class="alert bad">회귀 가드 차단: ${escapeHtml(d.regression.join(" / "))}</div>`;
     if(!d.schema_ok) h+=`<div class="alert bad">스키마 오류: ${escapeHtml((d.schema_errors||[]).join(" / "))}</div>`;
     if(d.review&&d.review.length) h+=`<div class="review"><b>검토 필요 ${d.review.length}건</b>: `+escapeHtml(d.review.map(x=>`${x.reason||x.classification||""} ${x.path||""}`).join(" · "))+`</div>`;
+    if(d.discovery&&d.discovery.source==="discovery_gap") h+=`<div class="review">🔎 <b>발굴 보강 제안</b>(미답변 질의 기반) — 사유: ${escapeHtml(d.discovery.gap_detail||"")} · 반려 시 원 질의는 재분류 대기로 되돌아갑니다.</div>`;
     curDetail=d; _gid=0; const hasContent=(d.diffs||[]).some(function(x){return !x.is_meta;});
     h+=`<div class="difftools"><label class="chk"><input type="checkbox" id="diffCollapseChk" ${diffCollapse?"checked":""} onchange="toggleCollapse()"> 변경된 줄만 보기(동일 줄 접기)</label><span class="leg"><span class="lg del">삭제</span><span class="lg add">추가</span><span class="lg same">동일</span></span></div>`;
     h+=`<div id="diffwrap">${buildDiffsHtml(d, diffCollapse)}</div>`;

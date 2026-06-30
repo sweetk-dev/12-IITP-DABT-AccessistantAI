@@ -58,6 +58,12 @@ def staging_reject(policy_id: str):
     r = rc.reject(policy_id)
     if not r.get("ok"):
         raise HTTPException(status_code=400, detail=r)
+    ids = r.get("reopen_query_ids")
+    if ids:
+        try:
+            r["reopened"] = dc._reopen_queries(ids)  # 발굴 보강 반려 → 원 질의 재분류 대기로
+        except Exception:
+            pass
     return r
 
 
