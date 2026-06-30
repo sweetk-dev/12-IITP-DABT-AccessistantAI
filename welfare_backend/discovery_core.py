@@ -73,7 +73,7 @@ def _cluster(rows):
     return clusters
 
 
-def _gemini(prompt, grounding=False, max_tokens=8000, retries=2):
+def _gemini(prompt, grounding=False, max_tokens=24000, retries=3):
     """Gemini generateContent. thinking 모델의 간헐적 빈 응답에 대비해 재시도."""
     import time as _t
     payload = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -408,7 +408,7 @@ def enrich_candidate(cid, draft_override=None):
         f"category enum: {enums['category']} / benefit_type enum: {enums['benefit_type']} (해당 키를 새로 채울 때만 enum 준수). "
         "확인 안 되는 필드는 넣지 말 것(빈 값으로 출력 금지)."
     )
-    raw = _gemini(prompt, grounding=True)
+    raw = _gemini(prompt, grounding=True, max_tokens=8000)
     if not raw.strip():
         reason = _LAST_GEMINI_ERR or "외부검색 실패 또는 빈 응답"
         return {"ok": False, "error": f"보강 응답 없음 — {reason}"}
@@ -563,7 +563,7 @@ def _make_gap_staged(pid, member_qs, member_ids, gap_detail):
         "sources(각 항목 title·publisher·url + priority 는 primary/secondary/supplementary 중 하나, 실제 URL). "
         "확인 안 되는 키는 넣지 말 것."
     )
-    raw = _gemini(prompt, grounding=True)
+    raw = _gemini(prompt, grounding=True, max_tokens=8000)
     if not raw.strip():
         return {"ok": False, "error": f"보강 응답 없음 — {_LAST_GEMINI_ERR or '외부검색 실패'}"}
     try:
