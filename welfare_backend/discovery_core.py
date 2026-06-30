@@ -377,7 +377,7 @@ def enrich_candidate(cid, draft_override=None):
         "- validity: 적용/유효 기간·갱신 주기\n"
         "- exceptions_and_caveats: 예외·유의사항(은행·지역·시점별로 달라지면 그 점을 명시)\n"
         "- contact: 문의처(기관명·전화·URL)\n"
-        "- faq: 사용자가 실제 물어본 질문 + 관련해 자주 묻는 질문을 포함해 3~5개의 [{q,a}] 항목(최소 3개). 각 답변은 위에서 보강한 운영정보에 근거해 구체적으로, 확인 안 된 내용은 지어내지 말 것\n"
+        "- faq: 기존 초안의 faq 와 겹치지 않는 새로운 질문·답변을 3~5개 생성(재보강을 반복하면 누적되어 10개 이상까지 쌓이도록). 사용자가 실제 물어본 질문 + 관련해 자주 묻는 질문. 각 답변은 위에서 보강한 운영정보에 근거해 구체적으로, 확인 안 된 내용은 지어내지 말 것\n"
         "- sources: 근거 출처(각 항목 title·publisher·url + priority 는 primary/secondary/supplementary 중 하나, 실제 URL)\n"
         f"category enum: {enums['category']} / benefit_type enum: {enums['benefit_type']} (해당 키를 새로 채울 때만 enum 준수). "
         "확인 안 되는 필드는 넣지 말 것(빈 값으로 출력 금지)."
@@ -395,10 +395,30 @@ def enrich_candidate(cid, draft_override=None):
 
     allowed = _schema_keys() or set(ENRICH_FIELDS)
     add = {k: v for k, v in add.items() if k in allowed}
+    # faq 는 '빈칸 채우기'가 아니라 '누적' — 기존과 겹치지 않는 새 Q만 덧붙임(재보강 반복 시 10+ 축적)
+    faq_added = 0
+    if isinstance(add.get("faq"), list):
+        def _qn(x):
+            q = (x.get("q") if isinstance(x, dict) else "") or ""
+            return "".join(ch for ch in q.lower() if ch.isalnum())
+        existing = draft.get("faq") if isinstance(draft.get("faq"), list) else []
+        seen = {_qn(it) for it in existing if isinstance(it, dict)}
+        merged = list(existing)
+        for it in add["faq"]:
+            if isinstance(it, dict) and it.get("q") and it.get("a"):
+                k = _qn(it)
+                if k and k not in seen:
+                    seen.add(k)
+                    merged.append({"q": it["q"], "a": it["a"]})
+                    faq_added += 1
+        draft["faq"] = merged
+        add.pop("faq", None)  # _deep_fill 이 덮어쓰지 않도록 제거
     filled = _deep_fill(draft, add)
+    if faq_added:
+        filled = list(dict.fromkeys(filled + ["faq"]))
     draft["last_verified"] = date.today().isoformat()
     cand["draft_item"] = draft
     cand["enriched_at"] = datetime.now().isoformat(timespec="seconds")
     cand["enrich_count"] = int(cand.get("enrich_count") or 0) + 1
     f.write_text(json.dumps(cand, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"ok": True, "draft_item": draft, "added_fields": filled, "grounded": True}
+    return {"ok": True, "draft_item": draft, "added_fields": filled, "faq_added": faq_added, "faq_total": len(draft.get("faq") or []), "grounded": True}
