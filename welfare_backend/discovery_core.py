@@ -87,7 +87,7 @@ def _gemini(prompt, grounding=False, max_tokens=8000, retries=2):
     for attempt in range(retries):
         try:
             r = requests.post(_GEN_URL, headers={"x-goog-api-key": GEMINI_API_KEY,
-                              "Content-Type": "application/json"}, json=payload, timeout=(10, 90))
+                              "Content-Type": "application/json"}, json=payload, timeout=(10, 120))
             # 사용량/과금 한도(429)는 재시도 무의미 — 사유를 명확히 잡아 즉시 종료
             if r.status_code == 429:
                 detail = ""
