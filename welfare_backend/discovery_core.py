@@ -168,7 +168,7 @@ def _gemma_generate(prompt, max_tokens=8000):
         # think=False: gemma4 등 thinking 모델이 답을 thinking 에 넣고 content 를 비우는 문제 방지
         payload = {"model": model, "messages": [{"role": "user", "content": prompt}],
                    "options": {"temperature": 0, "num_predict": max_tokens}, "stream": False,
-                   "think": False}
+                   "think": False, "keep_alive": -1}
         r = requests.post(url, headers=headers, json=payload, timeout=(10, 180))
         r.raise_for_status()
         m = r.json().get("message") or {}
