@@ -41,6 +41,16 @@ def _read_triage(staged: Path) -> dict:
     return {}
 
 
+def _read_disc(staged: Path) -> dict:
+    df = _sidecar(staged, ".disc.json")
+    if df.exists():
+        try:
+            return json.loads(df.read_text(encoding="utf-8")) or {}
+        except Exception:
+            return {}
+    return {}
+
+
 def get_triage(policy_id):
     found = ca._find_staged(policy_id)
     return _read_triage(found[0]) if found else {}
@@ -115,6 +125,7 @@ def get_review(policy_id, _staged=None):
         "diffs": diffs, "review": review, "sources_changed": sources_changed,
         "regression": regression, "schema_ok": schema_ok, "schema_errors": schema_errors,
         "triage": _read_triage(staged),
+        "discovery": _read_disc(staged),
     }
 
 
@@ -220,11 +231,13 @@ def reject(policy_id):
     if not found:
         return {"ok": False, "error": "staging 대기 항목 없음"}
     staged = found[0]
+    disc = _read_disc(staged)
+    reopen_ids = disc.get("query_ids") or []
     rej = ca.STAGING_DIR / ".rejected"
     rej.mkdir(parents=True, exist_ok=True)
     shutil.move(str(staged), str(rej / staged.name))
-    for ext in (".sources.json", ".review.json", ".triage.json"):
+    for ext in (".sources.json", ".review.json", ".triage.json", ".disc.json"):
         side = _sidecar(staged, ext)
         if side.exists():
             shutil.move(str(side), str(rej / side.name))
-    return {"ok": True, "policy_id": policy_id}
+    return {"ok": True, "policy_id": policy_id, "reopen_query_ids": reopen_ids}
