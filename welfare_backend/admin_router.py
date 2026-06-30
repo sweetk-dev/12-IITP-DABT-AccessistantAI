@@ -58,6 +58,12 @@ def staging_reject(policy_id: str):
     r = rc.reject(policy_id)
     if not r.get("ok"):
         raise HTTPException(status_code=400, detail=r)
+    ids = r.get("reopen_query_ids")
+    if ids:
+        try:
+            r["reopened"] = dc._reopen_queries(ids)  # 발굴 보강 반려 → 원 질의 재분류 대기로
+        except Exception:
+            pass
     return r
 
 
@@ -295,10 +301,12 @@ def discovery_enrich(cid: str, payload: dict = Body(default={})):
         raise HTTPException(status_code=404, detail=cand["error"])
     if cand.get("status") == "approved":
         raise HTTPException(status_code=400, detail={"error": "이미 승인된 후보입니다 (보강 불가)"})
-    r = dc.enrich_candidate(cid, draft_override=payload.get("draft_item"))
-    if not r.get("ok"):
-        raise HTTPException(status_code=400, detail=r)
-    return r
+    import threading
+    # 보강 grounding 은 수십~수백 초 → 동기 응답 시 nginx 프록시 타임아웃(HTML 504) 발생.
+    # 백그라운드로 돌리고 즉시 반환, 프론트는 후보의 enrich_status 를 폴링.
+    threading.Thread(target=dc.enrich_candidate_run,
+                     args=(cid, payload.get("draft_item")), daemon=True).start()
+    return {"ok": True, "state": "running"}
 
 
 @router.get("/admin", response_class=HTMLResponse)

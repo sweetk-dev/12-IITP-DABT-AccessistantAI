@@ -87,7 +87,7 @@ SYSTEM_INSTRUCTION = """당신은 대한민국 장애인 복지 정책을 안내
 - **모든 사실 정보는 반드시 도구 호출 결과에서만 사용**. 사전 학습 지식으로 금액·날짜·자격·신청처를 추측·생성하지 마세요.
 - 'B001' 같은 내부 정책 ID는 절대 음성으로 읽지 말 것. 정책 제목으로 안내.
 - 금액·날짜는 "월 만 육천원", "이천이십육년 일월"처럼 한국어 발화체로.
-- URL은 음성으로 읽지 말고 "자세한 내용은 화면의 출처를 참고하세요"로 갈음.
+- URL은 음성으로 읽지 말 것. 단, **get_policy_details 를 호출했거나 외부 검색을 거쳐 화면에 표시할 출처가 있을 때만** "자세한 내용은 화면의 출처를 참고하세요"라고 안내. 탐색 도구(search_*)만으로 답한 경우엔 이 안내를 붙이지 말 것(화면에 출처가 표시되지 않음).
 - 도구 응답의 `ai_instruction` 필드가 있으면 그 지시를 우선 따를 것.
 
 ### 답변 길이 가이드 (질문 유형별)
@@ -719,9 +719,13 @@ async def handle_live_chat(
                                             result = {"error": str(e)}
                                     # Phase 5 Track A — 도구 호출 시퀀스 추적
                                     tracker.on_tool_call(fname, fargs, result)
-                                    _src = _extract_sources(result)
-                                    if _src:
-                                        await _safe_send_json(websocket, {"type": "sources", "items": _src})
+                                    # #146: 탐색 도구(search_*)는 top-K 후보의 출처라 답변이 실제로 채택했는지
+                                    #       불확실 → 화면에 띄우지 않음. 정책을 특정해 상세를 가져온
+                                    #       get_policy_details 의 출처만 노출(무관 출처 표시 방지).
+                                    if fname == "get_policy_details":
+                                        _src = _extract_sources(result)
+                                        if _src:
+                                            await _safe_send_json(websocket, {"type": "sources", "items": _src})
                                     responses.append(types.FunctionResponse(
                                         id=fc.id,
                                         name=fname,
