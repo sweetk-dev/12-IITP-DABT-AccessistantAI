@@ -26,6 +26,9 @@ GEMINI_MODEL = os.environ.get("GEMINI_LLM_MODEL", "gemini-3.1-pro-preview")
 _GEN_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 SIM_THRESHOLD = 0.82
 
+# 직전 _gemini 호출 실패 사유(429/한도초과 등) — 호출부가 사용자에게 원인 표시용
+_LAST_GEMINI_ERR = ""
+
 
 def _db():
     return psycopg2.connect(dbname=os.environ["DB_NAME"], user=os.environ["DB_USER"],
@@ -78,23 +81,40 @@ def _gemini(prompt, grounding=False, max_tokens=24000, retries=3):
         payload["tools"] = [{"google_search": {}}]
     else:
         payload["generationConfig"]["responseMimeType"] = "application/json"
+    global _LAST_GEMINI_ERR
     last_err = None
     for attempt in range(retries):
         try:
             r = requests.post(_GEN_URL, headers={"x-goog-api-key": GEMINI_API_KEY,
                               "Content-Type": "application/json"}, json=payload, timeout=(10, 120))
+            # 사용량/과금 한도(429)는 재시도 무의미 — 사유를 명확히 잡아 즉시 종료
+            if r.status_code == 429:
+                detail = ""
+                try:
+                    detail = ((r.json() or {}).get("error") or {}).get("message", "") or ""
+                except Exception:
+                    pass
+                last_err = "API 사용량 한도 초과(429)"
+                if "spend" in detail.lower() or "지출" in detail or "spending cap" in detail.lower():
+                    last_err = "API 월 지출 상한 초과(429) — Gemini spend cap 확인 필요"
+                break
             r.raise_for_status()
             cands = r.json().get("candidates") or []
             if cands:
                 parts = (cands[0].get("content") or {}).get("parts") or []
                 txt = "".join(p.get("text", "") for p in parts if p.get("text") and not p.get("thought"))
                 if txt.strip():
+                    _LAST_GEMINI_ERR = ""
                     return txt
-            last_err = "빈 응답"
+                fr = (cands[0].get("finishReason") or "")
+                last_err = f"빈 응답(finishReason={fr})" if fr else "빈 응답"
+            else:
+                last_err = "빈 응답(candidates 없음)"
         except Exception as e:
             last_err = str(e)
         if attempt < retries - 1:
             _t.sleep(2 * (attempt + 1))
+    _LAST_GEMINI_ERR = last_err or "알 수 없는 오류"
     logger.warning("Gemini 응답 실패(%d회): %s", retries, last_err)
     return ""
 
@@ -364,7 +384,8 @@ def enrich_candidate(cid, draft_override=None):
     )
     raw = _gemini(prompt, grounding=True)
     if not raw.strip():
-        return {"ok": False, "error": "보강 응답 없음(외부검색 실패 또는 빈 응답)"}
+        reason = _LAST_GEMINI_ERR or "외부검색 실패 또는 빈 응답"
+        return {"ok": False, "error": f"보강 응답 없음 — {reason}"}
     try:
         add = _parse_json(raw)
     except Exception as e:
