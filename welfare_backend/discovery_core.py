@@ -73,7 +73,7 @@ def _cluster(rows):
     return clusters
 
 
-def _gemini(prompt, grounding=False, max_tokens=24000, retries=3):
+def _gemini(prompt, grounding=False, max_tokens=24000, retries=2):
     """Gemini generateContent. thinking 모델의 간헐적 빈 응답에 대비해 재시도."""
     import time as _t
     payload = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -87,7 +87,7 @@ def _gemini(prompt, grounding=False, max_tokens=24000, retries=3):
     for attempt in range(retries):
         try:
             r = requests.post(_GEN_URL, headers={"x-goog-api-key": GEMINI_API_KEY,
-                              "Content-Type": "application/json"}, json=payload, timeout=(10, 120))
+                              "Content-Type": "application/json"}, json=payload, timeout=(10, 90))
             # 사용량/과금 한도(429)는 재시도 무의미 — 사유를 명확히 잡아 즉시 종료
             if r.status_code == 429:
                 detail = ""
@@ -526,6 +526,22 @@ def _merge_additive(base, add):
     return list(dict.fromkeys(changed))
 
 
+def _compact_policy(p):
+    """gap 보강 프롬프트용 — 정책에서 판단·중복확인에 필요한 핵심 필드만 추려 입력을 경량화.
+    (전체 JSON 임베드 시 프롬프트가 커져 grounding 응답이 느려지는 문제 회피)"""
+    if not isinstance(p, dict):
+        return {}
+    keys = ["id", "title", "category", "benefit_type", "supported_amount", "eligibility",
+            "operating_agencies", "how_to_use", "application", "validity",
+            "exceptions_and_caveats", "contact"]
+    out = {k: p.get(k) for k in keys if p.get(k) not in (None, "", [], {})}
+    # faq 는 질문만(중복 회피 컨텍스트) — 답변 본문은 제외해 크기 절감
+    faqs = p.get("faq")
+    if isinstance(faqs, list) and faqs:
+        out["faq_questions"] = [it.get("q") for it in faqs if isinstance(it, dict) and it.get("q")]
+    return out
+
+
 def _make_gap_staged(pid, member_qs, member_ids, gap_detail):
     """기존 정책 pid 의 누락 세부를 외부검색으로 보강해, 변경분이 있으면 staging 적재.
     직접 적용/등록 없음 — 기존 검토 큐에서 사람이 승인해야 반영."""
@@ -538,7 +554,7 @@ def _make_gap_staged(pid, member_qs, member_ids, gap_detail):
         f"대한민국 장애인 지원 정책 '{existing.get('title')}'({pid})에 빠진 세부 정보를 보강합니다.\n"
         f"빠진 것으로 의심되는 세부: {gap_detail}\n"
         f"사용자가 답을 못 받은 질문: {member_qs}\n\n"
-        "[기존 정책 JSON]\n" + json.dumps(existing, ensure_ascii=False) + "\n\n"
+        "[기존 정책 요약]\n" + json.dumps(_compact_policy(existing), ensure_ascii=False) + "\n\n"
         "공식·신뢰 출처를 웹에서 찾아, 위 정책에 '추가되어야 할' 부분만 JSON 하나로 출력(설명·코드블록 없이). "
         "기존에 이미 있는 내용은 반복하지 말 것. 추측·창작 금지(확인 안 되면 비움).\n"
         "채울 수 있는 키: operating_agencies(추가 기관·업체. 각 항목은 객체 {agency:기관·업체명(필수), region, apply_channel, url, notes}), supported_amount{rate,amount,scope}, "
