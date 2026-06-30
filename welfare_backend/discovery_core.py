@@ -431,11 +431,12 @@ def enrich_candidate(cid, draft_override=None):
         seen = {_qn(it) for it in existing if isinstance(it, dict)}
         merged = list(existing)
         for it in add["faq"]:
-            if isinstance(it, dict) and it.get("q") and it.get("a"):
-                k = _qn(it)
+            qa = _as_qa(it)
+            if qa:
+                k = _qn(qa)
                 if k and k not in seen:
                     seen.add(k)
-                    merged.append({"q": it["q"], "a": it["a"]})
+                    merged.append(qa)
                     faq_added += 1
         draft["faq"] = merged
         add.pop("faq", None)  # _deep_fill 이 덮어쓰지 않도록 제거
@@ -492,6 +493,15 @@ def _norm_txt(x):
     return "".join(ch for ch in str(x or "").lower() if ch.isalnum())
 
 
+def _as_qa(it):
+    """faq 항목을 {q,a}로 정규화 — q/question/Q, a/answer/A 키 변형 허용."""
+    if not isinstance(it, dict):
+        return None
+    q = it.get("q") or it.get("question") or it.get("Q")
+    a = it.get("a") or it.get("answer") or it.get("A")
+    return {"q": q, "a": a} if (q and a) else None
+
+
 def _merge_additive(base, add):
     """기존 정책(base)에 보강(add)을 추가 병합(기존 보존). 변경된 최상위 키 목록 반환.
     faq/operating_agencies/sources 는 비중복 append, 그 외는 빈 칸만 채움."""
@@ -504,8 +514,9 @@ def _merge_additive(base, add):
         seen = {_norm_txt(it) for it in ex if isinstance(it, dict)}
         merged = list(ex); n = 0
         for it in add["faq"]:
-            if isinstance(it, dict) and it.get("q") and it.get("a") and _norm_txt(it) not in seen:
-                seen.add(_norm_txt(it)); merged.append({"q": it["q"], "a": it["a"]}); n += 1
+            qa = _as_qa(it)
+            if qa and _norm_txt(qa) not in seen:
+                seen.add(_norm_txt(qa)); merged.append(qa); n += 1
         if n:
             base["faq"] = merged; changed.append("faq")
         add.pop("faq", None)
@@ -538,7 +549,7 @@ def _compact_policy(p):
     # faq 는 질문만(중복 회피 컨텍스트) — 답변 본문은 제외해 크기 절감
     faqs = p.get("faq")
     if isinstance(faqs, list) and faqs:
-        out["faq_questions"] = [it.get("q") for it in faqs if isinstance(it, dict) and it.get("q")]
+        out["faq_questions"] = [(_as_qa(it) or {}).get("q") for it in faqs if _as_qa(it)]
     return out
 
 
@@ -600,3 +611,34 @@ def _make_gap_staged(pid, member_qs, member_ids, gap_detail):
         ensure_ascii=False, indent=2), encoding="utf-8")
     logger.info("보강 staged 적재: %s (변경 %s)", staged.name, changed)
     return {"ok": True, "policy_id": pid, "changed": changed, "staged": staged.name}
+
+
+# ── 재보강 비동기 실행(상태를 후보 파일에 기록) — nginx 동기 타임아웃 우회 ──
+def _set_enrich_status(cid, status):
+    f = _CAND_DIR / f"{cid}.json"
+    if not f.exists():
+        return
+    try:
+        d = json.loads(f.read_text(encoding="utf-8"))
+        d["enrich_status"] = status
+        f.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:
+        logger.warning("enrich_status 기록 실패(%s): %s", cid, e)
+
+
+def enrich_candidate_run(cid, draft_override=None):
+    """백그라운드 러너 — enrich_candidate 를 돌리고 진행/결과 상태를 후보 파일에 남김.
+    프론트는 후보 GET 으로 enrich_status 를 폴링(긴 동기요청/프록시 타임아웃 회피)."""
+    now = datetime.now().isoformat(timespec="seconds")
+    _set_enrich_status(cid, {"state": "running", "started_at": now})
+    try:
+        r = enrich_candidate(cid, draft_override)
+        if r.get("ok"):
+            _set_enrich_status(cid, {"state": "done", "at": datetime.now().isoformat(timespec="seconds"),
+                                     "added_fields": r.get("added_fields"), "faq_total": r.get("faq_total")})
+        else:
+            _set_enrich_status(cid, {"state": "error", "at": datetime.now().isoformat(timespec="seconds"),
+                                     "error": r.get("error")})
+    except Exception as e:
+        logger.exception("enrich 러너 실패(%s)", cid)
+        _set_enrich_status(cid, {"state": "error", "error": str(e)})
