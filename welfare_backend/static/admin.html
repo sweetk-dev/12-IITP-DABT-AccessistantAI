@@ -211,10 +211,11 @@
       <textarea id="deditor" spellcheck="false"></textarea>
     </div>
     <div class="mfoot">
+      <button id="dEnrich" onclick="enrichCand()" title="유사질문 기반으로 비어있는 취급기관·신청방법·금액 등 핵심 운영정보를 외부검색으로 채웁니다">재보강(핵심정보 채우기)</button>
       <button class="primary" id="dApprove" onclick="approveCand()">승인(정책 등록)</button>
       <button class="danger" onclick="rejectCand()">반려</button>
       <button onclick="document.getElementById('dmodal').classList.remove('on')">닫기</button>
-      <span class="msg">승인 시 스키마 검증 후 items 등록 + DB 재적재</span>
+      <span class="msg">재보강: 빈 핵심정보만 채움(기존 값 보존) · 승인 시 스키마 검증 후 items 등록 + DB 재적재</span>
     </div>
   </div>
 </div>
@@ -622,6 +623,22 @@ async function approveCand(){
     if(r.ok){ setMsg("dmodalmsg","등록 완료: "+(j.policy_id||"")); setTimeout(()=>{document.getElementById("dmodal").classList.remove("on"); loadDiscovery();},800); }
     else { const dt=j.detail||j; setMsg("dmodalmsg","실패: "+(dt.error||"")+(dt.details?" ("+dt.details.join("; ")+")":""),true); document.getElementById("dApprove").disabled=false; }
   }catch(e){ setMsg("dmodalmsg","오류: "+e,true); document.getElementById("dApprove").disabled=false; }
+}
+async function enrichCand(){
+  let draft=null; const txt=document.getElementById("deditor").value;
+  if(txt && txt.trim()){ try{ draft=JSON.parse(txt); }catch(e){ setMsg("dmodalmsg","JSON 오류로 재보강 불가: "+e,true); return; } }
+  const eb=document.getElementById("dEnrich"), ab=document.getElementById("dApprove");
+  eb.disabled=true; ab.disabled=true; setMsg("dmodalmsg","재보강 중… 외부 검색으로 핵심정보를 채웁니다(수십 초 소요)");
+  try{
+    const r=await fetch(DAPI+"/candidate/"+curCand+"/enrich",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({draft_item:draft})});
+    const j=await r.json();
+    if(r.ok){
+      document.getElementById("deditor").value=JSON.stringify(j.draft_item||{},null,2);
+      const a=j.added_fields||[];
+      setMsg("dmodalmsg","재보강 완료 — 채워진 항목: "+(a.length?a.join(", "):"없음(추가 확인된 정보 없음)"));
+    } else { const dt=j.detail||j; setMsg("dmodalmsg","재보강 실패: "+(dt.error||JSON.stringify(dt)),true); }
+  }catch(e){ setMsg("dmodalmsg","오류: "+e,true); }
+  finally{ eb.disabled=false; ab.disabled=false; }
 }
 async function rejectCand(){
   if(!confirm("이 후보를 반려할까요?"))return;

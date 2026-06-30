@@ -5,6 +5,7 @@
 #   GET  /admin/api/staging/{policy_id}  단일 정책 필드 diff/검토 정보
 #   POST /admin/api/staging/{id}/apply   선택 필드 반영(+자동 ingest)
 #   POST /admin/api/staging/{id}/reject  staging 폐기
+#   POST /admin/api/discovery/candidate/{cid}/enrich  후보 핵심정보 보강(검토 전용)
 import sys
 from pathlib import Path
 
@@ -284,6 +285,20 @@ def discovery_approve(cid: str, payload: dict = Body(default={})):
         raise HTTPException(status_code=400, detail=r)
     dc.set_status(cid, "approved", policy_id=r.get("policy_id"))
     return {"ok": True, "policy_id": r.get("policy_id"), "candidate": cid}
+
+
+@router.post("/admin/api/discovery/candidate/{cid}/enrich")
+def discovery_enrich(cid: str, payload: dict = Body(default={})):
+    """승인 전 후보 핵심 운영 정보 보강(외부검색). status 변경/등록 없음 — 검토 전용."""
+    cand = dc.get_candidate(cid)
+    if cand.get("error"):
+        raise HTTPException(status_code=404, detail=cand["error"])
+    if cand.get("status") == "approved":
+        raise HTTPException(status_code=400, detail={"error": "이미 승인된 후보입니다 (보강 불가)"})
+    r = dc.enrich_candidate(cid, draft_override=payload.get("draft_item"))
+    if not r.get("ok"):
+        raise HTTPException(status_code=400, detail=r)
+    return r
 
 
 @router.get("/admin", response_class=HTMLResponse)
