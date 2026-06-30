@@ -377,7 +377,7 @@ def enrich_candidate(cid, draft_override=None):
         "- validity: 적용/유효 기간·갱신 주기\n"
         "- exceptions_and_caveats: 예외·유의사항(은행·지역·시점별로 달라지면 그 점을 명시)\n"
         "- contact: 문의처(기관명·전화·URL)\n"
-        "- faq: 위 사용자 질문에 대한 [{q,a}] 답변\n"
+        "- faq: 사용자가 실제 물어본 질문 + 관련해 자주 묻는 질문을 포함해 3~5개의 [{q,a}] 항목(최소 3개). 각 답변은 위에서 보강한 운영정보에 근거해 구체적으로, 확인 안 된 내용은 지어내지 말 것\n"
         "- sources: 근거 출처(각 항목 title·publisher·url + priority 는 primary/secondary/supplementary 중 하나, 실제 URL)\n"
         f"category enum: {enums['category']} / benefit_type enum: {enums['benefit_type']} (해당 키를 새로 채울 때만 enum 준수). "
         "확인 안 되는 필드는 넣지 말 것(빈 값으로 출력 금지)."
