@@ -287,3 +287,97 @@ def set_status(cid, status, policy_id=None):
         d["approved_policy_id"] = policy_id
     f.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
     return {"ok": True, "status": status}
+
+
+# ── 후보 보강(재보강) — 승인 전 핵심 운영 정보 채우기 (이슈 #143) ──
+# 비어 있는 운영 필드만 외부검색(grounding)으로 채우고, 기존 값은 보존. status 변경/등록 없음.
+ENRICH_FIELDS = ["operating_agencies", "supported_amount", "how_to_use", "application",
+                 "validity", "exceptions_and_caveats", "contact", "faq",
+                 "eligibility", "legal_basis", "sources", "last_verified"]
+
+
+def _is_empty(v):
+    return v is None or v == "" or v == [] or v == {}
+
+
+def _schema_keys():
+    try:
+        sc = json.loads((_APP / "policy_db" / "schema.json").read_text(encoding="utf-8"))
+        return set((sc.get("properties") or {}).keys())
+    except Exception:
+        return set()
+
+
+def _deep_fill(base, add):
+    """add 의 값으로 base 의 빈 필드만 채움(재귀). 채워진 최상위 키 목록 반환."""
+    filled = []
+    if not isinstance(add, dict):
+        return filled
+    for k, v in add.items():
+        if _is_empty(v):
+            continue
+        if k not in base or _is_empty(base.get(k)):
+            base[k] = v
+            filled.append(k)
+        elif isinstance(base.get(k), dict) and isinstance(v, dict):
+            if _deep_fill(base[k], v):
+                filled.append(k)
+    return filled
+
+
+def enrich_candidate(cid, draft_override=None):
+    """신규 후보 초안의 비어 있는 핵심 운영 정보를 외부검색으로 보강.
+    - status 변경/items 등록 없음(검토 전용). 후보 파일에 보강 결과 저장.
+    - draft_override(관리자 편집본)가 오면 그 위에 보강."""
+    if not GEMINI_API_KEY:
+        return {"ok": False, "error": "GEMINI_API_KEY 없음"}
+    f = _CAND_DIR / f"{cid}.json"
+    if not f.exists():
+        return {"ok": False, "error": "후보 없음"}
+    cand = json.loads(f.read_text(encoding="utf-8"))
+    if cand.get("status") == "approved":
+        return {"ok": False, "error": "이미 승인된 후보(보강 불가)"}
+    draft = draft_override if (isinstance(draft_override, dict) and draft_override) else (cand.get("draft_item") or {})
+    queries = cand.get("cluster_queries") or []
+    topic = cand.get("topic") or draft.get("title") or ""
+    enums = _schema_enums()
+
+    prompt = (
+        "대한민국 장애인 지원 정책 항목의 '핵심 운영 정보'를 보강하세요. "
+        "아래 기존 초안에서 비어 있는 운영 필드를, 공식·신뢰 출처(law.go.kr·보건복지부·복지로·지자체·해당 기관/은행 공식 안내)를 "
+        "웹에서 찾아 사실에 근거해 채웁니다. 추측·창작 금지, 확인 안 되면 비웁니다.\n"
+        f"주제: {topic}\n"
+        f"사용자가 실제로 궁금해한 질문(이 질문들에 답할 수 있도록 보강): {queries}\n\n"
+        "[기존 초안 JSON]\n" + json.dumps(draft, ensure_ascii=False) + "\n\n"
+        "다음 키를 가능한 한 구체적으로 채운 JSON 하나만 출력(설명·코드블록 없이):\n"
+        "- operating_agencies: 실제 운영/취급 기관 목록(상품 안내면 취급 은행·기관명)\n"
+        "- supported_amount{rate,amount,scope}: 실제 수치(금리·금액). 변동되는 값은 기준 시점을 scope 에 명시\n"
+        "- how_to_use{default, ...}: 실제 이용·가입 절차\n"
+        "- application{where[{channel,method,url}], required_documents[], processing_period, fee, online_available, proxy_allowed}: 신청·가입 방법\n"
+        "- validity: 적용/유효 기간·갱신 주기\n"
+        "- exceptions_and_caveats: 예외·유의사항(은행·지역·시점별로 달라지면 그 점을 명시)\n"
+        "- contact: 문의처(기관명·전화·URL)\n"
+        "- faq: 위 사용자 질문에 대한 [{q,a}] 답변\n"
+        "- sources: 근거 출처(각 항목 title·publisher·url + priority 는 primary/secondary/supplementary 중 하나, 실제 URL)\n"
+        f"category enum: {enums['category']} / benefit_type enum: {enums['benefit_type']} (해당 키를 새로 채울 때만 enum 준수). "
+        "확인 안 되는 필드는 넣지 말 것(빈 값으로 출력 금지)."
+    )
+    raw = _gemini(prompt, grounding=True)
+    if not raw.strip():
+        return {"ok": False, "error": "보강 응답 없음(외부검색 실패 또는 빈 응답)"}
+    try:
+        add = _parse_json(raw)
+    except Exception as e:
+        return {"ok": False, "error": f"보강 응답 파싱 실패: {e}"}
+    if not isinstance(add, dict):
+        return {"ok": False, "error": "보강 응답 형식 오류"}
+
+    allowed = _schema_keys() or set(ENRICH_FIELDS)
+    add = {k: v for k, v in add.items() if k in allowed}
+    filled = _deep_fill(draft, add)
+    draft["last_verified"] = date.today().isoformat()
+    cand["draft_item"] = draft
+    cand["enriched_at"] = datetime.now().isoformat(timespec="seconds")
+    cand["enrich_count"] = int(cand.get("enrich_count") or 0) + 1
+    f.write_text(json.dumps(cand, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"ok": True, "draft_item": draft, "added_fields": filled, "grounded": True}
