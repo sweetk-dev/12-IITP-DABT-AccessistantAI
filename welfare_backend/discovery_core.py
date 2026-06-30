@@ -24,7 +24,19 @@ _REPORT_DIR = _DATA / "discovery" / "reports"
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_MODEL = os.environ.get("GEMINI_LLM_MODEL", "gemini-3.1-pro-preview")
-_GEN_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+_GEN_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+_GEN_URL = f"{_GEN_BASE}/{GEMINI_MODEL}:generateContent"  # 기본(main) 모델 — 하위호환
+
+
+def _gen_url(model):
+    return f"{_GEN_BASE}/{(model or GEMINI_MODEL).strip()}:generateContent"
+
+
+def _model_for(role):
+    """호출 항목별 모델 선택(비용 분리). 환경변수 GEMINI_MODEL_<ROLE> 미설정 시 기본 모델.
+    예) 분류(classify)는 저렴·빠른 모델로: GEMINI_MODEL_CLASSIFY=gemini-3.1-flash-preview
+    draft/enrich/gap 은 품질이 필요하면 기본(pro) 유지."""
+    return (os.environ.get(f"GEMINI_MODEL_{role.upper()}") or GEMINI_MODEL).strip()
 SIM_THRESHOLD = 0.82
 
 # 직전 _gemini 호출 실패 사유(429/한도초과 등) — 호출부가 사용자에게 원인 표시용
@@ -73,7 +85,7 @@ def _cluster(rows):
     return clusters
 
 
-def _gemini(prompt, grounding=False, max_tokens=24000, retries=3):
+def _gemini(prompt, grounding=False, max_tokens=24000, retries=3, model=None):
     """Gemini generateContent. thinking 모델의 간헐적 빈 응답에 대비해 재시도."""
     import time as _t
     payload = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -83,10 +95,11 @@ def _gemini(prompt, grounding=False, max_tokens=24000, retries=3):
     else:
         payload["generationConfig"]["responseMimeType"] = "application/json"
     global _LAST_GEMINI_ERR
+    url = _gen_url(model)
     last_err = None
     for attempt in range(retries):
         try:
-            r = requests.post(_GEN_URL, headers={"x-goog-api-key": GEMINI_API_KEY,
+            r = requests.post(url, headers={"x-goog-api-key": GEMINI_API_KEY,
                               "Content-Type": "application/json"}, json=payload, timeout=(10, 120))
             # 사용량/과금 한도(429)는 재시도 무의미 — 사유를 명확히 잡아 즉시 종료
             if r.status_code == 429:
@@ -117,7 +130,49 @@ def _gemini(prompt, grounding=False, max_tokens=24000, retries=3):
             _t.sleep(2 * (attempt + 1))
     _LAST_GEMINI_ERR = last_err or "알 수 없는 오류"
     logger.warning("Gemini 응답 실패(%d회): %s", retries, last_err)
+    # 차선책 가드: Gemini 실패(429 한도/장애/타임아웃) 시 온프레미스 Gemma 로 폴백.
+    # LLM_FALLBACK=gemma 일 때만 동작(미설정 시 기존과 동일). grounding 은 폴백에서 불가(지식기반 답).
+    if (os.environ.get("LLM_FALLBACK") or "").lower() == "gemma":
+        logger.info("→ Gemma(온프레미스) 차선책 폴백 시도 (사유: %s)", last_err)
+        fb = _gemma_generate(prompt, max_tokens=min(max_tokens, 8000))
+        if fb.strip():
+            _LAST_GEMINI_ERR = f"{last_err} (Gemma 폴백 사용)"
+            return fb
     return ""
+
+
+def _gemma_generate(prompt, max_tokens=8000):
+    """온프레미스 Gemma(Ollama 기본 / OpenAI 호환) 동기 호출 — Gemini 차선책.
+    환경변수(llm_backends.py 와 동일 체계):
+      GEMMA_API_URL  (기본 http://ollama:11434 — compose 내부 서비스명)
+      GEMMA_MODEL    (예: gemma4)
+      GEMMA_API_STYLE ollama|openai (기본 ollama)
+      GEMMA_API_KEY  (선택)
+    grounding 미지원 → 모델 지식 기반 답변(검토 필수)."""
+    base = (os.environ.get("GEMMA_API_URL") or "http://ollama:11434").rstrip("/")
+    model = os.environ.get("GEMMA_MODEL", "gemma4")
+    style = (os.environ.get("GEMMA_API_STYLE") or "ollama").lower()
+    key = os.environ.get("GEMMA_API_KEY")
+    headers = {"Content-Type": "application/json"}
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+    try:
+        if style == "openai":
+            url = f"{base}/v1/chat/completions"
+            payload = {"model": model, "messages": [{"role": "user", "content": prompt}],
+                       "temperature": 0, "max_tokens": max_tokens}
+            r = requests.post(url, headers=headers, json=payload, timeout=(10, 180))
+            r.raise_for_status()
+            return (r.json()["choices"][0]["message"].get("content") or "")
+        url = f"{base}/api/chat"
+        payload = {"model": model, "messages": [{"role": "user", "content": prompt}],
+                   "options": {"temperature": 0, "num_predict": max_tokens}, "stream": False}
+        r = requests.post(url, headers=headers, json=payload, timeout=(10, 180))
+        r.raise_for_status()
+        return ((r.json().get("message") or {}).get("content") or "")
+    except Exception as e:
+        logger.warning("Gemma 폴백 실패: %s", e)
+        return ""
 
 
 def _parse_json(raw):
@@ -203,7 +258,7 @@ def run_discovery():
         "보수적으로: 확신 없으면 gap 으로 분류하지 말고 new 또는 covered 로(신뢰된 기존 정책을 잘못 건드리지 않도록)."
     )
     try:
-        clf = _parse_json(_gemini(clf_prompt))
+        clf = _parse_json(_gemini(clf_prompt, model=_model_for("classify")))
     except Exception as e:
         return {"clusters": len(clusters), "candidates": 0, "error": f"분류 실패: {e}"}
 
@@ -236,7 +291,7 @@ def run_discovery():
         )
         draft = None
         try:
-            draft = _parse_json(_gemini(draft_prompt, grounding=True))
+            draft = _parse_json(_gemini(draft_prompt, grounding=True, model=_model_for("draft")))
         except Exception as e:
             logger.warning("초안 실패(topic=%s): %s", topic, e)
         cid = "C" + datetime.now().strftime("%Y%m%d%H%M%S%f")[:18]
@@ -408,7 +463,7 @@ def enrich_candidate(cid, draft_override=None):
         f"category enum: {enums['category']} / benefit_type enum: {enums['benefit_type']} (해당 키를 새로 채울 때만 enum 준수). "
         "확인 안 되는 필드는 넣지 말 것(빈 값으로 출력 금지)."
     )
-    raw = _gemini(prompt, grounding=True, max_tokens=8000)
+    raw = _gemini(prompt, grounding=True, max_tokens=8000, model=_model_for("enrich"))
     if not raw.strip():
         reason = _LAST_GEMINI_ERR or "외부검색 실패 또는 빈 응답"
         return {"ok": False, "error": f"보강 응답 없음 — {reason}"}
@@ -574,7 +629,7 @@ def _make_gap_staged(pid, member_qs, member_ids, gap_detail):
         "sources(각 항목 title·publisher·url + priority 는 primary/secondary/supplementary 중 하나, 실제 URL). "
         "확인 안 되는 키는 넣지 말 것."
     )
-    raw = _gemini(prompt, grounding=True, max_tokens=8000)
+    raw = _gemini(prompt, grounding=True, max_tokens=8000, model=_model_for("gap"))
     if not raw.strip():
         return {"ok": False, "error": f"보강 응답 없음 — {_LAST_GEMINI_ERR or '외부검색 실패'}"}
     try:
