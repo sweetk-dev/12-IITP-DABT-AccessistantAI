@@ -165,11 +165,14 @@ def _gemma_generate(prompt, max_tokens=8000):
             r.raise_for_status()
             return (r.json()["choices"][0]["message"].get("content") or "")
         url = f"{base}/api/chat"
+        # think=False: gemma4 등 thinking 모델이 답을 thinking 에 넣고 content 를 비우는 문제 방지
         payload = {"model": model, "messages": [{"role": "user", "content": prompt}],
-                   "options": {"temperature": 0, "num_predict": max_tokens}, "stream": False}
+                   "options": {"temperature": 0, "num_predict": max_tokens}, "stream": False,
+                   "think": False}
         r = requests.post(url, headers=headers, json=payload, timeout=(10, 180))
         r.raise_for_status()
-        return ((r.json().get("message") or {}).get("content") or "")
+        m = r.json().get("message") or {}
+        return (m.get("content") or m.get("thinking") or "")
     except Exception as e:
         logger.warning("Gemma 폴백 실패: %s", e)
         return ""
