@@ -30,7 +30,7 @@ _SCHED_CFG = _DATA / "admin_schedule.json"
 DEFAULT_CFG = {
     "crawl_cron": {"day": "2,16", "hour": 9, "minute": 0},       # 해시 감지(저비용)
     "revalidate_cron": {"day": "25", "hour": 9, "minute": 0},    # 전체 재검증(전수)
-    "discovery_cron": {"day": "1,15", "hour": 9, "minute": 0},   # 신규 발굴(B, 별도 구현)
+    "discovery_cron": {"day": "1,15", "hour": 4, "minute": 0},   # 신규 발굴(B) — 04:00(09시가 늦어 조정)
     "backup_cron": {"hour": 4, "minute": 0},
     "embed_cron": {"minute": "*/15"},  # 미답변 질의 임베딩 백필(발굴 전처리)
     "backup_retention_days": 30,

@@ -244,6 +244,32 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     $("chat").scrollTop = $("chat").scrollHeight;
   };
   const finalizeAiBubble = () => { activeAiBubble = null; activeAiText = ""; };
+
+  // ────── 폴백(서버 음성 없음) 시 기기 내장 음성으로 답변 낭독 (접근성) ──────
+  // Gemini 정상 모드는 서버가 audio 를 보내므로 turnHadAudio=true → 동작 안 함.
+  // 결제 소진 등으로 서버 음성이 없는 턴에서만 브라우저 SpeechSynthesis 로 음성 복원.
+  let turnHadAudio = false;
+  let localTtsNoticeShown = false;
+  const maybeSpeakLocal = (text) => {
+    const had = turnHadAudio;
+    turnHadAudio = false;                 // 다음 턴 위해 초기화
+    if (had === true) return;             // 서버 음성 있었음 → 브라우저 TTS 불필요
+    if (textOnly === true) return;        // 텍스트 전용 모드 → 음성 미출력
+    const t = (text || "").trim();
+    if (t === "") return;
+    if (typeof window.speechSynthesis === "undefined") return;
+    if (localTtsNoticeShown === false) {
+      addBubble("sys", "🔊 현재 음성 안내가 일시적으로 기기 내장 음성으로 제공됩니다. 평소와 음성이 다르게 들릴 수 있어요.");
+      localTtsNoticeShown = true;
+    }
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(t);
+      u.lang = "ko-KR";
+      u.rate = 1.0;
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  };
   // ────── 출처 표시 (#화면의 출처) ──────
   // 도구/검색 결과의 출처(기관명+URL)를 답변 아래 클릭 가능한 링크로 표시.
   let pendingSources = [];
@@ -361,7 +387,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
         case "user_transcript": if (!sttActive) appendUserTranscript(msg.content); break;  // #105 STT 활성 시 중복 억제
         case "ai_transcript":   appendAiTranscript(msg.content); if (pendingSources.length) { clearTimeout(srcFlushTimer); srcFlushTimer = setTimeout(flushSources, 800); } break;
         case "text":            appendAiTranscript(msg.content); break;
-        case "audio":           await playAudioChunk(msg.data, msg.mime_type); break;
+        case "audio":           turnHadAudio = true; await playAudioChunk(msg.data, msg.mime_type); break;
         case "tool_call":
           break;  // 도구 호출 칩은 사용자에게 비노출
 
@@ -373,6 +399,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           break;
         case "turn_complete":
           finalizeUserBubble();
+          maybeSpeakLocal(activeAiText);
           finalizeAiBubble();
           sttFinal = "";   // #105 사용자 턴 누적 초기화
           flushSources();   // #120 출처 표시(답변 텍스트 완료 후, 음성과 무관 — fallback)
@@ -567,6 +594,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
 
   const stopAllPlayback = () => {
     interruptedFlag = true;
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch {}
     for (const src of activeSources) {
       try { src.stop(0); } catch {}
       try { src.disconnect(); } catch {}
