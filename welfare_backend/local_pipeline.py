@@ -80,8 +80,13 @@ def _get_tts():
     global _tts_engine
     if _tts_engine is not None:
         return _tts_engine
-    engine = os.environ.get("LOCAL_TTS_ENGINE", "melo").lower()
-    if engine == "piper":
+    engine = os.environ.get("LOCAL_TTS_ENGINE", "none").lower()
+    if engine in ("none", "off", "text", "disabled", ""):
+        # 로컬 음성 미사용 — 텍스트+자막(ai_transcript)만 제공.
+        # (정책: 대체 합성음성 대신, Gemini 음성 복구 전까지 음성 생략)
+        logger.info("🔇 로컬 TTS 비활성(LOCAL_TTS_ENGINE=%s) — 텍스트+자막만 제공", engine)
+        _tts_engine = (0, None)
+    elif engine == "piper":
         _tts_engine = _load_piper()
     else:
         _tts_engine = _load_melo()
@@ -278,6 +283,8 @@ class LocalVoiceSession:
         await self._send({"type": "ai_transcript", "content": text})
         try:
             sr, synth = _get_tts()
+            if synth is None:
+                return   # TTS 비활성 — 텍스트+자막만 제공
             wav = await asyncio.to_thread(synth, text)
             wav = _resample(wav, sr, TARGET_TTS_RATE)
             pcm = _float32_to_pcm16(wav)
