@@ -250,6 +250,8 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   // 결제 소진 등으로 서버 음성이 없는 턴에서만 브라우저 SpeechSynthesis 로 음성 복원.
   let turnHadAudio = false;
   let localTtsNoticeShown = false;
+  let ttsSpeaking = false;   // 기기음성 재생 중 → 마이크 입력 차단(에코 루프 방지)
+  const NOTICE_TXT = "현재 음성 안내가 일시적으로 기기 내장 음성으로 제공됩니다. 평소와 음성이 다르게 들릴 수 있어요.";
   const maybeSpeakLocal = (text) => {
     const had = turnHadAudio;
     turnHadAudio = false;                 // 다음 턴 위해 초기화
@@ -258,17 +260,28 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     const t = (text || "").trim();
     if (t === "") return;
     if (typeof window.speechSynthesis === "undefined") return;
-    if (localTtsNoticeShown === false) {
-      addBubble("sys", "🔊 현재 음성 안내가 일시적으로 기기 내장 음성으로 제공됩니다. 평소와 음성이 다르게 들릴 수 있어요.");
+    const firstTime = (localTtsNoticeShown === false);
+    if (firstTime) {
+      addBubble("sys", "🔊 " + NOTICE_TXT);
       localTtsNoticeShown = true;
     }
     try {
       window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang = "ko-KR";
-      u.rate = 1.0;
-      window.speechSynthesis.speak(u);
-    } catch (e) {}
+      ttsSpeaking = true;                 // 마이크 게이트 ON (에코 차단)
+      const speakOne = (str, isLast) => {
+        const u = new SpeechSynthesisUtterance(str);
+        u.lang = "ko-KR";
+        u.rate = 1.0;
+        if (isLast === true) {
+          // 마지막 발화 종료 후 잔향 여유(350ms) 두고 게이트 OFF
+          u.onend = () => { setTimeout(() => { ttsSpeaking = false; }, 350); };
+          u.onerror = () => { ttsSpeaking = false; };
+        }
+        window.speechSynthesis.speak(u);
+      };
+      if (firstTime) speakOne(NOTICE_TXT, false);  // 안내 문구도 음성으로(접근성)
+      speakOne(t, true);
+    } catch (e) { ttsSpeaking = false; }
   };
   // ────── 출처 표시 (#화면의 출처) ──────
   // 도구/검색 결과의 출처(기관명+URL)를 답변 아래 클릭 가능한 링크로 표시.
@@ -472,6 +485,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     micProcessor.port.onmessage = (e) => {
       const m = e.data;
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (ttsSpeaking) return;   // 기기음성 재생 중 마이크 프레임 무시(에코 루프 방지)
       if (m.type === "pcm") {
         const u8 = new Uint8Array(m.data);
         let bin = "";
@@ -520,6 +534,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
       recognition.onresult = (e) => {
+        if (ttsSpeaking) return;   // 기기음성 재생 중 STT 결과 무시(에코 자막 방지)
         let interim = "";
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const r = e.results[i];
@@ -594,6 +609,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
 
   const stopAllPlayback = () => {
     interruptedFlag = true;
+    ttsSpeaking = false;
     try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch {}
     for (const src of activeSources) {
       try { src.stop(0); } catch {}
