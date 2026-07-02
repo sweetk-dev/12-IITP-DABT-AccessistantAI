@@ -41,6 +41,30 @@ INPUT_RATE = 16000        # 클라이언트가 보내는 입력 PCM 레이트
 GREETING = ("안녕하세요! 장애인 복지 정책에 대해 궁금한 점이 있으신가요? "
             "필요하신 정보를 정확하게 안내해 드릴게요. 편하게 말씀해 주세요.")
 
+# 로컬 폴백 전용 시스템 프롬프트.
+# Gemini Live 용 프롬프트에는 [SYSTEM:GREETING] 등 신호 처리 규칙과 google_search 폴백이
+# 들어 있어 온프레미스 Gemma 가 도구 루프에서 인사말을 반복하거나 혼란을 일으킴 →
+# 로컬 경로는 아래 간결한 전용 프롬프트를 사용(인사·유휴 처리는 코드가 담당).
+LOCAL_SYSTEM_PROMPT = """당신은 대한민국 장애인 복지 정책을 안내하는 음성 상담원입니다.
+
+## 도구 사용 (근거 확보)
+사용자 질문에 답하기 전에 아래 DB 도구 중 가장 적합한 하나를 호출해 근거를 확보하세요.
+- search_by_keyword: 자연어 질문 전반 (기본 도구)
+- search_policies_by_metadata: category(교통/통신/의료/세제/소득지원/활동지원/문화·체육/보육·교육/주거/공공시설/기타)나 severity 가 명시된 경우
+- get_policy_details: 특정 정책의 상세(지원 금액·신청 방법)
+- check_eligibility_criteria: 자격 요건 판정
+- find_operating_agencies: 지역·기관·연락처
+
+한 번 검색해 관련 결과가 나오면 같은 질문으로 도구를 반복 호출하지 말고 바로 답하세요.
+도구 결과가 비어 있거나 오류이면, 추측하지 말고 정확히 찾지 못했다고 말한 뒤 보건복지부 129를 안내하세요.
+
+## 답변 규칙
+- 도구 결과에 실제로 있는 사실만 사용하세요. 금액·자격·시행일·신청처를 지어내지 마세요.
+- 한국어 음성 상담체로 간결하게(2~5문장). 금액·날짜는 발화하기 쉬운 한국어로("월 만 육천원" 등).
+- 내부 정책 ID(B001 등)와 URL은 음성으로 읽지 마세요.
+- 인사말은 이미 상담 시작에 했으니 다시 하지 말고, 사용자의 질문에 바로 답하세요.
+- 새 정책을 처음 안내하거나 신청 절차를 안내할 때만 마지막에 문의처(예: 보건복지부 129)를 한 번 덧붙이세요."""
+
 
 def local_fallback_enabled() -> bool:
     return os.environ.get("LIVE_LOCAL_FALLBACK", "1").strip() not in ("0", "false", "False", "")
@@ -192,8 +216,10 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources) -
 
     async with httpx.AsyncClient(timeout=timeout) as client:
         for _ in range(4):
+            # think=False: gemma4 는 thinking 모델 — 미설정 시 content 가 비어 옴(빈 답변 방지).
             payload = {"model": model, "messages": messages, "tools": tools,
-                       "stream": False, "options": {"temperature": 0}, "keep_alive": -1}
+                       "stream": False, "think": False,
+                       "options": {"temperature": 0}, "keep_alive": -1}
             resp = await client.post(url, json=payload)
             resp.raise_for_status()
             msg = resp.json().get("message", {}) or {}
@@ -230,8 +256,20 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources) -
                 if fname == "get_policy_details" and on_sources:
                     await on_sources(result)
                 messages.append({"role": "tool", "content": json.dumps(result, ensure_ascii=False)})
-    # 도구 루프 상한 초과 — 마지막 assistant content 라도 반환
-    return (messages[-1].get("content") or "").strip() if messages else ""
+
+        # 도구 루프 상한 초과(모델이 계속 도구만 호출) — 도구 없이 최종 답변을 강제 생성.
+        # (그냥 messages[-1] 을 반환하면 도구 결과 JSON 이 답변으로 새어나감)
+        messages.append({"role": "user", "content":
+            "[지시] 지금까지 조회한 도구 결과만 근거로, 사용자의 마지막 질문에 대한 최종 답변을 "
+            "한국어 음성 상담체로 제공하세요. 인사말을 반복하지 말고, 도구를 더 호출하지 말고, "
+            "확실한 정보가 없으면 보건복지부 129를 안내하세요."})
+        final_payload = {"model": model, "messages": messages,
+                         "stream": False, "think": False,
+                         "options": {"temperature": 0}, "keep_alive": -1}
+        resp = await client.post(url, json=final_payload)
+        resp.raise_for_status()
+        content = ((resp.json().get("message", {}) or {}).get("content") or "").strip()
+        return content or "죄송합니다. 지금은 정확히 안내드리기 어렵습니다. 보건복지부 129로 문의해 주세요."
 
 
 # ─────────────────────────────────────────────────────────────
@@ -250,11 +288,8 @@ class LocalVoiceSession:
         self.session_id = session_id
         self.extract_sources = extract_sources
         self.greet = greet
-        # 로컬 모드 안내: 외부 검색(google_search) 도구는 이 경로에서 사용 불가.
-        _local_note = ("\n\n[로컬 상담 모드] 외부 검색(google_search)은 현재 사용할 수 없습니다. "
-                       "내부 DB 도구로 답할 수 없으면 추측하지 말고, 정확한 정보를 찾지 못했다고 "
-                       "정직하게 말한 뒤 보건복지부 129 등 관련 콜센터를 안내하세요.")
-        self.messages = [{"role": "system", "content": system_instruction + _local_note}]
+        # 로컬 경로는 전용 프롬프트 사용(전달받은 Gemini 프롬프트는 신호규칙 때문에 미사용).
+        self.messages = [{"role": "system", "content": LOCAL_SYSTEM_PROMPT}]
         for role, text in (prior_history or []):
             if text and text.strip():
                 self.messages.append({"role": "assistant" if role == "model" else "user",
