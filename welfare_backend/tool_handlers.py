@@ -6,9 +6,10 @@
 # FastAPI 엔드포인트는 Depends(get_db) 의존성 주입 때문에 Gemini Live tools 에
 # 그대로 넣을 수 없어, 같은 DB 세션 헬퍼를 받는 일반 함수로 분리했습니다.
 import logging
+import re
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import AsyncSessionLocal
@@ -85,6 +86,54 @@ async def tool_search_policies_by_metadata(
 # ─────────────────────────────────────────────────────────────
 # 도구 #2 (벡터 검색)
 # ─────────────────────────────────────────────────────────────
+def _kw_tokens(q: str) -> list:
+    toks = [t for t in re.split(r"[\s,./?!()·:;]+", q or "") if len(t) >= 2]
+    return toks[:6] or ([q] if q else [])
+
+
+async def _keyword_text_search(query: str, top_k: int = 5) -> dict:
+    """임베딩(벡터) 사용 불가 시(예: Gemini 크레딧 소진) 키워드 ILIKE 텍스트 검색 폴백."""
+    toks = _kw_tokens(query)
+
+    async def run(db: AsyncSession):
+        conds = []
+        for t in toks:
+            like = f"%{t}%"
+            conds.append(models.WelfarePolicy.title.ilike(like))
+            conds.append(models.WelfarePolicy.short_summary.ilike(like))
+        stmt = (select(models.WelfarePolicy)
+                .where(models.WelfarePolicy.active.isnot(False))
+                .where(or_(*conds))
+                .limit(min(max(top_k, 1), 15)))
+        rows = (await db.execute(stmt)).scalars().all()
+        if not rows and toks:
+            cconds = [models.PolicyChunk.content.ilike(f"%{t}%") for t in toks]
+            cstmt = (select(models.WelfarePolicy)
+                     .join(models.PolicyChunk, models.PolicyChunk.policy_id == models.WelfarePolicy.id)
+                     .where(models.WelfarePolicy.active.isnot(False))
+                     .where(or_(*cconds)).distinct()
+                     .limit(min(max(top_k, 1), 15)))
+            rows = (await db.execute(cstmt)).scalars().all()
+        return {
+            "query": query,
+            "search_mode": "keyword_text_fallback",
+            "ai_instruction": "벡터 검색을 쓸 수 없어 키워드 매칭으로 찾은 결과입니다. 관련성이 낮을 수 있으니 확실치 않으면 보건복지부 129 안내를 덧붙이세요.",
+            "sources_top3": _top_sources_from_fd(rows[0].full_data) if rows else [],
+            "results": [
+                {
+                    "policy_id": p.id,
+                    "title": p.title,
+                    "category": p.category,
+                    "policy_summary": p.short_summary,
+                    "matched_chunk_type": "text_match",
+                    "matched_content": p.short_summary,
+                }
+                for p in rows
+            ],
+        }
+    return await _with_session(run)
+
+
 async def tool_search_by_keyword(query: str, top_k: int = 5, *, embed_fn) -> dict:
     """자연어 질문을 768차원 벡터로 변환한 뒤 모든 청크에서 의미적으로 가까운 결과를 찾습니다.
 
@@ -93,7 +142,11 @@ async def tool_search_by_keyword(query: str, top_k: int = 5, *, embed_fn) -> dic
         top_k: 반환 개수
         embed_fn: 임베딩 함수 (main.py 의 _embed)
     """
-    qvec = embed_fn(query)
+    try:
+        qvec = embed_fn(query)
+    except Exception as e:
+        logger.warning("임베딩 실패 — 키워드 텍스트 검색 폴백: %s", str(e)[:120])
+        return await _keyword_text_search(query, top_k)
 
     async def run(db: AsyncSession):
         stmt = (
@@ -211,7 +264,11 @@ async def tool_find_operating_agencies(query: str, limit: int = 3, *, embed_fn) 
         limit: 반환 개수
         embed_fn: 임베딩 함수
     """
-    qvec = embed_fn(query)
+    try:
+        qvec = embed_fn(query)
+    except Exception as e:
+        logger.warning("임베딩 실패 — 기관 키워드 텍스트 검색 폴백: %s", str(e)[:120])
+        return await _keyword_text_search(query, limit)
 
     async def run(db: AsyncSession):
         stmt = (

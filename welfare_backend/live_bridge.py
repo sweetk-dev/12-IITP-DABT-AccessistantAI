@@ -23,6 +23,7 @@ from starlette.websockets import WebSocketState
 from tool_handlers import get_tool_dispatcher
 from unresolved_logger import TurnTracker
 from database import AsyncSessionLocal
+from local_pipeline import LocalVoiceSession, local_fallback_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -870,9 +871,46 @@ async def handle_live_chat(
         # while True 가 다시 돌면서 새 connect (handle 사용 시 컨텍스트 이어받음)
 
     except Exception as e:
+        # 재연결 불가 오류(결제 크레딧 소진·권한·quota 등). 원문(예: "prepayment credits
+        # depleted")은 이용자에게 절대 노출 금지 — silent 처리. 로컬 폴백이 켜져 있고 ws 가
+        # 살아있으면 온프레미스 음성 파이프라인으로 조용히 전환한다.
         logger.exception("Gemini Live 연결 실패 (재연결 불가능한 오류): %s", e)
+        emsg = str(e).lower()
+        nonretryable = any(k in emsg for k in (
+            "prepayment", "billing", "credit", "quota", "resource_exhausted",
+            "permission", "unauthenticated", "api key", "api_key", " 429", "429 ",
+            " 403", "403 ", " 401", "401 "))
+        if (local_fallback_enabled() and nonretryable
+                and websocket.client_state == WebSocketState.CONNECTED):
+            logger.warning("🔁 Gemini 재연결 불가(%s) — 로컬 폴백 파이프라인으로 silent 전환",
+                           type(e).__name__)
+            try:
+                sess = LocalVoiceSession(
+                    websocket=websocket,
+                    dispatcher=dispatcher,
+                    embed_fn=embed_fn,
+                    system_instruction=SYSTEM_INSTRUCTION,
+                    tracker_factory=lambda: TurnTracker(session_id=session_id,
+                                                        session_factory=AsyncSessionLocal),
+                    session_id=str(session_id),
+                    extract_sources=_extract_sources,
+                    prior_history=list(convo_history),
+                    greet=(len(convo_history) == 0),
+                )
+                await sess.run()
+            except Exception as e2:
+                logger.exception("로컬 폴백 세션 오류: %s", e2)
+            finally:
+                try:
+                    if websocket.client_state == WebSocketState.CONNECTED:
+                        await websocket.close()
+                except Exception:
+                    pass
+            return
+        # 폴백 비활성/불가 — 결제 문구 노출 금지, 일반 안내로 갈음.
         try:
-            await _safe_send_json(websocket,{"type": "error", "message": str(e)})
+            await _safe_send_json(websocket, {"type": "error",
+                "message": "일시적으로 상담 연결이 어렵습니다. 잠시 후 다시 시도해 주세요."})
             await websocket.close()
         except Exception:
             pass

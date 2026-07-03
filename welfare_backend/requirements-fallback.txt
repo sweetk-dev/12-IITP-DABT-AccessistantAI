@@ -1,0 +1,25 @@
+# requirements-fallback.txt
+# Gemini Live 폴백(온프레미스 음성 파이프라인) 전용 의존성.
+# 메인 requirements.txt 와 분리 — 폴백 미사용 시 이미지에 영향 없이 관리하기 위함.
+# Dockerfile 에서 별도 RUN 레이어로 설치.
+#
+# 주의: torch 는 CPU 전용 휠 사용(GPU는 gemma4:26b 가 상주 점유).
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# STT — CTranslate2 기반 (GPU 불필요, int8 CPU)
+faster-whisper>=1.0
+
+# VAD — 발화 종료 감지 (torch 필요)
+silero-vad>=5.1
+torch>=2.2
+
+# 오디오 리샘플/입출력
+scipy>=1.11
+soundfile>=0.12
+
+# TTS 엔진 (택1 — LOCAL_TTS_ENGINE 로 선택)
+#  · MeloTTS(KR, 품질 우선/기본): PyPI 미제공 → 아래 명령으로 별도 설치
+#      pip install git+https://github.com/myshell-ai/MeloTTS.git
+#      python -m unidic download
+#  · Piper(경량/대안): pip install piper-tts + ko_KR onnx 모델 배치
+# 두 엔진 모두 미설치여도 파이프라인은 텍스트+전사로 안전 동작(음성만 생략).
