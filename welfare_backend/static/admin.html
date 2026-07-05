@@ -247,7 +247,7 @@ function showTab(t){
   if(t==="overview") loadOverview(); else if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else if(t==="ops") loadOps(); else if(t==="discovery") loadDiscovery(); else loadList();
 }
 function refresh(){ if(curTab==="overview") loadOverview(); else if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else if(curTab==="ops") loadOps(); else if(curTab==="discovery") loadDiscovery(); else loadList(); }
-function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmt(v){ if(v===null||v===undefined) return "(없음)"; return (typeof v==="object")? JSON.stringify(v,null,2):String(v); }
 
 /* ===== 필드 단위 diff(줄/단어) 렌더 ===== */
@@ -392,7 +392,7 @@ async function applySel(pid){ const keys=Array.from(document.querySelectorAll(".
   const reingest=document.getElementById("reingest").checked; document.getElementById("btnApply").disabled=true; setMsg("msg","반영 중…");
   try{ const r=await fetch(SAPI+"/"+pid+"/apply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({selected_keys:keys,reingest})});
     const j=await r.json();
-    if(r.ok){ setMsg("msg","반영 완료: "+(j.applied_keys||[]).join(", ")+(j.reingested?" · 재적재됨":"")); current=null;
+    if(r.ok){ const ri=j.reingested==="running"?" · 재적재 진행 중(백그라운드)":(j.reingested?" · 재적재됨":""); setMsg("msg","반영 완료: "+(j.applied_keys||[]).join(", ")+ri); current=null;
       setTimeout(()=>{loadList(); document.getElementById("detail").innerHTML='<div class="empty">반영 완료.</div>';},800); }
     else{ const d=j.detail||j; setMsg("msg","실패: "+(d.error||"")+(d.details?" ("+d.details.join("; ")+")":""),true); document.getElementById("btnApply").disabled=false; }
   }catch(e){ setMsg("msg","오류: "+e,true); document.getElementById("btnApply").disabled=false; }
@@ -583,10 +583,11 @@ async function runDiscovery(){
     }
     if(btn){ btn.disabled=false; btn.textContent=orig||"지금 발굴 실행"; }
     let msg="발굴 완료";
-    try{ const o=JSON.parse(out||"{}");
+    if(out===null){ msg="발굴이 아직 실행 중입니다 — 잠시 후 발굴 탭을 새로고침해 확인하세요."; }
+    else try{ const o=JSON.parse(out||"{}");
       if(o.error) msg="발굴 오류: "+o.error;
       else if(o.note) msg="발굴 완료 — "+o.note;
-      else msg="발굴 완료 — 군집 "+(o.clusters||0)+" · 신규 후보 "+(o.candidates||0)+"건";
+      else msg="발굴 완료 — 군집 "+(o.clusters||0)+" · 신규 후보 "+(o.new_candidates||0)+" · 기존 보강(gap) "+(o.gap_staged||0)+"건";
     }catch(e){}
     alert(msg);
     loadOps(); loadDiscovery();
@@ -621,7 +622,7 @@ async function approveCand(){
   document.getElementById("dApprove").disabled=true; setMsg("dmodalmsg","승인 중…");
   try{ const r=await fetch(DAPI+"/candidate/"+curCand+"/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({draft_item:draft})});
     const j=await r.json();
-    if(r.ok){ setMsg("dmodalmsg","등록 완료: "+(j.policy_id||"")); setTimeout(()=>{document.getElementById("dmodal").classList.remove("on"); loadDiscovery();},800); }
+    if(r.ok){ setMsg("dmodalmsg","등록 완료: "+(j.policy_id||"")+(j.reingested==="running"?" · 재적재 진행 중(백그라운드)":"")); setTimeout(()=>{document.getElementById("dmodal").classList.remove("on"); loadDiscovery();},1000); }
     else { const dt=j.detail||j; setMsg("dmodalmsg","실패: "+(dt.error||"")+(dt.details?" ("+dt.details.join("; ")+")":""),true); document.getElementById("dApprove").disabled=false; }
   }catch(e){ setMsg("dmodalmsg","오류: "+e,true); document.getElementById("dApprove").disabled=false; }
 }

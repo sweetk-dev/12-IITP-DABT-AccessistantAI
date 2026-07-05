@@ -351,6 +351,49 @@ def _has_termination_evidence(evidence: str) -> bool:
     return any(m in text for m in TERMINATION_MARKERS)
 
 
+def _loads_lenient(raw):
+    """LLM 패치 응답 JSON 파싱 — 정상 실패 시 유효 접두부를 복구(중간 손상/토큰 절단 대비).
+    복구본은 이후 schema 검증 + 사람 검토(staging)를 거치므로 부분 패치도 안전.
+    (discovery_core._salvage_json 과 동일한 접근 — 값 완결지점마다 후보를 두고 뒤에서부터 닫아 최대 유효 접두부 채택.)"""
+    try:
+        return json.loads(raw)
+    except Exception:
+        pass
+    i = raw.find("{")
+    span = raw[i:] if i != -1 else raw
+    stack = []
+    in_str = False
+    esc = False
+    cuts = []
+    for idx, ch in enumerate(span):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+                cuts.append((idx + 1, tuple(stack)))
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in "{[":
+            stack.append("}" if ch == "{" else "]")
+        elif ch in "}]":
+            if stack:
+                stack.pop()
+            cuts.append((idx + 1, tuple(stack)))
+        elif ch == ",":
+            cuts.append((idx, tuple(stack)))
+    for end, st in reversed(cuts):
+        cand = span[:end].rstrip().rstrip(",") + "".join(reversed(list(st)))
+        try:
+            return json.loads(cand)
+        except Exception:
+            continue
+    raise ValueError("패치 JSON 복구 실패")
+
+
 def _apply_patch(existing: dict, patches: list):
     """패치를 기존 문서에 적용한다. add/update 만 자동 적용하고, 패치에 명시되지
     않은 필드는 절대 변경하지 않는다(미변경 필드 불변 보장). delete 는 적용하지
@@ -421,14 +464,38 @@ async def update_item_via_llm(
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw).strip()
 
+    _salvaged = False
     try:
         patch_obj = json.loads(raw)
-        patches = patch_obj.get("patches", []) if isinstance(patch_obj, dict) else []
-    except Exception as e:
-        logger.error("LLM 응답이 유효한 패치 JSON 이 아님: %s", e)
-        debug = staging_dir / f"{existing['id']}_FAILED_{date.today()}.txt"
-        debug.write_text(raw, encoding="utf-8")
-        raise RuntimeError(f"LLM 응답 패치 파싱 실패 — {debug}")
+    except Exception:
+        # 중간 손상/토큰 절단 → 유효 접두부 복구 시도(복구본도 schema 검증 + 사람 검토 staging 을 거침)
+        try:
+            patch_obj = _loads_lenient(raw)
+            _salvaged = True
+            logger.warning("LLM 패치 JSON 직접 파싱 실패 → 부분 복구 사용(%s)", existing.get("id"))
+        except Exception as e:
+            logger.error("LLM 응답이 유효한 패치 JSON 이 아님: %s", e)
+            debug = staging_dir / f"{existing['id']}_FAILED_{date.today()}.txt"
+            debug.write_text(raw, encoding="utf-8")
+            raise RuntimeError(f"LLM 응답 패치 파싱 실패 — {debug}")
+    patches = patch_obj.get("patches", []) if isinstance(patch_obj, dict) else []
+    if _salvaged:
+        # 복구 결과에서는 절단된 꼬리 패치(값 누락)를 제거 — None 조용히 반영되는 것 방지
+        def _complete(op):
+            if not isinstance(op, dict):
+                return False
+            k, path = op.get("op"), op.get("path")
+            if k == "update":
+                return bool(path) and "new" in op
+            if k == "add":
+                return bool(path) and "value" in op
+            if k == "delete":
+                return bool(path)
+            return False
+        _before = len(patches)
+        patches = [op for op in patches if _complete(op)]
+        if len(patches) != _before:
+            logger.warning("복구 패치 중 불완전 %d건 제거(%s)", _before - len(patches), existing.get("id"))
 
     # 패치 적용 — 미변경 필드는 그대로 두고, delete 는 검토로 분리
     new_data, applied, review = _apply_patch(existing, patches)

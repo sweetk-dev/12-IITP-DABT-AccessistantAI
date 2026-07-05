@@ -2,6 +2,7 @@
 # Welfare Policy AI Bridge API v1.1
 # - 5종 Function Calling 도구 모두 구현
 # - Fat Tool Response 패턴 (보고서 v1.2 §7.2)
+import asyncio
 import logging
 import os
 from typing import Optional
@@ -190,7 +191,7 @@ async def search_by_keyword(
     top_k: int = Query(5, ge=1, le=15),
     db: AsyncSession = Depends(get_db),
 ):
-    qvec = _embed(query)
+    qvec = await asyncio.to_thread(_embed, query)
     stmt = (
         select(
             models.PolicyChunk.policy_id,
@@ -332,7 +333,7 @@ async def find_operating_agencies(
     limit: int = Query(3, ge=1, le=10),
     db: AsyncSession = Depends(get_db),
 ):
-    qvec = _embed(query)
+    qvec = await asyncio.to_thread(_embed, query)
     stmt = (
         select(
             models.PolicyChunk.policy_id,

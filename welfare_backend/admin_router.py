@@ -28,6 +28,15 @@ import discovery_core as dc  # noqa: E402
 router = APIRouter(tags=["admin"])
 
 
+def _reingest_bg(policy_ids):
+    """DB 부분 재적재(임베딩 재생성)를 백그라운드 스레드로 실행 — 동기 응답의 nginx 타임아웃 회피."""
+    ids = [i for i in (policy_ids or []) if i]
+    if not ids:
+        return
+    import threading
+    threading.Thread(target=rc.trigger_reingest, args=(ids,), daemon=True).start()
+
+
 @router.get("/admin/api/staging")
 def staging_list():
     return rc.list_pending()
@@ -43,13 +52,19 @@ def staging_review(policy_id: str):
 
 @router.post("/admin/api/staging/{policy_id}/apply")
 def staging_apply(policy_id: str, payload: dict = Body(default={})):
+    want_reingest = bool(payload.get("reingest", True))
+    # 파일 반영은 동기(빠름), DB 재적재(임베딩 재생성)는 느려 nginx 프록시 타임아웃(HTML 504)을
+    # 유발 → 재적재는 백그라운드 스레드로 분리하고 즉시 응답.
     r = rc.apply_selected(
         policy_id,
         payload.get("selected_keys", []),
-        bool(payload.get("reingest", True)),
+        reingest=False,
     )
     if not r.get("ok"):
         raise HTTPException(status_code=400, detail=r)
+    if want_reingest:
+        _reingest_bg([policy_id])
+        r["reingested"] = "running"
     return r
 
 
@@ -286,11 +301,15 @@ def discovery_approve(cid: str, payload: dict = Body(default={})):
     draft = payload.get("draft_item") or cand.get("draft_item")
     if not draft:
         raise HTTPException(status_code=400, detail={"error": "초안 없음 — 승인 불가"})
-    r = pc.create_policy(draft, slug=(draft.get("title") or "new"))
+    # LLM 초안의 흔한 구조 불일치(문자열/enum)를 스키마 형태로 보정해 등록 검증 실패를 방지.
+    draft = dc._coerce_schema_shapes(draft)
+    # 파일 등록은 동기, DB 재적재는 느려 nginx 타임아웃 → 백그라운드로 분리.
+    r = pc.create_policy(draft, slug=(draft.get("title") or "new"), reingest=False)
     if not r.get("ok"):
         raise HTTPException(status_code=400, detail=r)
     dc.set_status(cid, "approved", policy_id=r.get("policy_id"))
-    return {"ok": True, "policy_id": r.get("policy_id"), "candidate": cid}
+    _reingest_bg([r.get("policy_id")])
+    return {"ok": True, "policy_id": r.get("policy_id"), "candidate": cid, "reingested": "running"}
 
 
 @router.post("/admin/api/discovery/candidate/{cid}/enrich")

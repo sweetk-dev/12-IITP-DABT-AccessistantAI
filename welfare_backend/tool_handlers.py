@@ -5,6 +5,7 @@
 #
 # FastAPI 엔드포인트는 Depends(get_db) 의존성 주입 때문에 Gemini Live tools 에
 # 그대로 넣을 수 없어, 같은 DB 세션 헬퍼를 받는 일반 함수로 분리했습니다.
+import asyncio
 import logging
 import re
 from typing import Optional
@@ -143,7 +144,7 @@ async def tool_search_by_keyword(query: str, top_k: int = 5, *, embed_fn) -> dic
         embed_fn: 임베딩 함수 (main.py 의 _embed)
     """
     try:
-        qvec = embed_fn(query)
+        qvec = await asyncio.to_thread(embed_fn, query)
     except Exception as e:
         logger.warning("임베딩 실패 — 키워드 텍스트 검색 폴백: %s", str(e)[:120])
         return await _keyword_text_search(query, top_k)
@@ -265,7 +266,7 @@ async def tool_find_operating_agencies(query: str, limit: int = 3, *, embed_fn) 
         embed_fn: 임베딩 함수
     """
     try:
-        qvec = embed_fn(query)
+        qvec = await asyncio.to_thread(embed_fn, query)
     except Exception as e:
         logger.warning("임베딩 실패 — 기관 키워드 텍스트 검색 폴백: %s", str(e)[:120])
         return await _keyword_text_search(query, limit)
