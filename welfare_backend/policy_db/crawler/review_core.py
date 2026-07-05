@@ -181,7 +181,9 @@ def apply_selected(policy_id, selected_keys, reingest=True):
 
     diff_keys = {k for k in set(existing) | set(new_data) if existing.get(k) != new_data.get(k)}
     sel = set(selected_keys or []) & diff_keys
-    if not sel:
+    if not sel and (diff_keys - META_KEYS):
+        # 내용(비메타) 변경이 있는데 아무것도 선택하지 않은 경우만 거부.
+        # 재검증 확정(메타 전용/0변경)은 선택 없이 메타 반영 + 대기열 정리로 진행.
         return {"ok": False, "error": "선택된 변경 없음"}
     apply_keys = set(sel) | {mk for mk in META_KEYS if mk in diff_keys}
 
@@ -224,6 +226,16 @@ def apply_selected(policy_id, selected_keys, reingest=True):
             result["reingested"] = False
             result["reingest_error"] = str(e)
     return result
+
+
+def trigger_reingest(policy_ids):
+    """DB 부분 재적재만 수행(파일 반영과 분리) — 웹 요청의 백그라운드 스레드에서 호출.
+    ingest_sync.py 를 별도 프로세스로 돌려 변경된 정책의 청크·임베딩만 재생성."""
+    try:
+        ca._trigger_reingest(policy_ids)
+        return {"ok": True, "reingested": True}
+    except Exception as e:
+        return {"ok": False, "reingest_error": str(e)}
 
 
 def reject(policy_id):
