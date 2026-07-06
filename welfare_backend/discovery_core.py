@@ -178,20 +178,65 @@ def _gemma_generate(prompt, max_tokens=8000):
         return ""
 
 
+def _salvage_json(span):
+    """잘리거나 중간이 깨진 JSON에서 최대한 유효한 접두부를 복구.
+    grounding 응답이 인용마커·미이스케이프 따옴표·토큰절단으로 깨질 때 사용.
+    값이 완결되는 지점(문자열/객체/배열 끝, 콤마 직전)마다 후보를 두고,
+    뒤에서부터 열린 브래킷을 닫아 파싱 성공하는 최대 접두부를 채택."""
+    stack = []
+    in_str = False
+    esc = False
+    cuts = []  # (자를 길이, 그 시점의 열린 브래킷 스택)
+    for i, ch in enumerate(span):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+                cuts.append((i + 1, tuple(stack)))   # 문자열 값 끝
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in "{[":
+            stack.append("}" if ch == "{" else "]")
+        elif ch in "}]":
+            if stack:
+                stack.pop()
+            cuts.append((i + 1, tuple(stack)))       # 객체/배열 끝
+        elif ch == ",":
+            cuts.append((i, tuple(stack)))           # 콤마 직전까지 완결
+    for end, st in reversed(cuts):
+        cand = span[:end].rstrip().rstrip(",") + "".join(reversed(list(st)))
+        try:
+            return json.loads(cand)
+        except Exception:
+            continue
+    raise ValueError("JSON 복구 실패")
+
+
 def _parse_json(raw):
     raw = (raw or "").strip()
     if raw.startswith("```"):
         raw = raw.strip("`")
         raw = raw[4:].strip() if raw[:4].lower() == "json" else raw
-    # grounding 응답은 앞뒤 텍스트가 섞일 수 있어 첫 { ~ 마지막 } 추출 폴백
     try:
         return json.loads(raw)
     except Exception:
-        i, j = raw.find("{"), raw.rfind("}")
-        k, l = raw.find("["), raw.rfind("]")
-        if k != -1 and (i == -1 or k < i):
-            return json.loads(raw[k:l + 1])
-        return json.loads(raw[i:j + 1])
+        pass
+    # grounding 응답은 앞뒤 텍스트가 섞일 수 있어 첫 { ~ 마지막 } (또는 [ ~ ]) 스팬 추출
+    i, j = raw.find("{"), raw.rfind("}")
+    k, l = raw.find("["), raw.rfind("]")
+    if k != -1 and (i == -1 or k < i):
+        start, span = k, (raw[k:l + 1] if l > k else raw[k:])
+    else:
+        start, span = i, (raw[i:j + 1] if (i != -1 and j > i) else raw[i:] if i != -1 else raw)
+    try:
+        return json.loads(span)
+    except Exception:
+        # 중간 손상/토큰 절단 → 유효 접두부 복구
+        return _salvage_json(raw[start:] if start != -1 else raw)
 
 
 def _existing_titles():
@@ -297,6 +342,8 @@ def run_discovery():
             draft = _parse_json(_gemini(draft_prompt, grounding=True, model=_model_for("draft")))
         except Exception as e:
             logger.warning("초안 실패(topic=%s): %s", topic, e)
+        if isinstance(draft, dict):
+            draft = _coerce_schema_shapes(draft)
         cid = "C" + datetime.now().strftime("%Y%m%d%H%M%S%f")[:18]
         cand = {"candidate_id": cid, "topic": topic, "cluster_queries": member_qs,
                 "query_ids": member_ids, "classification": c, "draft_item": draft, "status": "pending",
@@ -429,6 +476,85 @@ def _deep_fill(base, add):
     return filled
 
 
+# ── 초안 형태 보정 — LLM 초안의 흔한 구조 불일치를 스키마 형태로 감싼다(등록 스키마 검증 실패 방지) ──
+# 값 자체는 보존하고 구조만 맞춘다(추측·창작 없음). object 자리에 온 문자열은 대표 키로 감싸고,
+# object 배열 자리에 온 문자열 원소도 대표 키로 감싼다. application.where.method 는 enum 으로 매핑.
+_METHOD_ENUM = {"방문", "온라인", "전화", "우편", "모바일 앱"}
+
+
+def _guess_method(text):
+    """자유 텍스트 신청방법을 스키마 enum 중 하나로 매핑(불명확하면 None)."""
+    t = str(text or "")
+    if any(w in t for w in ("모바일", "어플", "앱", "APP", "app")):
+        return "모바일 앱"
+    if any(w in t for w in ("온라인", "인터넷", "누리집", "홈페이지", "웹", "http", "www", "복지로", "정부24")):
+        return "온라인"
+    if any(w in t for w in ("전화", "콜센터", "유선", "☎")):
+        return "전화"
+    if any(w in t for w in ("우편", "등기", "팩스")):
+        return "우편"
+    if any(w in t for w in ("방문", "센터", "구청", "주민센터", "행정복지", "동사무소", "접수처", "창구", "군청", "시청")):
+        return "방문"
+    return None
+
+
+def _wrap_str(v, key):
+    """문자열이면 {key: 문자열} 로 감싸 반환, 그 외(dict/None)면 그대로."""
+    return {key: v} if isinstance(v, str) and v.strip() else v
+
+
+def _coerce_schema_shapes(d):
+    """LLM 초안의 흔한 형태 불일치를 스키마 형태로 보정. 등록 전 승인/생성/보강 경로에서 호출."""
+    if not isinstance(d, dict):
+        return d
+    # object 자리에 문자열이 온 경우 대표 키로 감싸기
+    for key, subkey in (("supported_amount", "scope"), ("eligibility", "target"),
+                        ("how_to_use", "default"), ("validity", "expiry")):
+        if isinstance(d.get(key), str):
+            d[key] = _wrap_str(d[key], subkey)
+    # object 배열 자리: 문자열(단일) → [{대표키: 문자열}], 리스트 안 문자열 원소 → {대표키: 문자열}
+    for key, subkey in (("operating_agencies", "agency"), ("legal_basis", "name"),
+                        ("contact", "name")):
+        v = d.get(key)
+        if isinstance(v, str) and v.strip():
+            d[key] = [{subkey: v}]
+        elif isinstance(v, list):
+            d[key] = [(_wrap_str(it, subkey) if isinstance(it, str) else it) for it in v]
+    # string 배열 자리: 문자열(단일) → [문자열]
+    for key in ("exceptions_and_caveats", "related_items"):
+        if isinstance(d.get(key), str) and d[key].strip():
+            d[key] = [d[key]]
+    # application: 문자열이면 where 로 감싸고, where[].method 를 enum 으로 매핑, fee 문자열이면 감싸기
+    app = d.get("application")
+    if isinstance(app, str):
+        app = {"where": [{"channel": app}]}
+        d["application"] = app
+    if isinstance(app, dict):
+        where = app.get("where")
+        if isinstance(where, list):
+            fixed = []
+            for w in where:
+                if isinstance(w, str):
+                    w = {"channel": w}
+                if isinstance(w, dict):
+                    m = w.get("method")
+                    if m is not None and m not in _METHOD_ENUM:
+                        if not w.get("channel"):
+                            w["channel"] = m        # 원문은 channel 에 보존
+                        g = _guess_method(m)
+                        if g:
+                            w["method"] = g
+                        else:
+                            w.pop("method", None)   # 매핑 불가 → 선택 필드이므로 생략
+                fixed.append(w)
+            app["where"] = fixed
+        if isinstance(app.get("fee"), str):
+            app["fee"] = {"default": app["fee"]}
+        if isinstance(app.get("required_documents"), str) and app["required_documents"].strip():
+            app["required_documents"] = [app["required_documents"]]
+    return d
+
+
 def enrich_candidate(cid, draft_override=None):
     """신규 후보 초안의 비어 있는 핵심 운영 정보를 외부검색으로 보강.
     - status 변경/items 등록 없음(검토 전용). 후보 파일에 보강 결과 저장.
@@ -502,6 +628,7 @@ def enrich_candidate(cid, draft_override=None):
     if faq_added:
         filled = list(dict.fromkeys(filled + ["faq"]))
     draft["last_verified"] = date.today().isoformat()
+    draft = _coerce_schema_shapes(draft)
     cand["draft_item"] = draft
     cand["enriched_at"] = datetime.now().isoformat(timespec="seconds")
     cand["enrich_count"] = int(cand.get("enrich_count") or 0) + 1
