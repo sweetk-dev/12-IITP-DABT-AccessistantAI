@@ -311,11 +311,14 @@ import route_client
 
 
 def _fac_labels(facilities: dict) -> list:
+    """01 통합DB `poi_tour_bf_facility` 실제 컬럼명 기준 (2026-07-13 실측)."""
     label = {
-        "dis_toilet_yn": "장애인 화장실",
+        "toilet_yn": "장애인 화장실",
         "elevator_yn": "엘리베이터",
-        "dis_parking_yn": "장애인 주차장",
+        "parking_yn": "장애인 주차장",
         "slope_yn": "경사로",
+        "subway_yn": "지하철 접근",
+        "bus_stop_yn": "버스정류장 접근",
         "wheelchair_rent_yn": "휠체어 대여",
         "tactile_map_yn": "촉지도",
         "audio_guide_yn": "오디오 가이드",
