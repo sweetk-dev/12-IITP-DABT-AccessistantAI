@@ -141,12 +141,25 @@ async def health_check():
 # ─────────────────────────────────────────────────────────────
 @app.get("/api/v1/config", tags=["meta"], summary="프런트 런타임 설정")
 async def front_config():
+    # 서비스 가능한 공간 범위 — 프런트가 "지역 밖입니다" 를 판단해 출발지 선택을 유도한다.
+    # 경로 서비스가 없거나 응답하지 않으면 생략(기능 자체가 꺼진 상태이므로 무해).
+    service_area = None
+    if route_client.enabled():
+        meta = await route_client.meta_network()
+        if meta.get("status") != "error" and meta.get("bbox"):
+            service_area = {
+                "region": meta.get("region"),
+                "bbox": meta["bbox"],
+                "network_version": meta.get("network_version"),
+            }
+
     return {
         "kakao_js_key": os.environ.get("KAKAO_JS_KEY", ""),
         "features": {
             "route": route_client.FEATURE_ROUTE and bool(route_client.BASE_URL),
             "tour": route_client.FEATURE_TOUR and bool(route_client.BASE_URL),
         },
+        "service_area": service_area,
         "map": {
             # 안양시청 — 위치 권한 거부 시 지도 초기 중심
             "default_center": {"lat": 37.3943, "lng": 126.9568},

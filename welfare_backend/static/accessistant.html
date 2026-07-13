@@ -767,6 +767,23 @@ window.NAVI = (function(){
   var spots=[], route=null, steps=[], stepIdx=0, guiding=false;
   var here=null, voiceOn=true, watchId=null;
   var profile="wheelchair_manual";
+  var originOverride=null;      // 지도에서 직접 지정한 출발지 (서비스 지역 밖일 때 사용)
+  var originMarker=null;
+  var outOfArea=false;
+
+  // 실제 출발지 — 직접 지정한 곳이 있으면 그것이 우선한다(현재 위치가 안양 밖일 수 있으므로)
+  function activeOrigin(){ return originOverride || here; }
+
+  function inServiceArea(pt){
+    var a = cfg && cfg.service_area && cfg.service_area.bbox;
+    if(!a || !pt) return true;                 // 범위 정보가 없으면 판단하지 않는다
+    var m = 0.01;                              // 약 1km 여유
+    return pt.lat >= a.min_lat - m && pt.lat <= a.max_lat + m
+        && pt.lng >= a.min_lng - m && pt.lng <= a.max_lng + m;
+  }
+  function regionName(){
+    return (cfg && cfg.service_area && cfg.service_area.region) || "안양시";
+  }
 
   var $ = function(id){ return document.getElementById(id); };
   function status(msg){ var el=$("naviStatus"); if(el) el.textContent=msg; }
@@ -816,6 +833,32 @@ window.NAVI = (function(){
       center: new kakao.maps.LatLng(c.lat, c.lng),
       level: (cfg.map && cfg.map.default_level) || 5
     });
+    // 지도를 눌러 출발지 지정 (서비스 지역 밖이거나, 다른 곳에서 출발하고 싶을 때)
+    kakao.maps.event.addListener(map, "click", function(e){
+      var ll = e.latLng;
+      setOrigin(ll.getLat(), ll.getLng());
+    });
+  }
+
+  function setOrigin(lat, lng){
+    if(!inServiceArea({lat:lat, lng:lng})){
+      status("출발지는 " + regionName() + " 안에서 선택해 주세요.");
+      speak("출발지는 " + regionName() + " 안에서 선택해 주세요.");
+      return;
+    }
+    originOverride = {lat:lat, lng:lng};
+    if(map){
+      var pos = new kakao.maps.LatLng(lat, lng);
+      if(!originMarker){
+        originMarker = new kakao.maps.Circle({center:pos, radius:14, strokeWeight:3,
+          strokeColor:"#16A34A", strokeOpacity:0.9, fillColor:"#16A34A", fillOpacity:0.75});
+        originMarker.setMap(map);
+      } else { originMarker.setPosition(pos); }
+    }
+    status("출발지를 지정했습니다. 관광지를 선택하면 이곳에서 경로를 안내합니다.");
+    speak("출발지를 지정했습니다.");
+    sendLocation();
+    renderSpotsPanel();
   }
 
   /* ── 현재 위치 ── */
@@ -823,8 +866,19 @@ window.NAVI = (function(){
     if(!navigator.geolocation){ status("이 브라우저는 위치 기능을 지원하지 않습니다."); return; }
     watchId = navigator.geolocation.watchPosition(function(pos){
       here = {lat: pos.coords.latitude, lng: pos.coords.longitude};
-      status("현재 위치를 확인했습니다.");
       drawMe();
+      if(!inServiceArea(here)){
+        // 서비스 지역 밖 — 경로를 만들 수 없다. 지도에서 출발지를 고르게 안내한다.
+        outOfArea = true;
+        if(!originOverride){
+          status("이 서비스는 " + regionName() + " 지역만 안내합니다. 지도를 눌러 출발지를 지정해 주세요.");
+          if(map) map.setCenter(new kakao.maps.LatLng(
+            (cfg.map.default_center.lat), (cfg.map.default_center.lng)));
+        }
+      } else {
+        outOfArea = false;
+        if(!originOverride) status("현재 위치를 확인했습니다.");
+      }
       sendLocation();
       if(guiding) advanceStep();
     }, function(){
@@ -832,8 +886,10 @@ window.NAVI = (function(){
     }, {enableHighAccuracy:true, maximumAge:5000, timeout:10000});
   }
   function sendLocation(){
-    if(!wsRef || wsRef.readyState !== 1 || !here) return;
-    try{ wsRef.send(JSON.stringify({type:"location", lat:here.lat, lng:here.lng})); }catch(e){}
+    var o = activeOrigin();
+    if(!wsRef || wsRef.readyState !== 1 || !o) return;
+    // 상담원(도구)이 쓰는 출발지도 화면과 동일해야 한다 — 직접 지정한 출발지를 그대로 보낸다.
+    try{ wsRef.send(JSON.stringify({type:"location", lat:o.lat, lng:o.lng})); }catch(e){}
   }
   function drawMe(){
     if(!map || !here) return;
@@ -877,10 +933,20 @@ window.NAVI = (function(){
 
   /* ── 경로 요청·표시 ── */
   async function requestRoute(spot){
-    if(!here){ status("현재 위치를 먼저 확인해야 경로를 만들 수 있습니다."); speak("현재 위치를 확인할 수 없습니다. 위치 권한을 허용해 주세요."); return; }
+    var o = activeOrigin();
+    if(!o){
+      status("현재 위치를 확인할 수 없습니다. 위치 권한을 허용하거나 지도를 눌러 출발지를 지정해 주세요.");
+      speak("현재 위치를 확인할 수 없습니다. 지도를 눌러 출발지를 지정해 주세요.");
+      return;
+    }
+    if(!inServiceArea(o)){
+      status("현재 위치가 " + regionName() + " 밖입니다. 지도를 눌러 출발지를 지정해 주세요.");
+      speak("현재 위치가 " + regionName() + " 밖입니다. 지도를 눌러 출발지를 지정해 주세요.");
+      return;
+    }
     status(spot.name + " 까지 경로를 찾는 중입니다…");
     var qs = new URLSearchParams({
-      destination_poi_id: spot.poi_id, origin_lat: here.lat, origin_lng: here.lng,
+      destination_poi_id: spot.poi_id, origin_lat: o.lat, origin_lng: o.lng,
       destination_type: "tour", profile: profile
     });
     try{
@@ -948,6 +1014,26 @@ window.NAVI = (function(){
     var body=$("naviSheetBody");
     body.textContent="";
     var h=document.createElement("h2"); h.textContent="무장애 관광지"; body.appendChild(h);
+
+    if(originOverride){
+      var oi=document.createElement("p"); oi.className="c-note";
+      oi.textContent="※ 지도에서 지정한 출발지에서 안내합니다.";
+      var rb=document.createElement("button"); rb.type="button"; rb.className="chip";
+      rb.style.marginLeft="6px"; rb.textContent="현재 위치로 되돌리기";
+      rb.addEventListener("click", function(){
+        originOverride=null;
+        if(originMarker){ originMarker.setMap(null); originMarker=null; }
+        status(outOfArea ? ("이 서비스는 " + regionName() + " 지역만 안내합니다. 지도를 눌러 출발지를 지정해 주세요.")
+                         : "현재 위치에서 안내합니다.");
+        renderSpotsPanel();
+      });
+      oi.appendChild(rb);
+      body.appendChild(oi);
+    } else if(outOfArea){
+      var w=document.createElement("p"); w.className="c-note";
+      w.textContent="※ 현재 위치가 " + regionName() + " 밖입니다. 지도를 눌러 출발지를 지정하면 경로를 안내합니다.";
+      body.appendChild(w);
+    }
     var box=document.createElement("div"); box.id="naviSpots"; box.setAttribute("aria-live","polite"); body.appendChild(box);
     renderSpots(spots);
   }

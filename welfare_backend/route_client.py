@@ -135,6 +135,11 @@ async def profiles() -> dict:
     return await _call("GET", "/profiles")
 
 
+async def meta_network() -> dict:
+    """서비스 가능한 공간 범위(bbox) 등 네트워크 메타."""
+    return await _call("GET", "/meta/network")
+
+
 # ── 관광 ──
 async def tour_spots(sigungu: str = "안양", limit: int = 20) -> dict:
     return await _call("GET", "/tour/bf-spots", params={"sigungu": sigungu, "limit": limit})
