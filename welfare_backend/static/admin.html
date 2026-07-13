@@ -95,6 +95,7 @@
     <div class="tab" id="tab-review" onclick="showTab('review')">검토 큐</div>
     <div class="tab" id="tab-unresolved" onclick="showTab('unresolved')">미답변 질의</div>
     <div class="tab" id="tab-discovery" onclick="showTab('discovery')">신규 후보</div>
+      <div class="tab" id="tab-mobility" onclick="showTab('mobility')">이동편의 데이터</div>
   </div>
   <button class="refresh" onclick="refresh()">새로고침</button>
 </header>
@@ -232,21 +233,89 @@
   </div>
 </div>
 
+<div id="view-mobility" style="display:none">
+  <div style="padding:12px 16px">
+    <div id="mob-cards" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px"></div>
+    <div class="card" style="padding:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <b>테이블 미리보기</b>
+        <select id="mob-table" onchange="loadMobilityPreview()">
+          <option value="station">역 편의 현황</option>
+          <option value="bus">버스 노선·배차</option>
+          <option value="lift">휠체어리프트 상세</option>
+          <option value="facility">건물 편의시설</option>
+          <option value="tour">무장애 관광지</option>
+        </select>
+        <select id="mob-limit" onchange="loadMobilityPreview()">
+          <option value="20">20건</option>
+          <option value="50" selected>50건</option>
+          <option value="100">100건</option>
+        </select>
+        <span id="mob-plabel" class="muted"></span>
+      </div>
+      <div style="overflow:auto;max-height:520px">
+        <table id="mob-ptable" style="width:100%;border-collapse:collapse;font-size:12px"></table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const SAPI="/admin/api/staging", PAPI="/admin/api/policy", PLIST="/admin/api/policies";
+const MAPI="/admin/api/mobility";
 let current=null, editingId=null;
 
 let curTab="overview";
 function showTab(t){
   curTab=t;
-  for(const k of ["overview","review","policy","unresolved","ops","discovery"]){
+  for(const k of ["overview","review","policy","unresolved","ops","discovery","mobility"]){
     document.getElementById("tab-"+k).classList.toggle("on", t===k);
     document.getElementById("view-"+k).style.display = t===k?"":"none";
   }
   if(opsTimer){ clearInterval(opsTimer); opsTimer=null; }
-  if(t==="overview") loadOverview(); else if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else if(t==="ops") loadOps(); else if(t==="discovery") loadDiscovery(); else loadList();
+  if(t==="overview") loadOverview(); else if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else if(t==="ops") loadOps(); else if(t==="discovery") loadDiscovery(); else if(t==="mobility") loadMobility(); else loadList();
 }
-function refresh(){ if(curTab==="overview") loadOverview(); else if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else if(curTab==="ops") loadOps(); else if(curTab==="discovery") loadDiscovery(); else loadList(); }
+function refresh(){ if(curTab==="overview") loadOverview(); else if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else if(curTab==="ops") loadOps(); else if(curTab==="discovery") loadDiscovery(); else if(curTab==="mobility") loadMobility(); else loadList(); }
+
+/* ===== 이동편의 데이터 탭 (#165) ===== */
+async function loadMobility(){
+  const cards=document.getElementById("mob-cards");
+  cards.innerHTML='<span class="muted">로드 중...</span>';
+  try{
+    const st=await (await fetch(MAPI+"/status")).json();
+    if(!st.configured){ cards.innerHTML='<span class="muted">iitp_db 연결이 설정되지 않았습니다 (IITP_DB_NAME).</span>'; return; }
+    const d=await (await fetch(MAPI+"/sources")).json();
+    let html="";
+    for(const s of d.sources){
+      html+=`<div class="card" style="padding:10px 12px;min-width:220px">
+        <div style="font-weight:700">${escapeHtml(s.if_name)}</div>
+        <div class="muted" style="font-size:11px;margin:2px 0">${escapeHtml(s.ext_sys)} · 상태 ${escapeHtml(s.status)}</div>
+        <div style="font-size:12px">최근 수집: <b>${escapeHtml(s.latest_sync||"-")}</b></div>
+        <div class="muted" style="font-size:11px">${escapeHtml(s.memo)}</div>
+      </div>`;
+    }
+    html+=`<div class="card" style="padding:10px 12px;min-width:220px">
+      <div style="font-weight:700">적재 현황</div>`;
+    for(const k in d.tables){ html+=`<div style="font-size:12px">${escapeHtml(d.tables[k].label)}: <b>${d.tables[k].count}</b></div>`; }
+    html+=`<div style="font-size:12px;color:#2b6">안양 실증 대상 역: <b>${d.anyang_station_count}</b></div></div>`;
+    cards.innerHTML=html;
+    loadMobilityPreview();
+  }catch(e){ cards.innerHTML='<span class="muted">로드 실패: '+escapeHtml(String(e))+'</span>'; }
+}
+async function loadMobilityPreview(){
+  const t=document.getElementById("mob-table").value;
+  const lim=document.getElementById("mob-limit").value;
+  const tbl=document.getElementById("mob-ptable");
+  tbl.innerHTML='<tr><td class="muted">로드 중...</td></tr>';
+  try{
+    const d=await (await fetch(`${MAPI}/preview?table=${t}&limit=${lim}`)).json();
+    document.getElementById("mob-plabel").textContent=d.label;
+    let h="<thead><tr>"+d.columns.map(c=>`<th style="text-align:left;border-bottom:1px solid #ddd;padding:4px 6px;position:sticky;top:0;background:#fff">${escapeHtml(c)}</th>`).join("")+"</tr></thead><tbody>";
+    for(const r of d.rows){ h+="<tr>"+r.map(v=>`<td style="border-bottom:1px solid #f0f0f0;padding:4px 6px;white-space:nowrap">${escapeHtml(v===null?"":String(v))}</td>`).join("")+"</tr>"; }
+    tbl.innerHTML=h+"</tbody>";
+  }catch(e){ tbl.innerHTML='<tr><td class="muted">미리보기 실패: '+escapeHtml(String(e))+'</td></tr>'; }
+}
+
 function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmt(v){ if(v===null||v===undefined) return "(없음)"; return (typeof v==="object")? JSON.stringify(v,null,2):String(v); }
 

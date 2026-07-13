@@ -20,7 +20,7 @@ if str(_PDB) not in sys.path:
     sys.path.insert(0, str(_PDB))
 from crawler import review_core as rc  # noqa: E402
 from crawler import policy_core as pc  # noqa: E402
-from database import AsyncSessionLocal  # noqa: E402
+from database import AsyncSessionLocal, get_iitp_db, iitp_db_configured  # noqa: E402
 import models  # noqa: E402
 import scheduler as ops  # noqa: E402
 import discovery_core as dc  # noqa: E402
@@ -326,6 +326,106 @@ def discovery_enrich(cid: str, payload: dict = Body(default={})):
     threading.Thread(target=dc.enrich_candidate_run,
                      args=(cid, payload.get("draft_item")), daemon=True).start()
     return {"ok": True, "state": "running"}
+
+
+# ---------------------------------------------------------------------------
+# 이동편의 데이터 조회 (이슈 #165) — iitp_db read-only
+# 01 v1.1.0 테이블 + sys_ext_api_info 를 콘솔에서 확인. SELECT 전용.
+# ---------------------------------------------------------------------------
+from fastapi import Depends  # noqa: E402
+from sqlalchemy import text as _sqltext  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession  # noqa: E402
+
+_MOBILITY_SOURCES = ("GBIS", "KORAIL_CONV", "KRNA_LIFT", "KOWSI_FACL", "TOUR_BF_API")
+
+# 테이블 화이트리스트: key -> (표시명, count SQL, preview SQL)
+_MOBILITY_TABLES = {
+    "bus": (
+        "버스 노선·배차 (tran_bus_route_info)",
+        "SELECT count(*) FROM tran_bus_route_info WHERE del_yn='N'",
+        "SELECT route_name, route_type_name, region_name, admin_name,"
+        " start_station_name, end_station_name, peek_alloc, npeek_alloc,"
+        " up_first_time, up_last_time, to_char(base_dt,'YYYY-MM-DD') AS base_dt"
+        " FROM tran_bus_route_info WHERE del_yn='N'"
+        " ORDER BY route_name LIMIT :limit",
+    ),
+    "station": (
+        "역 편의 현황 (poi_station_access_status)",
+        "SELECT count(*) FROM poi_station_access_status WHERE del_yn='N'",
+        "SELECT stn_name, line_name, elevator_cnt, escalator_cnt,"
+        " wheelchair_lift_cnt, dis_slope_yn, dis_toilet_yn, anyang_yn,"
+        " to_char(base_dt,'YYYY-MM-DD') AS base_dt"
+        " FROM poi_station_access_status WHERE del_yn='N'"
+        " ORDER BY anyang_yn DESC, stn_name LIMIT :limit",
+    ),
+    "lift": (
+        "휠체어리프트 상세 (poi_station_wheelchair_lift)",
+        "SELECT count(*) FROM poi_station_wheelchair_lift WHERE del_yn='N'",
+        "SELECT line_name, stn_name, mng_no, exit_no, detail_loc,"
+        " start_floor, end_floor, to_char(base_dt,'YYYY-MM-DD') AS base_dt"
+        " FROM poi_station_wheelchair_lift WHERE del_yn='N'"
+        " ORDER BY line_name, stn_name, mng_no LIMIT :limit",
+    ),
+    "facility": (
+        "건물 편의시설 (poi_facility_accessibility)",
+        "SELECT count(*) FROM poi_facility_accessibility WHERE del_yn='N'",
+        "SELECT facl_name, facl_type, addr, latitude, longitude,"
+        " elevator_yn, dis_toilet_yn, dis_parking_yn,"
+        " to_char(base_dt,'YYYY-MM-DD') AS base_dt"
+        " FROM poi_facility_accessibility WHERE del_yn='N'"
+        " ORDER BY facl_name LIMIT :limit",
+    ),
+    "tour": (
+        "무장애 관광지 (poi_tour_bf_facility)",
+        "SELECT count(*) FROM poi_tour_bf_facility WHERE del_yn='N'",
+        "SELECT fclt_name, sido_code, toilet_yn, elevator_yn, parking_yn,"
+        " slope_yn, wheelchair_rent_yn, audio_guide_yn, addr_road,"
+        " to_char(base_dt,'YYYY-MM-DD') AS base_dt"
+        " FROM poi_tour_bf_facility WHERE del_yn='N'"
+        " ORDER BY fclt_id DESC LIMIT :limit",
+    ),
+}
+
+
+@router.get("/admin/api/mobility/sources")
+async def mobility_sources(db: _AsyncSession = Depends(get_iitp_db)):
+    """소스별 연동 정보(sys_ext_api_info) + 대상 테이블 건수."""
+    rows = (await db.execute(_sqltext(
+        "SELECT ext_sys, if_name, to_char(latest_sync_time,'YYYY-MM-DD HH24:MI') AS latest_sync,"
+        " coalesce(memo,'') AS memo, status"
+        " FROM sys_ext_api_info WHERE del_yn='N' AND ext_sys = ANY(:src)"
+        " ORDER BY ext_api_id"), {"src": list(_MOBILITY_SOURCES)})).mappings().all()
+    counts = {}
+    for key, (label, count_sql, _p) in _MOBILITY_TABLES.items():
+        counts[key] = {
+            "label": label,
+            "count": (await db.execute(_sqltext(count_sql))).scalar() or 0,
+        }
+    anyang = (await db.execute(_sqltext(
+        "SELECT count(*) FROM poi_station_access_status WHERE del_yn='N' AND anyang_yn='Y'"
+    ))).scalar() or 0
+    return {"configured": True, "sources": [dict(r) for r in rows],
+            "tables": counts, "anyang_station_count": anyang}
+
+
+@router.get("/admin/api/mobility/preview")
+async def mobility_preview(table: str, limit: int = 50,
+                           db: _AsyncSession = Depends(get_iitp_db)):
+    """화이트리스트 테이블 미리보기 (read-only)."""
+    if table not in _MOBILITY_TABLES:
+        raise HTTPException(status_code=400, detail=f"unknown table: {table}")
+    limit = max(1, min(int(limit), 200))
+    label, _c, preview_sql = _MOBILITY_TABLES[table]
+    result = await db.execute(_sqltext(preview_sql), {"limit": limit})
+    cols = list(result.keys())
+    rows = [list(r) for r in result.fetchall()]
+    return {"label": label, "columns": cols, "rows": rows}
+
+
+@router.get("/admin/api/mobility/status")
+def mobility_status():
+    """iitp_db 연결 설정 여부 (프론트 최초 진입용, DB 미접속에도 응답)."""
+    return {"configured": iitp_db_configured()}
 
 
 @router.get("/admin", response_class=HTMLResponse)
