@@ -57,6 +57,11 @@ const ROUTE = {
 const CONFIG = {
   kakao_js_key: "test-key",
   features: { route: true, tour: true },
+  service_area: {
+    region: "안양시",
+    bbox: { min_lat: 37.357, min_lng: 126.8775, max_lat: 37.449, max_lng: 126.9819 },
+    network_version: "anyang-osm-dem5-2026Q3",
+  },
   map: { default_center: { lat: 37.3943, lng: 126.9568 }, default_level: 5 },
 };
 
@@ -68,18 +73,23 @@ function fakeKakao() {
   return {
     maps: {
       load: (cb) => cb(),
-      Map: class { constructor() {} setBounds() {} },
+      Map: class { constructor() { this.__isMap = true; } setBounds() {} setCenter() {} },
       LatLng,
       LatLngBounds: Bounds,
       Marker: function () { return mk(); },
       Circle: function () { return mk(); },
       Polyline: function () { return mk(); },
-      event: { addListener: noop },
+      event: {
+        addListener: (target, type, cb) => {
+          if (type === "click" && target && target.__isMap) mapClickHandlers.push(cb);
+        },
+      },
     },
   };
 }
 
 const spoken = [];
+const mapClickHandlers = [];
 const results = [];
 function check(name, fn) {
   try { fn(); results.push(["PASS", name]); }
@@ -90,8 +100,10 @@ const dom = new JSDOM(HTML, { runScripts: "dangerously", pretendToBeVisual: true
 const { window } = dom;
 
 // ── 외부 의존성 스텁 ──
+let lastPlanQuery = null;
 window.fetch = async (url) => {
   const u = String(url);
+  if (u.includes("plan_accessible_route")) lastPlanQuery = u;
   const body = u.includes("/api/v1/config") ? CONFIG
     : u.includes("find_bf_tour_spots") ? SPOTS
     : u.includes("plan_accessible_route") ? ROUTE
@@ -140,6 +152,37 @@ check("현재 위치 확인 상태 표시", () => {
   assert.match($("naviStatus").textContent, /현재 위치를 확인했습니다/);
 });
 
+// 1-b) 서비스 지역 밖 -> 안내 + 지도에서 출발지 지정
+watchCb({ coords: { latitude: 37.5665, longitude: 126.9780 } });   // 서울시청
+await sleep(20);
+check("서비스 지역 밖이면 출발지 지정을 안내", () => {
+  assert.match($("naviStatus").textContent, /안양시 지역만 안내합니다/);
+  assert.match($("naviStatus").textContent, /지도를 눌러 출발지를 지정/);
+});
+
+window.NAVI.openNavi();
+await sleep(60);
+check("지역 밖 안내가 목록 패널에도 표시", () => {
+  assert.match($("naviSheetBody").textContent, /현재 위치가 안양시 밖입니다/);
+});
+
+check("지도 클릭 핸들러 등록됨", () => assert.ok(mapClickHandlers.length >= 1));
+mapClickHandlers[0]({ latLng: { getLat: () => 37.3943, getLng: () => 126.9568 } });  // 안양시청
+await sleep(30);
+check("지도 클릭으로 출발지 지정", () => {
+  assert.match($("naviStatus").textContent, /출발지를 지정했습니다/);
+  assert.match($("naviSheetBody").textContent, /지도에서 지정한 출발지에서 안내합니다/);
+});
+
+check("지역 밖 지점은 출발지로 거부", () => {
+  mapClickHandlers[0]({ latLng: { getLat: () => 37.5665, getLng: () => 126.9780 } });
+  assert.match($("naviStatus").textContent, /출발지는 안양시 안에서 선택해 주세요/);
+});
+
+// 현재 위치를 안양 안으로 되돌린 뒤 이후 시나리오 진행
+watchCb({ coords: { latitude: 37.3900, longitude: 126.9500 } });
+await sleep(20);
+
 // 2) 관광지 목록
 window.NAVI.openNavi();
 await sleep(60);
@@ -171,6 +214,12 @@ check("경고·제약 완화 사유를 사용자에게 고지", () => {
 
 check("도착 지점 해석 근거 고지 (건물 중심 과신 방지)", () => {
   assert.match($("naviSheetBody").textContent, /도착 지점: 시설 대표 좌표 기준/);
+});
+
+check("지정한 출발지가 경로 요청에 사용됨", () => {
+  const q = lastPlanQuery || "";
+  assert.match(q, /origin_lat=37\.3943/);
+  assert.match(q, /origin_lng=126\.9568/);
 });
 
 // 4) 안내 시작 -> 스텝 + 음성
