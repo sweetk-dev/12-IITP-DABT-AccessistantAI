@@ -931,6 +931,8 @@ window.NAVI = (function(){
 
     var notes = (s.warnings||[]).slice();
     if(route.fallback && route.fallback.used && route.fallback.reason) notes.push(route.fallback.reason);
+    // 목적지 좌표를 무엇으로 정했는지 알린다 — 대표점이면 건물 중심일 수 있다
+    if(route.destination && route.destination.note) notes.push("도착 지점: " + route.destination.note);
     notes.forEach(function(w){ var n=document.createElement("p"); n.className="c-note"; n.textContent="※ "+w; body.appendChild(n); });
 
     var acts = document.createElement("div"); acts.className="navi-actions";

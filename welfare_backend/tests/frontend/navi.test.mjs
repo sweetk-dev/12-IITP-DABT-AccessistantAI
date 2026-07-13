@@ -34,6 +34,8 @@ const ROUTE = {
     action: "show_route",
     route: {
       route_id: "r_test",
+      destination: { resolved_by: "facility_centroid",
+                     note: "시설 대표 좌표 기준 — 건물 중심일 수 있으니 도착 후 출입구를 확인하세요" },
       fallback: { used: true, reason: "권장 경사를 만족하는 경로가 없어 6도까지 완화했습니다" },
       routes: [{
         summary: { total_distance_m: 320, duration_sec: 457, max_slope_deg: 3.6,
@@ -165,6 +167,10 @@ check("경고·제약 완화 사유를 사용자에게 고지", () => {
   const t = $("naviSheetBody").textContent;
   assert.match(t, /턱낮춤 없는 횡단보도/);
   assert.match(t, /6도까지 완화/);
+});
+
+check("도착 지점 해석 근거 고지 (건물 중심 과신 방지)", () => {
+  assert.match($("naviSheetBody").textContent, /도착 지점: 시설 대표 좌표 기준/);
 });
 
 // 4) 안내 시작 -> 스텝 + 음성
