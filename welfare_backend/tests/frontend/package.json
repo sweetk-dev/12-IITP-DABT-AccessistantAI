@@ -1,0 +1,12 @@
+{
+  "name": "accessistant-frontend-tests",
+  "private": true,
+  "type": "module",
+  "description": "accessistant.html 런타임 검증 (jsdom) — 화면 전환·경로 표시·턴바이턴 진행·답변 카드",
+  "scripts": {
+    "test": "node navi.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
