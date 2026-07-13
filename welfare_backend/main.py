@@ -56,6 +56,9 @@ def _embed(text_query: str) -> list[float]:
     raise HTTPException(status_code=502, detail=f"임베딩 API 실패: {last_err}")
 
 
+import route_client
+import tool_handlers
+
 app = FastAPI(
     title="Welfare Policy AI Bridge API",
     version="1.2",
@@ -127,8 +130,90 @@ async def health_check():
         "status": "ok" if db_ok else "degraded",
         "db": db_msg,
         "gemini_client": "ready" if ai_client else "missing GEMINI_API_KEY",
-        "tools_available": 5,
+        "tools_available": 8 if route_client.enabled() else 5,
+        "route_api": "ready" if route_client.enabled() else "disabled",
     }
+
+
+# ─────────────────────────────────────────────────────────────
+# 프런트 런타임 설정 — 지도 JS 키·기능 플래그 주입
+# (키를 정적 파일에 하드코딩하지 않기 위한 엔드포인트)
+# ─────────────────────────────────────────────────────────────
+@app.get("/api/v1/config", tags=["meta"], summary="프런트 런타임 설정")
+async def front_config():
+    return {
+        "kakao_js_key": os.environ.get("KAKAO_JS_KEY", ""),
+        "features": {
+            "route": route_client.FEATURE_ROUTE and bool(route_client.BASE_URL),
+            "tour": route_client.FEATURE_TOUR and bool(route_client.BASE_URL),
+        },
+        "map": {
+            # 안양시청 — 위치 권한 거부 시 지도 초기 중심
+            "default_center": {"lat": 37.3943, "lng": 126.9568},
+            "default_level": 5,
+        },
+        "route_profiles": [
+            {"id": "wheelchair_manual", "label": "수동 휠체어"},
+            {"id": "wheelchair_electric", "label": "전동 휠체어"},
+            {"id": "crutch", "label": "목발·보행보조"},
+            {"id": "visual", "label": "시각장애"},
+            {"id": "walk", "label": "일반 보행"},
+        ],
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# 도구 #6~8 — 이동경로·무장애 관광 (REST 미러. 프런트가 직접 호출)
+# ─────────────────────────────────────────────────────────────
+@app.get("/api/v1/tools/find_bf_tour_spots", tags=["tools"],
+         summary="[6] 장애 유형별 무장애 관광지 추천")
+async def find_bf_tour_spots(
+    disabilities: str = Query("지체장애", description="쉼표 구분. 예: '지체장애,시각장애'"),
+    sigungu: str = Query("안양"),
+    topk: int = Query(5, ge=1, le=50),
+):
+    types_ = [d.strip() for d in disabilities.split(",") if d.strip()]
+    return await tool_handlers.tool_find_bf_tour_spots(
+        disabilities=types_, sigungu=sigungu, topk=topk
+    )
+
+
+@app.get("/api/v1/tools/plan_accessible_route", tags=["tools"],
+         summary="[7] 현위치 → 목적지 무장애 경로")
+async def plan_accessible_route(
+    destination_poi_id: str = Query(...),
+    origin_lat: float = Query(...),
+    origin_lng: float = Query(...),
+    destination_type: str = Query("tour"),
+    profile: str = Query("wheelchair_manual"),
+):
+    return await tool_handlers.tool_plan_accessible_route(
+        destination_poi_id=destination_poi_id,
+        destination_type=destination_type,
+        profile=profile,
+        origin_lat=origin_lat,
+        origin_lng=origin_lng,
+    )
+
+
+@app.get("/api/v1/tools/transit_access_points", tags=["tools"],
+         summary="[7-1] 휠체어 접근 가능한 정류장·역")
+async def transit_access_points(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    radius_m: float = Query(800, ge=50, le=3000),
+    profile: str = Query("wheelchair_manual"),
+):
+    return await route_client.transit_access(lat, lng, radius_m, profile)
+
+
+@app.get("/api/v1/tools/explain_route_segment", tags=["tools"],
+         summary="[8] 경로 구간 사유 설명")
+async def explain_route_segment(
+    route_id: str = Query(...),
+    step_idx: int = Query(None),
+):
+    return await tool_handlers.tool_explain_route_segment(route_id=route_id, step_idx=step_idx)
 
 
 # ─────────────────────────────────────────────────────────────

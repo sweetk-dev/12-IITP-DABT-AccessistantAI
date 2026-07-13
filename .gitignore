@@ -65,3 +65,7 @@ welfare_backend/policy_db/crawler/manual_review_state.json
 
 # 정책 항목 검토용 문서(사람 검토 전용 — 런타임 미사용). 워크스페이스 로컬에만 유지.
 welfare_backend/policy_db/items/*.md
+
+# 프런트 테스트 의존성
+node_modules/
+package-lock.json

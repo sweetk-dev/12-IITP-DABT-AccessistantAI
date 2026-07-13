@@ -1,0 +1,15 @@
+{
+  "name": "AccessistantAI — 장애인 정책·이동 안내",
+  "short_name": "AccessistantAI",
+  "description": "장애인 복지 정책 상담과 무장애 이동경로·관광 안내를 제공합니다.",
+  "start_url": "/static/accessistant.html",
+  "scope": "/static/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#2563EB",
+  "lang": "ko",
+  "icons": [
+    { "src": "/static/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
