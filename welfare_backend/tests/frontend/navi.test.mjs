@@ -196,6 +196,14 @@ check("이동·관광 화면 활성화", () => {
   assert.ok($("view-navi").classList.contains("active"));
 });
 
+check("지도 로드 성공 시 폴백 오버레이가 숨겨짐", () => {
+  // hidden 속성만으로는 부족하다 — CSS 클래스(display:flex)가 명시도에서 이기면
+  // 지도가 정상으로 떠도 '불러오지 못했습니다' 오버레이가 계속 덮는다.
+  assert.equal($("naviMapFallback").hidden, true);
+  const css = window.document.querySelector("style").textContent;
+  assert.match(css, /\.map-fallback\[hidden\]\s*\{\s*display:\s*none/);
+});
+
 // 3) 관광지 선택 -> 경로 요약
 window.document.querySelectorAll("#naviSpots .spot")[0].dispatchEvent(new window.Event("click"));
 await sleep(80);

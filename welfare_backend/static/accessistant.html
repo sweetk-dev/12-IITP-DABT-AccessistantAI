@@ -130,6 +130,9 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .navi-wrap{flex:1;display:flex;flex-direction:column;min-height:0;position:relative;}
 #naviMap{flex:1;min-height:180px;background:#eef2f7;}
 .map-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--c-text-muted);background:#eef2f7;}
+/* hidden 속성은 display:none 을 주지만 위 클래스 규칙(display:flex)이 명시도에서 이겨 무시된다.
+   그 결과 지도가 정상으로 떠도 "불러오지 못했습니다" 오버레이가 계속 덮는다. */
+.map-fallback[hidden]{display:none;}
 .navi-status{position:absolute;top:10px;left:10px;right:10px;background:rgba(255,255,255,.95);border-radius:12px;padding:8px 12px;font-size:.92rem;box-shadow:0 2px 10px rgba(15,23,42,.12);z-index:5;}
 .sheet{background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -6px 24px rgba(15,23,42,.14);max-height:56%;overflow-y:auto;padding:12px 16px 18px;}
 .sheet .grip{width:44px;height:4px;border-radius:99px;background:#CBD5E1;margin:0 auto 10px;}
@@ -827,7 +830,9 @@ window.NAVI = (function(){
     });
   }
   function initMap(){
-    if(!kakaoReady){ var f=$("naviMapFallback"); if(f) f.hidden=false; return; }
+    var f=$("naviMapFallback");
+    if(!kakaoReady){ if(f) f.hidden=false; return; }
+    if(f) f.hidden=true;
     var c = (cfg.map && cfg.map.default_center) || {lat:37.3943,lng:126.9568};
     map = new kakao.maps.Map($("naviMap"), {
       center: new kakao.maps.LatLng(c.lat, c.lng),
@@ -1110,7 +1115,19 @@ window.NAVI = (function(){
   }
 
   /* ── 화면 전환 ── */
-  function openNavi(){ show("view-navi"); markBar("navi"); }
+  function openNavi(){
+    show("view-navi"); markBar("navi");
+    // 지도는 view 가 숨겨진 상태(display:none)에서 생성돼 크기가 0 으로 잡힌다.
+    // 화면이 보이는 시점에 다시 계산해 주지 않으면 타일이 잘려 보인다.
+    if(map && kakaoReady){
+      setTimeout(function(){
+        try{
+          map.relayout();
+          if(here) map.setCenter(new kakao.maps.LatLng(here.lat, here.lng));
+        }catch(e){}
+      }, 60);
+    }
+  }
   function openChat(){ show("view-chat"); markBar("chat"); }
   function markBar(which){
     [["barChat","barNavi"],["barChatC","barNaviC"]].forEach(function(ids){
