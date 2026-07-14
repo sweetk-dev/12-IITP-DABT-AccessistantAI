@@ -58,12 +58,12 @@ def _record(success: bool):
         logger.warning("경로 API 연속 실패 %d회 — %.0f초간 호출 차단", _fail_count, _OPEN_SEC)
 
 
-def _err(message: str, detail: str = "") -> dict:
+def _err(message: str, detail: str = "", ai_instruction: str = None) -> dict:
     return {
         "status": "error",
         "message": message,
         "detail": detail,
-        "ai_instruction": (
+        "ai_instruction": ai_instruction or (
             "경로 안내 서비스에 일시적으로 연결할 수 없다고 사용자에게 짧게 알리고, "
             "정책 상담은 계속 이용 가능하다고 안내하세요. 경로를 추측해서 만들어내지 마세요."
         ),
@@ -94,10 +94,18 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
                     body = r.json()
                 except Exception:
                     body = {}
-                return _err(
-                    body.get("detail") or "경로를 만들 수 없습니다",
-                    "HTTP %d" % r.status_code,
-                )
+                detail_msg = body.get("detail") or "경로를 만들 수 없습니다"
+                # 4xx 는 "일시적 장애"가 아니라 요청 자체의 문제(서비스 지역 밖 등) —
+                # 오해를 낳지 않도록 사유 기반 안내문을 함께 전달한다.
+                custom_ai = None
+                if ("떨어져" in str(detail_msg)) or ("네트워크" in str(detail_msg)):
+                    custom_ai = (
+                        "출발지(또는 현재 위치)가 서비스 지역인 안양시 보행 데이터 범위를 벗어나 "
+                        "경로를 만들 수 없다고 정확히 안내하세요. 안양시 내 출발지 이름(예: 안양역)을 "
+                        "말씀해 주시거나 이동·관광 화면의 지도를 눌러 출발지를 지정하면 안내할 수 있다고 "
+                        "덧붙이세요. 일시적인 오류라고 말하지 말고, 경로를 추측하지 마세요."
+                    )
+                return _err(detail_msg, "HTTP %d" % r.status_code, custom_ai)
             return r.json()
         except (httpx.TimeoutException, httpx.TransportError) as e:
             last_detail = "%s: %s" % (type(e).__name__, e)

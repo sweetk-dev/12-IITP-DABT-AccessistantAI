@@ -196,7 +196,7 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 
 ## 이동경로·무장애 관광 (도구 6~8)
 - 사용자가 "어디 갈 만한 곳", "무장애 관광지", "휠체어로 갈 수 있는 곳" 등을 물으면 `find_bf_tour_spots` 를 호출합니다. 결과는 상위 2~3곳만 간단히 말하고, 나머지는 화면 목록으로 넘깁니다.
-- 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
+- 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
 - 경로에 경고가 있거나 권장 경사를 완화해 탐색한 경우(`fallback.used`) 반드시 그 사실을 알립니다.
 - "왜 이렇게 돌아가", "이 구간 뭐야" 같은 질문에는 `explain_route_segment` 로 사유(경사·계단·턱낮춤)를 설명합니다.
 - 위치를 알 수 없다는 결과가 오면 화면의 위치 권한 허용을 요청하세요. 좌표를 추측하지 마세요.
@@ -247,7 +247,7 @@ def _route_tool_declarations() -> list:
         ),
         types.FunctionDeclaration(
             name="plan_accessible_route",
-            description="현재 위치에서 목적지(무장애 관광지·지하철역·버스정류장)까지 무장애 보행 경로를 만든다. 현재 위치는 시스템이 자동으로 채운다.",
+            description="출발지에서 목적지(무장애 관광지·지하철역·버스정류장)까지 무장애 보행 경로를 만든다. 출발지는 기본으로 현재 위치가 자동 주입되며, 사용자가 출발지를 말로 밝히면 origin_place 에 담아 호출한다.",
             parameters=types.Schema(
                 type=types.Type.OBJECT,
                 required=["destination_poi_id"],
@@ -255,6 +255,7 @@ def _route_tool_declarations() -> list:
                     "destination_poi_id": types.Schema(type=types.Type.STRING, description="find_bf_tour_spots 결과의 poi_id"),
                     "destination_type": types.Schema(type=types.Type.STRING, description="tour(기본) / transit_station / transit_stop"),
                     "profile": types.Schema(type=types.Type.STRING, description="wheelchair_manual(기본)/wheelchair_electric/crutch/visual/walk"),
+                    "origin_place": types.Schema(type=types.Type.STRING, description="사용자가 말로 지정한 출발지 이름(예: '안양역', '범계역', '김중업 건축박물관'). 사용자가 '~에서', '~에 있는데' 처럼 출발지를 밝히면 반드시 채운다. 미지정 시 현재 위치 사용"),
                 },
             ),
         ),
