@@ -10,7 +10,7 @@ import logging
 import re
 from typing import Optional
 
-from sqlalchemy import select, or_, text as sql_text
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import AsyncSessionLocal
@@ -361,6 +361,18 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
     }
 
 
+# 안양 소재 지하철역 7곳 — {역명: (호선, 위도, 경도)}
+_ANYANG_STATIONS = {
+    "안양":   ("1호선", 37.4016302, 126.9228826),
+    "명학":   ("1호선", 37.3843939, 126.9356089),
+    "석수":   ("1호선", 37.4351332, 126.9023059),
+    "관악":   ("1호선", 37.4187236, 126.9091539),
+    "범계":   ("4호선", 37.3899129, 126.95091),
+    "평촌":   ("4호선", 37.394288,  126.9638795),
+    "인덕원": ("4호선", 37.4016323, 126.9769656),
+}
+
+
 async def _resolve_origin_place(place: str) -> Optional[dict]:
     """말로 지정한 출발지 이름을 좌표로 해석 — ① 안양 지하철역 ② 무장애 관광 POI.
 
@@ -370,26 +382,15 @@ async def _resolve_origin_place(place: str) -> Optional[dict]:
     q = (place or "").strip()
     if not q:
         return None
-    # ① 지하철역 — 역명은 '안양'처럼 '역' 없이 저장돼 있어 접미사를 떼고 비교
+    # ① 지하철역 — 역명은 '역' 접미사를 떼고 비교.
+    #    역 접근성 테이블(poi_station_access_status)은 이동편의 DB(iitp_db) 소속이라
+    #    이 백엔드의 정책 DB 세션으로는 조회할 수 없어, 변동 없는 안양 소재 7역을
+    #    정적 매핑으로 둔다 (좌표 출처: iitp_db poi_station_access_status, 2026-07-14).
     stn = re.sub(r"\s+", "", q)
     stn = re.sub(r"(지하철)?역$", "", stn) or stn
-
-    async def run(db: AsyncSession):
-        return (await db.execute(sql_text(
-            "SELECT stn_name, line_name, latitude, longitude "
-            "FROM poi_station_access_status "
-            "WHERE del_yn='N' AND latitude IS NOT NULL AND anyang_yn='Y' "
-            "AND (stn_name = :exact OR stn_name LIKE :fuzzy) "
-            "ORDER BY (stn_name = :exact) DESC LIMIT 1"),
-            {"exact": stn, "fuzzy": "%" + stn + "%"})).first()
-
-    try:
-        row = await _with_session(run)
-        if row is not None:
-            return {"lat": float(row[2]), "lng": float(row[3]),
-                    "label": "%s역(%s)" % (row[0], row[1] or "")}
-    except Exception:
-        logger.exception("출발지 역명 해석 실패: %s", q)
+    hit = _ANYANG_STATIONS.get(stn)
+    if hit:
+        return {"lat": hit[1], "lng": hit[2], "label": "%s역(%s)" % (stn, hit[0])}
 
     # ② 무장애 관광 POI 이름 매칭
     try:
