@@ -474,12 +474,13 @@ from live_bridge import handle_live_chat
 
 
 @app.websocket("/ws/live-chat")
-async def websocket_live_chat(websocket: WebSocket, voice: str = None):
+async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str = None):
     """클라이언트 ↔ Gemini Live API ↔ DB 도구 실시간 중계.
 
     Query 파라미터:
       voice — Gemini Live prebuilt voice 이름(예: Charon, Kore) 또는 카테고리(male/female).
               미지정 시 기본값(여성 Kore).
+      mode  — 세션 시작 화면. "navi"(이동·관광 길안내)면 경로 안내용 인사말을 사용.
 
     클라이언트 메시지 포맷:
       {"type":"audio_chunk", "data":"<base64 PCM 16kHz>"}
@@ -500,4 +501,4 @@ async def websocket_live_chat(websocket: WebSocket, voice: str = None):
         await websocket.send_json({"type": "error", "message": "GEMINI_API_KEY 미설정"})
         await websocket.close()
         return
-    await handle_live_chat(websocket, ai_client, _embed, voice=voice)
+    await handle_live_chat(websocket, ai_client, _embed, voice=voice, mode=mode)

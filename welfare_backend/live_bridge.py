@@ -202,7 +202,7 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - 위치를 알 수 없다는 결과가 오면 화면의 위치 권한 허용을 요청하세요. 좌표를 추측하지 마세요.
 
 ## 시스템 신호(`[SYSTEM]`) 처리 규칙
-사용자 발화가 아니라 백엔드가 직접 보내는 메시지가 `[SYSTEM]` 으로 시작하는 경우, 도구 호출 없이 **지시된 문장을 그대로 음성으로 전달**하세요. 종류는 다음 3가지뿐입니다.
+사용자 발화가 아니라 백엔드가 직접 보내는 메시지가 `[SYSTEM]` 으로 시작하는 경우, 아래 규칙대로 처리하세요. 종류는 다음 5가지뿐입니다.
 
 1. `[SYSTEM:GREETING]` — 세션이 막 연결된 직후. 다음 인사말을 그대로 한국어 음성으로 한 번만 출력:
    > "안녕하세요! 장애인 복지 정책에 대해 궁금한 점이 있으신가요? 필요하신 정보를 정확하게 안내해 드릴게요. 편하게 말씀해 주세요."
@@ -213,7 +213,12 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 3. `[SYSTEM:AUTO_CLOSE]` — 추가 2분 무응답으로 자동 종료 직전. 다음 문장을 그대로 음성으로 출력:
    > "응답이 없어 상담을 종료합니다. 다음에 또 이용해 주세요. 감사합니다."
 
-이 세 가지 시스템 신호에는 **DB 도구 호출 금지**, **외부 검색 금지**, **법적 근거·문의처 멘트 금지**. 지정된 문장만 정확히 발화한 뒤 turn 을 종료하세요.
+4. `[SYSTEM:GREETING_NAVI]` — 이동·관광 길안내 화면에서 세션이 연결된 직후. 다음 인사말을 그대로 한국어 음성으로 한 번만 출력:
+   > "안녕하세요! 이동 경로와 무장애 관광지 안내를 도와드릴게요. 가시고 싶은 곳이나 궁금한 경로를 편하게 말씀해 주세요."
+
+5. `[SYSTEM:RESUME_ANSWER]` — 연결이 잠시 끊겼다가 복구된 직후, 직전 사용자 질문에 아직 답변하지 못한 상태. 고정 문구 없이 **직전 사용자 질문에 이어서 답변을 완료**하세요. 이 신호에 한해 필요한 도구 호출을 허용합니다. 직전 질문을 확인할 수 없으면 "죄송해요, 방금 말씀을 제가 놓쳤어요. 다시 한 번 말씀해 주시겠어요?" 라고 요청하세요.
+
+1~4번 신호에는 **DB 도구 호출 금지**, **외부 검색 금지**, **법적 근거·문의처 멘트 금지** — 지정된 문장만 정확히 발화한 뒤 turn 을 종료하세요. 5번(`RESUME_ANSWER`)만 도구 사용이 허용됩니다.
 """
 
 
@@ -405,6 +410,7 @@ async def handle_live_chat(
     embed_fn: Callable,
     model_name: str = None,
     voice: str = None,
+    mode: str = None,
 ):
     # 환경변수 우선, 기본은 안정 GA 모델
     if model_name is None:
@@ -532,6 +538,9 @@ async def handle_live_chat(
     AUTO_CLOSE_SEC = 120
     last_activity_ts = asyncio.get_event_loop().time()
     idle_state = {"prompted": False}  # 종료 확인 음성을 이미 보냈는지
+    # 무한대기 방지 — silent 재연결 직후 '미완료 사용자 턴' 재개 판정용
+    RESUME_WINDOW_SEC = 90                       # 마지막 사용자 입력 후 이 시간 이내면 재개 대상
+    last_ai_turn_done_ts = last_activity_ts     # 마지막 AI 턴 완료 시각 (초기=세션 시작)
 
     def mark_user_active(source: str):
         nonlocal last_activity_ts
@@ -618,13 +627,25 @@ async def handle_live_chat(
                 logger.info("✅ Gemini Live 세션 연결됨 (model=%s, %dms)",
                             model_name, _connect_elapsed_ms)
                 # ── 세션 시작 인사말 트리거 (DB 도구 호출 없이 지정 문장만 발화) ──
-                await _send_system_signal(session, "[SYSTEM:GREETING]")
+                # 이동·관광(길안내) 화면에서 시작된 세션은 경로 안내용 인사말을 사용
+                await _send_system_signal(
+                    session,
+                    "[SYSTEM:GREETING_NAVI]" if mode == "navi" else "[SYSTEM:GREETING]")
             else:
                 # silent 재연결 — 사용자에게 어떤 알림도 보내지 않음. 로그만 남김.
                 logger.info("🔇 Gemini Live silent 재연결 #%d (handle=%s, %dms)",
                             reconnect_count,
                             "이어받음" if session_handle else "신규",
                             _connect_elapsed_ms)
+                # 무한대기 방지 — 사용자 질문에 답하던 중(또는 답하기 전에) 세션이 끊겼다면
+                # 재개된 세션은 새 입력을 기다리기만 하므로(상호 대기 교착),
+                # 즉시 RESUME_ANSWER 신호를 보내 직전 질문에 이어서 답변하게 한다.
+                _now_rc = asyncio.get_event_loop().time()
+                if (last_activity_ts > last_ai_turn_done_ts
+                        and (_now_rc - last_activity_ts) <= RESUME_WINDOW_SEC):
+                    logger.info("🔁 미완료 사용자 턴 감지(입력 후 %.1fs) — [SYSTEM:RESUME_ANSWER] 전송",
+                                _now_rc - last_activity_ts)
+                    await _send_system_signal(session, "[SYSTEM:RESUME_ANSWER]")
 
             # ─── 클라이언트 → Gemini ───
             async def pump_client_to_gemini():
@@ -679,7 +700,7 @@ async def handle_live_chat(
                 # turn_complete 시점에 tracker 를 새 인스턴스로 교체하기 때문에
                 # outer scope 의 tracker 를 재바인딩 — nonlocal 선언 필수.
                 # session_handle 도 server 가 SessionResumptionUpdate 보낼 때마다 갱신.
-                nonlocal tracker, session_handle, session_progressed, _ai_buf, _user_buf
+                nonlocal tracker, session_handle, session_progressed, _ai_buf, _user_buf, last_ai_turn_done_ts
                 total_responses = 0
                 turn_count = 0
                 while True:
@@ -734,6 +755,7 @@ async def handle_live_chat(
                                 if len(convo_history) > 100:
                                     del convo_history[:-100]
                                 logger.info("✅ AI turn #%d 완료", turn_count)
+                                last_ai_turn_done_ts = asyncio.get_event_loop().time()
                                 await _safe_send_json(websocket,{"type": "turn_complete"})
                                 # ── Phase 5 Track A: turn 단위 폴백 적재 ─────────
                                 # 현재 tracker 를 finalize 에 넘기고, 다음 turn 을 위해
