@@ -845,6 +845,22 @@ window.NAVI = (function(){
     });
   }
 
+  function recenter(){
+    if(!map || !kakaoReady) return;
+    var o = originOverride || (inServiceArea(here) ? here : null);
+    if(o){ map.setCenter(new kakao.maps.LatLng(o.lat, o.lng)); return; }
+    // 서비스 지역 밖이거나 위치를 모를 때 — 현위치(서울 등)를 보여주면 아무 의미가 없다.
+    // 관광지 핀이 다 보이도록 맞추고, 없으면 지역 기본 중심으로.
+    if(spotMarkers.length){
+      var b = new kakao.maps.LatLngBounds();
+      spots.forEach(function(sp){ if(sp.lat && sp.lng) b.extend(new kakao.maps.LatLng(sp.lat, sp.lng)); });
+      map.setBounds(b);
+      return;
+    }
+    var c = (cfg.map && cfg.map.default_center) || {lat:37.3943, lng:126.9568};
+    map.setCenter(new kakao.maps.LatLng(c.lat, c.lng));
+  }
+
   function setOrigin(lat, lng){
     if(!inServiceArea({lat:lat, lng:lng})){
       status("출발지는 " + regionName() + " 안에서 선택해 주세요.");
@@ -874,11 +890,11 @@ window.NAVI = (function(){
       drawMe();
       if(!inServiceArea(here)){
         // 서비스 지역 밖 — 경로를 만들 수 없다. 지도에서 출발지를 고르게 안내한다.
+        var first = (outOfArea === false);
         outOfArea = true;
         if(!originOverride){
           status("이 서비스는 " + regionName() + " 지역만 안내합니다. 지도를 눌러 출발지를 지정해 주세요.");
-          if(map) map.setCenter(new kakao.maps.LatLng(
-            (cfg.map.default_center.lat), (cfg.map.default_center.lng)));
+          if(first) recenter();
         }
       } else {
         outOfArea = false;
@@ -1123,7 +1139,7 @@ window.NAVI = (function(){
       setTimeout(function(){
         try{
           map.relayout();
-          if(here) map.setCenter(new kakao.maps.LatLng(here.lat, here.lng));
+          recenter();
         }catch(e){}
       }, 60);
     }
@@ -1178,6 +1194,7 @@ window.NAVI = (function(){
       clearSpotMarkers();
       spots = (data.results || []);
       renderSpotsPanel();
+      recenter();
     }catch(e){ status("관광지 정보를 불러오지 못했습니다."); }
   }
 
