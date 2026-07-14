@@ -73,7 +73,12 @@ function fakeKakao() {
   return {
     maps: {
       load: (cb) => cb(),
-      Map: class { constructor() { this.__isMap = true; } setBounds() {} setCenter() {} },
+      Map: class {
+        constructor() { this.__isMap = true; }
+        setBounds(b) { mapCalls.push(["setBounds", b]); }
+        setCenter(c) { mapCalls.push(["setCenter", c]); }
+        relayout() { mapCalls.push(["relayout"]); }
+      },
       LatLng,
       LatLngBounds: Bounds,
       Marker: function () { return mk(); },
@@ -90,6 +95,7 @@ function fakeKakao() {
 
 const spoken = [];
 const mapClickHandlers = [];
+const mapCalls = [];
 const results = [];
 function check(name, fn) {
   try { fn(); results.push(["PASS", name]); }
@@ -167,6 +173,13 @@ check("지역 밖 안내가 목록 패널에도 표시", () => {
 });
 
 check("지도 클릭 핸들러 등록됨", () => assert.ok(mapClickHandlers.length >= 1));
+
+check("서비스 지역 밖에서 지도를 현위치(서울)로 옮기지 않음", () => {
+  // 현위치로 중심을 잡으면 안양 관광지 핀이 화면 밖으로 나가 아무것도 못 한다.
+  const centers = mapCalls.filter((c) => c[0] === "setCenter").map((c) => c[1]);
+  const seoul = centers.filter((c) => c && Math.abs(c.a - 37.5665) < 0.01);
+  assert.equal(seoul.length, 0, "서울로 중심 이동함");
+});
 mapClickHandlers[0]({ latLng: { getLat: () => 37.3943, getLng: () => 126.9568 } });  // 안양시청
 await sleep(30);
 check("지도 클릭으로 출발지 지정", () => {
