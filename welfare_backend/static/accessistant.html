@@ -982,7 +982,11 @@ window.NAVI = (function(){
     try{
       var r = await fetch("/api/v1/tools/plan_accessible_route?" + qs.toString());
       var data = await r.json();
-      if(data.status !== "success" || !data.ui_action){ status(data.message || "경로를 만들지 못했습니다."); return; }
+      if(data.status !== "success" || !data.ui_action){
+        var em = data.message || "경로를 만들지 못했습니다.";
+        if(/떨어져|네트워크/.test(em)) em += " 지도를 눌러 다른 출발지를 지정해 보세요.";
+        status(em); speak(em); return;
+      }
       showRoute(data.ui_action.route, spot.name);
     }catch(e){ status("경로 서비스에 연결하지 못했습니다."); }
   }

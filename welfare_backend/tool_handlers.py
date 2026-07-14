@@ -10,7 +10,7 @@ import logging
 import re
 from typing import Optional
 
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import AsyncSessionLocal
@@ -361,19 +361,84 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
     }
 
 
+async def _resolve_origin_place(place: str) -> Optional[dict]:
+    """말로 지정한 출발지 이름을 좌표로 해석 — ① 안양 지하철역 ② 무장애 관광 POI.
+
+    "안양역에 있는데", "범계역에서 출발" 처럼 사용자가 출발지를 말로 밝히는 경우
+    실제 GPS 위치(서비스 지역 밖일 수 있음) 대신 그 지점을 출발지로 쓴다.
+    """
+    q = (place or "").strip()
+    if not q:
+        return None
+    # ① 지하철역 — 역명은 '안양'처럼 '역' 없이 저장돼 있어 접미사를 떼고 비교
+    stn = re.sub(r"\s+", "", q)
+    stn = re.sub(r"(지하철)?역$", "", stn) or stn
+
+    async def run(db: AsyncSession):
+        return (await db.execute(sql_text(
+            "SELECT stn_name, line_name, latitude, longitude "
+            "FROM poi_station_access_status "
+            "WHERE del_yn='N' AND latitude IS NOT NULL AND anyang_yn='Y' "
+            "AND (stn_name = :exact OR stn_name LIKE :fuzzy) "
+            "ORDER BY (stn_name = :exact) DESC LIMIT 1"),
+            {"exact": stn, "fuzzy": "%" + stn + "%"})).first()
+
+    try:
+        row = await _with_session(run)
+        if row is not None:
+            return {"lat": float(row[2]), "lng": float(row[3]),
+                    "label": "%s역(%s)" % (row[0], row[1] or "")}
+    except Exception:
+        logger.exception("출발지 역명 해석 실패: %s", q)
+
+    # ② 무장애 관광 POI 이름 매칭
+    try:
+        data = await route_client.tour_spots(sigungu="안양", limit=60)
+        for it in (data.get("items") or []):
+            nm = (it.get("name") or "").strip()
+            if nm and (q in nm or nm in q) and it.get("lat") is not None:
+                return {"lat": float(it["lat"]), "lng": float(it["lng"]), "label": nm}
+    except Exception:
+        logger.exception("출발지 POI 해석 실패: %s", q)
+    return None
+
+
 async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      destination_type: str = "tour",
                                      profile: str = "wheelchair_manual",
                                      origin_lat: float = None,
-                                     origin_lng: float = None) -> dict:
-    """현재 위치에서 목적지까지 무장애 경로. origin 은 프런트가 보낸 현위치가 주입된다."""
+                                     origin_lng: float = None,
+                                     origin_place: str = "") -> dict:
+    """현재 위치(또는 말로 지정한 출발지)에서 목적지까지 무장애 경로.
+
+    origin_lat/lng 은 프런트가 보낸 현위치가 주입되고,
+    사용자가 출발지를 말로 밝히면 origin_place 가 우선한다.
+    """
+    origin_label = None
+    if origin_place:
+        hit = await _resolve_origin_place(origin_place)
+        if hit is None:
+            return {
+                "status": "need_origin",
+                "tool_name": "plan_accessible_route",
+                "message": "출발지 '%s' 를 찾을 수 없습니다" % origin_place,
+                "ai_instruction": (
+                    "말씀하신 출발지를 찾을 수 없다고 안내하고, 안양시 내 지하철역 이름(예: 안양역, 범계역)이나 "
+                    "무장애 관광지 이름으로 다시 말씀해 주시거나, 이동·관광 화면의 지도를 눌러 출발지를 "
+                    "직접 지정해 달라고 요청하세요. 경로를 추측하지 마세요."
+                ),
+            }
+        origin_lat, origin_lng = hit["lat"], hit["lng"]
+        origin_label = hit["label"]
+
     if origin_lat is None or origin_lng is None:
         return {
             "status": "need_location",
             "tool_name": "plan_accessible_route",
             "ai_instruction": (
-                "현재 위치를 알 수 없다고 안내하고, 화면의 위치 권한 허용 버튼을 눌러 달라고 "
-                "짧게 요청하세요. 경로를 추측하지 마세요."
+                "현재 위치를 알 수 없다고 안내하고, 화면의 위치 권한을 허용하거나 "
+                "출발지 이름(예: 안양역)을 말씀해 주시거나, 이동·관광 화면 지도에서 출발지를 "
+                "지정해 달라고 짧게 요청하세요. 경로를 추측하지 마세요."
             ),
         }
 
@@ -394,6 +459,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     return {
         "status": "success",
         "tool_name": "plan_accessible_route",
+        "origin_label": origin_label,
         "route_id": data.get("route_id"),
         "summary": {
             "distance_m": summary.get("total_distance_m"),
@@ -408,7 +474,8 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         # 프런트가 지도·경로·턴바이턴을 그리도록 원본 경로를 그대로 전달
         "ui_action": {"action": "show_route", "route": data},
         "ai_instruction": (
-            "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로 요약하고, 첫 안내 한 문장을 덧붙이세요. "
+            ("출발지는 %s 기준임을 먼저 밝히세요. " % origin_label if origin_label else "")
+            + "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로 요약하고, 첫 안내 한 문장을 덧붙이세요. "
             "경고(warnings)나 제약 완화(fallback.used=true)가 있으면 반드시 함께 알리세요. "
             "전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다."
         ),
