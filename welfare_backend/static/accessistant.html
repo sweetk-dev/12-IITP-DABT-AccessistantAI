@@ -983,6 +983,11 @@ window.NAVI = (function(){
     // 상담원(도구)이 쓰는 출발지도 화면과 동일해야 한다 — 직접 지정한 출발지를 그대로 보낸다.
     try{ wsRef.send(JSON.stringify({type:"location", lat:o.lat, lng:o.lng})); }catch(e){}
   }
+  // 길안내 이용을 세션 활동으로 알린다 — 발화가 없어도 안내 중 유휴 자동종료(3분+2분)를 막는다.
+  function sendActivity(src){
+    if(!wsRef || wsRef.readyState !== 1) return;
+    try{ wsRef.send(JSON.stringify({type:"activity", source: src || "navi"})); }catch(e){}
+  }
   function drawMe(){
     if(!map || !here) return;
     var pos = new kakao.maps.LatLng(here.lat, here.lng);
@@ -1036,6 +1041,7 @@ window.NAVI = (function(){
       speak("현재 위치가 " + regionName() + " 밖입니다. 지도를 눌러 출발지를 지정해 주세요.");
       return;
     }
+    sendActivity("route_request");
     status(spot.name + " 까지 경로를 찾는 중입니다…");
     var qs = new URLSearchParams({
       destination_poi_id: spot.poi_id, origin_lat: o.lat, origin_lng: o.lng,
@@ -1150,6 +1156,7 @@ window.NAVI = (function(){
     if(!steps.length) return;
     stopSimulation();
     guiding = true; stepIdx = 0; _interimDone = {};
+    sendActivity("guidance_start");
     prefetchTts();
     sheetMini(true); sheetSetCollapsed(false);   // 안내 중엔 시트를 낮춰 지도를 넓게
     renderStep();
@@ -1244,6 +1251,7 @@ window.NAVI = (function(){
   /* ── 수동 단계 탐색 (이전/다음) — 안내·모의 주행 중 언제든 경로 순서 확인 ── */
   function gotoStep(i){
     if(i<0 || i>=steps.length) return;
+    sendActivity("step_nav");
     stepIdx = i;
     if(simActive){
       var st=steps[i];
@@ -1296,6 +1304,7 @@ window.NAVI = (function(){
     if(!steps.length || !routeGeom.length){ status("경로가 없어 모의 주행을 시작할 수 없습니다."); return; }
     stopSimulation();
     simActive=true; guiding=true; stepIdx=0; simDist=0; _interimDone = {};
+    sendActivity("simulation_start");
     prefetchTts();
     simPos=posAtDist(0);
     sheetMini(true); sheetSetCollapsed(false);   // 모의 주행 중에도 지도를 넓게
@@ -1438,6 +1447,8 @@ window.NAVI = (function(){
     // 지도를 만지면(클릭·드래그 시작) 목록을 접어 지도를 넓게 쓴다
     var mapEl=$("naviMap");
     if(mapEl) mapEl.addEventListener("pointerdown", function(){ sheetSetCollapsed(true); }, {passive:true});
+
+    setInterval(function(){ if(guiding || simActive) sendActivity("guidance_heartbeat"); }, 60000);
 
     ["barChat","barChatC"].forEach(function(id){ var e=$(id); if(e) e.addEventListener("click", openChat); });
     ["barNavi","barNaviC"].forEach(function(id){ var e=$(id); if(e) e.addEventListener("click", openNavi); });

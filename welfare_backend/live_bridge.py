@@ -690,6 +690,10 @@ async def handle_live_chat(
                             # 사용자가 말을 끝냈음을 알리는 신호 (VAD 가 없을 때)
                             await session.send_realtime_input(audio_stream_end=True)
                             mark_user_active("end_of_turn")
+                        elif msg.get("type") == "activity":
+                            # 길안내 화면의 상호작용/안내 진행 신호 — 발화가 없어도
+                            # 서비스 이용 중이므로 유휴 종료(IDLE/AUTO_CLOSE) 대상이 아니다.
+                            mark_user_active(str(msg.get("source") or "ui"))
                 except WebSocketDisconnect:
                     logger.info("클라이언트 WebSocket 연결 종료")
                 except Exception as e:
