@@ -8,7 +8,7 @@ import os
 from typing import Optional
 from time import sleep
 
-from fastapi import FastAPI, Depends, Query, HTTPException, WebSocket
+from fastapi import FastAPI, Depends, Query, HTTPException, WebSocket, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
@@ -189,6 +189,80 @@ async def find_bf_tour_spots(
     return await tool_handlers.tool_find_bf_tour_spots(
         disabilities=types_, sigungu=sigungu, topk=topk
     )
+
+
+# ─────────────────────────────────────────────────────────────
+# 길안내 TTS — 상담 음성과 동일한 Gemini 보이스로 안내 문장을 합성
+# ─────────────────────────────────────────────────────────────
+# 브라우저 내장 TTS 와 상담 음성의 톤 차이를 없애기 위해 같은 prebuilt 보이스를 사용.
+# 안내 문장은 반복성이 높아 서버 캐시(LRU)로 비용·지연을 줄인다. 실패 시 프런트가
+# 브라우저 TTS 로 폴백하므로 이 엔드포인트는 best-effort 로 동작하면 된다.
+from collections import OrderedDict as _OrderedDict
+import re as _re
+import struct as _struct
+
+GEMINI_TTS_MODEL = os.environ.get("GEMINI_TTS_MODEL", "gemini-3.1-flash-tts-preview")
+_TTS_CACHE: "_OrderedDict[tuple, bytes]" = _OrderedDict()
+_TTS_CACHE_MAX = 300
+
+
+def _pcm_to_wav(pcm: bytes, rate: int = 24000, channels: int = 1, width: int = 2) -> bytes:
+    """원시 PCM(16bit) 을 WAV 컨테이너로 감싼다 — <audio>/WebAudio 에서 바로 재생 가능."""
+    byte_rate = rate * channels * width
+    block_align = channels * width
+    header = b"RIFF" + _struct.pack("<I", 36 + len(pcm)) + b"WAVE"
+    header += b"fmt " + _struct.pack("<IHHIIHH", 16, 1, channels, rate, byte_rate, block_align, width * 8)
+    header += b"data" + _struct.pack("<I", len(pcm))
+    return header + pcm
+
+
+@app.get("/api/v1/tts", tags=["tools"], summary="[9] 길안내 음성 합성 (상담 보이스 통일)")
+async def synthesize_tts(
+    text: str = Query(..., min_length=1, max_length=300),
+    voice: str = Query("female", description="male/female 또는 prebuilt voice 이름"),
+):
+    if ai_client is None:
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY 미설정")
+    from live_bridge import resolve_voice
+    from google.genai import types as _t
+
+    vname = resolve_voice(voice)
+    key = (vname, text)
+    cached = _TTS_CACHE.get(key)
+    if cached is not None:
+        _TTS_CACHE.move_to_end(key)
+        return Response(content=cached, media_type="audio/wav",
+                        headers={"X-TTS-Cache": "hit", "Cache-Control": "max-age=86400"})
+
+    def _gen():
+        return ai_client.models.generate_content(
+            model=GEMINI_TTS_MODEL,
+            contents=text,
+            config=_t.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=_t.SpeechConfig(
+                    voice_config=_t.VoiceConfig(
+                        prebuilt_voice_config=_t.PrebuiltVoiceConfig(voice_name=vname))),
+            ),
+        )
+
+    try:
+        resp = await asyncio.to_thread(_gen)
+        part = resp.candidates[0].content.parts[0]
+        pcm = part.inline_data.data
+        mime = part.inline_data.mime_type or ""
+        m = _re.search(r"rate=(\d+)", mime)
+        rate = int(m.group(1)) if m else 24000
+    except Exception as e:
+        logging.getLogger(__name__).warning("TTS 합성 실패(%s): %s", vname, e)
+        raise HTTPException(status_code=502, detail="음성 합성에 실패했습니다")
+
+    wav = _pcm_to_wav(pcm, rate)
+    _TTS_CACHE[key] = wav
+    while len(_TTS_CACHE) > _TTS_CACHE_MAX:
+        _TTS_CACHE.popitem(last=False)
+    return Response(content=wav, media_type="audio/wav",
+                    headers={"X-TTS-Cache": "miss", "Cache-Control": "max-age=86400"})
 
 
 @app.get("/api/v1/tools/plan_accessible_route", tags=["tools"],

@@ -369,19 +369,20 @@ def _build_google_search_tool():
 # 보안 차원에서 화이트리스트로 잠가둠 — 클라이언트가 임의 문자열 보내도
 # 알 수 없는 값은 기본값으로 폴백.
 ALLOWED_VOICES = {
-    # 정책 상담 컨셉 (전문성·신뢰감) 권장 쌍
-    "Charon": "male",   # 남성 — 깊고 차분, 정보 전달 톤
-    "Kore":   "female", # 여성 — 명료하고 정확
+    # 정책 상담 컨셉 권장 쌍 (2026-07-14 사용자 지정)
+    "Algieba": "male",  # 남성 — 부드럽고 친근
+    "Zephyr":  "female",# 여성 — 밝고 명랑
     # 보조 옵션 (운영자가 .env 로 바꿀 때 후보)
+    "Charon": "male",
+    "Kore":   "female",
     "Orus":   "male",
     "Puck":   "male",
     "Fenrir": "male",
     "Aoede":  "female",
     "Leda":   "female",
-    "Zephyr": "female",
 }
-DEFAULT_VOICE_MALE = "Charon"
-DEFAULT_VOICE_FEMALE = "Kore"
+DEFAULT_VOICE_MALE = "Algieba"
+DEFAULT_VOICE_FEMALE = "Zephyr"
 
 
 def resolve_voice(requested: str | None) -> str:
