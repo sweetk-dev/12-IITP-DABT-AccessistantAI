@@ -774,6 +774,9 @@ window.NAVI = (function(){
   var cfg=null, map=null, kakaoReady=false, wsRef=null;
   var meMarker=null, spotMarkers=[], routeLine=null, stepMarker=null;
   var spots=[], route=null, steps=[], stepIdx=0, guiding=false;
+  // 모의 주행(시뮬레이션) 상태 — 경로 geometry 를 따라 가상 이동
+  var routeGeom=[], cumDist=[], simActive=false, simTimer=null, simPos=null, simDist=0, simMarker=null;
+  var SIM_SPEED_MPS=1.0, SIM_FACTOR=5;   // 도보 1.0m/s × 배속
   var here=null, voiceOn=true, watchId=null;
   var profile="wheelchair_manual";
   var originOverride=null;      // 지도에서 직접 지정한 출발지 (서비스 지역 밖일 때 사용)
@@ -906,8 +909,8 @@ window.NAVI = (function(){
         outOfArea = false;
         if(!originOverride) status("현재 위치를 확인했습니다.");
       }
-      sendLocation();
-      if(guiding) advanceStep();
+      if(!simActive) sendLocation();   // 모의 주행 중엔 가상 이동이 상담 출발지를 오염시키지 않도록 실좌표만 유지·전송 억제
+      if(guiding && !simActive){ advanceStep(); followCamera(); }
     }, function(){
       status("위치 권한이 없어 현재 위치를 알 수 없습니다. 권한을 허용해 주세요.");
     }, {enableHighAccuracy:true, maximumAge:5000, timeout:10000});
@@ -990,6 +993,13 @@ window.NAVI = (function(){
     if(!primary){ status("경로를 찾지 못했습니다."); return; }
     steps = primary.steps || [];
     stepIdx = 0; guiding = false;
+    stopSimulation();
+    routeGeom = primary.geometry || [];
+    cumDist = [0];
+    for(var gi=1; gi<routeGeom.length; gi++){
+      cumDist.push(cumDist[gi-1] + distM({lat:routeGeom[gi-1][0], lng:routeGeom[gi-1][1]},
+                                         {lat:routeGeom[gi][0],   lng:routeGeom[gi][1]}));
+    }
 
     if(map && primary.geometry && primary.geometry.length){
       var path = primary.geometry.map(function(c){ return new kakao.maps.LatLng(c[0], c[1]); });
@@ -1031,9 +1041,11 @@ window.NAVI = (function(){
     var acts = document.createElement("div"); acts.className="navi-actions";
     var go = document.createElement("button"); go.type="button"; go.className="btn"; go.textContent="안내 시작";
     go.addEventListener("click", startGuidance);
+    var sim = document.createElement("button"); sim.type="button"; sim.className="btn outline"; sim.textContent="모의 주행";
+    sim.addEventListener("click", startSimulation);
     var back = document.createElement("button"); back.type="button"; back.className="btn outline"; back.textContent="목록으로";
-    back.addEventListener("click", function(){ if(routeLine){routeLine.setMap(null); routeLine=null;} renderSpotsPanel(); });
-    acts.appendChild(go); acts.appendChild(back);
+    back.addEventListener("click", function(){ stopSimulation(); if(routeLine){routeLine.setMap(null); routeLine=null;} renderSpotsPanel(); });
+    acts.appendChild(go); acts.appendChild(sim); acts.appendChild(back);
     body.appendChild(acts);
   }
 
@@ -1068,9 +1080,11 @@ window.NAVI = (function(){
   /* ── 턴바이턴 ── */
   function startGuidance(){
     if(!steps.length) return;
+    stopSimulation();
     guiding = true; stepIdx = 0;
     renderStep();
     speak(steps[0].instruction);
+    followCamera();
   }
   function renderStep(){
     var st = steps[stepIdx];
@@ -1089,13 +1103,31 @@ window.NAVI = (function(){
     var nxt = steps[stepIdx+1];
     if(nxt){ var n=document.createElement("div"); n.className="step-next"; n.textContent="다음: "+nxt.instruction; body.appendChild(n); }
 
+    // 이전/다음 — 실제 이동 없이도 경로 순서를 확인할 수 있는 수동 단계 탐색
+    var nav=document.createElement("div"); nav.className="navi-actions";
+    var prev=document.createElement("button"); prev.type="button"; prev.className="btn outline"; prev.textContent="◀ 이전";
+    prev.disabled = (stepIdx<=0);
+    prev.setAttribute("aria-label","이전 안내 단계");
+    prev.addEventListener("click", function(){ gotoStep(stepIdx-1); });
+    var next=document.createElement("button"); next.type="button"; next.className="btn outline"; next.textContent="다음 ▶";
+    next.disabled = (stepIdx>=steps.length-1);
+    next.setAttribute("aria-label","다음 안내 단계");
+    next.addEventListener("click", function(){ gotoStep(stepIdx+1); });
+    nav.appendChild(prev); nav.appendChild(next);
+    body.appendChild(nav);
+
     var acts=document.createElement("div"); acts.className="navi-actions";
     var again=document.createElement("button"); again.type="button"; again.className="btn outline"; again.textContent="다시 듣기";
     again.addEventListener("click", function(){ speak(st.instruction); });
     var stop=document.createElement("button"); stop.type="button"; stop.className="btn outline"; stop.textContent="안내 종료";
-    stop.addEventListener("click", function(){ guiding=false; try{window.speechSynthesis.cancel();}catch(e){} renderSpotsPanel(); });
+    stop.addEventListener("click", function(){ stopSimulation(); guiding=false; try{window.speechSynthesis.cancel();}catch(e){} renderSpotsPanel(); });
     acts.appendChild(again); acts.appendChild(stop);
     body.appendChild(acts);
+    if(simActive){
+      var si=document.createElement("p"); si.className="c-note";
+      si.textContent="※ 모의 주행 중 (도보 속도 ×" + SIM_FACTOR + ")";
+      body.appendChild(si);
+    }
 
     if(map && st.coord){
       var pos=new kakao.maps.LatLng(st.coord[0], st.coord[1]);
@@ -1121,6 +1153,104 @@ window.NAVI = (function(){
       speak(steps[stepIdx].instruction);
       if(steps[stepIdx].maneuver === "arrive"){ guiding = false; }
     }
+  }
+
+  /* ── 수동 단계 탐색 (이전/다음) — 안내·모의 주행 중 언제든 경로 순서 확인 ── */
+  function gotoStep(i){
+    if(i<0 || i>=steps.length) return;
+    stepIdx = i;
+    if(simActive){
+      var st=steps[i];
+      if(st && st.coord){ simDist = distAlongNearest(st.coord); simPos = posAtDist(simDist); drawSim(); }
+    }
+    renderStep();
+    speak(steps[i].instruction);
+    followCamera();
+  }
+  function distAlongNearest(coord){
+    var best=0, bestD=Infinity;
+    for(var gi=0; gi<routeGeom.length; gi++){
+      var d=distM({lat:routeGeom[gi][0], lng:routeGeom[gi][1]}, {lat:coord[0], lng:coord[1]});
+      if(d<bestD){ bestD=d; best=gi; }
+    }
+    return cumDist[best]||0;
+  }
+  function posAtDist(dist){
+    if(!routeGeom.length) return null;
+    if(dist<=0) return {lat:routeGeom[0][0], lng:routeGeom[0][1]};
+    var total=cumDist[cumDist.length-1];
+    if(dist>=total){ var lp0=routeGeom[routeGeom.length-1]; return {lat:lp0[0], lng:lp0[1]}; }
+    for(var gi=1; gi<routeGeom.length; gi++){
+      if(cumDist[gi]>=dist){
+        var seg=cumDist[gi]-cumDist[gi-1];
+        var r=seg>0 ? (dist-cumDist[gi-1])/seg : 0;
+        return {lat: routeGeom[gi-1][0]+(routeGeom[gi][0]-routeGeom[gi-1][0])*r,
+                lng: routeGeom[gi-1][1]+(routeGeom[gi][1]-routeGeom[gi-1][1])*r};
+      }
+    }
+    var lp=routeGeom[routeGeom.length-1]; return {lat:lp[0], lng:lp[1]};
+  }
+  function followCamera(){
+    if(!map || !guiding) return;
+    var p = simActive ? simPos : here;
+    if(p){ try{ map.setCenter(new kakao.maps.LatLng(p.lat, p.lng)); }catch(e){} }
+  }
+  function drawSim(){
+    if(!map || !simPos) return;
+    var pos=new kakao.maps.LatLng(simPos.lat, simPos.lng);
+    if(!simMarker){
+      simMarker=new kakao.maps.Circle({center:pos, radius:12, strokeWeight:3, strokeColor:"#EA580C",
+        strokeOpacity:0.9, fillColor:"#F97316", fillOpacity:0.85});
+      simMarker.setMap(map);
+    } else { simMarker.setPosition(pos); }
+  }
+
+  /* ── 모의 주행 — 경로 geometry 를 따라 가상 이동하며 실주행과 동일한 안내 재현 ── */
+  function startSimulation(){
+    if(!steps.length || !routeGeom.length){ status("경로가 없어 모의 주행을 시작할 수 없습니다."); return; }
+    stopSimulation();
+    simActive=true; guiding=true; stepIdx=0; simDist=0;
+    simPos=posAtDist(0);
+    drawSim();
+    renderStep();
+    speak(steps[0].instruction);
+    status("모의 주행을 시작합니다.");
+    var TICK=200;
+    simTimer=setInterval(function(){
+      simDist += SIM_SPEED_MPS*SIM_FACTOR*(TICK/1000);
+      simPos=posAtDist(simDist);
+      drawSim();
+      followCamera();
+      simAdvance();
+      var total=cumDist[cumDist.length-1]||0;
+      if(simTimer && simDist>=total){ finishSimulation(); }
+    }, TICK);
+  }
+  function simAdvance(){
+    if(!simActive || !simPos) return;
+    var nxt=steps[stepIdx+1];
+    if(!nxt || !nxt.coord) return;
+    var d=distM(simPos, {lat:nxt.coord[0], lng:nxt.coord[1]});
+    if(d<=25){
+      stepIdx+=1;
+      renderStep();
+      speak(steps[stepIdx].instruction);
+      if(steps[stepIdx].maneuver==="arrive"){ finishSimulation(); }
+    }
+  }
+  function finishSimulation(){
+    if(simTimer){ clearInterval(simTimer); simTimer=null; }
+    if(simActive){
+      simActive=false; guiding=false;
+      status("모의 주행이 끝났습니다.");
+      renderStep();   // 모의 주행 표시 제거 + 이전/다음으로 복습 가능
+    }
+  }
+  function stopSimulation(){
+    if(simTimer){ clearInterval(simTimer); simTimer=null; }
+    simActive=false;
+    if(simMarker){ try{simMarker.setMap(null);}catch(e){} simMarker=null; }
+    simPos=null; simDist=0;
   }
 
   /* ── 상담 세션에서 온 UI 액션 ── */
