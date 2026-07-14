@@ -809,14 +809,18 @@ window.NAVI = (function(){
   var $ = function(id){ return document.getElementById(id); };
   function status(msg){ var el=$("naviStatus"); if(el) el.textContent=msg; }
 
-  /* ── 음성 안내 — 서버 합성(상담과 동일 보이스) 우선, 실패 시 기기 내장 TTS 폴백 ── */
-  var ttsAudio=null, ttsCache={}, ttsCacheKeys=[];
+  /* ── 음성 안내 — 서버 합성(상담과 동일 보이스) 우선, 실패 시 기기 내장 TTS 폴백 ──
+     speakSeq: 발화 요청 세대 토큰. 합성 응답이 늦게 도착해도 그 사이 새 발화가
+     요청됐으면 폐기한다 — 안내가 밀리거나(순서 꼬임) 폴백 목소리와 섞이는 것 방지. */
+  var ttsAudio=null, ttsCache={}, ttsCacheKeys=[], speakSeq=0;
   function stopSpeak(){
+    speakSeq++;
     try{ if(ttsAudio){ ttsAudio.onended=null; ttsAudio.onerror=null; ttsAudio.pause(); ttsAudio=null; } }catch(e){}
     try{ window.speechSynthesis && window.speechSynthesis.cancel(); }catch(e){}
     window.__NAVI_SPEAKING = false;
   }
-  function speakFallback(text){
+  function speakFallback(text, seq){
+    if(seq !== speakSeq) return;                   // 이미 다른 발화로 대체됨
     if(!("speechSynthesis" in window)) return;
     try{
       var u = new SpeechSynthesisUtterance(text);
@@ -827,35 +831,49 @@ window.NAVI = (function(){
       window.speechSynthesis.speak(u);
     }catch(e){ window.__NAVI_SPEAKING = false; }
   }
+  function _ttsFetch(v, text){
+    var key = v + "|" + text;
+    if(ttsCache[key]) return Promise.resolve(ttsCache[key]);
+    return fetch("/api/v1/tts?voice=" + encodeURIComponent(v) + "&text=" + encodeURIComponent(text))
+      .then(function(r){ if(!r.ok) throw new Error("tts " + r.status); return r.blob(); })
+      .then(function(b){
+        var url = URL.createObjectURL(b);
+        ttsCache[key] = url; ttsCacheKeys.push(key);
+        if(ttsCacheKeys.length > 120){             // 세션 내 캐시 상한
+          var old = ttsCacheKeys.shift();
+          try{ URL.revokeObjectURL(ttsCache[old]); }catch(e){}
+          delete ttsCache[old];
+        }
+        return url;
+      });
+  }
   function speak(text){
     if(!voiceOn || !text) return;
     stopSpeak();
+    var seq = speakSeq;
     var v = window.__sessionVoice || "female";
-    var key = v + "|" + text;
-    var play = function(url){
+    _ttsFetch(v, text).then(function(url){
+      if(seq !== speakSeq) return;                 // 늦게 도착 — 폐기
       try{
         ttsAudio = new Audio(url);
         ttsAudio.volume = 0.8;                     // 상담 음성 게인(0.8)과 동일하게 정합
         window.__NAVI_SPEAKING = true;             // 발화 중 마이크 입력 차단(에코 방지)
         ttsAudio.onended = function(){ window.__NAVI_SPEAKING = false; };
         ttsAudio.onerror = function(){ window.__NAVI_SPEAKING = false; };
-        ttsAudio.play().catch(function(){ window.__NAVI_SPEAKING = false; speakFallback(text); });
-      }catch(e){ window.__NAVI_SPEAKING = false; speakFallback(text); }
-    };
-    if(ttsCache[key]){ play(ttsCache[key]); return; }
-    fetch("/api/v1/tts?voice=" + encodeURIComponent(v) + "&text=" + encodeURIComponent(text))
-      .then(function(r){ if(!r.ok) throw new Error("tts " + r.status); return r.blob(); })
-      .then(function(b){
-        var url = URL.createObjectURL(b);
-        ttsCache[key] = url; ttsCacheKeys.push(key);
-        if(ttsCacheKeys.length > 80){              // 세션 내 캐시 상한
-          var old = ttsCacheKeys.shift();
-          try{ URL.revokeObjectURL(ttsCache[old]); }catch(e){}
-          delete ttsCache[old];
-        }
-        play(url);
-      })
-      .catch(function(){ speakFallback(text); });
+        ttsAudio.play().catch(function(){ window.__NAVI_SPEAKING = false; speakFallback(text, seq); });
+      }catch(e){ window.__NAVI_SPEAKING = false; speakFallback(text, seq); }
+    }).catch(function(){ speakFallback(text, seq); });
+  }
+  // 안내 시작 시 전체 안내 문장을 미리 합성해 캐시에 올려둔다(첫 재생 지연·폴백 혼재 방지)
+  function prefetchTts(){
+    if(!voiceOn || !steps.length) return;
+    var v = window.__sessionVoice || "female";
+    var texts = steps.map(function(st){ return st.instruction; }).filter(Boolean);
+    texts.push("다음 안내까지 약 300미터입니다", "다음 안내까지 약 150미터입니다");
+    var chain = Promise.resolve();
+    texts.forEach(function(t){
+      chain = chain.then(function(){ return _ttsFetch(v, t).catch(function(){}); });
+    });
   }
 
   /* ── 설정·지도 로드 ── */
@@ -1131,7 +1149,8 @@ window.NAVI = (function(){
   function startGuidance(){
     if(!steps.length) return;
     stopSimulation();
-    guiding = true; stepIdx = 0;
+    guiding = true; stepIdx = 0; _interimDone = {};
+    prefetchTts();
     sheetMini(true); sheetSetCollapsed(false);   // 안내 중엔 시트를 낮춰 지도를 넓게
     renderStep();
     speak(steps[0].instruction);
@@ -1193,10 +1212,26 @@ window.NAVI = (function(){
           Math.cos(a.lat*t)*Math.cos(b.lat*t)*Math.sin(dLng/2)*Math.sin(dLng/2);
     return 2*R*Math.asin(Math.min(1, Math.sqrt(x)));
   }
+  // 긴 구간에서 침묵하지 않도록, 다음 안내 지점까지 남은 거리를 문턱(300/150m) 통과 시 1회씩 안내
+  var _interimDone = {};
+  function _interimAnnounce(pos){
+    if(!guiding || !pos) return;
+    var nxt = steps[stepIdx+1];
+    if(!nxt || !nxt.coord) return;
+    var d = distM(pos, {lat:nxt.coord[0], lng:nxt.coord[1]});
+    [300, 150].forEach(function(t){
+      var k = stepIdx + ":" + t;
+      if(d <= t && d > t - 90 && !_interimDone[k]){
+        _interimDone[k] = true;
+        speak("다음 안내까지 약 " + t + "미터입니다");
+      }
+    });
+  }
   function advanceStep(){
     if(!guiding || !here) return;
     var nxt = steps[stepIdx+1];
     if(!nxt || !nxt.coord) return;
+    _interimAnnounce(here);
     var d = distM(here, {lat:nxt.coord[0], lng:nxt.coord[1]});
     if(d <= 25){                       // 다음 안내 지점 25m 이내 진입 -> 스텝 전환
       stepIdx += 1;
@@ -1260,7 +1295,8 @@ window.NAVI = (function(){
   function startSimulation(){
     if(!steps.length || !routeGeom.length){ status("경로가 없어 모의 주행을 시작할 수 없습니다."); return; }
     stopSimulation();
-    simActive=true; guiding=true; stepIdx=0; simDist=0;
+    simActive=true; guiding=true; stepIdx=0; simDist=0; _interimDone = {};
+    prefetchTts();
     simPos=posAtDist(0);
     sheetMini(true); sheetSetCollapsed(false);   // 모의 주행 중에도 지도를 넓게
     drawSim();
@@ -1282,6 +1318,7 @@ window.NAVI = (function(){
     if(!simActive || !simPos) return;
     var nxt=steps[stepIdx+1];
     if(!nxt || !nxt.coord) return;
+    _interimAnnounce(simPos);
     var d=distM(simPos, {lat:nxt.coord[0], lng:nxt.coord[1]});
     if(d<=25){
       stepIdx+=1;
