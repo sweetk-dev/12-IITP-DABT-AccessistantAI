@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="AccessistantAI">
+  <rect width="192" height="192" rx="44" fill="#2563EB"/>
+  <circle cx="96" cy="52" r="16" fill="#fff"/>
+  <path d="M60 88h72M96 88v46M96 134l-22 26M96 134l22 26" stroke="#fff" stroke-width="13" stroke-linecap="round" fill="none"/>
+</svg>

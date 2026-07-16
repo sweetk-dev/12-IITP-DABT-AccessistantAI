@@ -183,8 +183,26 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - 친절하지만 군더더기 없이. 사용자가 시각·청각 장애를 가졌을 수 있으므로 명확한 발음·짧은 문장.
 - 절대 추측해서 금액·시행일·자격을 지어내지 말 것. 도구가 반환하지 않은 정보는 모른다고 말할 것.
 
+## 답변 서식 (화면 표시용 — 음성은 그대로 읽되 화면은 카드로 렌더됩니다)
+화면에서 훑어보기 쉽도록 아래 규칙에 맞춰 문장을 구성하세요. 마크다운 기호를 남발하지 말고 아래 4가지만 사용합니다.
+
+1. **단락 분리**: 2~4문장마다 빈 줄로 단락을 나눕니다. 한 단락 = 한 논점.
+2. **핵심 강조**: 금액·기간·자격 등급·필수 조건 등 핵심 조건은 `**굵게**` 표시합니다.
+3. **항목 나열**: 절차·서류·구비조건은 각 줄을 `- ` 로 시작하는 항목으로 나열합니다.
+4. **유의사항**: 예외·단서는 줄 맨 앞에 `※ ` 를 붙입니다.
+5. 소제목이 필요하면 줄 맨 앞에 `## ` 를 붙입니다(짧게, 한 줄).
+
+표·코드블록·이모지는 사용하지 마세요.
+
+## 이동경로·무장애 관광 (도구 6~8)
+- 사용자가 "어디 갈 만한 곳", "무장애 관광지", "휠체어로 갈 수 있는 곳" 등을 물으면 `find_bf_tour_spots` 를 호출합니다. 결과는 상위 2~3곳만 간단히 말하고, 나머지는 화면 목록으로 넘깁니다.
+- 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
+- 경로에 경고가 있거나 권장 경사를 완화해 탐색한 경우(`fallback.used`) 반드시 그 사실을 알립니다.
+- "왜 이렇게 돌아가", "이 구간 뭐야" 같은 질문에는 `explain_route_segment` 로 사유(경사·계단·턱낮춤)를 설명합니다.
+- 위치를 알 수 없다는 결과가 오면 화면의 위치 권한 허용을 요청하세요. 좌표를 추측하지 마세요.
+
 ## 시스템 신호(`[SYSTEM]`) 처리 규칙
-사용자 발화가 아니라 백엔드가 직접 보내는 메시지가 `[SYSTEM]` 으로 시작하는 경우, 도구 호출 없이 **지시된 문장을 그대로 음성으로 전달**하세요. 종류는 다음 3가지뿐입니다.
+사용자 발화가 아니라 백엔드가 직접 보내는 메시지가 `[SYSTEM]` 으로 시작하는 경우, 아래 규칙대로 처리하세요. 종류는 다음 5가지뿐입니다.
 
 1. `[SYSTEM:GREETING]` — 세션이 막 연결된 직후. 다음 인사말을 그대로 한국어 음성으로 한 번만 출력:
    > "안녕하세요! 장애인 복지 정책에 대해 궁금한 점이 있으신가요? 필요하신 정보를 정확하게 안내해 드릴게요. 편하게 말씀해 주세요."
@@ -195,12 +213,69 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 3. `[SYSTEM:AUTO_CLOSE]` — 추가 2분 무응답으로 자동 종료 직전. 다음 문장을 그대로 음성으로 출력:
    > "응답이 없어 상담을 종료합니다. 다음에 또 이용해 주세요. 감사합니다."
 
-이 세 가지 시스템 신호에는 **DB 도구 호출 금지**, **외부 검색 금지**, **법적 근거·문의처 멘트 금지**. 지정된 문장만 정확히 발화한 뒤 turn 을 종료하세요.
+4. `[SYSTEM:GREETING_NAVI]` — 이동·관광 길안내 화면에서 세션이 연결된 직후. 다음 인사말을 그대로 한국어 음성으로 한 번만 출력:
+   > "안녕하세요! 이동 경로와 무장애 관광지 안내를 도와드릴게요. 가시고 싶은 곳이나 궁금한 경로를 편하게 말씀해 주세요."
+
+5. `[SYSTEM:RESUME_ANSWER]` — 연결이 잠시 끊겼다가 복구된 직후, 직전 사용자 질문에 아직 답변하지 못한 상태. 고정 문구 없이 **직전 사용자 질문에 이어서 답변을 완료**하세요. 이 신호에 한해 필요한 도구 호출을 허용합니다. 직전 질문을 확인할 수 없으면 "죄송해요, 방금 말씀을 제가 놓쳤어요. 다시 한 번 말씀해 주시겠어요?" 라고 요청하세요.
+
+1~4번 신호에는 **DB 도구 호출 금지**, **외부 검색 금지**, **법적 근거·문의처 멘트 금지** — 지정된 문장만 정확히 발화한 뒤 turn 을 종료하세요. 5번(`RESUME_ANSWER`)만 도구 사용이 허용됩니다.
 """
 
 
+def _route_tool_declarations() -> list:
+    """이동경로·관광 도구 3종. 경로 서비스가 설정되지 않았으면 빈 목록(선언 자체를 안 함)."""
+    import route_client
+
+    if not route_client.enabled():
+        return []
+    return [
+        types.FunctionDeclaration(
+            name="find_bf_tour_spots",
+            description="장애 유형에 맞는 무장애 관광지를 추천한다. '갈 만한 곳', '휠체어로 갈 수 있는 곳' 질문에 사용.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "disabilities": types.Schema(
+                        type=types.Type.ARRAY,
+                        items=types.Schema(type=types.Type.STRING),
+                        description="지체장애/휠체어/시각장애/청각장애/영유아동반 중 해당하는 것",
+                    ),
+                    "sigungu": types.Schema(type=types.Type.STRING, description="지역명, 기본 '안양'"),
+                    "topk": types.Schema(type=types.Type.INTEGER, description="반환 개수, 기본 5"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="plan_accessible_route",
+            description="출발지에서 목적지(무장애 관광지·지하철역·버스정류장)까지 무장애 보행 경로를 만든다. 출발지는 기본으로 현재 위치가 자동 주입되며, 사용자가 출발지를 말로 밝히면 origin_place 에 담아 호출한다.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                required=["destination_poi_id"],
+                properties={
+                    "destination_poi_id": types.Schema(type=types.Type.STRING, description="find_bf_tour_spots 결과의 poi_id"),
+                    "destination_type": types.Schema(type=types.Type.STRING, description="tour(기본) / transit_station / transit_stop"),
+                    "profile": types.Schema(type=types.Type.STRING, description="wheelchair_manual(기본)/wheelchair_electric/crutch/visual/walk"),
+                    "origin_place": types.Schema(type=types.Type.STRING, description="사용자가 말로 지정한 출발지 이름(예: '안양역', '범계역', '김중업 건축박물관'). 사용자가 '~에서', '~에 있는데' 처럼 출발지를 밝히면 반드시 채운다. 미지정 시 현재 위치 사용"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="explain_route_segment",
+            description="직전에 안내한 경로의 특정 구간이 왜 그렇게(우회·경사·계단) 안내되었는지 설명한다.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                required=["route_id"],
+                properties={
+                    "route_id": types.Schema(type=types.Type.STRING, description="plan_accessible_route 가 반환한 route_id"),
+                    "step_idx": types.Schema(type=types.Type.INTEGER, description="구간 번호(생략 시 경고 구간 자동 선택)"),
+                },
+            ),
+        ),
+    ]
+
+
 def build_tool_declarations() -> list:
-    """Gemini Live API 에 등록할 5종 함수 선언.
+    """Gemini Live API 에 등록할 함수 선언(정책 5종 + 경로·관광 3종).
 
     google-genai SDK 의 types.FunctionDeclaration 패턴으로 작성.
     인자 스키마는 도구 디스패처와 정확히 일치해야 함.
@@ -265,7 +340,7 @@ def build_tool_declarations() -> list:
                     },
                 ),
             ),
-        ]),
+        ] + _route_tool_declarations()),
         # ── 외부 검색 폴백 (Gemini 내장) ──
         # DB 도구로 답을 못 찾을 때만 사용되도록 SYSTEM_INSTRUCTION 으로 우선순위 강제.
         # SDK 버전에 따라 google_search 필드명이 다를 수 있으므로 호환성 fallback 적용.
@@ -294,19 +369,20 @@ def _build_google_search_tool():
 # 보안 차원에서 화이트리스트로 잠가둠 — 클라이언트가 임의 문자열 보내도
 # 알 수 없는 값은 기본값으로 폴백.
 ALLOWED_VOICES = {
-    # 정책 상담 컨셉 (전문성·신뢰감) 권장 쌍
-    "Charon": "male",   # 남성 — 깊고 차분, 정보 전달 톤
-    "Kore":   "female", # 여성 — 명료하고 정확
+    # 정책 상담 컨셉 권장 쌍 (2026-07-14 사용자 지정)
+    "Algieba": "male",  # 남성 — 부드럽고 친근
+    "Zephyr":  "female",# 여성 — 밝고 명랑
     # 보조 옵션 (운영자가 .env 로 바꿀 때 후보)
+    "Charon": "male",
+    "Kore":   "female",
     "Orus":   "male",
     "Puck":   "male",
     "Fenrir": "male",
     "Aoede":  "female",
     "Leda":   "female",
-    "Zephyr": "female",
 }
-DEFAULT_VOICE_MALE = "Charon"
-DEFAULT_VOICE_FEMALE = "Kore"
+DEFAULT_VOICE_MALE = "Algieba"
+DEFAULT_VOICE_FEMALE = "Zephyr"
 
 
 def resolve_voice(requested: str | None) -> str:
@@ -336,6 +412,7 @@ async def handle_live_chat(
     embed_fn: Callable,
     model_name: str = None,
     voice: str = None,
+    mode: str = None,
 ):
     # 환경변수 우선, 기본은 안정 GA 모델
     if model_name is None:
@@ -463,6 +540,9 @@ async def handle_live_chat(
     AUTO_CLOSE_SEC = 120
     last_activity_ts = asyncio.get_event_loop().time()
     idle_state = {"prompted": False}  # 종료 확인 음성을 이미 보냈는지
+    # 무한대기 방지 — silent 재연결 직후 '미완료 사용자 턴' 재개 판정용
+    RESUME_WINDOW_SEC = 90                       # 마지막 사용자 입력 후 이 시간 이내면 재개 대상
+    last_ai_turn_done_ts = last_activity_ts     # 마지막 AI 턴 완료 시각 (초기=세션 시작)
 
     def mark_user_active(source: str):
         nonlocal last_activity_ts
@@ -510,6 +590,8 @@ async def handle_live_chat(
     convo_history = []                  # [(role, text)] 확정된 대화 턴
     _ai_buf = ""                        # 현재 AI 턴 전사 누적
     _user_buf = ""                      # 현재 사용자 턴 입력 누적
+    # 프런트가 보낸 현재 위치 — 경로 도구의 출발지로 서버에서 주입한다(모델이 좌표를 지어내지 못하게).
+    user_location = {"lat": None, "lng": None}
     reseed_context = False              # 새 세션에 맥락 re-seed 필요 여부
     _BASE_SYS = SYSTEM_INSTRUCTION
     RESEED_MAX_TURNS = 8                # 주입할 최근 대화 턴 수(컨텍스트 비대화 방지)
@@ -547,13 +629,25 @@ async def handle_live_chat(
                 logger.info("✅ Gemini Live 세션 연결됨 (model=%s, %dms)",
                             model_name, _connect_elapsed_ms)
                 # ── 세션 시작 인사말 트리거 (DB 도구 호출 없이 지정 문장만 발화) ──
-                await _send_system_signal(session, "[SYSTEM:GREETING]")
+                # 이동·관광(길안내) 화면에서 시작된 세션은 경로 안내용 인사말을 사용
+                await _send_system_signal(
+                    session,
+                    "[SYSTEM:GREETING_NAVI]" if mode == "navi" else "[SYSTEM:GREETING]")
             else:
                 # silent 재연결 — 사용자에게 어떤 알림도 보내지 않음. 로그만 남김.
                 logger.info("🔇 Gemini Live silent 재연결 #%d (handle=%s, %dms)",
                             reconnect_count,
                             "이어받음" if session_handle else "신규",
                             _connect_elapsed_ms)
+                # 무한대기 방지 — 사용자 질문에 답하던 중(또는 답하기 전에) 세션이 끊겼다면
+                # 재개된 세션은 새 입력을 기다리기만 하므로(상호 대기 교착),
+                # 즉시 RESUME_ANSWER 신호를 보내 직전 질문에 이어서 답변하게 한다.
+                _now_rc = asyncio.get_event_loop().time()
+                if (last_activity_ts > last_ai_turn_done_ts
+                        and (_now_rc - last_activity_ts) <= RESUME_WINDOW_SEC):
+                    logger.info("🔁 미완료 사용자 턴 감지(입력 후 %.1fs) — [SYSTEM:RESUME_ANSWER] 전송",
+                                _now_rc - last_activity_ts)
+                    await _send_system_signal(session, "[SYSTEM:RESUME_ANSWER]")
 
             # ─── 클라이언트 → Gemini ───
             async def pump_client_to_gemini():
@@ -583,10 +677,23 @@ async def handle_live_chat(
                                 turn_complete=True,
                             )
                             mark_user_active("text")
+                        elif msg.get("type") == "location":
+                            # 프런트가 주기적으로 보내는 현재 위치(위경도).
+                            # 경로 도구(plan_accessible_route)의 origin 으로 주입한다.
+                            try:
+                                user_location["lat"] = float(msg["lat"])
+                                user_location["lng"] = float(msg["lng"])
+                                logger.debug("📍 현재 위치 갱신")
+                            except (KeyError, TypeError, ValueError):
+                                logger.warning("잘못된 location 메시지 무시")
                         elif msg.get("type") == "end_of_turn":
                             # 사용자가 말을 끝냈음을 알리는 신호 (VAD 가 없을 때)
                             await session.send_realtime_input(audio_stream_end=True)
                             mark_user_active("end_of_turn")
+                        elif msg.get("type") == "activity":
+                            # 길안내 화면의 상호작용/안내 진행 신호 — 발화가 없어도
+                            # 서비스 이용 중이므로 유휴 종료(IDLE/AUTO_CLOSE) 대상이 아니다.
+                            mark_user_active(str(msg.get("source") or "ui"))
                 except WebSocketDisconnect:
                     logger.info("클라이언트 WebSocket 연결 종료")
                 except Exception as e:
@@ -599,7 +706,7 @@ async def handle_live_chat(
                 # turn_complete 시점에 tracker 를 새 인스턴스로 교체하기 때문에
                 # outer scope 의 tracker 를 재바인딩 — nonlocal 선언 필수.
                 # session_handle 도 server 가 SessionResumptionUpdate 보낼 때마다 갱신.
-                nonlocal tracker, session_handle, session_progressed, _ai_buf, _user_buf
+                nonlocal tracker, session_handle, session_progressed, _ai_buf, _user_buf, last_ai_turn_done_ts
                 total_responses = 0
                 turn_count = 0
                 while True:
@@ -654,6 +761,7 @@ async def handle_live_chat(
                                 if len(convo_history) > 100:
                                     del convo_history[:-100]
                                 logger.info("✅ AI turn #%d 완료", turn_count)
+                                last_ai_turn_done_ts = asyncio.get_event_loop().time()
                                 await _safe_send_json(websocket,{"type": "turn_complete"})
                                 # ── Phase 5 Track A: turn 단위 폴백 적재 ─────────
                                 # 현재 tracker 를 finalize 에 넘기고, 다음 turn 을 위해
@@ -709,6 +817,15 @@ async def handle_live_chat(
                                     fname = fc.name
                                     fargs = dict(fc.args or {})
                                     logger.info("🛠 도구 호출: %s(%s)", fname, fargs)
+                                    # 경로 도구는 현재 위치가 필요하다 — LLM 이 좌표를 지어내지 않도록
+                                    # 프런트가 보낸 실제 위치를 서버에서 주입한다.
+                                    if fname == "plan_accessible_route":
+                                        if user_location.get("lat") is not None:
+                                            fargs["origin_lat"] = user_location["lat"]
+                                            fargs["origin_lng"] = user_location["lng"]
+                                        else:
+                                            fargs.pop("origin_lat", None)
+                                            fargs.pop("origin_lng", None)
                                     if fname not in dispatcher:
                                         result = {"error": f"unknown tool: {fname}"}
                                     else:
@@ -727,12 +844,24 @@ async def handle_live_chat(
                                         _src = _extract_sources(result)
                                         if _src:
                                             await _safe_send_json(websocket, {"type": "sources", "items": _src})
+                                    # 지도·경로를 화면에 그리기 위한 UI 액션은 별도 메시지로 전달하고,
+                                    # LLM 에게 돌려주는 응답에서는 제거한다(대용량 좌표열을 모델에 넘기지 않음).
+                                    ui_action = None
+                                    if isinstance(result, dict) and result.get("ui_action"):
+                                        ui_action = result.pop("ui_action")
+
                                     responses.append(types.FunctionResponse(
                                         id=fc.id,
                                         name=fname,
                                         response=result,
                                     ))
                                     await _safe_send_json(websocket,{"type": "tool_call", "name": fname, "args": fargs})
+                                    if ui_action:
+                                        await _safe_send_json(websocket, {
+                                            "type": "ui_action",
+                                            "action": ui_action.get("action"),
+                                            "payload": ui_action,
+                                        })
                                 try:
                                     logger.info("📤 send_tool_response 시작 (%d개)", len(responses))
                                     await session.send_tool_response(function_responses=responses)

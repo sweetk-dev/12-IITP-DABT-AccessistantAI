@@ -8,7 +8,7 @@ import os
 from typing import Optional
 from time import sleep
 
-from fastapi import FastAPI, Depends, Query, HTTPException, WebSocket
+from fastapi import FastAPI, Depends, Query, HTTPException, WebSocket, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
@@ -55,6 +55,9 @@ def _embed(text_query: str) -> list[float]:
             sleep(2**attempt)
     raise HTTPException(status_code=502, detail=f"임베딩 API 실패: {last_err}")
 
+
+import route_client
+import tool_handlers
 
 app = FastAPI(
     title="Welfare Policy AI Bridge API",
@@ -127,8 +130,177 @@ async def health_check():
         "status": "ok" if db_ok else "degraded",
         "db": db_msg,
         "gemini_client": "ready" if ai_client else "missing GEMINI_API_KEY",
-        "tools_available": 5,
+        "tools_available": 8 if route_client.enabled() else 5,
+        "route_api": "ready" if route_client.enabled() else "disabled",
     }
+
+
+# ─────────────────────────────────────────────────────────────
+# 프런트 런타임 설정 — 지도 JS 키·기능 플래그 주입
+# (키를 정적 파일에 하드코딩하지 않기 위한 엔드포인트)
+# ─────────────────────────────────────────────────────────────
+@app.get("/api/v1/config", tags=["meta"], summary="프런트 런타임 설정")
+async def front_config():
+    # 서비스 가능한 공간 범위 — 프런트가 "지역 밖입니다" 를 판단해 출발지 선택을 유도한다.
+    # 경로 서비스가 없거나 응답하지 않으면 생략(기능 자체가 꺼진 상태이므로 무해).
+    service_area = None
+    if route_client.enabled():
+        meta = await route_client.meta_network()
+        if meta.get("status") != "error" and meta.get("bbox"):
+            service_area = {
+                "region": meta.get("region"),
+                "bbox": meta["bbox"],
+                "network_version": meta.get("network_version"),
+            }
+
+    return {
+        "kakao_js_key": os.environ.get("KAKAO_JS_KEY", ""),
+        "features": {
+            "route": route_client.FEATURE_ROUTE and bool(route_client.BASE_URL),
+            "tour": route_client.FEATURE_TOUR and bool(route_client.BASE_URL),
+        },
+        "service_area": service_area,
+        "map": {
+            # 안양시청 — 위치 권한 거부 시 지도 초기 중심
+            "default_center": {"lat": 37.3943, "lng": 126.9568},
+            "default_level": 5,
+        },
+        "route_profiles": [
+            {"id": "wheelchair_manual", "label": "수동 휠체어"},
+            {"id": "wheelchair_electric", "label": "전동 휠체어"},
+            {"id": "crutch", "label": "목발·보행보조"},
+            {"id": "visual", "label": "시각장애"},
+            {"id": "walk", "label": "일반 보행"},
+        ],
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# 도구 #6~8 — 이동경로·무장애 관광 (REST 미러. 프런트가 직접 호출)
+# ─────────────────────────────────────────────────────────────
+@app.get("/api/v1/tools/find_bf_tour_spots", tags=["tools"],
+         summary="[6] 장애 유형별 무장애 관광지 추천")
+async def find_bf_tour_spots(
+    disabilities: str = Query("지체장애", description="쉼표 구분. 예: '지체장애,시각장애'"),
+    sigungu: str = Query("안양"),
+    topk: int = Query(5, ge=1, le=50),
+):
+    types_ = [d.strip() for d in disabilities.split(",") if d.strip()]
+    return await tool_handlers.tool_find_bf_tour_spots(
+        disabilities=types_, sigungu=sigungu, topk=topk
+    )
+
+
+# ─────────────────────────────────────────────────────────────
+# 길안내 TTS — 상담 음성과 동일한 Gemini 보이스로 안내 문장을 합성
+# ─────────────────────────────────────────────────────────────
+# 브라우저 내장 TTS 와 상담 음성의 톤 차이를 없애기 위해 같은 prebuilt 보이스를 사용.
+# 안내 문장은 반복성이 높아 서버 캐시(LRU)로 비용·지연을 줄인다. 실패 시 프런트가
+# 브라우저 TTS 로 폴백하므로 이 엔드포인트는 best-effort 로 동작하면 된다.
+from collections import OrderedDict as _OrderedDict
+import re as _re
+import struct as _struct
+
+GEMINI_TTS_MODEL = os.environ.get("GEMINI_TTS_MODEL", "gemini-3.1-flash-tts-preview")
+_TTS_CACHE: "_OrderedDict[tuple, bytes]" = _OrderedDict()
+_TTS_CACHE_MAX = 300
+
+
+def _pcm_to_wav(pcm: bytes, rate: int = 24000, channels: int = 1, width: int = 2) -> bytes:
+    """원시 PCM(16bit) 을 WAV 컨테이너로 감싼다 — <audio>/WebAudio 에서 바로 재생 가능."""
+    byte_rate = rate * channels * width
+    block_align = channels * width
+    header = b"RIFF" + _struct.pack("<I", 36 + len(pcm)) + b"WAVE"
+    header += b"fmt " + _struct.pack("<IHHIIHH", 16, 1, channels, rate, byte_rate, block_align, width * 8)
+    header += b"data" + _struct.pack("<I", len(pcm))
+    return header + pcm
+
+
+@app.get("/api/v1/tts", tags=["tools"], summary="[9] 길안내 음성 합성 (상담 보이스 통일)")
+async def synthesize_tts(
+    text: str = Query(..., min_length=1, max_length=300),
+    voice: str = Query("female", description="male/female 또는 prebuilt voice 이름"),
+):
+    if ai_client is None:
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY 미설정")
+    from live_bridge import resolve_voice
+    from google.genai import types as _t
+
+    vname = resolve_voice(voice)
+    key = (vname, text)
+    cached = _TTS_CACHE.get(key)
+    if cached is not None:
+        _TTS_CACHE.move_to_end(key)
+        return Response(content=cached, media_type="audio/wav",
+                        headers={"X-TTS-Cache": "hit", "Cache-Control": "max-age=86400"})
+
+    def _gen():
+        return ai_client.models.generate_content(
+            model=GEMINI_TTS_MODEL,
+            contents=text,
+            config=_t.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=_t.SpeechConfig(
+                    voice_config=_t.VoiceConfig(
+                        prebuilt_voice_config=_t.PrebuiltVoiceConfig(voice_name=vname))),
+            ),
+        )
+
+    try:
+        resp = await asyncio.to_thread(_gen)
+        part = resp.candidates[0].content.parts[0]
+        pcm = part.inline_data.data
+        mime = part.inline_data.mime_type or ""
+        m = _re.search(r"rate=(\d+)", mime)
+        rate = int(m.group(1)) if m else 24000
+    except Exception as e:
+        logging.getLogger(__name__).warning("TTS 합성 실패(%s): %s", vname, e)
+        raise HTTPException(status_code=502, detail="음성 합성에 실패했습니다")
+
+    wav = _pcm_to_wav(pcm, rate)
+    _TTS_CACHE[key] = wav
+    while len(_TTS_CACHE) > _TTS_CACHE_MAX:
+        _TTS_CACHE.popitem(last=False)
+    return Response(content=wav, media_type="audio/wav",
+                    headers={"X-TTS-Cache": "miss", "Cache-Control": "max-age=86400"})
+
+
+@app.get("/api/v1/tools/plan_accessible_route", tags=["tools"],
+         summary="[7] 현위치 → 목적지 무장애 경로")
+async def plan_accessible_route(
+    destination_poi_id: str = Query(...),
+    origin_lat: float = Query(...),
+    origin_lng: float = Query(...),
+    destination_type: str = Query("tour"),
+    profile: str = Query("wheelchair_manual"),
+):
+    return await tool_handlers.tool_plan_accessible_route(
+        destination_poi_id=destination_poi_id,
+        destination_type=destination_type,
+        profile=profile,
+        origin_lat=origin_lat,
+        origin_lng=origin_lng,
+    )
+
+
+@app.get("/api/v1/tools/transit_access_points", tags=["tools"],
+         summary="[7-1] 휠체어 접근 가능한 정류장·역")
+async def transit_access_points(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    radius_m: float = Query(800, ge=50, le=3000),
+    profile: str = Query("wheelchair_manual"),
+):
+    return await route_client.transit_access(lat, lng, radius_m, profile)
+
+
+@app.get("/api/v1/tools/explain_route_segment", tags=["tools"],
+         summary="[8] 경로 구간 사유 설명")
+async def explain_route_segment(
+    route_id: str = Query(...),
+    step_idx: int = Query(None),
+):
+    return await tool_handlers.tool_explain_route_segment(route_id=route_id, step_idx=step_idx)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -376,12 +548,13 @@ from live_bridge import handle_live_chat
 
 
 @app.websocket("/ws/live-chat")
-async def websocket_live_chat(websocket: WebSocket, voice: str = None):
+async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str = None):
     """클라이언트 ↔ Gemini Live API ↔ DB 도구 실시간 중계.
 
     Query 파라미터:
       voice — Gemini Live prebuilt voice 이름(예: Charon, Kore) 또는 카테고리(male/female).
               미지정 시 기본값(여성 Kore).
+      mode  — 세션 시작 화면. "navi"(이동·관광 길안내)면 경로 안내용 인사말을 사용.
 
     클라이언트 메시지 포맷:
       {"type":"audio_chunk", "data":"<base64 PCM 16kHz>"}
@@ -402,4 +575,4 @@ async def websocket_live_chat(websocket: WebSocket, voice: str = None):
         await websocket.send_json({"type": "error", "message": "GEMINI_API_KEY 미설정"})
         await websocket.close()
         return
-    await handle_live_chat(websocket, ai_client, _embed, voice=voice)
+    await handle_live_chat(websocket, ai_client, _embed, voice=voice, mode=mode)
