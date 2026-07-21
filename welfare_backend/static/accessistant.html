@@ -147,6 +147,9 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .spot:hover,.spot:focus-visible{border-color:var(--c-primary);}
 .spot .nm{font-weight:700;color:var(--c-secondary);}
 .spot .nm .dist{margin-left:6px;font-size:.78rem;font-weight:700;color:var(--c-primary);background:var(--c-primary-soft);border-radius:6px;padding:1px 6px;vertical-align:1px;}
+/* 지도 POI 이름 태그 (CustomOverlay) */
+.poi-tag{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#fff;border:1.5px solid var(--c-primary);color:var(--c-primary);font-weight:700;font-size:.8rem;border-radius:999px;padding:4px 10px;box-shadow:0 2px 6px rgba(16,32,64,.18);cursor:pointer;font-family:var(--font-body);}
+.poi-tag--multi{background:var(--c-primary);color:#fff;}
 .spot .ad{font-size:.86rem;color:var(--c-text-muted);margin-top:2px;}
 .spot .fac{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
 .spot .fac span{font-size:.78rem;background:#EEF2FF;color:#3730A3;border-radius:6px;padding:2px 6px;}
@@ -915,6 +918,8 @@ window.NAVI = (function(){
       var ll = e.latLng;
       setOrigin(ll.getLat(), ll.getLng());
     });
+    // 줌이 바뀌면 이름 태그 묶음/분리를 다시 계산
+    kakao.maps.event.addListener(map, "zoom_changed", function(){ renderSpotTags(); });
   }
 
   function recenter(){
@@ -923,9 +928,10 @@ window.NAVI = (function(){
     if(o){ map.setCenter(new kakao.maps.LatLng(o.lat, o.lng)); return; }
     // 서비스 지역 밖이거나 위치를 모를 때 — 현위치(서울 등)를 보여주면 아무 의미가 없다.
     // 관광지 핀이 다 보이도록 맞추고, 없으면 지역 기본 중심으로.
-    if(spotMarkers.length){
+    var located = spots.filter(function(sp){ return sp.lat && sp.lng; });
+    if(located.length){
       var b = new kakao.maps.LatLngBounds();
-      spots.forEach(function(sp){ if(sp.lat && sp.lng) b.extend(new kakao.maps.LatLng(sp.lat, sp.lng)); });
+      located.forEach(function(sp){ b.extend(new kakao.maps.LatLng(sp.lat, sp.lng)); });
       map.setBounds(b);
       return;
     }
@@ -1000,7 +1006,7 @@ window.NAVI = (function(){
   }
 
   /* ── 관광지 목록·핀 ── */
-  function clearSpotMarkers(){ spotMarkers.forEach(function(m){ m.setMap(null); }); spotMarkers=[]; }
+  function clearSpotMarkers(){ spotMarkers.forEach(function(m){ m.setMap(null); }); spotMarkers=[]; clearSpotTags(); }
   // 거리 표기 — 1km 미만은 m, 이상은 km 한 자리
   function distLabel(m){
     if(m === null || m === undefined) return "";
@@ -1023,12 +1029,58 @@ window.NAVI = (function(){
     d.appendChild(fac);
     b.appendChild(d);
     b.addEventListener("click", function(){ requestRoute(sp); });
-    if(map && sp.lat && sp.lng){
-      var mk = new kakao.maps.Marker({position:new kakao.maps.LatLng(sp.lat, sp.lng), map:map, title:sp.name});
-      kakao.maps.event.addListener(mk, "click", function(){ requestRoute(sp); });
-      spotMarkers.push(mk);
-    }
+    // 지도 표시는 이름 태그(renderSpotTags)가 spots 전체를 보고 일괄 처리한다
     return b;
+  }
+
+  /* ── 지도 이름 태그 — 마커 대신 이름이 보이는 CustomOverlay ──
+     겹침 처리: 줌 레벨에 비례한 격자로 묶어 대표 1개만 표시("이름 외 N").
+     줌을 확대하면 격자가 촘촘해져 자연스럽게 분리된다. */
+  var spotOverlays=[];
+  function clearSpotTags(){ spotOverlays.forEach(function(o){ o.setMap(null); }); spotOverlays=[]; }
+
+  // #196 에서 출발지/도착지 선택 팝업으로 교체되는 진입점
+  function onSpotTagClick(sp){ requestRoute(sp); }
+
+  function renderSpotTags(){
+    if(!map || !kakaoReady) return;
+    clearSpotTags();
+    var lv = (typeof map.getLevel === "function") ? map.getLevel() : 5;
+    // level 1당 축척이 2배 — 태그가 화면에서 대략 일정 간격을 유지하도록 격자도 2배씩
+    var cell = 0.00018 * Math.pow(2, lv);
+    var groups = {}, order = [];
+    spots.forEach(function(sp){
+      if(sp.lat === null || sp.lat === undefined || sp.lng === null || sp.lng === undefined) return;
+      var k = Math.round(sp.lat / cell) + "_" + Math.round(sp.lng / cell);
+      if(!groups[k]){ groups[k] = []; order.push(k); }
+      groups[k].push(sp);
+    });
+    order.forEach(function(k){
+      var g = groups[k], rep = g[0];   // 목록 순서(거리순/점수순)의 첫 항목이 대표
+      var el = document.createElement("button");
+      el.type = "button";
+      el.className = "poi-tag" + (g.length > 1 ? " poi-tag--multi" : "");
+      el.textContent = g.length > 1 ? (rep.name + " 외 " + (g.length - 1)) : rep.name;
+      el.setAttribute("aria-label", g.length > 1
+        ? (rep.name + " 외 " + (g.length - 1) + "곳 — 누르면 확대해 나눠 보여줍니다")
+        : rep.name);
+      el.addEventListener("click", function(ev){
+        ev.stopPropagation();   // 지도 클릭(출발지 지정)으로 새지 않게
+        if(g.length > 1){
+          // 묶음 태그 — 한 단계 확대해 분리
+          map.setLevel(Math.max(1, map.getLevel() - 1),
+                       {anchor: new kakao.maps.LatLng(rep.lat, rep.lng)});
+        } else {
+          onSpotTagClick(rep);
+        }
+      });
+      var ov = new kakao.maps.CustomOverlay({
+        position: new kakao.maps.LatLng(rep.lat, rep.lng),
+        content: el, yAnchor: 1.25, clickable: true,
+      });
+      ov.setMap(map);
+      spotOverlays.push(ov);
+    });
   }
 
   // 무한스크롤 감시 지점 — 목록 끝에 두고, 보이면 다음 페이지를 불러온다
@@ -1056,6 +1108,7 @@ window.NAVI = (function(){
     }
     spots.forEach(function(sp){ box.appendChild(spotItem(sp)); });
     if(spotHasMore) ensureSpotSentinel(box);
+    renderSpotTags();
   }
 
   // 무한스크롤 추가 페이지 — 기존 항목은 그대로 두고 뒤에 붙인다
@@ -1072,6 +1125,7 @@ window.NAVI = (function(){
       if(spotObserver){ spotObserver.disconnect(); spotObserver=null; }
       sent.remove();
     }
+    renderSpotTags();   // 새 페이지의 좌표를 지도 태그에도 반영
   }
 
   /* ── 경로 요청·표시 ── */
