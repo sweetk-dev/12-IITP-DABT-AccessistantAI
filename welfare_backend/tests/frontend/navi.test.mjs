@@ -296,6 +296,73 @@ check("답변 카드: HTML 주입 방지(이스케이프)", () => {
   assert.equal(t2.querySelectorAll("img").length, 0);
 });
 
+// 8) 무장애 목록 — 10개 단위 무한스크롤 + 현위치 거리순 (#194)
+let lastSpotsQuery = null;
+const page = (offset, n, total) => ({
+  status: "success",
+  total, offset, has_more: offset + n < total,
+  results: Array.from({ length: n }, (_, i) => ({
+    poi_id: "TBF-P" + (offset + i),
+    name: "관광지 " + (offset + i + 1),
+    addr: "경기도 안양시 " + (offset + i + 1),
+    lat: 37.39 + (offset + i) * 0.001, lng: 126.95,
+    distance_m: (offset + i) === 0 ? 378 : (offset + i) * 120 + 378,
+    facilities: ["경사로"], score: 0.5,
+  })),
+});
+window.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes("find_bf_tour_spots")) {
+    lastSpotsQuery = u;
+    const m = u.match(/offset=(\d+)/);
+    const off = m ? parseInt(m[1], 10) : 0;
+    return { ok: true, json: async () => page(off, Math.min(10, 25 - off), 25) };
+  }
+  if (u.includes("/api/v1/config")) return { ok: true, json: async () => CONFIG };
+  if (u.includes("plan_accessible_route")) return { ok: true, json: async () => ROUTE };
+  return { ok: true, json: async () => ({}) };
+};
+// jsdom 에는 IntersectionObserver 가 없다 — 콜백을 잡아 수동으로 발화시킨다
+const ioObserved = [];
+let ioCallback = null;
+window.IntersectionObserver = function (cb) {
+  ioCallback = cb;
+  return { observe: (el) => ioObserved.push(el), disconnect: () => {} };
+};
+window.NAVI.openNavi();
+await sleep(60);
+check("무한스크롤: 1페이지 10건 렌더 + 감시 지점 등록", () => {
+  assert.equal(window.document.querySelectorAll("#naviSpots .spot").length, 10);
+  assert.ok($("naviSpotsMore"), "sentinel 없음");
+  assert.ok(ioObserved.length >= 1, "IntersectionObserver 미등록");
+});
+check("거리순 요청: origin_lat/lng·offset·topk 파라미터 전달", () => {
+  assert.match(lastSpotsQuery, /origin_lat=37\.3943/);
+  assert.match(lastSpotsQuery, /origin_lng=126\.9568/);
+  assert.match(lastSpotsQuery, /offset=0/);
+  assert.match(lastSpotsQuery, /topk=10/);
+});
+check("가까운 곳부터 거리 라벨 표시", () => {
+  const d = window.document.querySelectorAll("#naviSpots .spot .dist");
+  assert.equal(d[0].textContent, "378m");
+});
+ioCallback([{ isIntersecting: true }]);
+await sleep(30);
+check("무한스크롤: 감시 지점 도달 시 다음 10건 이어붙임", () => {
+  assert.equal(window.document.querySelectorAll("#naviSpots .spot").length, 20);
+  assert.match(lastSpotsQuery, /offset=10/);
+});
+check("km 단위 거리 라벨", () => {
+  const d = window.document.querySelectorAll("#naviSpots .spot .dist");
+  assert.match(d[10].textContent, /km$/);
+});
+ioCallback([{ isIntersecting: true }]);
+await sleep(30);
+check("무한스크롤: 마지막 페이지(총 25건) 후 감시 지점 제거", () => {
+  assert.equal(window.document.querySelectorAll("#naviSpots .spot").length, 25);
+  assert.equal($("naviSpotsMore"), null);
+});
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {

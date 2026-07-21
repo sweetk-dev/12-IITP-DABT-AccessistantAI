@@ -146,6 +146,7 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .spot{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:1px solid #E2E8F0;border-radius:14px;padding:12px;margin-bottom:8px;background:#fff;cursor:pointer;}
 .spot:hover,.spot:focus-visible{border-color:var(--c-primary);}
 .spot .nm{font-weight:700;color:var(--c-secondary);}
+.spot .nm .dist{margin-left:6px;font-size:.78rem;font-weight:700;color:var(--c-primary);background:var(--c-primary-soft);border-radius:6px;padding:1px 6px;vertical-align:1px;}
 .spot .ad{font-size:.86rem;color:var(--c-text-muted);margin-top:2px;}
 .spot .fac{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
 .spot .fac span{font-size:.78rem;background:#EEF2FF;color:#3730A3;border-radius:6px;padding:2px 6px;}
@@ -950,7 +951,7 @@ window.NAVI = (function(){
     status("출발지를 지정했습니다. 관광지를 선택하면 이곳에서 경로를 안내합니다.");
     speak("출발지를 지정했습니다.");
     sendLocation();
-    renderSpotsPanel();
+    loadSpots();   // 출발지가 바뀌면 거리순 목록도 새 출발지 기준으로 다시 정렬
   }
 
   /* ── 현재 위치 ── */
@@ -1000,6 +1001,50 @@ window.NAVI = (function(){
 
   /* ── 관광지 목록·핀 ── */
   function clearSpotMarkers(){ spotMarkers.forEach(function(m){ m.setMap(null); }); spotMarkers=[]; }
+  // 거리 표기 — 1km 미만은 m, 이상은 km 한 자리
+  function distLabel(m){
+    if(m === null || m === undefined) return "";
+    return m < 1000 ? (Math.round(m) + "m") : ((Math.round(m/100)/10) + "km");
+  }
+
+  // 목록 한 항목(버튼) + 지도 표시 생성 — 전체 렌더/무한스크롤 추가 렌더가 공유한다
+  function spotItem(sp){
+    var b=document.createElement("button"); b.type="button"; b.className="spot";
+    var d=document.createElement("div"); d.style.flex="1";
+    var nm=document.createElement("div"); nm.className="nm"; nm.textContent=sp.name || "이름 없음";
+    if(sp.distance_m !== null && sp.distance_m !== undefined){
+      var ds=document.createElement("span"); ds.className="dist"; ds.textContent=distLabel(sp.distance_m);
+      nm.appendChild(ds);
+    }
+    d.appendChild(nm);
+    if(sp.addr){ var ad=document.createElement("div"); ad.className="ad"; ad.textContent=sp.addr; d.appendChild(ad); }
+    var fac=document.createElement("div"); fac.className="fac";
+    (sp.facilities||[]).slice(0,5).forEach(function(f){ var s=document.createElement("span"); s.textContent=f; fac.appendChild(s); });
+    d.appendChild(fac);
+    b.appendChild(d);
+    b.addEventListener("click", function(){ requestRoute(sp); });
+    if(map && sp.lat && sp.lng){
+      var mk = new kakao.maps.Marker({position:new kakao.maps.LatLng(sp.lat, sp.lng), map:map, title:sp.name});
+      kakao.maps.event.addListener(mk, "click", function(){ requestRoute(sp); });
+      spotMarkers.push(mk);
+    }
+    return b;
+  }
+
+  // 무한스크롤 감시 지점 — 목록 끝에 두고, 보이면 다음 페이지를 불러온다
+  var spotObserver=null;
+  function ensureSpotSentinel(box){
+    var sent=document.createElement("div");
+    sent.id="naviSpotsMore"; sent.style.height="8px";
+    box.appendChild(sent);
+    if(spotObserver){ spotObserver.disconnect(); spotObserver=null; }
+    if(typeof IntersectionObserver === "undefined") return;   // 미지원 브라우저 — 1페이지만 표시
+    spotObserver=new IntersectionObserver(function(entries){
+      entries.forEach(function(en){ if(en.isIntersecting) loadMoreSpots(); });
+    }, {root: $("naviSheetBody"), rootMargin: "120px"});
+    spotObserver.observe(sent);
+  }
+
   function renderSpots(items){
     spots = items || [];
     var box = $("naviSpots");
@@ -1009,23 +1054,24 @@ window.NAVI = (function(){
       p.textContent="표시할 무장애 관광지 정보가 아직 없습니다.";
       box.appendChild(p); return;
     }
-    spots.forEach(function(sp){
-      var b=document.createElement("button"); b.type="button"; b.className="spot";
-      var d=document.createElement("div"); d.style.flex="1";
-      var nm=document.createElement("div"); nm.className="nm"; nm.textContent=sp.name || "이름 없음"; d.appendChild(nm);
-      if(sp.addr){ var ad=document.createElement("div"); ad.className="ad"; ad.textContent=sp.addr; d.appendChild(ad); }
-      var fac=document.createElement("div"); fac.className="fac";
-      (sp.facilities||[]).slice(0,5).forEach(function(f){ var s=document.createElement("span"); s.textContent=f; fac.appendChild(s); });
-      d.appendChild(fac);
-      b.appendChild(d);
-      b.addEventListener("click", function(){ requestRoute(sp); });
-      box.appendChild(b);
-      if(map && sp.lat && sp.lng){
-        var mk = new kakao.maps.Marker({position:new kakao.maps.LatLng(sp.lat, sp.lng), map:map, title:sp.name});
-        kakao.maps.event.addListener(mk, "click", function(){ requestRoute(sp); });
-        spotMarkers.push(mk);
-      }
+    spots.forEach(function(sp){ box.appendChild(spotItem(sp)); });
+    if(spotHasMore) ensureSpotSentinel(box);
+  }
+
+  // 무한스크롤 추가 페이지 — 기존 항목은 그대로 두고 뒤에 붙인다
+  function appendSpots(items){
+    var box=$("naviSpots");
+    if(!box){ spots=spots.concat(items); return; }
+    var sent=document.getElementById("naviSpotsMore");
+    items.forEach(function(sp){
+      spots.push(sp);
+      var el=spotItem(sp);
+      if(sent) box.insertBefore(el, sent); else box.appendChild(el);
     });
+    if(!spotHasMore && sent){
+      if(spotObserver){ spotObserver.disconnect(); spotObserver=null; }
+      sent.remove();
+    }
   }
 
   /* ── 경로 요청·표시 ── */
@@ -1138,7 +1184,7 @@ window.NAVI = (function(){
         if(originMarker){ originMarker.setMap(null); originMarker=null; }
         status(outOfArea ? ("이 서비스는 " + regionName() + " 지역만 안내합니다. 지도를 눌러 출발지를 지정해 주세요.")
                          : "현재 위치에서 안내합니다.");
-        renderSpotsPanel();
+        loadSpots();   // 출발지 복귀 — 현재 위치 기준 거리순으로 다시 정렬
       });
       oi.appendChild(rb);
       body.appendChild(oi);
@@ -1461,19 +1507,52 @@ window.NAVI = (function(){
     });
   }
 
+  // ── 무장애 관광지 목록 — 10개 단위 무한스크롤 + 현위치 거리순 ──
+  var SPOT_PAGE=10, spotOffset=0, spotHasMore=false, spotLoading=false, spotSel=["지체장애"];
+
+  function spotQuery(sel, offset){
+    var q = "/api/v1/tools/find_bf_tour_spots?disabilities=" + encodeURIComponent(sel.join(","))
+          + "&sigungu=안양&topk=" + SPOT_PAGE + "&offset=" + offset;
+    // 출발지(직접 지정 > 현재 위치)가 있으면 거리 오름차순 — 1페이지는 근접순,
+    // 이후 페이지는 반경 제한 없이 이어진다. 없으면 서버 기본(점수순).
+    var o = activeOrigin();
+    if(o && o.lat && o.lng){ q += "&origin_lat=" + o.lat + "&origin_lng=" + o.lng; }
+    return q;
+  }
+
   async function loadSpots(){
     var sel=[].slice.call(document.querySelectorAll('#naviFilters .chip[aria-pressed="true"]'))
               .map(function(b){ return b.getAttribute("data-dis"); });
     if(!sel.length) sel=["지체장애"];
     profile = (sel.indexOf("시각장애")>=0 && sel.length===1) ? "visual" : "wheelchair_manual";
+    spotSel = sel; spotOffset = 0; spotHasMore = false;
+    spotLoading = true;
     try{
-      var r = await fetch("/api/v1/tools/find_bf_tour_spots?disabilities=" + encodeURIComponent(sel.join(",")) + "&sigungu=안양&topk=10");
+      var r = await fetch(spotQuery(sel, 0));
       var data = await r.json();
       clearSpotMarkers();
-      spots = (data.results || []);
+      var items = (data.results || []);
+      spotOffset = items.length;
+      spotHasMore = (data.has_more === true) && items.length > 0;
+      spots = items;
       renderSpotsPanel();
       recenter();
     }catch(e){ status("관광지 정보를 불러오지 못했습니다."); }
+    finally{ spotLoading = false; }
+  }
+
+  async function loadMoreSpots(){
+    if(spotLoading || !spotHasMore) return;
+    spotLoading = true;
+    try{
+      var r = await fetch(spotQuery(spotSel, spotOffset));
+      var data = await r.json();
+      var items = (data.results || []);
+      spotOffset += items.length;
+      spotHasMore = (data.has_more === true) && items.length > 0;
+      appendSpots(items);
+    }catch(e){ spotHasMore = false; }
+    finally{ spotLoading = false; }
   }
 
   return {
