@@ -185,6 +185,21 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .card li:before{content:"✔";position:absolute;left:0;color:var(--c-primary);font-weight:700;}
 .card .c-note{font-size:.92rem;color:var(--c-text-muted);background:#F8FAFC;border-left:3px solid #CBD5E1;padding:6px 10px;margin:0 0 8px;}
 .card mark{background:#DCFCE7;color:inherit;padding:0 2px;border-radius:3px;font-weight:700;}
+/* 정책 답변 표준 템플릿 — 핵심 요약 + 5섹션 블록 */
+.card .c-sum{background:var(--c-primary-soft);border:1px solid #C7D8FB;border-radius:12px;padding:10px 12px;font-weight:800;color:var(--c-primary);margin:0 0 10px;line-height:1.55;}
+.card .c-sum small{display:block;font-weight:700;font-size:.72rem;color:#5B7BC0;margin-bottom:2px;}
+.card .p-sec{border:1px solid var(--c-border);border-radius:12px;margin:0 0 8px;overflow:hidden;}
+.card .p-sec__h{padding:6px 12px;font-weight:800;font-size:.9rem;}
+.card .p-sec__b{padding:8px 12px;}
+.card .p-sec__b p{margin:0 0 6px;}
+.card .p-sec__b p:last-child{margin-bottom:0;}
+.card .p-sec__b ul{margin:0;}
+.card .p-sec__b .c-note{margin:6px 0 0;}
+.card .p-sec--target .p-sec__h{background:var(--c-primary-soft);color:var(--c-primary);}
+.card .p-sec--benefit .p-sec__h{background:var(--c-success-soft);color:var(--c-success);}
+.card .p-sec--how .p-sec__h{background:#F5F3FF;color:#6D28D9;}
+.card .p-sec--docs .p-sec__h{background:var(--c-warning-soft);color:var(--c-warning);}
+.card .p-sec--contact .p-sec__h{background:#F1F5F9;color:var(--c-secondary);}
 .card .c-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
 .card .c-actions button{border:1px solid var(--c-primary);color:var(--c-primary);background:#fff;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;}
 
@@ -755,6 +770,59 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     flushList(); flushPara();
     return blocks;
   }
+  /* ── 정책 답변 표준 템플릿 ──
+     소제목이 표준 5섹션(지원 대상/지원 내용/신청 방법/구비 서류/문의처)과 2개 이상
+     일치하면 정책 템플릿 모드: 첫 단락은 '핵심 요약' 카드로, 각 섹션은 아이콘·색상
+     블록으로 렌더한다. 일반 답변은 기존 카드 그대로. 음성은 어느 쪽이든 원문을 읽는다. */
+  var POLICY_SECTIONS = [
+    {key:"target",  icon:"👥", label:"지원 대상", re:/^(지원\s*대상|대상자?)$/},
+    {key:"benefit", icon:"🎁", label:"지원 내용", re:/^(지원\s*내용|급여\s*내용|혜택)$/},
+    {key:"how",     icon:"📝", label:"신청 방법", re:/^(신청\s*방법|신청\s*절차|이용\s*방법)$/},
+    {key:"docs",    icon:"📄", label:"구비 서류", re:/^(구비\s*서류|필요\s*서류|준비\s*서류|제출\s*서류)$/},
+    {key:"contact", icon:"📞", label:"문의처",    re:/^(문의처?|문의\s*및\s*접수|연락처)$/},
+  ];
+  function policySection(title){
+    var t = String(title||"").trim();
+    for(var i=0;i<POLICY_SECTIONS.length;i++){ if(POLICY_SECTIONS[i].re.test(t)) return POLICY_SECTIONS[i]; }
+    return null;
+  }
+  function appendBasicBlock(parent, b){
+    if(b.t==="note"){ var n=document.createElement("p"); n.className="c-note"; n.innerHTML="※ "+inline(b.v); parent.appendChild(n); }
+    else if(b.t==="ul"){
+      var ul=document.createElement("ul");
+      b.v.forEach(function(li){ var l=document.createElement("li"); l.innerHTML=inline(li); ul.appendChild(l); });
+      parent.appendChild(ul);
+    } else { var p=document.createElement("p"); p.innerHTML=inline(b.v); parent.appendChild(p); }
+  }
+  function renderPolicyCard(card, blocks){
+    // 첫 소제목 이전의 단락 -> 핵심 요약 카드 (유의사항·목록은 요약으로 끌어올리지 않는다)
+    var i=0, summary=[];
+    for(; i<blocks.length && blocks[i].t==="p"; i++){ summary.push(blocks[i].v); }
+    if(summary.length){
+      var s=document.createElement("div"); s.className="c-sum";
+      var sl=document.createElement("small"); sl.textContent="💡 핵심 요약"; s.appendChild(sl);
+      var sp=document.createElement("span"); sp.innerHTML=inline(summary.join(" ")); s.appendChild(sp);
+      card.appendChild(s);
+    }
+    var sec=null, secBody=null;
+    for(; i<blocks.length; i++){
+      var b=blocks[i];
+      if(b.t==="h"){
+        var ps = policySection(b.v);
+        if(ps){
+          sec=document.createElement("div"); sec.className="p-sec p-sec--"+ps.key;
+          var hh=document.createElement("div"); hh.className="p-sec__h"; hh.textContent=ps.icon+" "+ps.label; sec.appendChild(hh);
+          secBody=document.createElement("div"); secBody.className="p-sec__b"; sec.appendChild(secBody);
+          card.appendChild(sec);
+        } else {
+          sec=null; secBody=null;
+          var e=document.createElement("div"); e.className="c-sub"; e.innerHTML=inline(b.v); card.appendChild(e);
+        }
+        continue;
+      }
+      appendBasicBlock(secBody || card, b);
+    }
+  }
   window.renderAnswerCard = function(target, text, opts){
     opts = opts || {};
     var blocks = parseBlocks(text);
@@ -764,14 +832,12 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     if(opts.title){
       var h = document.createElement("div"); h.className="c-title"; h.textContent=opts.title; card.appendChild(h);
     }
-    blocks.forEach(function(b){
+    var known = blocks.filter(function(b){ return b.t==="h" && policySection(b.v); }).length;
+    if(known >= 2){
+      renderPolicyCard(card, blocks);
+    } else blocks.forEach(function(b){
       if(b.t==="h"){ var e=document.createElement("div"); e.className="c-sub"; e.innerHTML=inline(b.v); card.appendChild(e); }
-      else if(b.t==="note"){ var n=document.createElement("p"); n.className="c-note"; n.innerHTML="※ "+inline(b.v); card.appendChild(n); }
-      else if(b.t==="ul"){
-        var ul=document.createElement("ul");
-        b.v.forEach(function(li){ var l=document.createElement("li"); l.innerHTML=inline(li); ul.appendChild(l); });
-        card.appendChild(ul);
-      } else { var p=document.createElement("p"); p.innerHTML=inline(b.v); card.appendChild(p); }
+      else appendBasicBlock(card, b);
     });
     if(opts.actions && opts.actions.length){
       var wrap=document.createElement("div"); wrap.className="c-actions";

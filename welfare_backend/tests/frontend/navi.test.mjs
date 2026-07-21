@@ -316,6 +316,59 @@ check("답변 카드: HTML 주입 방지(이스케이프)", () => {
   assert.equal(t2.querySelectorAll("img").length, 0);
 });
 
+// 7-b) 정책 답변 표준 템플릿 (#197) — 핵심 요약 + 5섹션 블록
+const polTarget = window.document.createElement("div");
+window.renderAnswerCard(polTarget, [
+  "장애인 활동지원 서비스는 혼자 일상생활이 어려운 장애인을 돕는 제도입니다.",
+  "",
+  "## 지원 대상",
+  "- **만 6세~65세 미만** 등록 장애인",
+  "",
+  "## 지원 내용",
+  "- 월 **60~480시간** 활동지원급여 바우처",
+  "",
+  "## 신청 방법",
+  "- 주소지 행정복지센터 방문 또는 복지로 온라인",
+  "",
+  "## 구비 서류",
+  "- 사회보장급여 신청서",
+  "",
+  "## 문의처",
+  "- 보건복지상담센터 **129**",
+  "※ 65세 이후에는 노인장기요양보험으로 전환될 수 있어요.",
+].join("\n"));
+check("정책 템플릿: 첫 단락 -> 핵심 요약 카드", () => {
+  const sum = polTarget.querySelector(".c-sum");
+  assert.ok(sum, "핵심 요약 카드 없음");
+  assert.match(sum.textContent, /핵심 요약/);
+  assert.match(sum.textContent, /활동지원 서비스/);
+});
+check("정책 템플릿: 표준 5섹션 아이콘 블록 렌더", () => {
+  assert.ok(polTarget.querySelector(".p-sec--target"), "지원 대상 없음");
+  assert.ok(polTarget.querySelector(".p-sec--benefit"), "지원 내용 없음");
+  assert.ok(polTarget.querySelector(".p-sec--how"), "신청 방법 없음");
+  assert.ok(polTarget.querySelector(".p-sec--docs"), "구비 서류 없음");
+  assert.ok(polTarget.querySelector(".p-sec--contact"), "문의처 없음");
+  assert.match(polTarget.querySelector(".p-sec--target .p-sec__h").textContent, /👥 지원 대상/);
+  assert.match(polTarget.querySelector(".p-sec--target .p-sec__b").textContent, /만 6세~65세 미만/);
+});
+check("정책 템플릿: 섹션 내부 강조·유의사항 유지", () => {
+  assert.ok([...polTarget.querySelectorAll("mark")].some((m) => m.textContent === "129"));
+  assert.match(polTarget.querySelector(".p-sec--contact .c-note").textContent, /노인장기요양보험/);
+});
+check("정책 템플릿: 표준 섹션 2개 미만이면 기존 카드 유지", () => {
+  const t3 = window.document.createElement("div");
+  window.renderAnswerCard(t3, ["요금 안내입니다.", "", "## 필요 서류", "- 복지카드"].join("\n"));
+  assert.equal(t3.querySelector(".c-sum"), null, "일반 답변에 요약 카드가 생김");
+  assert.ok(t3.querySelector(".c-sub"), "기존 소제목 렌더가 사라짐");
+});
+check("정책 템플릿: 유사 표기(신청 절차·필요 서류 등) 인식", () => {
+  const t4 = window.document.createElement("div");
+  window.renderAnswerCard(t4, ["요약입니다.", "", "## 신청 절차", "- 방문", "", "## 필요 서류", "- 신분증"].join("\n"));
+  assert.ok(t4.querySelector(".p-sec--how"), "신청 절차 미인식");
+  assert.ok(t4.querySelector(".p-sec--docs"), "필요 서류 미인식");
+});
+
 // 8) 무장애 목록 — 10개 단위 무한스크롤 + 현위치 거리순 (#194)
 let lastSpotsQuery = null;
 const page = (offset, n, total) => ({
