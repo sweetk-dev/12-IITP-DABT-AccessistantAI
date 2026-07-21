@@ -74,7 +74,9 @@ function fakeKakao() {
     maps: {
       load: (cb) => cb(),
       Map: class {
-        constructor() { this.__isMap = true; }
+        constructor() { this.__isMap = true; this.__level = 5; }
+        getLevel() { return this.__level; }
+        setLevel(lv) { this.__level = lv; zoomHandlers.forEach((cb) => cb()); }
         setBounds(b) { mapCalls.push(["setBounds", b]); }
         setCenter(c) { mapCalls.push(["setCenter", c]); }
         relayout() { mapCalls.push(["relayout"]); }
@@ -84,9 +86,15 @@ function fakeKakao() {
       Marker: function () { return mk(); },
       Circle: function () { return mk(); },
       Polyline: function () { return mk(); },
+      CustomOverlay: class {
+        constructor(o) { this.content = o.content; this.position = o.position; this.visible = false; overlays.push(this); }
+        setMap(m) { this.visible = !!m; }
+      },
       event: {
         addListener: (target, type, cb) => {
-          if (type === "click" && target && target.__isMap) mapClickHandlers.push(cb);
+          if (!target || !target.__isMap) return;
+          if (type === "click") mapClickHandlers.push(cb);
+          if (type === "zoom_changed") zoomHandlers.push(cb);
         },
       },
     },
@@ -96,6 +104,8 @@ function fakeKakao() {
 const spoken = [];
 const mapClickHandlers = [];
 const mapCalls = [];
+const zoomHandlers = [];
+const overlays = [];
 const results = [];
 function check(name, fn) {
   try { fn(); results.push(["PASS", name]); }
@@ -319,7 +329,7 @@ window.fetch = async (url) => {
     return { ok: true, json: async () => page(off, Math.min(10, 25 - off), 25) };
   }
   if (u.includes("/api/v1/config")) return { ok: true, json: async () => CONFIG };
-  if (u.includes("plan_accessible_route")) return { ok: true, json: async () => ROUTE };
+  if (u.includes("plan_accessible_route")) { lastPlanQuery = u; return { ok: true, json: async () => ROUTE }; }
   return { ok: true, json: async () => ({}) };
 };
 // jsdom 에는 IntersectionObserver 가 없다 — 콜백을 잡아 수동으로 발화시킨다
@@ -361,6 +371,42 @@ await sleep(30);
 check("무한스크롤: 마지막 페이지(총 25건) 후 감시 지점 제거", () => {
   assert.equal(window.document.querySelectorAll("#naviSpots .spot").length, 25);
   assert.equal($("naviSpotsMore"), null);
+});
+
+// 9) 지도 이름 태그 + 겹침 묶음/줌 분리 (#195)
+const liveTags = () => overlays.filter((o) => o.visible);
+check("이름 태그: 마커 대신 CustomOverlay 태그로 표시", () => {
+  assert.ok(liveTags().length > 0, "태그 없음");
+  assert.match(liveTags()[0].content.className, /poi-tag/);
+  assert.ok(liveTags()[0].content.textContent.length > 0);
+});
+check("겹침: 대표 1개만 표시 + '외 N' 묶음 태그", () => {
+  assert.ok(liveTags().length < 25, "묶이지 않음 — 25개 전부 표시됨");
+  assert.ok(liveTags().some((o) => /외 \d+/.test(o.content.textContent)), "'외 N' 태그 없음");
+});
+const tagsBefore = liveTags().length;
+const multiTag = liveTags().find((o) => o.content.className.includes("poi-tag--multi"));
+multiTag.content.dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("묶음 태그 클릭(줌 확대) 시 태그 분리", () => {
+  assert.ok(liveTags().length > tagsBefore,
+    `분리 안 됨 (${tagsBefore} -> ${liveTags().length})`);
+});
+// 단일 태그가 나올 때까지 묶음 태그를 눌러 계속 확대 (레벨 1 하한까지)
+let singleTag = null;
+for (let i = 0; i < 6 && !singleTag; i++) {
+  singleTag = liveTags().find((o) => !o.content.className.includes("poi-tag--multi"));
+  if (singleTag) break;
+  const m = liveTags().find((o) => o.content.className.includes("poi-tag--multi"));
+  if (!m) break;
+  m.content.dispatchEvent(new window.Event("click"));
+  await sleep(10);
+}
+lastPlanQuery = null;
+singleTag.content.dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("단일 이름 태그 클릭 -> 경로 요청", () => {
+  assert.ok(lastPlanQuery, "경로 요청 안 감");
 });
 
 // ── 결과 ──
