@@ -158,12 +158,16 @@ async def tour_detail(poi_id: str) -> dict:
 
 
 async def tour_recommend(disabilities: list, sigungu: str = "안양",
-                         match_mode: str = "all", topk: int = 10) -> dict:
-    return await _call(
-        "POST", "/tour/recommend",
-        json={"disabilities": disabilities, "sigungu": sigungu,
-              "match_mode": match_mode, "topk": topk},
-    )
+                         match_mode: str = "all", topk: int = 10,
+                         origin_lat: float = None, origin_lng: float = None,
+                         offset: int = 0) -> dict:
+    # origin 을 주면 02 route-api(v1.9.0+)가 거리 오름차순 + offset 페이징으로 응답한다.
+    body = {"disabilities": disabilities, "sigungu": sigungu,
+            "match_mode": match_mode, "topk": topk, "offset": offset}
+    if origin_lat is not None and origin_lng is not None:
+        body["origin_lat"] = origin_lat
+        body["origin_lng"] = origin_lng
+    return await _call("POST", "/tour/recommend", json=body)
 
 
 # ── 대중교통 접근점 ──

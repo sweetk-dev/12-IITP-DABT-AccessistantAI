@@ -330,10 +330,17 @@ def _fac_labels(facilities: dict) -> list:
 
 
 async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
-                                  topk: int = 5) -> dict:
-    """장애 유형별 무장애 관광지 추천."""
+                                  topk: int = 5,
+                                  origin_lat: float = None, origin_lng: float = None,
+                                  offset: int = 0) -> dict:
+    """장애 유형별 무장애 관광지 추천.
+
+    origin_lat/lng 를 주면 02 route-api 가 거리 오름차순으로 정렬하고
+    offset 페이징(total/has_more)을 지원한다 — 프런트 무한스크롤용.
+    """
     data = await route_client.tour_recommend(
-        disabilities or ["지체장애"], sigungu=sigungu, topk=topk
+        disabilities or ["지체장애"], sigungu=sigungu, topk=topk,
+        origin_lat=origin_lat, origin_lng=origin_lng, offset=offset,
     )
     if data.get("status") == "error":
         return data
@@ -344,13 +351,21 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
             "poi_id": it.get("poi_id"),
             "name": it.get("name"),
             "addr": it.get("addr"),
+            # 지도 태그(핀) 표시용 좌표 — 목록 응답에 반드시 포함한다
+            "lat": it.get("lat"),
+            "lng": it.get("lng"),
+            "distance_m": it.get("distance_m"),
             "facilities": _fac_labels(it.get("facilities")),
             "score": it.get("score"),
         })
+    total = data.get("total", len(items))
     return {
         "status": "success",
         "tool_name": "find_bf_tour_spots",
         "count": len(items),
+        "total": total,
+        "offset": offset,
+        "has_more": data.get("has_more", offset + len(items) < total),
         "results": items,
         "ui_action": {"action": "show_tour_spots", "items": items},
         "ai_instruction": (

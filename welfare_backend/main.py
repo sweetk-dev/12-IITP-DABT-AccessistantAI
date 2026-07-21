@@ -184,10 +184,14 @@ async def find_bf_tour_spots(
     disabilities: str = Query("지체장애", description="쉼표 구분. 예: '지체장애,시각장애'"),
     sigungu: str = Query("안양"),
     topk: int = Query(5, ge=1, le=50),
+    origin_lat: float = Query(None, description="출발지 위도 — 주면 거리 오름차순"),
+    origin_lng: float = Query(None, description="출발지 경도"),
+    offset: int = Query(0, ge=0, description="거리순 목록에서 건너뛸 개수(무한스크롤)"),
 ):
     types_ = [d.strip() for d in disabilities.split(",") if d.strip()]
     return await tool_handlers.tool_find_bf_tour_spots(
-        disabilities=types_, sigungu=sigungu, topk=topk
+        disabilities=types_, sigungu=sigungu, topk=topk,
+        origin_lat=origin_lat, origin_lng=origin_lng, offset=offset,
     )
 
 
