@@ -227,8 +227,18 @@ check("지도 로드 성공 시 폴백 오버레이가 숨겨짐", () => {
   assert.match(css, /\.map-fallback\[hidden\]\s*\{\s*display:\s*none/);
 });
 
-// 3) 관광지 선택 -> 경로 요약
+// 3) 관광지 선택 -> 출발/도착 팝업 -> 경로 요약 (#196: 즉시 경로 대신 팝업)
+const choiceBtn = (re) =>
+  [...window.document.querySelectorAll(".spot-choice__btn")].find((b) => re.test(b.textContent));
 window.document.querySelectorAll("#naviSpots .spot")[0].dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("목록 선택 -> 출발지/도착지 선택 팝업 표시", () => {
+  assert.ok(window.document.querySelector(".spot-choice"), "팝업 없음");
+  assert.match(window.document.querySelector(".spot-choice__nm").textContent, /테스트 무장애 공원/);
+  assert.ok(choiceBtn(/여기로 가기/), "도착지 버튼 없음");
+  assert.ok(choiceBtn(/여기서 출발/), "출발지 버튼 없음");
+});
+choiceBtn(/여기로 가기/).dispatchEvent(new window.Event("click"));
 await sleep(80);
 check("경로 요약(거리·시간·최대경사·계단) 표시", () => {
   const t = $("naviSheetBody").textContent;
@@ -404,9 +414,75 @@ for (let i = 0; i < 6 && !singleTag; i++) {
 }
 lastPlanQuery = null;
 singleTag.content.dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("단일 이름 태그 클릭 -> 선택 팝업 (출발지 있음 -> 도착지 선택 시 바로 안내)", () => {
+  assert.ok(window.document.querySelector(".spot-choice"), "팝업 없음");
+});
+choiceBtn(/여기로 가기/).dispatchEvent(new window.Event("click"));
 await sleep(60);
-check("단일 이름 태그 클릭 -> 경로 요청", () => {
+check("도착지 선택 -> 경로 요청", () => {
   assert.ok(lastPlanQuery, "경로 요청 안 감");
+});
+
+// 10) 출발지/도착지 상호 보완 플로우 (#196)
+// 10-a) 출발지 먼저: 태그에서 '여기서 출발' -> 다음 선택이 도착지가 된다
+window.NAVI.openNavi();
+await sleep(60);
+let tag0 = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+if (tag0.length < 2) {
+  // 확대해서 단일 태그 2개 확보
+  for (let i = 0; i < 6 && tag0.length < 2; i++) {
+    const m = liveTags().find((o) => o.content.className.includes("poi-tag--multi"));
+    if (!m) break;
+    m.content.dispatchEvent(new window.Event("click"));
+    await sleep(10);
+    tag0 = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+  }
+}
+tag0[0].content.dispatchEvent(new window.Event("click"));
+await sleep(20);
+choiceBtn(/여기서 출발/).dispatchEvent(new window.Event("click"));
+await sleep(30);
+check("출발지 먼저 선택 -> 도착지 선택 안내", () => {
+  assert.match($("naviStatus").textContent, /도착지를 선택/);
+});
+lastPlanQuery = null;
+const tag1 = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+tag1[1].content.dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("이어서 태그 선택 = 도착지 -> 즉시 경로 요청", () => {
+  assert.ok(lastPlanQuery, "경로 요청 안 감");
+});
+
+// 10-b) 도착지 먼저(출발지 없음): 출발지 물음 -> 지도·목록에서 선택 -> 자동 안내
+window.NAVI.openNavi();
+await sleep(60);
+// 출발지 초기화: '현재 위치로 되돌리기' + 현재 위치 제거
+const resetBtn = [...$("naviSheetBody").querySelectorAll("button")]
+  .find((b) => /현재 위치로 되돌리기/.test(b.textContent));
+if (resetBtn) { resetBtn.dispatchEvent(new window.Event("click")); await sleep(40); }
+window.NAVI._internals().setHere(null);
+let tags = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+tags[0].content.dispatchEvent(new window.Event("click"));
+await sleep(20);
+choiceBtn(/여기로 가기/).dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("출발지 없이 도착지 선택 -> 출발지 선택 팝업", () => {
+  assert.match(window.document.querySelector(".spot-choice__nm").textContent, /출발지를 선택/);
+  assert.ok(choiceBtn(/현재 위치에서 출발/), "현위치 버튼 없음");
+});
+choiceBtn(/지도·목록에서 출발지 선택/).dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("지도·목록 선택 모드 안내", () => {
+  assert.match($("naviStatus").textContent, /출발지를 선택해 주세요/);
+});
+lastPlanQuery = null;
+tags = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+tags[1].content.dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("출발지 태그 선택 -> 대기 중 도착지로 자동 안내", () => {
+  assert.ok(lastPlanQuery, "경로 요청 안 감");
+  assert.match($("naviSheetBody").textContent, /320m/);
 });
 
 // ── 결과 ──
