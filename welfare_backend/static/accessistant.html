@@ -147,6 +147,14 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .spot:hover,.spot:focus-visible{border-color:var(--c-primary);}
 .spot .nm{font-weight:700;color:var(--c-secondary);}
 .spot .nm .dist{margin-left:6px;font-size:.78rem;font-weight:700;color:var(--c-primary);background:var(--c-primary-soft);border-radius:6px;padding:1px 6px;vertical-align:1px;}
+/* 출발지/도착지 선택 팝업 */
+.spot-choice{position:absolute;inset:0;background:rgba(16,32,64,.45);display:flex;align-items:center;justify-content:center;z-index:40;}
+.spot-choice__box{width:88%;max-width:320px;background:#fff;border-radius:var(--r-lg);padding:16px;box-shadow:0 10px 30px rgba(16,32,64,.3);}
+.spot-choice__nm{font-weight:800;font-size:1.05rem;color:var(--c-secondary);margin-bottom:2px;}
+.spot-choice__ad{font-size:.84rem;color:var(--c-text-muted);margin-bottom:10px;}
+.spot-choice__btn{display:block;width:100%;min-height:var(--tap-min);margin-top:8px;border-radius:var(--r-md);border:1.5px solid var(--c-border-strong);background:#fff;color:var(--c-text);font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--font-body);}
+.spot-choice__btn--dest{background:var(--c-primary);border-color:var(--c-primary);color:#fff;}
+.spot-choice__btn--origin{background:var(--c-success-soft);border-color:var(--c-success);color:var(--c-success);}
 /* 지도 POI 이름 태그 (CustomOverlay) */
 .poi-tag{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#fff;border:1.5px solid var(--c-primary);color:var(--c-primary);font-weight:700;font-size:.8rem;border-radius:999px;padding:4px 10px;box-shadow:0 2px 6px rgba(16,32,64,.18);cursor:pointer;font-family:var(--font-body);}
 .poi-tag--multi{background:var(--c-primary);color:#fff;}
@@ -957,6 +965,12 @@ window.NAVI = (function(){
     status("출발지를 지정했습니다. 관광지를 선택하면 이곳에서 경로를 안내합니다.");
     speak("출발지를 지정했습니다.");
     sendLocation();
+    if(pendingDest){
+      // 도착지를 먼저 골라둔 상태 — 출발지가 정해졌으니 바로 안내
+      var d = pendingDest; pendingDest = null; pickMode = null;
+      requestRoute(d);
+      return;
+    }
     loadSpots();   // 출발지가 바뀌면 거리순 목록도 새 출발지 기준으로 다시 정렬
   }
 
@@ -1028,7 +1042,7 @@ window.NAVI = (function(){
     (sp.facilities||[]).slice(0,5).forEach(function(f){ var s=document.createElement("span"); s.textContent=f; fac.appendChild(s); });
     d.appendChild(fac);
     b.appendChild(d);
-    b.addEventListener("click", function(){ requestRoute(sp); });
+    b.addEventListener("click", function(){ onSpotTagClick(sp); });
     // 지도 표시는 이름 태그(renderSpotTags)가 spots 전체를 보고 일괄 처리한다
     return b;
   }
@@ -1039,8 +1053,91 @@ window.NAVI = (function(){
   var spotOverlays=[];
   function clearSpotTags(){ spotOverlays.forEach(function(o){ o.setMap(null); }); spotOverlays=[]; }
 
-  // #196 에서 출발지/도착지 선택 팝업으로 교체되는 진입점
-  function onSpotTagClick(sp){ requestRoute(sp); }
+  /* ── 출발지/도착지 선택 플로우 ──
+     태그·목록 클릭 = 즉시 경로가 아니라 선택 팝업을 연다.
+     - 도착지 선택: 출발지가 이미 있으면 바로 안내, 없으면 출발지(현위치/지도)를 이어서 묻는다
+     - 출발지 선택: 이어서 도착지를 고르게 한다 (상호 보완)
+     지도 빈 곳 클릭 = 출발지 지정(setOrigin)은 기존 그대로 유지된다. */
+  var pendingDest=null;   // 도착지를 먼저 고르고 출발지를 기다리는 중
+  var pickMode=null;      // "origin" | "dest" | null — 다음 태그/목록 클릭의 의미
+
+  function onSpotTagClick(sp){
+    if(pickMode === "dest"){
+      pickMode = null;
+      requestRoute(sp);
+      return;
+    }
+    if(pickMode === "origin"){
+      pickMode = null;
+      chooseAsOrigin(sp);
+      return;
+    }
+    openSpotChoice(sp);
+  }
+
+  var choiceEl=null;
+  function closeSpotChoice(){ if(choiceEl){ choiceEl.remove(); choiceEl=null; } }
+  function choiceBtn(label, cls, onClick){
+    var b=document.createElement("button"); b.type="button";
+    b.className="spot-choice__btn" + (cls ? " " + cls : "");
+    b.textContent=label; b.addEventListener("click", onClick);
+    return b;
+  }
+  function openChoicePanel(title, subtitle, buttons){
+    closeSpotChoice();
+    var wrap=document.createElement("div"); wrap.className="spot-choice";
+    wrap.setAttribute("role","dialog"); wrap.setAttribute("aria-modal","true");
+    wrap.setAttribute("aria-label", title);
+    wrap.addEventListener("click", function(ev){ if(ev.target===wrap) closeSpotChoice(); });
+    var box=document.createElement("div"); box.className="spot-choice__box";
+    var h=document.createElement("div"); h.className="spot-choice__nm"; h.textContent=title; box.appendChild(h);
+    if(subtitle){ var s=document.createElement("div"); s.className="spot-choice__ad"; s.textContent=subtitle; box.appendChild(s); }
+    buttons.forEach(function(b){ box.appendChild(b); });
+    wrap.appendChild(box);
+    ($("view-navi") || document.body).appendChild(wrap);
+    choiceEl=wrap;
+  }
+
+  function openSpotChoice(sp){
+    openChoicePanel(sp.name || "선택한 장소", sp.addr || "", [
+      choiceBtn("🚩 여기로 가기 (도착지)", "spot-choice__btn--dest", function(){
+        closeSpotChoice(); chooseAsDest(sp);
+      }),
+      choiceBtn("🟢 여기서 출발 (출발지)", "spot-choice__btn--origin", function(){
+        closeSpotChoice(); chooseAsOrigin(sp);
+      }),
+      choiceBtn("취소", "", closeSpotChoice),
+    ]);
+  }
+
+  function chooseAsDest(sp){
+    if(activeOrigin()){ requestRoute(sp); return; }   // 출발지가 이미 있으면 바로 안내
+    pendingDest = sp;
+    openChoicePanel("출발지를 선택해 주세요", (sp.name || "") + " 까지 안내합니다", [
+      choiceBtn("📍 현재 위치에서 출발", "spot-choice__btn--origin", function(){
+        closeSpotChoice();
+        var d=pendingDest; pendingDest=null;
+        requestRoute(d);   // 위치가 없으면 requestRoute 가 권한 안내를 띄운다
+      }),
+      choiceBtn("🗺️ 지도·목록에서 출발지 선택", "", function(){
+        closeSpotChoice();
+        pickMode = "origin";
+        status("지도의 이름 태그나 목록, 또는 지도 빈 곳을 눌러 출발지를 선택해 주세요.");
+        speak("출발지를 선택해 주세요.");
+      }),
+      choiceBtn("취소", "", function(){ pendingDest=null; closeSpotChoice(); }),
+    ]);
+  }
+
+  function chooseAsOrigin(sp){
+    if(sp.lat === null || sp.lat === undefined || sp.lng === null || sp.lng === undefined){
+      status("이 장소는 좌표 정보가 없어 출발지로 지정할 수 없습니다."); return;
+    }
+    setOrigin(sp.lat, sp.lng);
+    if(pendingDest) return;   // setOrigin 이 대기 중인 도착지로 바로 안내한다
+    pickMode = "dest";
+    status("출발지: " + (sp.name || "선택 지점") + " — 이제 지도 태그나 목록에서 도착지를 선택해 주세요.");
+  }
 
   function renderSpotTags(){
     if(!map || !kakaoReady) return;
