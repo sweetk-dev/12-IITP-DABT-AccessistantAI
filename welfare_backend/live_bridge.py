@@ -421,7 +421,8 @@ def resolve_voice(requested: str | None) -> str:
 # 정책 템플릿 카드가 절대 만들어지지 않는다. 대신 턴이 끝난 뒤 전사를 비-라이브
 # 모델로 화면 전용 마크다운으로 재구성해 answer_card 로 별도 전송한다.
 # 음성·전사 표시는 기존 그대로이며, 실패해도 답변 자체에는 영향이 없다(best-effort).
-CARD_MODEL = os.environ.get("GEMINI_CARD_MODEL", "gemini-3.1-flash")
+# 기본값은 자동 갱신 별칭 — 고정 버전명은 키에 따라 404 가 난다 (2026-07-21 ServerA 실측)
+CARD_MODEL = os.environ.get("GEMINI_CARD_MODEL", "gemini-flash-latest")
 _CARD_KEYWORDS = ("지원", "신청", "서류", "대상", "급여", "수당",
                   "바우처", "감면", "혜택", "제도", "수급")
 _CARD_PROMPT = """다음은 장애인 복지 상담원이 음성으로 답한 내용의 전사입니다.
