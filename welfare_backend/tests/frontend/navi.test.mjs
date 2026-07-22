@@ -674,6 +674,36 @@ check("턴 종료 후 도착한 카드도 해당 말풍선 상단에 부착", ()
   assert.ok(kids.indexOf(b._textNode) > cardIdx, "카드가 전사 아래에 있음");
 });
 
+// 13-b) 카드 컨테이너·비표준 소제목 카드 (#218)
+check("카드 컨테이너: 헤더·테두리로 전사와 구분", () => {
+  const wrap = window.document.querySelector("#chat .answer-card-wrap");
+  assert.ok(wrap, "컨테이너 없음");
+  assert.match(wrap.querySelector(".answer-card-wrap__head").textContent, /정책 요약 카드/);
+});
+C.appendAiTranscript("여러 제도를 안내드릴게요.");
+C.finalizeAiBubble();
+C.applyAnswerCard("주거 지원 제도 두 가지를 안내드립니다.\n\n## 장애인연금\n- **기초급여** 지원\n\n## 무주택 특별공급\n- 특별 분양 알선");
+check("비표준 소제목(정책명) 카드도 핵심요약 + 중립 섹션 블록으로 렌더", () => {
+  const wraps = window.document.querySelectorAll("#chat .answer-card-wrap");
+  const w = wraps[wraps.length - 1];
+  assert.ok(w.querySelector(".c-sum"), "요약 박스 없음");
+  const secs = w.querySelectorAll(".p-sec--etc");
+  assert.equal(secs.length, 2, "중립 섹션 블록 미적용");
+  assert.match(secs[0].querySelector(".p-sec__h").textContent, /장애인연금/);
+});
+check("일반(비카드) 답변 렌더는 기존 유지 — assumePolicy 없이 요약 박스 미생성", () => {
+  const t5 = window.document.createElement("div");
+  window.renderAnswerCard(t5, ["요금 안내입니다.", "", "## 필요 서류", "- 복지카드"].join("\n"));
+  assert.equal(t5.querySelector(".c-sum"), null);
+});
+
+// 13-c) 내장 음성 중단 배선 (#217) — 소스 레벨 회귀 가드
+check("내장 TTS 중단(stopLocalTts)·barge-in 배선 존재", () => {
+  assert.match(HTML, /stopLocalTts/);
+  assert.match(HTML, /LOCAL_TTS_BARGE_RMS/);
+  assert.match(HTML, /서버\(상담원\) 음성이 오면 기기 내장 음성은 즉시 멈춘다/);
+});
+
 // 14) 이동·관광 화면 이동 버튼 말풍선 (#213)
 C.addNaviJumpBubble("🗺️ 지도에서 무장애 관광지 보기 (5곳)");
 check("이동 버튼 말풍선이 대화에 표시", () => {
