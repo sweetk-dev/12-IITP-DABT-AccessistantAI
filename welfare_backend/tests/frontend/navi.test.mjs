@@ -597,6 +597,38 @@ check("answer_card 수신 배선 존재", () => {
   assert.match(HTML, /applyAnswerCard/);
 });
 
+// 13) 정책 카드 선표시 + 전사 병행 배치 (#208)
+const C = window.__CHAT;
+check("__CHAT 테스트 훅 노출", () => assert.ok(C && C.applyAnswerCard && C.appendAiTranscript));
+// (a) 카드가 전사보다 먼저 도착 (도구 기반 선표시 경로)
+C.applyAnswerCard("활동지원 요약입니다.\n\n## 지원 대상\n- **등록 장애인**\n\n## 문의처\n- 129");
+C.appendAiTranscript("장애인 활동지원 서비스는 ");
+C.appendAiTranscript("행정복지센터에서 신청하실 수 있어요.");
+check("선도착 카드: 말풍선 생성 시 전사 '위'에 부착", () => {
+  const bubbles = window.document.querySelectorAll("#chat .bubble--ai");
+  const b = bubbles[bubbles.length - 1];
+  const kids = [...b.children];
+  const cardIdx = kids.findIndex((k) => k.querySelector && k.querySelector(".card"));
+  const txtIdx = kids.indexOf(b._textNode);
+  assert.ok(cardIdx >= 0, "카드 없음");
+  assert.ok(txtIdx > cardIdx, "카드가 전사 아래에 있음");
+  assert.match(b.querySelector(".c-sum").textContent, /활동지원 요약/);
+  assert.match(b._textNode.textContent, /행정복지센터/);
+});
+C.finalizeAiBubble();
+// (b) 턴 종료 후 늦게 도착한 카드(전사 폴백 경로)도 그 말풍선 상단에
+C.appendAiTranscript("보청기는 최대 백삼십일만원까지 지원됩니다.");
+C.finalizeAiBubble();
+C.applyAnswerCard("보청기 요약.\n\n## 지원 내용\n- **131만원**\n\n## 신청 방법\n- 주민센터");
+check("턴 종료 후 도착한 카드도 해당 말풍선 상단에 부착", () => {
+  const bubbles = window.document.querySelectorAll("#chat .bubble--ai");
+  const b = bubbles[bubbles.length - 1];
+  assert.ok(b.querySelector(".p-sec--benefit"), "카드 없음");
+  const kids = [...b.children];
+  const cardIdx = kids.findIndex((k) => k.querySelector && k.querySelector(".p-sec--benefit"));
+  assert.ok(kids.indexOf(b._textNode) > cardIdx, "카드가 전사 아래에 있음");
+});
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {
