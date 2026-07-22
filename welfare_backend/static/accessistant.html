@@ -1070,15 +1070,17 @@ window.NAVI = (function(){
         originMarker.setMap(map);
       } else { originMarker.setPosition(pos); }
     }
-    status("출발지를 지정했습니다. 관광지를 선택하면 이곳에서 경로를 안내합니다.");
-    speak("출발지를 지정했습니다.");
     sendLocation();
-    if(pendingDest){
-      // 도착지를 먼저 골라둔 상태 — 출발지가 정해졌으니 바로 안내
-      var d = pendingDest; pendingDest = null; pickMode = null;
-      requestRoute(d);
+    if(tripDest){
+      // 도착지가 정해져 있으면 — 태그로 정했든 지도 클릭으로 정했든 —
+      // 새 출발지에서 그 도착지로 즉시 재안내한다 (#210)
+      status("출발지를 지정했습니다. " + (tripDest.name || "도착지") + " 까지 다시 안내합니다.");
+      speak("출발지를 지정했습니다. " + (tripDest.name || "도착지") + " 까지 다시 안내합니다.");
+      requestRoute(tripDest);
       return;
     }
+    status("출발지를 지정했습니다. 관광지를 선택하면 이곳에서 경로를 안내합니다.");
+    speak("출발지를 지정했습니다.");
     loadSpots();   // 출발지가 바뀌면 거리순 목록도 새 출발지 기준으로 다시 정렬
   }
 
@@ -1161,13 +1163,19 @@ window.NAVI = (function(){
   var spotOverlays=[];
   function clearSpotTags(){ spotOverlays.forEach(function(o){ o.setMap(null); }); spotOverlays=[]; }
 
-  /* ── 출발지/도착지 선택 플로우 ──
+  /* ── 출발지/도착지 선택 플로우 (#210: 도착지는 '유지되는 상태') ──
      태그·목록 클릭 = 즉시 경로가 아니라 선택 팝업을 연다.
-     - 도착지 선택: 출발지가 이미 있으면 바로 안내, 없으면 출발지(현위치/지도)를 이어서 묻는다
-     - 출발지 선택: 이어서 도착지를 고르게 한다 (상호 보완)
+     - 도착지(tripDest)는 한 번 정하면 '선택 초기화' 전까지 유지된다.
+     - 출발지는 태그·목록·지도 빈 곳 어느 방법으로 바꿔도 동일하게 동작:
+       도착지가 있으면 그 도착지로 즉시 재안내한다 (수단별 차이 없음).
      지도 빈 곳 클릭 = 출발지 지정(setOrigin)은 기존 그대로 유지된다. */
-  var pendingDest=null;   // 도착지를 먼저 고르고 출발지를 기다리는 중
+  var tripDest=null;      // 현재 여정의 도착지 — 초기화 전까지 유지
   var pickMode=null;      // "origin" | "dest" | null — 다음 태그/목록 클릭의 의미
+
+  function resetTrip(){
+    tripDest = null; pickMode = null;
+    status("선택을 초기화했습니다. 관광지를 골라 주세요.");
+  }
 
   function onSpotTagClick(sp){
     sendActivity("navi_ui");
@@ -1181,22 +1189,18 @@ window.NAVI = (function(){
       chooseAsOrigin(sp);
       return;
     }
-    // 도착지를 이미 골라둔 상태(#204) — 다음 선택은 출발지가 자연스럽다.
-    // 팝업을 닫았거나 현재 위치 확인에 실패했어도 도착지는 잊지 않는다.
-    if(pendingDest && sp.poi_id !== pendingDest.poi_id){
-      var d = pendingDest;
-      openChoicePanel(sp.name || "선택한 장소", "도착지: " + (d.name || "선택한 곳"), [
+    // 도착지가 정해져 있는 상태 — 다음 선택은 출발지가 자연스럽다.
+    // 팝업을 닫았거나 위치 확인에 실패했어도, 안내가 이미 시작됐어도 도착지는 잊지 않는다.
+    if(tripDest && sp.poi_id !== tripDest.poi_id){
+      var d = tripDest;
+      openChoicePanel(sp.name || "선택한 장소", "현재 도착지: " + (d.name || "선택한 곳"), [
         choiceBtn("🟢 여기서 출발 → " + (d.name || "도착지") + " 안내", "spot-choice__btn--origin", function(){
           closeSpotChoice(); chooseAsOrigin(sp);
         }),
         choiceBtn("🚩 도착지를 여기로 변경", "spot-choice__btn--dest", function(){
-          closeSpotChoice(); pendingDest = sp;
-          status("도착지: " + (sp.name || "선택한 곳") + " — 출발지를 선택해 주세요.");
+          closeSpotChoice(); chooseAsDest(sp);
         }),
-        choiceBtn("선택 초기화", "", function(){
-          pendingDest = null; pickMode = null; closeSpotChoice();
-          status("선택을 초기화했습니다.");
-        }),
+        choiceBtn("선택 초기화", "", function(){ closeSpotChoice(); resetTrip(); }),
       ]);
       return;
     }
@@ -1239,14 +1243,13 @@ window.NAVI = (function(){
   }
 
   function chooseAsDest(sp){
+    tripDest = sp;   // 도착지는 초기화 전까지 유지 — 출발지를 바꾸면 재안내된다 (#210)
     if(activeOrigin()){ requestRoute(sp); return; }   // 출발지가 이미 있으면 바로 안내
-    pendingDest = sp;
     openChoicePanel("출발지를 선택해 주세요", (sp.name || "") + " 까지 안내합니다", [
       choiceBtn("📍 현재 위치에서 출발", "spot-choice__btn--origin", function(){
         closeSpotChoice();
         if(activeOrigin()){
-          var d=pendingDest; pendingDest=null;
-          requestRoute(d);
+          requestRoute(tripDest);
         } else {
           // 위치를 모른다 — 도착지는 유지한 채 출발지 지정을 이어서 안내(#204)
           pickMode = "origin";
@@ -1260,7 +1263,7 @@ window.NAVI = (function(){
         status("지도의 이름 태그나 목록, 또는 지도 빈 곳을 눌러 출발지를 선택해 주세요. (도착지: " + (sp.name || "선택한 곳") + ")");
         speak("출발지를 선택해 주세요.");
       }),
-      // 닫아도 도착지 선택은 유지된다 — 다음 태그 클릭 때 '여기서 출발' 맥락 팝업이 뜬다(#204)
+      // 닫아도 도착지 선택은 유지된다 — 이후 어떤 방법으로든 출발지를 정하면 바로 안내(#210)
       choiceBtn("닫기 (도착지는 유지)", "", closeSpotChoice),
     ]);
   }
@@ -1269,11 +1272,11 @@ window.NAVI = (function(){
     if(sp.lat === null || sp.lat === undefined || sp.lng === null || sp.lng === undefined){
       status("이 장소는 좌표 정보가 없어 출발지로 지정할 수 없습니다."); return;
     }
-    // setOrigin 은 대기 중 도착지(pendingDest)가 있으면 그 안으로 소진하고 바로 안내한다.
-    // 호출 '전'의 상태로 판단해야 한다 — 호출 후엔 이미 null 이라 pickMode 가 잘못 남는다.
-    var hadPending = !!pendingDest;
+    // setOrigin 이 도착지(tripDest) 유무를 보고 재안내/목록 갱신을 알아서 처리한다 —
+    // 지도 빈 곳 클릭으로 출발지를 정하는 경우와 완전히 동일한 경로 (#210)
+    var hadDest = !!tripDest;
     setOrigin(sp.lat, sp.lng);
-    if(hadPending) return;
+    if(hadDest) return;
     pickMode = "dest";
     status("출발지: " + (sp.name || "선택 지점") + " — 이제 지도 태그나 목록에서 도착지를 선택해 주세요.");
   }
@@ -1367,6 +1370,7 @@ window.NAVI = (function(){
   /* ── 경로 요청·표시 ── */
   async function requestRoute(spot){
     pickMode = null;   // 경로 요청이 시작되면 선택 모드는 항상 끝난 것 (잔존 방지)
+    tripDest = spot;   // 어떤 경로로 안내가 시작됐든 이 도착지를 기억한다 (#210)
     var o = activeOrigin();
     if(!o){
       status("현재 위치를 확인할 수 없습니다. 위치 권한을 허용하거나 지도를 눌러 출발지를 지정해 주세요.");
@@ -1908,6 +1912,7 @@ window.NAVI = (function(){
     openNavi: function(){ openNavi(); if(typeConfirmed) loadSpots(); else renderTypeSelectPanel(); },
     // 테스트용 노출
     _internals: function(){ return {steps:steps, stepIdx:stepIdx, spots:spots, speak:speak, showRoute:showRoute,
+                                     resetTrip:resetTrip, tripDest:function(){return tripDest;},
                                      startGuidance:startGuidance, setHere:function(h){here=h;}, advanceStep:advanceStep}; }
   };
 })();

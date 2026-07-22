@@ -484,17 +484,19 @@ for (let i = 0; i < 6 && !singleTag; i++) {
 lastPlanQuery = null;
 singleTag.content.dispatchEvent(new window.Event("click"));
 await sleep(20);
-check("단일 이름 태그 클릭 -> 선택 팝업 (출발지 있음 -> 도착지 선택 시 바로 안내)", () => {
+check("도착지 유지 상태에서 태그 클릭 -> 맥락 팝업 (#210)", () => {
   assert.ok(window.document.querySelector(".spot-choice"), "팝업 없음");
+  assert.ok(choiceBtn(/도착지를 여기로 변경/), "도착지 변경 버튼 없음");
 });
-choiceBtn(/여기로 가기/).dispatchEvent(new window.Event("click"));
+choiceBtn(/도착지를 여기로 변경/).dispatchEvent(new window.Event("click"));
 await sleep(60);
-check("도착지 선택 -> 경로 요청", () => {
+check("도착지 변경(출발지 있음) -> 즉시 경로 요청", () => {
   assert.ok(lastPlanQuery, "경로 요청 안 감");
 });
 
 // 10) 출발지/도착지 상호 보완 플로우 (#196)
 // 10-a) 출발지 먼저: 태그에서 '여기서 출발' -> 다음 선택이 도착지가 된다
+window.NAVI._internals().resetTrip();   // 직전 여정 초기화 (#210: 도착지는 유지되는 상태)
 window.NAVI.openNavi();
 await sleep(60);
 let tag0 = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
@@ -531,6 +533,7 @@ const resetBtn = [...$("naviSheetBody").querySelectorAll("button")]
   .find((b) => /현재 위치로 되돌리기/.test(b.textContent));
 if (resetBtn) { resetBtn.dispatchEvent(new window.Event("click")); await sleep(40); }
 window.NAVI._internals().setHere(null);
+window.NAVI._internals().resetTrip();
 let tags = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
 tags[0].content.dispatchEvent(new window.Event("click"));
 await sleep(20);
@@ -561,6 +564,7 @@ const resetBtn2 = [...$("naviSheetBody").querySelectorAll("button")]
   .find((b) => /현재 위치로 되돌리기/.test(b.textContent));
 if (resetBtn2) { resetBtn2.dispatchEvent(new window.Event("click")); await sleep(40); }
 window.NAVI._internals().setHere(null);
+window.NAVI._internals().resetTrip();
 let tagsB = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
 tagsB[0].content.dispatchEvent(new window.Event("click"));
 await sleep(20);
@@ -585,6 +589,29 @@ await sleep(60);
 check("맥락 팝업에서 출발지 선택 -> 도착지 재선택 없이 자동 안내", () => {
   assert.ok(lastPlanQuery, "경로 요청 안 감");
   assert.match($("naviSheetBody").textContent, /320m/);
+});
+
+// 11-b) #210 핵심 시나리오: 안내 이후 '지도 빈 곳 클릭'으로 출발지를 바꿔도
+//       태그로 바꿀 때와 동일하게 같은 도착지로 자동 재안내되어야 한다
+lastPlanQuery = null;
+mapClickHandlers[0]({ latLng: { getLat: () => 37.3950, getLng: () => 126.9550 } });
+await sleep(60);
+check("지도 클릭 출발지 변경 -> 같은 도착지로 자동 재안내 (#210)", () => {
+  assert.ok(lastPlanQuery, "재안내 안 감");
+  assert.match(lastPlanQuery, /origin_lat=37\.395/);
+  assert.match($("naviSheetBody").textContent, /320m/);
+});
+check("재안내 음성/상태 안내", () => {
+  assert.match(spoken.at(-1) || "", /다시 안내/);
+});
+// 선택 초기화 후에는 지도 클릭 = 출발지만 지정(목록 갱신), 재안내 없음
+window.NAVI._internals().resetTrip();
+lastPlanQuery = null;
+mapClickHandlers[0]({ latLng: { getLat: () => 37.3960, getLng: () => 126.9560 } });
+await sleep(60);
+check("초기화 후 지도 클릭 -> 재안내 없이 목록 화면 (#210)", () => {
+  assert.equal(lastPlanQuery, null, "초기화 후에도 재안내됨");
+  assert.ok($("naviSpots"), "목록 미표시");
 });
 
 // 12) 유휴 방지·카드 배선 존재 검증 (#203·#205) — 소스 레벨 회귀 가드
