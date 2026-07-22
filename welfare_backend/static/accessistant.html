@@ -77,6 +77,9 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 #chat .bubble--tool{align-self:center;background:var(--c-success-soft);color:var(--c-success);border:1px solid #CDE9D6;font-size:.8rem;font-weight:700;padding:6px 12px;border-radius:var(--r-pill);max-width:90%;}
 #chat .bubble--src{align-self:flex-start;background:var(--c-success-soft);color:var(--c-success);border:1px solid #CDE9D6;border-top-left-radius:4px;}
 #chat .bubble--src .label{display:block;font-size:.72rem;margin-bottom:4px;font-weight:700;color:var(--c-success);opacity:.95;}
+#chat .bubble--nav{align-self:flex-start;background:var(--c-primary-soft);border:1px solid #C7D8FB;border-top-left-radius:4px;}
+#chat .bubble--nav .label{display:block;font-size:.72rem;margin-bottom:4px;font-weight:700;color:var(--c-primary);opacity:.95;}
+#chat .bubble--nav .navjump{display:block;min-height:var(--tap-min);width:100%;border:1.5px solid var(--c-primary);background:#fff;color:var(--c-primary);font-weight:800;font-size:.95rem;border-radius:var(--r-md);padding:8px 14px;cursor:pointer;font-family:var(--font-body);}
 #chat .bubble--src a{color:var(--c-success);text-decoration:underline;word-break:break-all;font-size:.86rem;}
 #chat .bubble--sys{align-self:center;background:#fff;border:1px solid var(--c-border);color:var(--c-text-muted);font-size:.72rem;padding:3px 12px;border-radius:var(--r-pill);max-width:90%;}
 #chat .bubble--err{align-self:center;background:#fff;border:1px solid #F3C2C2;color:var(--c-danger);font-weight:700;font-size:.9rem;padding:10px 14px;border-radius:var(--r-md);max-width:90%;text-align:center;}
@@ -465,6 +468,26 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   };
 
 
+  // ────── 이동·관광 화면 이동 버튼 (#213) ──────
+  // 관광지·경로 결과가 준비돼도 화면을 자동 전환하지 않고,
+  // 출처 표시처럼 대화 하단에 버튼을 띄워 사용자가 직접 이동을 선택하게 한다.
+  const addNaviJumpBubble = (label) => {
+    const el = document.createElement("div");
+    el.className = "bubble bubble--nav";
+    const lbl = document.createElement("span");
+    lbl.className = "label";
+    lbl.textContent = "🧭 이동·관광";
+    el.appendChild(lbl);
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "navjump";
+    btn.textContent = label;
+    btn.addEventListener("click", () => { if (window.NAVI) window.NAVI.showPreparedView(); });
+    el.appendChild(btn);
+    $("chat").appendChild(el);
+    $("chat").scrollTop = $("chat").scrollHeight;
+  };
+  window.__CHAT.addNaviJumpBubble = addNaviJumpBubble;   // 테스트 노출 (정의 이후에 추가)
+
   // 사용자 입력 transcript 도 chunk 단위 가능 — 누적
   let activeUserBubble = null;
   let activeUserText = "";
@@ -547,7 +570,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
       switch (msg.type) {
         case "user_transcript": if (!sttActive) appendUserTranscript(msg.content); break;  // #105 STT 활성 시 중복 억제
-        case "ui_action":       if (window.NAVI) window.NAVI.onUiAction(msg); break;   // 경로·관광 결과를 지도에 표시
+        case "ui_action":       { const _act = window.NAVI ? window.NAVI.onUiAction(msg) : null; if (_act && _act.label) addNaviJumpBubble(_act.label); } break;   // 지도 이동은 사용자가 버튼으로 선택 (#213)
         case "ai_transcript":   appendAiTranscript(msg.content); if (pendingSources.length) { clearTimeout(srcFlushTimer); srcFlushTimer = setTimeout(flushSources, 800); } break;
         case "text":            appendAiTranscript(msg.content); break;
         case "answer_card":     applyAnswerCard(msg.content); break;   // 정책 템플릿 카드 (#205)
@@ -1743,14 +1766,35 @@ window.NAVI = (function(){
   /* ── 상담 세션에서 온 UI 액션 ── */
   function onUiAction(msg){
     var p = msg.payload || {};
+    // 화면을 강제로 전환하지 않는다(#213) — 갑작스러운 화면 이동은 혼란을 준다.
+    // 데이터만 준비해 두고, 상담 화면에 뜨는 버튼으로 사용자가 직접 이동을 선택한다.
     if(msg.action === "show_tour_spots"){
-      openNavi();
       typeConfirmed = true;   // 상담 음성으로 이미 목록을 요청한 상태 — 게이트 생략
       spots = p.items || [];
       renderSpotsPanel();
+      return {label: "🗺️ 지도에서 무장애 관광지 보기" + (spots.length ? " (" + spots.length + "곳)" : "")};
     } else if(msg.action === "show_route"){
-      openNavi();
       showRoute(p.route, "");
+      return {label: "🗺️ 지도에서 경로 보기"};
+    }
+    return null;
+  }
+
+  // 상담 화면 버튼으로 진입할 때 — 준비된 목록/경로를 그대로 보여준다
+  function showPreparedView(){
+    openNavi();
+    // 지도가 숨김 상태에서 setBounds 된 경우 relayout 후 경로 범위를 다시 잡는다
+    if(map && kakaoReady && routeLine && route){
+      setTimeout(function(){
+        try{
+          var primary=(route.routes||[])[0];
+          if(primary && primary.geometry && primary.geometry.length){
+            var b=new kakao.maps.LatLngBounds();
+            primary.geometry.forEach(function(c){ b.extend(new kakao.maps.LatLng(c[0], c[1])); });
+            map.setBounds(b);
+          }
+        }catch(e){}
+      }, 140);
     }
   }
 
@@ -1908,6 +1952,7 @@ window.NAVI = (function(){
     init: init,
     attachWs: function(w){ wsRef = w; sendLocation(); },
     onUiAction: onUiAction,
+    showPreparedView: showPreparedView,
     // 첫 진입은 장애유형 선택 게이트를 먼저 — 선택 완료 후 목록 로드 (#202)
     openNavi: function(){ openNavi(); if(typeConfirmed) loadSpots(); else renderTypeSelectPanel(); },
     // 테스트용 노출

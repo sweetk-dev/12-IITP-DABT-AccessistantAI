@@ -301,12 +301,23 @@ check("다음 안내 지점 근접 시 스텝 자동 전환 + 재발화", () => 
   assert.match(window.document.querySelector(".step-now .wr").textContent, /턱낮춤 없음/);
 });
 
-// 6) 상담 세션 ui_action -> 지도 화면 자동 전환
-window.NAVI.onUiAction({ type: "ui_action", action: "show_route", payload: ROUTE.ui_action });
+// 6) 상담 세션 ui_action -> 자동 전환 없이 데이터 준비 + 이동 버튼 (#213)
+const uiAct = window.NAVI.onUiAction({ type: "ui_action", action: "show_route", payload: ROUTE.ui_action });
 await sleep(20);
-check("ui_action(show_route) 수신 시 지도 화면 전환", () => {
+check("ui_action(show_route): 자동 전환 없이 라벨 반환 + 경로 데이터 준비", () => {
+  assert.ok(uiAct && /경로 보기/.test(uiAct.label), "라벨 없음");
+  assert.match($("naviSheetBody").textContent, /320m/);   // 시트에는 미리 렌더됨
+});
+const uiAct2 = window.NAVI.onUiAction({ type: "ui_action", action: "show_tour_spots",
+  payload: { items: SPOTS.results } });
+check("ui_action(show_tour_spots): 목록 준비 + 개수 포함 라벨", () => {
+  assert.ok(uiAct2 && /관광지 보기/.test(uiAct2.label));
+  assert.match(uiAct2.label, /2곳/);
+});
+window.NAVI.showPreparedView();
+await sleep(30);
+check("버튼(showPreparedView) 선택 시에만 지도 화면 전환", () => {
   assert.ok($("view-navi").classList.contains("active"));
-  assert.match($("naviSheetBody").textContent, /320m/);
 });
 
 // 7) 답변 카드 렌더러
@@ -654,6 +665,14 @@ check("턴 종료 후 도착한 카드도 해당 말풍선 상단에 부착", ()
   const kids = [...b.children];
   const cardIdx = kids.findIndex((k) => k.querySelector && k.querySelector(".p-sec--benefit"));
   assert.ok(kids.indexOf(b._textNode) > cardIdx, "카드가 전사 아래에 있음");
+});
+
+// 14) 이동·관광 화면 이동 버튼 말풍선 (#213)
+C.addNaviJumpBubble("🗺️ 지도에서 무장애 관광지 보기 (5곳)");
+check("이동 버튼 말풍선이 대화에 표시", () => {
+  const btn = [...window.document.querySelectorAll("#chat .bubble--nav .navjump")].pop();
+  assert.ok(btn, "버튼 없음");
+  assert.match(btn.textContent, /지도에서 무장애 관광지 보기/);
 });
 
 // ── 결과 ──
