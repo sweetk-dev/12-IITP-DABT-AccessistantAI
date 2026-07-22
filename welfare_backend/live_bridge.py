@@ -13,6 +13,7 @@ import asyncio
 import base64
 import json
 import logging
+import os
 import uuid
 from typing import Callable
 
@@ -412,6 +413,54 @@ def resolve_voice(requested: str | None) -> str:
     return DEFAULT_VOICE_FEMALE
 
 
+# ─────────────────────────────────────────────────────────────
+# 정책 답변 화면 카드 구조화 (#205)
+# ─────────────────────────────────────────────────────────────
+# Live 상담은 AUDIO 모달리티라 화면에 뜨는 답변 텍스트는 '음성 전사'다.
+# 전사에는 마크다운 구조(## 소제목 등)가 존재할 수 없으므로, 시스템 지침만으로는
+# 정책 템플릿 카드가 절대 만들어지지 않는다. 대신 턴이 끝난 뒤 전사를 비-라이브
+# 모델로 화면 전용 마크다운으로 재구성해 answer_card 로 별도 전송한다.
+# 음성·전사 표시는 기존 그대로이며, 실패해도 답변 자체에는 영향이 없다(best-effort).
+CARD_MODEL = os.environ.get("GEMINI_CARD_MODEL", "gemini-3.1-flash")
+_CARD_KEYWORDS = ("지원", "신청", "서류", "대상", "급여", "수당",
+                  "바우처", "감면", "혜택", "제도", "수급")
+_CARD_PROMPT = """다음은 장애인 복지 상담원이 음성으로 답한 내용의 전사입니다.
+이 내용이 '특정 복지 정책·제도에 대한 설명'이면, 화면 표시용 마크다운으로 재구성하세요.
+
+형식 규칙:
+- 첫 단락: 1~2문장 핵심 요약
+- 이후 내용을 다음 표준 소제목으로만 구분: "## 지원 대상", "## 지원 내용", "## 신청 방법", "## 구비 서류", "## 문의처"
+- 전사에 실제로 있는 정보의 섹션만 만들 것. 없는 섹션을 만들거나 내용을 창작하지 말 것
+- 나열은 "- " 항목으로, 금액·기간·자격 등 핵심 조건은 **굵게**, 예외·단서는 줄 맨 앞에 "※ "
+- 표·코드블록·이모지 금지
+
+인사말, 잡담, 확인 질문, 길안내 등 정책 설명이 아니거나 표준 소제목을 2개 이상
+만들 정보가 없으면 정확히 NOT_POLICY 만 출력하세요.
+
+전사:
+{text}
+"""
+
+
+async def _send_answer_card(ai_client, websocket, text: str) -> None:
+    """턴 전사를 정책 템플릿 마크다운으로 구조화해 클라이언트에 전송 (best-effort)."""
+    t = (text or "").strip()
+    if len(t) < 80 or not any(k in t for k in _CARD_KEYWORDS):
+        return
+    try:
+        def _gen():
+            return ai_client.models.generate_content(
+                model=CARD_MODEL, contents=_CARD_PROMPT.format(text=t))
+        resp = await asyncio.to_thread(_gen)
+        md = (getattr(resp, "text", None) or "").strip()
+        if not md or "NOT_POLICY" in md[:40] or md.count("## ") < 2:
+            return
+        await _safe_send_json(websocket, {"type": "answer_card", "content": md})
+        logger.info("🗂 정책 답변 카드 전송 (%d자 -> %d자)", len(t), len(md))
+    except Exception as e:
+        logger.debug("answer_card 구조화 생략: %s", e)
+
+
 async def handle_live_chat(
     websocket: WebSocket,
     ai_client,
@@ -763,6 +812,11 @@ async def handle_live_chat(
                                     convo_history.append(("user", _user_buf.strip()))
                                 if _ai_buf.strip():
                                     convo_history.append(("model", _ai_buf.strip()))
+                                # 정책 답변이면 화면 전용 템플릿 카드를 비동기로 구조화·전송 (#205)
+                                _card_src = _ai_buf.strip()
+                                if _card_src:
+                                    asyncio.create_task(
+                                        _send_answer_card(ai_client, websocket, _card_src))
                                 _user_buf = ""; _ai_buf = ""
                                 if len(convo_history) > 100:
                                     del convo_history[:-100]

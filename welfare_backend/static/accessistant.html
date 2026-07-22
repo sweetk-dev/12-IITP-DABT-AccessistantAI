@@ -338,12 +338,20 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     activeAiBubble._textNode.textContent = activeAiText;
     $("chat").scrollTop = $("chat").scrollHeight;
   };
+  // 서버가 턴 종료 후 보내는 정책 템플릿 카드(answer_card)를 적용할 마지막 답변 말풍선.
+  // 상담 답변은 음성 전사라 마크다운이 없다 — 구조화는 서버가 하고 여기서 갈아끼운다.
+  let lastAiCardTarget = null;
   const finalizeAiBubble = () => {
     // 확정된 답변 텍스트를 카드(제목·단락·체크항목·유의사항)로 다시 렌더한다.
     if (activeAiBubble && activeAiText && window.renderAnswerCard) {
       try { window.renderAnswerCard(activeAiBubble._textNode, activeAiText); } catch (e) {}
     }
+    if (activeAiBubble) lastAiCardTarget = activeAiBubble._textNode;
     activeAiBubble = null; activeAiText = "";
+  };
+  const applyAnswerCard = (md) => {
+    if (!lastAiCardTarget || !md || !window.renderAnswerCard) return;
+    try { window.renderAnswerCard(lastAiCardTarget, md); } catch (e) {}
   };
 
   // ────── 폴백(서버 음성 없음) 시 기기 내장 음성으로 답변 낭독 (접근성) ──────
@@ -509,6 +517,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
         case "ui_action":       if (window.NAVI) window.NAVI.onUiAction(msg); break;   // 경로·관광 결과를 지도에 표시
         case "ai_transcript":   appendAiTranscript(msg.content); if (pendingSources.length) { clearTimeout(srcFlushTimer); srcFlushTimer = setTimeout(flushSources, 800); } break;
         case "text":            appendAiTranscript(msg.content); break;
+        case "answer_card":     applyAnswerCard(msg.content); break;   // 정책 템플릿 카드 (#205)
         case "audio":           turnHadAudio = true; await playAudioChunk(msg.data, msg.mime_type); break;
         case "tool_call":
           break;  // 도구 호출 칩은 사용자에게 비노출
@@ -1128,6 +1137,7 @@ window.NAVI = (function(){
   var pickMode=null;      // "origin" | "dest" | null — 다음 태그/목록 클릭의 의미
 
   function onSpotTagClick(sp){
+    sendActivity("navi_ui");
     if(pickMode === "dest"){
       pickMode = null;
       requestRoute(sp);
@@ -1136,6 +1146,25 @@ window.NAVI = (function(){
     if(pickMode === "origin"){
       pickMode = null;
       chooseAsOrigin(sp);
+      return;
+    }
+    // 도착지를 이미 골라둔 상태(#204) — 다음 선택은 출발지가 자연스럽다.
+    // 팝업을 닫았거나 현재 위치 확인에 실패했어도 도착지는 잊지 않는다.
+    if(pendingDest && sp.poi_id !== pendingDest.poi_id){
+      var d = pendingDest;
+      openChoicePanel(sp.name || "선택한 장소", "도착지: " + (d.name || "선택한 곳"), [
+        choiceBtn("🟢 여기서 출발 → " + (d.name || "도착지") + " 안내", "spot-choice__btn--origin", function(){
+          closeSpotChoice(); chooseAsOrigin(sp);
+        }),
+        choiceBtn("🚩 도착지를 여기로 변경", "spot-choice__btn--dest", function(){
+          closeSpotChoice(); pendingDest = sp;
+          status("도착지: " + (sp.name || "선택한 곳") + " — 출발지를 선택해 주세요.");
+        }),
+        choiceBtn("선택 초기화", "", function(){
+          pendingDest = null; pickMode = null; closeSpotChoice();
+          status("선택을 초기화했습니다.");
+        }),
+      ]);
       return;
     }
     openSpotChoice(sp);
@@ -1182,16 +1211,24 @@ window.NAVI = (function(){
     openChoicePanel("출발지를 선택해 주세요", (sp.name || "") + " 까지 안내합니다", [
       choiceBtn("📍 현재 위치에서 출발", "spot-choice__btn--origin", function(){
         closeSpotChoice();
-        var d=pendingDest; pendingDest=null;
-        requestRoute(d);   // 위치가 없으면 requestRoute 가 권한 안내를 띄운다
+        if(activeOrigin()){
+          var d=pendingDest; pendingDest=null;
+          requestRoute(d);
+        } else {
+          // 위치를 모른다 — 도착지는 유지한 채 출발지 지정을 이어서 안내(#204)
+          pickMode = "origin";
+          status("현재 위치를 확인할 수 없습니다. 위치 권한을 허용하거나, 지도 태그·빈 곳을 눌러 출발지를 선택해 주세요. (도착지: " + (sp.name || "선택한 곳") + ")");
+          speak("현재 위치를 확인할 수 없습니다. 지도를 눌러 출발지를 지정해 주세요.");
+        }
       }),
       choiceBtn("🗺️ 지도·목록에서 출발지 선택", "", function(){
         closeSpotChoice();
         pickMode = "origin";
-        status("지도의 이름 태그나 목록, 또는 지도 빈 곳을 눌러 출발지를 선택해 주세요.");
+        status("지도의 이름 태그나 목록, 또는 지도 빈 곳을 눌러 출발지를 선택해 주세요. (도착지: " + (sp.name || "선택한 곳") + ")");
         speak("출발지를 선택해 주세요.");
       }),
-      choiceBtn("취소", "", function(){ pendingDest=null; closeSpotChoice(); }),
+      // 닫아도 도착지 선택은 유지된다 — 다음 태그 클릭 때 '여기서 출발' 맥락 팝업이 뜬다(#204)
+      choiceBtn("닫기 (도착지는 유지)", "", closeSpotChoice),
     ]);
   }
 
@@ -1199,8 +1236,11 @@ window.NAVI = (function(){
     if(sp.lat === null || sp.lat === undefined || sp.lng === null || sp.lng === undefined){
       status("이 장소는 좌표 정보가 없어 출발지로 지정할 수 없습니다."); return;
     }
+    // setOrigin 은 대기 중 도착지(pendingDest)가 있으면 그 안으로 소진하고 바로 안내한다.
+    // 호출 '전'의 상태로 판단해야 한다 — 호출 후엔 이미 null 이라 pickMode 가 잘못 남는다.
+    var hadPending = !!pendingDest;
     setOrigin(sp.lat, sp.lng);
-    if(pendingDest) return;   // setOrigin 이 대기 중인 도착지로 바로 안내한다
+    if(hadPending) return;
     pickMode = "dest";
     status("출발지: " + (sp.name || "선택 지점") + " — 이제 지도 태그나 목록에서 도착지를 선택해 주세요.");
   }
@@ -1293,6 +1333,7 @@ window.NAVI = (function(){
 
   /* ── 경로 요청·표시 ── */
   async function requestRoute(spot){
+    pickMode = null;   // 경로 요청이 시작되면 선택 모드는 항상 끝난 것 (잔존 방지)
     var o = activeOrigin();
     if(!o){
       status("현재 위치를 확인할 수 없습니다. 위치 권한을 허용하거나 지도를 눌러 출발지를 지정해 주세요.");
@@ -1385,11 +1426,59 @@ window.NAVI = (function(){
     body.appendChild(acts);
   }
 
+  /* ── 장애유형 선택 ──
+     유형 칩은 정적 HTML이 아니라 여기서 상태(selTypes) 기반으로 렌더한다 —
+     renderSpotsPanel 이 시트 본문을 재구성하면서 칩이 사라지던 결함(#202)의 근본 수정.
+     첫 진입 시에는 선택 게이트 화면을 먼저 보여주고, 확인 후 목록을 로드한다. */
+  var DIS_TYPES=[["지체장애","지체장애"],["시각장애","시각장애"],["청각장애","청각장애"],["영유아동반","영유아 동반"]];
+  var selTypes=["지체장애"];
+  var typeConfirmed=false;
+
+  function makeChips(reloadOnToggle){
+    var wrap=document.createElement("div"); wrap.className="chips"; wrap.id="naviFilters";
+    wrap.setAttribute("role","group"); wrap.setAttribute("aria-label","장애 유형 선택");
+    DIS_TYPES.forEach(function(t){
+      var b=document.createElement("button"); b.type="button"; b.className="chip";
+      b.setAttribute("data-dis", t[0]);
+      b.setAttribute("aria-pressed", String(selTypes.indexOf(t[0])>=0));
+      b.textContent=t[1];
+      b.addEventListener("click", function(){
+        var i=selTypes.indexOf(t[0]);
+        if(i>=0) selTypes.splice(i,1); else selTypes.push(t[0]);
+        b.setAttribute("aria-pressed", String(i<0));
+        sendActivity("navi_ui");
+        if(reloadOnToggle) loadSpots();
+      });
+      wrap.appendChild(b);
+    });
+    return wrap;
+  }
+
+  function renderTypeSelectPanel(){
+    sheetMini(false); sheetSetCollapsed(false);
+    var body=$("naviSheetBody");
+    body.textContent="";
+    var h=document.createElement("h2"); h.textContent="무장애 관광지"; body.appendChild(h);
+    var p=document.createElement("p"); p.className="c-note";
+    p.textContent="함께하는 장애 유형을 모두 선택한 뒤 '관광지 보기'를 눌러 주세요. 선택한 유형에 필요한 편의시설을 갖춘 곳만 보여 드립니다.";
+    body.appendChild(p);
+    body.appendChild(makeChips(false));
+    var go=document.createElement("button"); go.type="button"; go.id="naviTypeGo";
+    go.className="spot-choice__btn spot-choice__btn--dest"; go.textContent="이 유형으로 관광지 보기";
+    go.addEventListener("click", function(){
+      typeConfirmed=true;
+      sendActivity("navi_ui");
+      loadSpots();
+    });
+    body.appendChild(go);
+  }
+
   function renderSpotsPanel(){
     sheetMini(false); sheetSetCollapsed(false);
     var body=$("naviSheetBody");
     body.textContent="";
     var h=document.createElement("h2"); h.textContent="무장애 관광지"; body.appendChild(h);
+    body.appendChild(makeChips(true));   // 목록 화면에서도 유형 변경 가능 (즉시 재조회)
 
     if(originOverride){
       var oi=document.createElement("p"); oi.className="c-note";
@@ -1619,6 +1708,7 @@ window.NAVI = (function(){
     var p = msg.payload || {};
     if(msg.action === "show_tour_spots"){
       openNavi();
+      typeConfirmed = true;   // 상담 음성으로 이미 목록을 요청한 상태 — 게이트 생략
       spots = p.items || [];
       renderSpotsPanel();
     } else if(msg.action === "show_route"){
@@ -1711,17 +1801,22 @@ window.NAVI = (function(){
     var mapEl=$("naviMap");
     if(mapEl) mapEl.addEventListener("pointerdown", function(){ sheetSetCollapsed(true); }, {passive:true});
 
-    setInterval(function(){ if(guiding || simActive) sendActivity("guidance_heartbeat"); }, 60000);
+    // 유휴 자동종료 방지(#203): 길안내 진행 중은 물론, 이동·관광 화면에 머무는 동안도
+    // 서비스 이용 중이다 — 화면이 활성인 동안 60초마다 활동 신호를 보낸다.
+    setInterval(function(){
+      var naviActive=false;
+      try{ naviActive = $("view-navi").classList.contains("active"); }catch(e){}
+      if(guiding || simActive) sendActivity("guidance_heartbeat");
+      else if(naviActive) sendActivity("navi_view_heartbeat");
+    }, 60000);
 
     ["barChat","barChatC"].forEach(function(id){ var e=$(id); if(e) e.addEventListener("click", openChat); });
-    ["barNavi","barNaviC"].forEach(function(id){ var e=$(id); if(e) e.addEventListener("click", openNavi); });
+    ["barNavi","barNaviC"].forEach(function(id){ var e=$(id); if(e) e.addEventListener("click", function(){
+      openNavi();
+      if(!typeConfirmed) renderTypeSelectPanel();   // 어느 경로로 들어와도 첫 진입은 유형 선택부터 (#202)
+    }); });
 
-    var filters=$("naviFilters");
-    if(filters) filters.addEventListener("click", function(ev){
-      var b=ev.target.closest(".chip"); if(!b) return;
-      b.setAttribute("aria-pressed", b.getAttribute("aria-pressed")==="true" ? "false" : "true");
-      loadSpots();
-    });
+    // 유형 칩은 makeChips()가 상태 기반으로 렌더·바인딩한다 (#202)
   }
 
   // ── 무장애 관광지 목록 — 10개 단위 무한스크롤 + 현위치 거리순 ──
@@ -1738,8 +1833,7 @@ window.NAVI = (function(){
   }
 
   async function loadSpots(){
-    var sel=[].slice.call(document.querySelectorAll('#naviFilters .chip[aria-pressed="true"]'))
-              .map(function(b){ return b.getAttribute("data-dis"); });
+    var sel=selTypes.slice();
     if(!sel.length) sel=["지체장애"];
     profile = (sel.indexOf("시각장애")>=0 && sel.length===1) ? "visual" : "wheelchair_manual";
     spotSel = sel; spotOffset = 0; spotHasMore = false;
@@ -1760,6 +1854,7 @@ window.NAVI = (function(){
 
   async function loadMoreSpots(){
     if(spotLoading || !spotHasMore) return;
+    sendActivity("navi_scroll");   // 목록 탐색도 서비스 이용 중 (#203)
     spotLoading = true;
     try{
       var r = await fetch(spotQuery(spotSel, spotOffset));
@@ -1776,7 +1871,8 @@ window.NAVI = (function(){
     init: init,
     attachWs: function(w){ wsRef = w; sendLocation(); },
     onUiAction: onUiAction,
-    openNavi: function(){ openNavi(); loadSpots(); },
+    // 첫 진입은 장애유형 선택 게이트를 먼저 — 선택 완료 후 목록 로드 (#202)
+    openNavi: function(){ openNavi(); if(typeConfirmed) loadSpots(); else renderTypeSelectPanel(); },
     // 테스트용 노출
     _internals: function(){ return {steps:steps, stepIdx:stepIdx, spots:spots, speak:speak, showRoute:showRoute,
                                      startGuidance:startGuidance, setHere:function(h){here=h;}, advanceStep:advanceStep}; }
