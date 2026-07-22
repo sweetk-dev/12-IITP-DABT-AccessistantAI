@@ -539,6 +539,24 @@ async def tool_explain_route_segment(route_id: str, step_idx: int = None) -> dic
 
 
 # ─────────────────────────────────────────────────────────────
+# 도구 #9 — 화면 이동 (#215)
+# ─────────────────────────────────────────────────────────────
+async def tool_open_navi_screen() -> dict:
+    """이동·관광(지도) 화면으로 전환한다.
+
+    사용자가 '지도로 이동해줘', '지도 화면 보여줘' 처럼 화면 이동 자체를
+    명시적으로 요청한 경우에만 호출된다 — 이때는 사용자가 원한 전환이므로
+    (#213 의 자동전환 금지와 달리) 프런트가 즉시 화면을 바꾼다.
+    """
+    return {
+        "status": "success",
+        "tool_name": "open_navi_screen",
+        "ui_action": {"action": "open_navi"},
+        "ai_instruction": "지도 화면으로 이동했다고 한 문장으로만 짧게 알리세요.",
+    }
+
+
+# ─────────────────────────────────────────────────────────────
 # 도구 디스패처 (Gemini 함수명 → 실제 핸들러)
 # ─────────────────────────────────────────────────────────────
 def get_tool_dispatcher(embed_fn):
@@ -553,4 +571,5 @@ def get_tool_dispatcher(embed_fn):
         "find_bf_tour_spots": tool_find_bf_tour_spots,
         "plan_accessible_route": tool_plan_accessible_route,
         "explain_route_segment": tool_explain_route_segment,
+        "open_navi_screen": tool_open_navi_screen,
     }
