@@ -177,9 +177,25 @@ check("서비스 지역 밖이면 출발지 지정을 안내", () => {
 });
 
 window.NAVI.openNavi();
+await sleep(30);
+check("첫 진입: 장애유형 선택 게이트 표시 (목록 미로드)", () => {
+  assert.ok($("naviTypeGo"), "'관광지 보기' 버튼 없음");
+  assert.equal(window.document.querySelectorAll("#naviFilters .chip").length, 4);
+  assert.equal($("naviSpots"), null, "게이트 전에 목록이 로드됨");
+});
+check("게이트: 기본 선택 = 지체장애", () => {
+  const on = [...window.document.querySelectorAll('#naviFilters .chip[aria-pressed="true"]')];
+  assert.equal(on.length, 1);
+  assert.equal(on[0].getAttribute("data-dis"), "지체장애");
+});
+$("naviTypeGo").dispatchEvent(new window.Event("click"));
 await sleep(60);
-check("지역 밖 안내가 목록 패널에도 표시", () => {
+check("유형 확인 후 목록 로드 + 지역 밖 안내가 목록 패널에도 표시", () => {
+  assert.ok($("naviSpots"), "목록 미로드");
   assert.match($("naviSheetBody").textContent, /현재 위치가 안양시 밖입니다/);
+});
+check("목록 화면에도 유형 칩 유지 (변경 가능)", () => {
+  assert.equal(window.document.querySelectorAll("#naviFilters .chip").length, 4);
 });
 
 check("지도 클릭 핸들러 등록됨", () => assert.ok(mapClickHandlers.length >= 1));
@@ -536,6 +552,49 @@ await sleep(60);
 check("출발지 태그 선택 -> 대기 중 도착지로 자동 안내", () => {
   assert.ok(lastPlanQuery, "경로 요청 안 감");
   assert.match($("naviSheetBody").textContent, /320m/);
+});
+
+// 11) 도착지 선택 유지 (#204) — 팝업을 닫아도 도착지를 기억하고, 출발지 선택 시 자동 안내
+window.NAVI.openNavi();
+await sleep(60);
+const resetBtn2 = [...$("naviSheetBody").querySelectorAll("button")]
+  .find((b) => /현재 위치로 되돌리기/.test(b.textContent));
+if (resetBtn2) { resetBtn2.dispatchEvent(new window.Event("click")); await sleep(40); }
+window.NAVI._internals().setHere(null);
+let tagsB = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+tagsB[0].content.dispatchEvent(new window.Event("click"));
+await sleep(20);
+choiceBtn(/여기로 가기/).dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("출발지 팝업 '닫기'가 도착지를 유지함을 안내", () => {
+  assert.ok(choiceBtn(/닫기.*도착지는 유지/), "닫기 버튼 없음");
+});
+choiceBtn(/닫기/).dispatchEvent(new window.Event("click"));
+await sleep(20);
+tagsB = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+tagsB[1].content.dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("닫은 뒤 다른 태그 클릭 -> 도착지 유지 맥락 팝업", () => {
+  assert.ok(choiceBtn(/여기서 출발 →/), "'여기서 출발 → 도착지' 버튼 없음");
+  assert.ok(choiceBtn(/도착지를 여기로 변경/), "도착지 변경 버튼 없음");
+  assert.ok(choiceBtn(/선택 초기화/), "초기화 버튼 없음");
+});
+lastPlanQuery = null;
+choiceBtn(/여기서 출발 →/).dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("맥락 팝업에서 출발지 선택 -> 도착지 재선택 없이 자동 안내", () => {
+  assert.ok(lastPlanQuery, "경로 요청 안 감");
+  assert.match($("naviSheetBody").textContent, /320m/);
+});
+
+// 12) 유휴 방지·카드 배선 존재 검증 (#203·#205) — 소스 레벨 회귀 가드
+check("이동·관광 화면 체류 하트비트 코드 존재", () => {
+  assert.match(HTML, /navi_view_heartbeat/);
+  assert.match(HTML, /guidance_heartbeat/);
+});
+check("answer_card 수신 배선 존재", () => {
+  assert.match(HTML, /case "answer_card"/);
+  assert.match(HTML, /applyAnswerCard/);
 });
 
 // ── 결과 ──
