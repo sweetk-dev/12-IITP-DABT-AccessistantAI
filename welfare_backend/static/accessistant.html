@@ -331,28 +331,61 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       const span = document.createElement("span");
       activeAiBubble.appendChild(span);
       activeAiBubble._textNode = span;
+      // 카드가 먼저 도착해 있으면 말풍선 맨 위(전사 위)에 부착 (#208)
+      if (pendingAnswerCard) {
+        activeAiBubble.insertBefore(pendingAnswerCard, span);
+        activeAiBubble._hasCard = true;
+        pendingAnswerCard = null;
+      }
       $("chat").appendChild(activeAiBubble);
       activeAiText = "";
     }
     activeAiText += text;
     activeAiBubble._textNode.textContent = activeAiText;
-    $("chat").scrollTop = $("chat").scrollHeight;
+    // 카드가 있는 턴: 최초 1회만 카드(말풍선 상단)로 포커스를 잡고, 이후에는
+    // 스크롤을 건드리지 않는다 — 사용자가 전사를 읽으러 내려가도 방해하지 않기 위함.
+    if (activeAiBubble._hasCard) {
+      if (!activeAiBubble._anchored) {
+        activeAiBubble._anchored = true;
+        $("chat").scrollTop = Math.max(0, activeAiBubble.offsetTop - 8);
+      }
+    } else {
+      $("chat").scrollTop = $("chat").scrollHeight;
+    }
   };
-  // 서버가 턴 종료 후 보내는 정책 템플릿 카드(answer_card)를 적용할 마지막 답변 말풍선.
-  // 상담 답변은 음성 전사라 마크다운이 없다 — 구조화는 서버가 하고 여기서 갈아끼운다.
-  let lastAiCardTarget = null;
+  /* ── 정책 템플릿 카드 (#208: 선표시 + 음성 병행) ──
+     서버가 도구(정책 DB) 결과 시점에 구조화해 보내므로 카드가 답변 음성보다
+     먼저 도착할 수 있다. 카드는 답변 말풍선의 '맨 위'(전사 위)에 놓고,
+     전사는 그 아래에 쌓인다. 카드가 있는 턴에는 화면 포커스를 카드(말풍선 상단)에
+     앵커해서, 전사가 늘어나도 카드가 위로 밀려 사라지지 않게 한다.
+     (sticky 고정이 아니라 일반 배치 — 사용자가 스크롤하면 함께 이동한다) */
+  let lastAiBubble = null;       // 턴 종료 후 늦게 도착한 카드(전사 폴백)를 붙일 곳
+  let pendingAnswerCard = null;  // 말풍선이 생기기 전에 카드가 먼저 도착한 경우
   const finalizeAiBubble = () => {
     // 확정된 답변 텍스트를 카드(제목·단락·체크항목·유의사항)로 다시 렌더한다.
     if (activeAiBubble && activeAiText && window.renderAnswerCard) {
       try { window.renderAnswerCard(activeAiBubble._textNode, activeAiText); } catch (e) {}
     }
-    if (activeAiBubble) lastAiCardTarget = activeAiBubble._textNode;
+    if (activeAiBubble) lastAiBubble = activeAiBubble;
     activeAiBubble = null; activeAiText = "";
   };
-  const applyAnswerCard = (md) => {
-    if (!lastAiCardTarget || !md || !window.renderAnswerCard) return;
-    try { window.renderAnswerCard(lastAiCardTarget, md); } catch (e) {}
+  const attachCardToBubble = (bubble, cardDiv) => {
+    bubble.insertBefore(cardDiv, bubble._textNode || null);   // 라벨 다음, 전사 위
+    bubble._hasCard = true;
+    // 카드가 보이도록 말풍선 상단으로 포커스 이동 (이후 스크롤은 사용자에게 맡긴다)
+    bubble._anchored = true;
+    $("chat").scrollTop = Math.max(0, bubble.offsetTop - 8);
   };
+  const applyAnswerCard = (md) => {
+    if (!md || !window.renderAnswerCard) return;
+    const cardDiv = document.createElement("div");
+    try { window.renderAnswerCard(cardDiv, md); } catch (e) { return; }
+    const target = activeAiBubble || lastAiBubble;
+    if (target) attachCardToBubble(target, cardDiv);
+    else pendingAnswerCard = cardDiv;   // 다음 답변 말풍선이 생길 때 맨 위에 부착
+  };
+  // 테스트 노출 (NAVI._internals 와 같은 목적 — jsdom 이 WS 없이 카드 배치를 검증)
+  window.__CHAT = { appendAiTranscript, finalizeAiBubble, applyAnswerCard };
 
   // ────── 폴백(서버 음성 없음) 시 기기 내장 음성으로 답변 낭독 (접근성) ──────
   // Gemini 정상 모드는 서버가 audio 를 보내므로 turnHadAudio=true → 동작 안 함.

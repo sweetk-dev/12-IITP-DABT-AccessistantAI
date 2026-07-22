@@ -443,6 +443,57 @@ _CARD_PROMPT = """다음은 장애인 복지 상담원이 음성으로 답한 �
 """
 
 
+# 도구 결과 기반 선(先)생성 (#208): 답변 음성이 시작되기 전에 도구(정책 DB) 결과가
+# 먼저 도착한다 — 이 시점에 구조화를 시작하면 카드가 음성과 병행으로 표시된다.
+# 턴 종료 후 전사 기반 카드는 도구 호출이 없던 답변의 폴백으로만 남긴다.
+_CARD_TOOL_NAMES = {"get_policy_details", "check_eligibility_criteria",
+                    "search_by_keyword", "search_policies_by_metadata"}
+_CARD_TOOL_PROMPT = """다음은 장애인 복지 상담 도구가 반환한 정책 데이터(JSON)입니다.
+사용자 질문: {question}
+
+이 데이터가 특정 복지 정책·제도의 내용을 담고 있으면, 화면 표시용 마크다운 카드로 재구성하세요.
+
+형식 규칙:
+- 첫 단락: 1~2문장 핵심 요약
+- 이후 내용을 다음 표준 소제목으로만 구분: "## 지원 대상", "## 지원 내용", "## 신청 방법", "## 구비 서류", "## 문의처"
+- 데이터에 실제로 있는 정보의 섹션만 만들 것. 없는 섹션을 만들거나 내용을 창작하지 말 것
+- 여러 정책이 섞여 있으면 사용자 질문과 가장 관련 높은 정책 하나만 카드로 만들 것
+- 나열은 "- " 항목으로, 금액·기간·자격 등 핵심 조건은 **굵게**, 예외·단서는 줄 맨 앞에 "※ "
+- 내부 ID(B001 등)·URL 은 표기하지 말 것. 표·코드블록·이모지 금지
+
+정책 콘텐츠가 아니거나 표준 소제목을 2개 이상 만들 정보가 없으면 정확히 NOT_POLICY 만 출력하세요.
+
+데이터:
+{data}
+"""
+
+
+async def _send_answer_card_from_tool(ai_client, websocket, question: str,
+                                      result: dict, card_state: dict) -> None:
+    """도구 결과를 정책 템플릿 카드로 구조화해 즉시 전송 — 음성 답변과 병행 표시용."""
+    try:
+        data = json.dumps(result, ensure_ascii=False, default=str)[:6000]
+    except Exception:
+        return
+    if len(data) < 60:
+        return
+    try:
+        def _gen():
+            return ai_client.models.generate_content(
+                model=CARD_MODEL,
+                contents=_CARD_TOOL_PROMPT.format(
+                    question=(question or "").strip()[:300] or "(직전 질문)", data=data))
+        resp = await asyncio.to_thread(_gen)
+        md = (getattr(resp, "text", None) or "").strip()
+        if not md or "NOT_POLICY" in md[:40] or md.count("## ") < 2:
+            return
+        card_state["sent"] = True
+        await _safe_send_json(websocket, {"type": "answer_card", "content": md})
+        logger.info("🗂 정책 카드(도구 기반, 선표시) 전송 (%d자)", len(md))
+    except Exception as e:
+        logger.debug("도구 기반 answer_card 생략: %s", e)
+
+
 async def _send_answer_card(ai_client, websocket, text: str) -> None:
     """턴 전사를 정책 템플릿 마크다운으로 구조화해 클라이언트에 전송 (best-effort)."""
     t = (text or "").strip()
@@ -645,6 +696,9 @@ async def handle_live_chat(
     # 컨텍스트 보존 복구(2단계) — handle 폐기 후 새 세션에 직전 대화 맥락을 silent 주입
     convo_history = []                  # [(role, text)] 확정된 대화 턴
     _ai_buf = ""                        # 현재 AI 턴 전사 누적
+    # 정책 카드 상태(턴 단위) — scheduled: 이번 턴에 도구 기반 카드를 시도했는지,
+    # sent: 실제 전송됐는지. 도구 기반이 실패하면 턴 종료 폴백이 전사 기반으로 커버.
+    card_state = {"scheduled": False, "sent": False}
     _user_buf = ""                      # 현재 사용자 턴 입력 누적
     # 프런트가 보낸 현재 위치 — 경로 도구의 출발지로 서버에서 주입한다(모델이 좌표를 지어내지 못하게).
     user_location = {"lat": None, "lng": None}
@@ -813,11 +867,14 @@ async def handle_live_chat(
                                     convo_history.append(("user", _user_buf.strip()))
                                 if _ai_buf.strip():
                                     convo_history.append(("model", _ai_buf.strip()))
-                                # 정책 답변이면 화면 전용 템플릿 카드를 비동기로 구조화·전송 (#205)
+                                # 정책 카드 폴백 (#205→#208): 도구 기반 선표시 카드를 이번 턴에
+                                # 시도하지 않았을 때만 전사 기반으로 생성(도구 없이 답한 정책 설명 커버)
                                 _card_src = _ai_buf.strip()
-                                if _card_src:
+                                if _card_src and not card_state["scheduled"]:
                                     asyncio.create_task(
                                         _send_answer_card(ai_client, websocket, _card_src))
+                                card_state["scheduled"] = False
+                                card_state["sent"] = False
                                 _user_buf = ""; _ai_buf = ""
                                 if len(convo_history) > 100:
                                     del convo_history[:-100]
@@ -898,6 +955,14 @@ async def handle_live_chat(
                                             result = {"error": str(e)}
                                     # Phase 5 Track A — 도구 호출 시퀀스 추적
                                     tracker.on_tool_call(fname, fargs, result)
+                                    # #208: 정책 도구 결과가 오는 '지금'이 카드를 만들 최적 시점 —
+                                    # 답변 음성이 나오는 동안 구조화가 병행돼 카드가 먼저/동시에 뜬다.
+                                    if (fname in _CARD_TOOL_NAMES and isinstance(result, dict)
+                                            and not result.get("error")
+                                            and not card_state["scheduled"]):
+                                        card_state["scheduled"] = True
+                                        asyncio.create_task(_send_answer_card_from_tool(
+                                            ai_client, websocket, _user_buf, result, card_state))
                                     # #146: 탐색 도구(search_*)는 top-K 후보의 출처라 답변이 실제로 채택했는지
                                     #       불확실 → 화면에 띄우지 않음. 정책을 특정해 상세를 가져온
                                     #       get_policy_details 의 출처만 노출(무관 출처 표시 방지).
