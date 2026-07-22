@@ -422,7 +422,14 @@ def resolve_voice(requested: str | None) -> str:
 # 모델로 화면 전용 마크다운으로 재구성해 answer_card 로 별도 전송한다.
 # 음성·전사 표시는 기존 그대로이며, 실패해도 답변 자체에는 영향이 없다(best-effort).
 # 기본값은 자동 갱신 별칭 — 고정 버전명은 키에 따라 404 가 난다 (2026-07-21 ServerA 실측)
-CARD_MODEL = os.environ.get("GEMINI_CARD_MODEL", "gemini-flash-latest")
+# lite 채택 이유(2026-07-21 ServerA 실측): flash-latest 는 내부 추론(thinking) 때문에
+# 5.4s — 카드가 전사 중간에 늦게 뜬다. lite 는 0.8s 로 음성 시작 전후에 도착한다.
+# 재구성(요약·재배치) 작업이라 lite 품질로 충분하다.
+CARD_MODEL = os.environ.get("GEMINI_CARD_MODEL", "gemini-flash-lite-latest")
+
+def _card_gen_config():
+    """카드 구조화 전용 생성 설정 — 지연 최소화·출력 안정화."""
+    return types.GenerateContentConfig(max_output_tokens=1024, temperature=0.2)
 _CARD_KEYWORDS = ("지원", "신청", "서류", "대상", "급여", "수당",
                   "바우처", "감면", "혜택", "제도", "수급")
 _CARD_PROMPT = """다음은 장애인 복지 상담원이 음성으로 답한 내용의 전사입니다.
@@ -482,7 +489,8 @@ async def _send_answer_card_from_tool(ai_client, websocket, question: str,
             return ai_client.models.generate_content(
                 model=CARD_MODEL,
                 contents=_CARD_TOOL_PROMPT.format(
-                    question=(question or "").strip()[:300] or "(직전 질문)", data=data))
+                    question=(question or "").strip()[:300] or "(직전 질문)", data=data),
+                config=_card_gen_config())
         resp = await asyncio.to_thread(_gen)
         md = (getattr(resp, "text", None) or "").strip()
         if not md or "NOT_POLICY" in md[:40] or md.count("## ") < 2:
@@ -502,7 +510,8 @@ async def _send_answer_card(ai_client, websocket, text: str) -> None:
     try:
         def _gen():
             return ai_client.models.generate_content(
-                model=CARD_MODEL, contents=_CARD_PROMPT.format(text=t))
+                model=CARD_MODEL, contents=_CARD_PROMPT.format(text=t),
+                config=_card_gen_config())
         resp = await asyncio.to_thread(_gen)
         md = (getattr(resp, "text", None) or "").strip()
         if not md or "NOT_POLICY" in md[:40] or md.count("## ") < 2:
