@@ -203,6 +203,11 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .card .p-sec--how .p-sec__h{background:#F5F3FF;color:#6D28D9;}
 .card .p-sec--docs .p-sec__h{background:var(--c-warning-soft);color:var(--c-warning);}
 .card .p-sec--contact .p-sec__h{background:#F1F5F9;color:var(--c-secondary);}
+.card .p-sec--etc .p-sec__h{background:#F1F5F9;color:var(--c-secondary);}
+/* 정책 요약 카드 컨테이너 — 전사(음성 받아쓰기)와 시각적으로 확실히 분리 (#218) */
+.answer-card-wrap{border:1.5px solid #C7D8FB;border-radius:14px;background:#FBFCFF;margin:6px 0 10px;overflow:hidden;}
+.answer-card-wrap__head{background:var(--c-primary-soft);color:var(--c-primary);font-weight:800;font-size:.8rem;padding:6px 12px;border-bottom:1px solid #DCE6FA;}
+.answer-card-wrap > div:last-child{padding:10px 12px;}
 .card .c-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
 .card .c-actions button{border:1px solid var(--c-primary);color:var(--c-primary);background:#fff;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;}
 
@@ -381,8 +386,17 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   };
   const applyAnswerCard = (md) => {
     if (!md || !window.renderAnswerCard) return;
+    // 전사(음성 받아쓰기)와 확실히 구분되는 카드 컨테이너 (#218) —
+    // 테두리·헤더가 없으면 카드 본문이 전사 중간에 끼어든 것처럼 보인다.
     const cardDiv = document.createElement("div");
-    try { window.renderAnswerCard(cardDiv, md); } catch (e) { return; }
+    cardDiv.className = "answer-card-wrap";
+    const head = document.createElement("div");
+    head.className = "answer-card-wrap__head";
+    head.textContent = "📋 정책 요약 카드";
+    cardDiv.appendChild(head);
+    const bodyDiv = document.createElement("div");
+    try { window.renderAnswerCard(bodyDiv, md, { assumePolicy: true }); } catch (e) { return; }
+    cardDiv.appendChild(bodyDiv);
     const target = activeAiBubble || lastAiBubble;
     if (target) attachCardToBubble(target, cardDiv);
     else pendingAnswerCard = cardDiv;   // 다음 답변 말풍선이 생길 때 맨 위에 부착
@@ -396,6 +410,12 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   let turnHadAudio = false;
   let localTtsNoticeShown = false;
   let ttsSpeaking = false;   // 기기음성 재생 중 → 마이크 입력 차단(에코 루프 방지)
+  // 기기 내장 음성 즉시 중단 (#217) — 서버 음성 도착·사용자 개입 시 호출.
+  // 중첩 재생(내장 TTS + Live 음성)과 '끊기지 않는 안내'를 모두 막는다.
+  const stopLocalTts = () => {
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
+    ttsSpeaking = false;
+  };
   const NOTICE_TXT = "현재 음성 안내가 일시적으로 기기 내장 음성으로 제공됩니다. 평소와 음성이 다르게 들릴 수 있어요.";
   const maybeSpeakLocal = (text) => {
     const had = turnHadAudio;
@@ -574,7 +594,10 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
         case "ai_transcript":   appendAiTranscript(msg.content); if (pendingSources.length) { clearTimeout(srcFlushTimer); srcFlushTimer = setTimeout(flushSources, 800); } break;
         case "text":            appendAiTranscript(msg.content); break;
         case "answer_card":     applyAnswerCard(msg.content); break;   // 정책 템플릿 카드 (#205)
-        case "audio":           turnHadAudio = true; await playAudioChunk(msg.data, msg.mime_type); break;
+        case "audio":
+          // 서버(상담원) 음성이 오면 기기 내장 음성은 즉시 멈춘다 — 중첩 재생 방지 (#217)
+          if (ttsSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking)) stopLocalTts();
+          turnHadAudio = true; await playAudioChunk(msg.data, msg.mime_type); break;
         case "tool_call":
           break;  // 도구 호출 칩은 사용자에게 비노출
 
@@ -656,10 +679,26 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       },
     });
 
+    // 기기음성 재생 중 사용자 발화 감지(barge-in, #217) — AEC(echoCancellation)가
+    // 스피커 출력(내장 TTS)을 억제하므로, 임계 이상 RMS 가 연속되면 사용자 발화로 보고
+    // 내장 안내를 즉시 끊는다. 잔향 오탐을 줄이기 위해 높은 임계+지속 조건을 쓴다.
+    const LOCAL_TTS_BARGE_RMS = 0.02;   // 평시 voice 임계(0.012)보다 높게
+    const LOCAL_TTS_BARGE_RUN = 3;      // 128ms 청크 × 3 ≈ 0.4초 지속
+    let localBargeRun = 0;
+
     micProcessor.port.onmessage = (e) => {
       const m = e.data;
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      if (ttsSpeaking) return;   // 기기음성 재생 중 마이크 프레임 무시(에코 루프 방지)
+      if (ttsSpeaking) {
+        // 기기음성 재생 중에도 사용자가 말을 시작하면 안내를 끊는다 (#217)
+        if (m.type === "pcm") {
+          if ((m.rms || 0) >= LOCAL_TTS_BARGE_RMS) {
+            if (++localBargeRun >= LOCAL_TTS_BARGE_RUN) { localBargeRun = 0; stopLocalTts(); }
+          } else localBargeRun = 0;
+        }
+        return;   // 게이트는 stopLocalTts 가 풀 때까지 유지(에코 루프 방지)
+      }
+      localBargeRun = 0;
       if (window.__NAVI_SPEAKING) return;   // 길안내 음성 발화 중에도 동일하게 차단
       // 이동·관광(지도) 화면에서는 상담원 음성 재생 중 마이크 프레임을 보내지 않는다
       // (스피커로 나온 상담원 음성이 사용자 발화로 재입력되는 에코 방지 — 상담 화면 barge-in 은 유지)
@@ -746,6 +785,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   $("sendTextBtn").onclick = () => {
     const text = $("textInput").value.trim();
     if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+    stopLocalTts();   // 질문을 보내는 순간 기기 내장 안내는 중단 (#217)
     ws.send(JSON.stringify({ type: "text", content: text }));
     addBubble("user", text);
     $("textInput").value = "";
@@ -859,6 +899,8 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       parent.appendChild(ul);
     } else { var p=document.createElement("p"); p.innerHTML=inline(b.v); parent.appendChild(p); }
   }
+  // 표준 5섹션 외 소제목(정책명 등)에 쓰는 중립 스타일
+  var GENERIC_SECTION = {key:"etc", icon:"📌", label:null, re:null};
   function renderPolicyCard(card, blocks){
     // 첫 소제목 이전의 단락 -> 핵심 요약 카드 (유의사항·목록은 요약으로 끌어올리지 않는다)
     var i=0, summary=[];
@@ -874,9 +916,14 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       var b=blocks[i];
       if(b.t==="h"){
         var ps = policySection(b.v);
+        if(!ps && card._assumePolicy){
+          // 서버가 만든 카드의 비표준 소제목(정책명 등, #218) — 중립 섹션 블록으로 감싼다.
+          // 스타일 없는 소제목은 전사와 섞여 보인다.
+          ps = {key: GENERIC_SECTION.key, icon: GENERIC_SECTION.icon, label: b.v};
+        }
         if(ps){
           sec=document.createElement("div"); sec.className="p-sec p-sec--"+ps.key;
-          var hh=document.createElement("div"); hh.className="p-sec__h"; hh.textContent=ps.icon+" "+ps.label; sec.appendChild(hh);
+          var hh=document.createElement("div"); hh.className="p-sec__h"; hh.textContent=ps.icon+" "+(ps.label || b.v); sec.appendChild(hh);
           secBody=document.createElement("div"); secBody.className="p-sec__b"; sec.appendChild(secBody);
           card.appendChild(sec);
         } else {
@@ -898,7 +945,10 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       var h = document.createElement("div"); h.className="c-title"; h.textContent=opts.title; card.appendChild(h);
     }
     var known = blocks.filter(function(b){ return b.t==="h" && policySection(b.v); }).length;
-    if(known >= 2){
+    // 서버가 정책 카드로 판단해 보낸 콘텐츠(assumePolicy)는 소제목이 비표준(정책명 등)이어도
+    // 항상 요약+섹션 블록 스타일로 렌더한다 (#218)
+    if(opts.assumePolicy || known >= 2){
+      card._assumePolicy = !!opts.assumePolicy;
       renderPolicyCard(card, blocks);
     } else blocks.forEach(function(b){
       if(b.t==="h"){ var e=document.createElement("div"); e.className="c-sub"; e.innerHTML=inline(b.v); card.appendChild(e); }
