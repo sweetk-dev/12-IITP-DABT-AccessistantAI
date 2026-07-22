@@ -1776,6 +1776,12 @@ window.NAVI = (function(){
     } else if(msg.action === "show_route"){
       showRoute(p.route, "");
       return {label: "🗺️ 지도에서 경로 보기"};
+    } else if(msg.action === "open_navi"){
+      // 사용자가 음성으로 화면 이동을 '직접' 요청한 경우(#215) — 즉시 전환한다.
+      // 준비된 목록/경로가 있으면 그대로, 처음이면 장애유형 게이트부터.
+      if(typeConfirmed || spots.length || routeLine){ showPreparedView(); }
+      else { openNavi(); renderTypeSelectPanel(); }
+      return null;   // 이동 버튼은 띄우지 않는다 (이미 이동함)
     }
     return null;
   }

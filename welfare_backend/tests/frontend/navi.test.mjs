@@ -319,6 +319,13 @@ await sleep(30);
 check("버튼(showPreparedView) 선택 시에만 지도 화면 전환", () => {
   assert.ok($("view-navi").classList.contains("active"));
 });
+// 음성 명령 화면 이동 (#215): open_navi ui_action -> 버튼 없이 즉시 전환
+const uiAct3 = window.NAVI.onUiAction({ type: "ui_action", action: "open_navi", payload: {} });
+await sleep(30);
+check("ui_action(open_navi): 음성 요청 시 즉시 화면 전환 + 버튼 라벨 없음", () => {
+  assert.equal(uiAct3, null, "이동 버튼이 뜨면 안 됨");
+  assert.ok($("view-navi").classList.contains("active"));
+});
 
 // 7) 답변 카드 렌더러
 const target = window.document.createElement("div");
