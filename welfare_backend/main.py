@@ -272,14 +272,16 @@ async def synthesize_tts(
 @app.get("/api/v1/tools/plan_accessible_route", tags=["tools"],
          summary="[7] 현위치 → 목적지 무장애 경로")
 async def plan_accessible_route(
-    destination_poi_id: str = Query(...),
     origin_lat: float = Query(...),
     origin_lng: float = Query(...),
+    destination_poi_id: str = Query(""),
+    destination_place: str = Query(""),
     destination_type: str = Query("tour"),
     profile: str = Query("wheelchair_manual"),
 ):
     return await tool_handlers.tool_plan_accessible_route(
         destination_poi_id=destination_poi_id,
+        destination_place=destination_place,
         destination_type=destination_type,
         profile=profile,
         origin_lat=origin_lat,
