@@ -377,6 +377,9 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
 
 
 # 안양 소재 지하철역 7곳 — {역명: (호선, 위도, 경도)}
+# 경로 안내가 가능한 지역 — 안내문이 "장애"가 아니라 "범위"를 말하도록 한다
+SERVICE_AREA = route_client.SERVICE_AREA
+
 _ANYANG_STATIONS = {
     "안양":   ("1호선", 37.4016302, 126.9228826),
     "명학":   ("1호선", 37.3843939, 126.9356089),
@@ -388,11 +391,14 @@ _ANYANG_STATIONS = {
 }
 
 
-async def _resolve_origin_place(place: str) -> Optional[dict]:
-    """말로 지정한 출발지 이름을 좌표로 해석 — ① 안양 지하철역 ② 무장애 관광 POI.
+async def _resolve_place(place: str) -> Optional[dict]:
+    """말로 지정한 장소 이름을 좌표로 해석 — ① 안양 지하철역 ② 무장애 관광 POI.
 
-    "안양역에 있는데", "범계역에서 출발" 처럼 사용자가 출발지를 말로 밝히는 경우
-    실제 GPS 위치(서비스 지역 밖일 수 있음) 대신 그 지점을 출발지로 쓴다.
+    "안양역에 있는데", "범계역에서 출발" 처럼 사용자가 장소를 말로 밝히는 경우
+    실제 GPS 위치(서비스 지역 밖일 수 있음) 대신 그 지점을 쓴다.
+    출발지·목적지 모두 같은 규칙으로 해석한다 — 목적지만 해석 수단이 없으면
+    서비스 범위 밖 장소가 그대로 경로 API 로 넘어가 404 가 되고,
+    그 404 가 "서비스 장애"로 잘못 안내된다.
     """
     q = (place or "").strip()
     if not q:
@@ -413,10 +419,33 @@ async def _resolve_origin_place(place: str) -> Optional[dict]:
         for it in (data.get("items") or []):
             nm = (it.get("name") or "").strip()
             if nm and (q in nm or nm in q) and it.get("lat") is not None:
-                return {"lat": float(it["lat"]), "lng": float(it["lng"]), "label": nm}
+                return {"lat": float(it["lat"]), "lng": float(it["lng"]),
+                        "label": nm, "poi_id": it.get("poi_id")}
     except Exception:
-        logger.exception("출발지 POI 해석 실패: %s", q)
+        logger.exception("장소 POI 해석 실패: %s", q)
     return None
+
+
+# 이전 이름 유지 (호출부 호환)
+_resolve_origin_place = _resolve_place
+
+
+def _out_of_service_area(kind: str, place: str) -> dict:
+    """서비스 범위 밖 — 장애가 아니라 기능 범위임을 분명히 하는 결과."""
+    return {
+        "status": "out_of_service_area",
+        "tool_name": "plan_accessible_route",
+        "service_area": SERVICE_AREA,
+        "message": "%s '%s'는 경로 안내가 가능한 지역(%s) 밖이거나 등록되지 않은 장소입니다"
+                   % (kind, place, SERVICE_AREA),
+        "ai_instruction": (
+            "말씀하신 %s는 경로 안내가 가능한 지역(%s) 밖이거나 아직 등록되지 않은 장소라 "
+            "길을 안내할 수 없다고 정확히 안내하세요. 현재 경로 안내는 %s 안에서만 가능하다는 점을 "
+            "분명히 밝히고, %s 안의 지하철역·무장애 관광지 이름을 말씀해 주시거나 이동·관광 화면의 "
+            "지도에서 직접 지정해 달라고 요청하세요. 서비스 장애나 일시적인 오류라고 말하지 말고, "
+            "경로를 추측하지 마세요." % (kind, SERVICE_AREA, SERVICE_AREA, SERVICE_AREA)
+        ),
+    }
 
 
 async def tool_plan_accessible_route(destination_poi_id: str = "",
@@ -424,26 +453,43 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      profile: str = "wheelchair_manual",
                                      origin_lat: float = None,
                                      origin_lng: float = None,
-                                     origin_place: str = "") -> dict:
+                                     origin_place: str = "",
+                                     destination_place: str = "") -> dict:
     """현재 위치(또는 말로 지정한 출발지)에서 목적지까지 무장애 경로.
 
     origin_lat/lng 은 프런트가 보낸 현위치가 주입되고,
     사용자가 출발지를 말로 밝히면 origin_place 가 우선한다.
+    목적지도 poi_id 가 없으면 destination_place 이름으로 해석하고,
+    해석되지 않으면 경로 API 를 부르지 않고 "서비스 범위 밖"으로 즉시 답한다.
     """
+    dest_label = None
+    dest_coord = None
+    if not destination_poi_id and destination_place:
+        dhit = await _resolve_place(destination_place)
+        if dhit is None:
+            return _out_of_service_area("목적지", destination_place)
+        dest_label = dhit["label"]
+        if dhit.get("poi_id"):
+            destination_poi_id, destination_type = dhit["poi_id"], "tour"
+        else:
+            destination_poi_id, destination_type = "", "coord"
+            dest_coord = {"lat": dhit["lat"], "lng": dhit["lng"]}
+    if not destination_poi_id and dest_coord is None:
+        return {
+            "status": "need_destination",
+            "tool_name": "plan_accessible_route",
+            "service_area": SERVICE_AREA,
+            "ai_instruction": (
+                "어디로 가시는지 목적지를 알 수 없다고 짧게 되묻고, 경로 안내는 %s 안에서만 "
+                "가능하다는 점을 함께 알리세요. 경로를 추측하지 마세요." % SERVICE_AREA
+            ),
+        }
+
     origin_label = None
     if origin_place:
-        hit = await _resolve_origin_place(origin_place)
+        hit = await _resolve_place(origin_place)
         if hit is None:
-            return {
-                "status": "need_origin",
-                "tool_name": "plan_accessible_route",
-                "message": "출발지 '%s' 를 찾을 수 없습니다" % origin_place,
-                "ai_instruction": (
-                    "말씀하신 출발지를 찾을 수 없다고 안내하고, 안양시 내 지하철역 이름(예: 안양역, 범계역)이나 "
-                    "무장애 관광지 이름으로 다시 말씀해 주시거나, 이동·관광 화면의 지도를 눌러 출발지를 "
-                    "직접 지정해 달라고 요청하세요. 경로를 추측하지 마세요."
-                ),
-            }
+            return _out_of_service_area("출발지", origin_place)
         origin_lat, origin_lng = hit["lat"], hit["lng"]
         origin_label = hit["label"]
 
@@ -458,10 +504,11 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
             ),
         }
 
+    dest = ({"type": "coord", "lat": dest_coord["lat"], "lng": dest_coord["lng"]}
+            if dest_coord is not None
+            else {"type": destination_type, "poi_id": destination_poi_id})
     data = await route_client.plan_route(
-        {"lat": origin_lat, "lng": origin_lng},
-        {"type": destination_type, "poi_id": destination_poi_id},
-        profile=profile,
+        {"lat": origin_lat, "lng": origin_lng}, dest, profile=profile,
     )
     if data.get("status") == "error":
         return data
@@ -476,6 +523,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         "status": "success",
         "tool_name": "plan_accessible_route",
         "origin_label": origin_label,
+        "destination_label": dest_label,
         "route_id": data.get("route_id"),
         "summary": {
             "distance_m": summary.get("total_distance_m"),
@@ -491,6 +539,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         "ui_action": {"action": "show_route", "route": data},
         "ai_instruction": (
             ("출발지는 %s 기준임을 먼저 밝히세요. " % origin_label if origin_label else "")
+            + ("목적지는 %s 입니다. " % dest_label if dest_label else "")
             + "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로 요약하고, 첫 안내 한 문장을 덧붙이세요. "
             "경고(warnings)나 제약 완화(fallback.used=true)가 있으면 반드시 함께 알리세요. "
             "전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다."

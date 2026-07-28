@@ -198,6 +198,31 @@ check("목록 화면에도 유형 칩 유지 (변경 가능)", () => {
   assert.equal(window.document.querySelectorAll("#naviFilters .chip").length, 4);
 });
 
+// 1-c) 범위 밖 안내 — 문장만이 아니라 다음에 할 동작을 함께 준다
+check("범위 밖 배너에 '출발지 지정'·'정책 상담' 두 가지 조치 버튼", () => {
+  const note = window.document.querySelector("#naviSheetBody .navi-note");
+  assert.ok(note, "배너 없음");
+  assert.match(note.querySelector(".navi-note__t").textContent, /현재 위치가 안양시 밖입니다/);
+  assert.ok($("naviPickOrigin"), "'지도에서 출발지 지정' 버튼 없음");
+  assert.ok($("naviBackToChat"), "'정책 상담으로 돌아가기' 버튼 없음");
+});
+check("범위 밖 상태 표시는 경고 색으로 구분", () => {
+  assert.ok($("naviStatus").classList.contains("navi-status--warn"), "경고 표시 미적용");
+});
+check("'정책 상담으로 돌아가기'로 화면 전환", () => {
+  $("naviBackToChat").dispatchEvent(new window.Event("click"));
+  assert.ok($("view-chat").classList.contains("active"), "상담 화면으로 못 감");
+  window.show("view-navi");   // 이후 검사를 위해 원래 화면으로 되돌린다
+});
+check("'지도에서 출발지 지정'은 지도를 넓히되 손잡이로 되돌릴 수 있어야 한다", () => {
+  $("naviPickOrigin").dispatchEvent(new window.Event("click"));
+  assert.ok($("naviSheet").classList.contains("collapsed"), "지도를 넓히지 않음");
+  assert.equal($("naviGripLabel").textContent, "목록 펼치기");
+  $("naviGrip").dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 700, bubbles: true }));
+  $("naviGrip").dispatchEvent(new window.MouseEvent("pointerup", { clientY: 700, bubbles: true }));
+  assert.ok(!$("naviSheet").classList.contains("collapsed"), "손잡이로 다시 펼쳐지지 않음");
+});
+
 check("지도 클릭 핸들러 등록됨", () => assert.ok(mapClickHandlers.length >= 1));
 
 check("서비스 지역 밖에서 지도를 현위치(서울)로 옮기지 않음", () => {
@@ -710,6 +735,43 @@ check("이동 버튼 말풍선이 대화에 표시", () => {
   const btn = [...window.document.querySelectorAll("#chat .bubble--nav .navjump")].pop();
   assert.ok(btn, "버튼 없음");
   assert.match(btn.textContent, /지도에서 무장애 관광지 보기/);
+});
+
+// 15) 하단 시트 접힘 UX — 지도 조작 후에도 목록으로 돌아갈 수 있어야 한다
+const sheetEl = $("naviSheet");
+const gripEl = $("naviGrip");
+const mapEl = $("naviMap");
+const ptr = (type, x, y) =>
+  mapEl.dispatchEvent(new window.MouseEvent(type, { clientX: x, clientY: y, bubbles: true }));
+
+check("지도를 '탭'만 하면 목록이 접히지 않는다 (한 번 누르는 조작 보호)", () => {
+  ptr("pointerdown", 100, 200);
+  ptr("pointerup", 100, 200);
+  assert.ok(!sheetEl.classList.contains("collapsed"), "탭만으로 접힘");
+});
+
+check("지도를 실제로 움직이면(패닝) 목록이 접힌다", () => {
+  ptr("pointerdown", 100, 200);
+  ptr("pointermove", 100, 120);
+  assert.ok(sheetEl.classList.contains("collapsed"), "패닝인데 안 접힘");
+});
+
+check("접힘 상태: 본문은 감추고 손잡이는 '펼치기'로 라벨이 바뀐다", () => {
+  // 예전에는 max-height:38px 로 잘라 본문 첫 줄이 반쯤 잘린 채 남았다
+  assert.match(HTML, /\.sheet\.collapsed #naviSheetBody\{display:none;\}/);
+  assert.equal($("naviGripLabel").textContent, "목록 펼치기");
+  assert.equal(gripEl.getAttribute("aria-expanded"), "false");
+  assert.equal(gripEl.getAttribute("aria-label"), "관광지 목록 펼치기");
+});
+
+check("손잡이 터치 영역이 앱 최소 기준(--tap-min)을 따른다", () => {
+  assert.match(HTML, /\.gripzone\{[^}]*min-height:var\(--tap-min\)/);
+  assert.doesNotMatch(HTML, /\.sheet\.collapsed\{max-height:38px/);
+});
+
+check("하단 탭바는 세로 공간이 부족해도 줄어들지 않는다(flex:none)", () => {
+  assert.match(HTML, /\.modebar\{flex:none;/);
+  assert.match(HTML, /#view-navi>\.appbar\{flex:none;\}/);
 });
 
 // ── 결과 ──
