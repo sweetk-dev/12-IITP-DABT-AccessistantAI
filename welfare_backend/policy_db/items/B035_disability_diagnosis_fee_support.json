@@ -26,17 +26,32 @@
     {
       "name": "장애인복지법",
       "article": "제32조(장애인 등록) 및 제32조의2",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행규칙",
       "article": "제3조(장애인 등록 신청 및 장애 진단) 등",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙",
+      "law_id": "007972",
+      "law_serial_no": "282417",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "보건복지부 장애인복지 사업안내(연도별 지침)",
       "article": "저소득장애인 장애심사용 진단서 발급비 및 검사비 지원 항목",
-      "url": "https://www.mohw.go.kr/board.es?mid=a10409020000&bid=0026"
+      "url": "https://www.mohw.go.kr/board.es?mid=a10409020000&bid=0026",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
     }
   ],
   "how_to_use": {

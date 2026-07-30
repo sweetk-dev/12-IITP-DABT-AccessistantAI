@@ -182,6 +182,65 @@
               "null"
             ],
             "format": "uri"
+          },
+          "law_ref_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "law",
+              "admrul",
+              "ordin",
+              "none",
+              null
+            ],
+            "description": "근거 문서 유형 — law(법령: 법률·시행령·시행규칙) / admrul(행정규칙: 고시·훈령·예규) / ordin(자치법규: 조례) / none(비법령: 사업안내·약관·내규 등, 텍스트 유지)."
+          },
+          "law_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "국가법령정보센터(law.go.kr) 법령ID(법령) / 행정규칙ID / 자치법규ID. 안정 식별자 — 개정돼도 불변."
+          },
+          "law_serial_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "law.go.kr 일련번호(MST) — 특정 공포 버전을 가리키는 식별자."
+          },
+          "enforcement_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]{8}$",
+            "description": "매핑 시점 현행 버전의 시행일자(YYYYMMDD)."
+          },
+          "mapping_status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "matched",
+              "fuzzy",
+              "not_found",
+              "not_applicable",
+              "api_error",
+              "pending_api",
+              null
+            ],
+            "description": "matched=정확일치 / fuzzy=유사일치(검토 필요) / not_found=미발견 / not_applicable=비법령 / pending_api=미조회."
+          },
+          "mapping_confidence": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "매핑 신뢰 표기 — exact(정확 일치) / fuzzy(유사 일치, 검토 권장) / manual(수기 확정) / 빈값(미매핑·해당 없음)."
           }
         }
       }

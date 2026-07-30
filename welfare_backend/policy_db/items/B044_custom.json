@@ -18,7 +18,13 @@
     {
       "name": "경기도 장애인 기회소득 지원 조례",
       "article": "",
-      "url": ""
+      "url": "",
+      "law_id": "2233612",
+      "law_serial_no": "2007307",
+      "law_ref_type": "ordin",
+      "enforcement_date": "20250101",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "how_to_use": {

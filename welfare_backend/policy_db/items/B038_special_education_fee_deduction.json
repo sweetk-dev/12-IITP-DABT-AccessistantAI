@@ -26,17 +26,35 @@
     {
       "name": "소득세법",
       "article": "제59조의4 제3항(특별세액공제 — 교육비) 제1호 나목(장애인 특수교육비)",
-      "url": "https://www.law.go.kr/법령/소득세법/제59조의4"
+      "url": "https://www.law.go.kr/법령/소득세법/제59조의4",
+      "law_id": "001565",
+      "law_serial_no": "280405",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "소득세법 시행령",
       "article": "제118조의6(교육비 세액공제 대상 교육비 범위) — 장애인 특수교육비 인정 기관 규정",
-      "url": "https://www.law.go.kr/법령/소득세법시행령"
+      "url": "https://www.law.go.kr/법령/소득세법시행령",
+      "law_id": "003956",
+      "law_serial_no": "286211",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애아동 복지지원법",
       "article": "제21조(발달재활서비스 지원) 제3항 — 지방자치단체 지정 발달재활서비스제공기관",
-      "url": "https://www.law.go.kr/법령/장애아동복지지원법"
+      "url": "https://www.law.go.kr/법령/장애아동복지지원법",
+      "law_id": "011443",
+      "law_serial_no": "267353",
+      "law_ref_type": "law",
+      "enforcement_date": "20251221",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "how_to_use": {

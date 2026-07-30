@@ -13,7 +13,10 @@
   },
   "eligibility": {
     "target": "「장애인복지법」 제32조에 따라 등록한 장애인으로서 혼자서 일상생활 및 사회생활을 하기 어려운 사람",
-    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
     "companion_allowed": null,
     "income_criteria": "소득기준 없음 — 신청 단계에서는 소득 무관. 단, 본인부담금이 기준중위소득에 따라 차등 부과(70% 이하 4%, 120% 이하 6%, 180% 이하 8%, 180% 초과 10% — 1~15구간 및 특례별 차등).",
     "age_criteria": "만 6세 이상 ~ 만 65세 미만이 원칙. ① 만 65세 도달 시 노인장기요양보험으로 이관되나, 장기요양 수급자가 되지 못한 경우 활동지원 신청 가능. ② 65세 도달로 장기요양으로 전환되었으나 급여량이 활동지원 최저구간(15구간) 이상 감소한 경우 활동지원과 장기요양 병용 가능. ③ 65세 미만이라도 노인성 질병(치매·뇌혈관질환 등)으로 장기요양 수급 중이면 종전에는 활동지원 신청 불가였으나, 「장애인활동 지원에 관한 법률」 제5조 개정으로 신청 가능(병용·선택).",
@@ -23,42 +26,90 @@
     {
       "name": "장애인활동 지원에 관한 법률",
       "article": "제5조(신청자격), 제6조(신청), 제13조(활동지원급여의 종류), 제14조(급여비용), 제16조(본인부담금), 제20조(활동지원기관 지정), 제30조(부정수급 환수)",
-      "url": "https://www.law.go.kr/법령/장애인활동지원에관한법률"
+      "url": "https://www.law.go.kr/법령/장애인활동지원에관한법률",
+      "law_id": "011330",
+      "law_serial_no": "267431",
+      "law_ref_type": "law",
+      "enforcement_date": "20241220",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인활동 지원에 관한 법률 시행령",
       "article": "수급자격·종합조사·본인부담금·기관 지정 등 세부사항",
-      "url": "https://www.law.go.kr/법령/장애인활동지원에관한법률시행령"
+      "url": "https://www.law.go.kr/법령/장애인활동지원에관한법률시행령",
+      "law_id": "011439",
+      "law_serial_no": "272519",
+      "law_ref_type": "law",
+      "enforcement_date": "20250621",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인활동 지원에 관한 법률 시행규칙",
       "article": "신청서식·활동지원기관 지정서식(별지 제6·7호) 등",
-      "url": "https://www.law.go.kr/법령/장애인활동지원에관한법률시행규칙"
+      "url": "https://www.law.go.kr/법령/장애인활동지원에관한법률시행규칙",
+      "law_id": "011446",
+      "law_serial_no": "270341",
+      "law_ref_type": "law",
+      "enforcement_date": "20260326",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법",
       "article": "제32조(장애인 등록) — 등록 장애인 자격 근거",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "노인장기요양보험법",
       "article": "제2조(정의), 제15조(등급판정) — 65세 도달 시 이관 근거",
-      "url": "https://www.law.go.kr/법령/노인장기요양보험법"
+      "url": "https://www.law.go.kr/법령/노인장기요양보험법",
+      "law_id": "010436",
+      "law_serial_no": "286217",
+      "law_ref_type": "law",
+      "enforcement_date": "20260526",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인 서비스 지원 종합조사의 내용 및 점수 산정 방법에 관한 고시",
       "article": "보건복지부 고시(현행본) — 3개 영역 29개 항목, 종합점수 산식",
-      "url": "https://www.law.go.kr/LSW/admRulInfoP.do?admRulSeq=2100000179821"
+      "url": "https://www.law.go.kr/LSW/admRulInfoP.do?admRulSeq=2100000179821",
+      "law_id": "68062",
+      "law_serial_no": "2100000194221",
+      "law_ref_type": "admrul",
+      "enforcement_date": "20201030",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인활동지원 급여비용 등에 관한 고시",
       "article": "보건복지부 고시 — 연도별 시간당 단가·가산급여·본인부담률",
-      "url": "https://www.law.go.kr/행정규칙/장애인활동지원급여비용등에관한고시"
+      "url": "https://www.law.go.kr/행정규칙/장애인활동지원급여비용등에관한고시",
+      "law_id": "39472",
+      "law_serial_no": "2100000270528",
+      "law_ref_type": "admrul",
+      "enforcement_date": "20260101",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인활동지원기관 등의 지정에 관한 고시",
       "article": "보건복지부 고시 제2020-140호 외 — 활동지원기관 지정 기준·절차",
-      "url": "https://www.law.go.kr/LSW/admRulLsInfoP.do?admRulSeq=2100000191347"
+      "url": "https://www.law.go.kr/LSW/admRulLsInfoP.do?admRulSeq=2100000191347",
+      "law_id": "2041826",
+      "law_serial_no": "2100000191347",
+      "law_ref_type": "admrul",
+      "enforcement_date": "20200701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
@@ -134,10 +185,26 @@
   },
   "application": {
     "where": [
-      { "channel": "주소지 읍·면·동 주민센터(행정복지센터)", "method": "방문", "url": "https://www.gov.kr/portal/service/serviceInfo/VOU000000020" },
-      { "channel": "국민연금공단 전국 지사(신청 접수 가능)", "method": "방문", "url": "https://www.nps.or.kr" },
-      { "channel": "복지로 온라인 신청", "method": "온라인", "url": "https://www.bokjiro.go.kr/" },
-      { "channel": "정부24 — 장애인 활동지원 신청", "method": "온라인", "url": "https://www.gov.kr/portal/service/serviceInfo/VOU000000020" }
+      {
+        "channel": "주소지 읍·면·동 주민센터(행정복지센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/portal/service/serviceInfo/VOU000000020"
+      },
+      {
+        "channel": "국민연금공단 전국 지사(신청 접수 가능)",
+        "method": "방문",
+        "url": "https://www.nps.or.kr"
+      },
+      {
+        "channel": "복지로 온라인 신청",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/"
+      },
+      {
+        "channel": "정부24 — 장애인 활동지원 신청",
+        "method": "온라인",
+        "url": "https://www.gov.kr/portal/service/serviceInfo/VOU000000020"
+      }
     ],
     "required_documents": [
       "사회보장급여(사회서비스이용권) 신청(변경)서",
@@ -263,14 +330,46 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "보건복지부 장애인서비스과", "phone": "044-202-3344", "url": "https://www.mohw.go.kr/menu.es?mid=a10710040700" },
-    { "name": "한국사회보장정보원 사회서비스 전자바우처", "phone": "1566-3232", "url": "https://www.socialservice.or.kr" },
-    { "name": "국민연금공단(서비스지원 종합조사)", "phone": "1355", "url": "https://www.nps.or.kr" },
-    { "name": "한국장애인개발원", "phone": "02-3433-0700", "url": "https://www.koddi.or.kr" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
-    { "name": "장애인활동지원 (정보포털)", "phone": null, "url": "https://www.ableservice.or.kr" },
-    { "name": "복지부정 신고센터", "phone": "1398", "url": "https://www.acrc.go.kr" }
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "보건복지부 장애인서비스과",
+      "phone": "044-202-3344",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040700"
+    },
+    {
+      "name": "한국사회보장정보원 사회서비스 전자바우처",
+      "phone": "1566-3232",
+      "url": "https://www.socialservice.or.kr"
+    },
+    {
+      "name": "국민연금공단(서비스지원 종합조사)",
+      "phone": "1355",
+      "url": "https://www.nps.or.kr"
+    },
+    {
+      "name": "한국장애인개발원",
+      "phone": "02-3433-0700",
+      "url": "https://www.koddi.or.kr"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    },
+    {
+      "name": "장애인활동지원 (정보포털)",
+      "phone": null,
+      "url": "https://www.ableservice.or.kr"
+    },
+    {
+      "name": "복지부정 신고센터",
+      "phone": "1398",
+      "url": "https://www.acrc.go.kr"
+    }
   ],
   "sources": [
     {

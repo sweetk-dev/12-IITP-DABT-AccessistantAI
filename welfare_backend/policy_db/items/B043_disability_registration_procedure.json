@@ -23,22 +23,46 @@
     {
       "name": "장애인복지법",
       "article": "제32조(장애인 등록)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행규칙",
       "article": "별지 제1호의4서식",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙",
+      "law_id": "007972",
+      "law_serial_no": "282417",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애등급판정기준 (보건복지부 고시)",
       "article": null,
-      "url": "https://www.law.go.kr/LSW/admRulInfoP.do?admRulSeq=2100000083371"
+      "url": "https://www.law.go.kr/LSW/admRulInfoP.do?admRulSeq=2100000083371",
+      "law_id": "27366",
+      "law_serial_no": "2100000271088",
+      "law_ref_type": "admrul",
+      "enforcement_date": "20260701",
+      "mapping_status": "fuzzy",
+      "mapping_confidence": "fuzzy"
     },
     {
       "name": "장애인복지법",
       "article": "제32조의2 (외국인 등록)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
@@ -115,12 +139,36 @@
   },
   "application": {
     "where": [
-      { "channel": "거주지 읍·면·동 행정복지센터", "method": "방문", "url": "https://www.gov.kr/" },
-      { "channel": "복지로 (온라인 신청)", "method": "온라인", "url": "https://www.bokjiro.go.kr" },
-      { "channel": "정부24", "method": "온라인", "url": "https://www.gov.kr/" },
-      { "channel": "국민연금공단 (심사 진행 문의)", "method": "전화", "url": "https://www.nps.or.kr/" },
-      { "channel": "복지로 모바일 앱", "method": "모바일 앱", "url": "https://www.bokjiro.go.kr" },
-      { "channel": "보건복지부 콜센터", "method": "전화", "url": "https://www.129.go.kr" }
+      {
+        "channel": "거주지 읍·면·동 행정복지센터",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "복지로 (온라인 신청)",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr"
+      },
+      {
+        "channel": "정부24",
+        "method": "온라인",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "국민연금공단 (심사 진행 문의)",
+        "method": "전화",
+        "url": "https://www.nps.or.kr/"
+      },
+      {
+        "channel": "복지로 모바일 앱",
+        "method": "모바일 앱",
+        "url": "https://www.bokjiro.go.kr"
+      },
+      {
+        "channel": "보건복지부 콜센터",
+        "method": "전화",
+        "url": "https://www.129.go.kr"
+      }
     ],
     "required_documents": [
       "장애인 등록 및 서비스 신청서 (별지 제1호의4서식)",
@@ -217,12 +265,36 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 콜센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "국민연금공단 장애심사 콜센터", "phone": "1355", "url": "https://www.nps.or.kr/das/dgns/getOHAO0025M0.do" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr" },
-    { "name": "정부24", "phone": "1588-2188", "url": "https://www.gov.kr" },
-    { "name": "한국조폐공사 등록증 안내", "phone": "042-870-1000", "url": "https://www.komsco.com/kor/contents/85/preview" },
-    { "name": "거주지 동주민센터", "phone": null, "url": null }
+    {
+      "name": "보건복지부 콜센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "국민연금공단 장애심사 콜센터",
+      "phone": "1355",
+      "url": "https://www.nps.or.kr/das/dgns/getOHAO0025M0.do"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr"
+    },
+    {
+      "name": "정부24",
+      "phone": "1588-2188",
+      "url": "https://www.gov.kr"
+    },
+    {
+      "name": "한국조폐공사 등록증 안내",
+      "phone": "042-870-1000",
+      "url": "https://www.komsco.com/kor/contents/85/preview"
+    },
+    {
+      "name": "거주지 동주민센터",
+      "phone": null,
+      "url": null
+    }
   ],
   "sources": [
     {
@@ -622,7 +694,10 @@
       "priority": "primary"
     }
   ],
-  "related_items": ["B001", "B010"],
+  "related_items": [
+    "B001",
+    "B010"
+  ],
   "last_verified": "2026-05-22",
   "version": "1.0.0"
 }

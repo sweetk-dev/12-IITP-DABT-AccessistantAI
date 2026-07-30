@@ -30,27 +30,57 @@
     {
       "name": "장애인복지법",
       "article": "제30조(경제적 부담의 경감)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행령",
       "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "law_id": "004628",
+      "law_serial_no": "280293",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "공연법",
       "article": "공연장 등록·운영 일반 근거",
-      "url": "https://www.law.go.kr/법령/공연법"
+      "url": "https://www.law.go.kr/법령/공연법",
+      "law_id": "001613",
+      "law_serial_no": "265897",
+      "law_ref_type": "law",
+      "enforcement_date": "20250423",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "문화예술진흥법",
       "article": "제15조의2(장애인 문화예술 활동의 지원)",
-      "url": "https://www.law.go.kr/법령/문화예술진흥법"
+      "url": "https://www.law.go.kr/법령/문화예술진흥법",
+      "law_id": "000836",
+      "law_serial_no": "279667",
+      "law_ref_type": "law",
+      "enforcement_date": "20251111",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "문화예술진흥법 시행령",
       "article": "제23조(문화시설의 종류)",
-      "url": "https://www.law.go.kr/법령/문화예술진흥법시행령"
+      "url": "https://www.law.go.kr/법령/문화예술진흥법시행령",
+      "law_id": "003501",
+      "law_serial_no": "284741",
+      "law_ref_type": "law",
+      "enforcement_date": "20260324",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [

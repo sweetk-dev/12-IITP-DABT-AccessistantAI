@@ -13,7 +13,9 @@
   },
   "eligibility": {
     "target": "「장애인복지법 시행규칙」 제28조 제1항에 따른 보행상의 장애가 심한(중증) 등록 장애인. 지체장애·뇌병변장애 중 보행에 심각한 지장이 있는 중증 장애인이 주요 대상. 일부 지자체는 조례 또는 심의회 인정으로 임산부·65세 이상 고령자 등 추가 허용.",
-    "severity_levels": ["심한 장애(중증)"],
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
     "companion_allowed": {
       "applicable_to": "심한 장애(중증)",
       "count": 2,
@@ -27,22 +29,46 @@
     {
       "name": "교통약자의 이동편의 증진법",
       "article": "제2조(정의), 제16조(특별교통수단의 운행 등) ①②③, 제17조(이동지원센터 설치 등)",
-      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법"
+      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법",
+      "law_id": "009886",
+      "law_serial_no": "268757",
+      "law_ref_type": "law",
+      "enforcement_date": "20260201",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "교통약자의 이동편의 증진법 시행령",
       "article": "특별교통수단 운행 대수 기준 등 위임 규정",
-      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법시행령"
+      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법시행령",
+      "law_id": "010161",
+      "law_serial_no": "282895",
+      "law_ref_type": "law",
+      "enforcement_date": "20260201",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "교통약자의 이동편의 증진법 시행규칙",
       "article": "특별교통수단 차량 대수 기준, 이동지원센터 운영 기준",
-      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법시행규칙"
+      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법시행규칙",
+      "law_id": "010156",
+      "law_serial_no": "283221",
+      "law_ref_type": "law",
+      "enforcement_date": "20260201",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행규칙",
       "article": "제28조 제1항(보행상의 장애인 범위)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙",
+      "law_id": "007972",
+      "law_serial_no": "282417",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
@@ -317,26 +343,106 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "국토교통부 교통복지 콜센터", "phone": "1599-0001", "url": "https://www.molit.go.kr/" },
-    { "name": "법제처 법령해석 콜센터", "phone": "1110", "url": "https://www.moleg.go.kr/" },
-    { "name": "서울시설공단 장애인콜택시(바로콜)", "phone": "1588-4388", "url": "https://www.sisul.or.kr/open_content/calltaxi/" },
-    { "name": "인천교통약자이동지원센터 반디콜", "phone": "1577-0320", "url": "https://www.intis.or.kr/" },
-    { "name": "부산시설공단 두리발", "phone": "1555-1114", "url": "http://www.duribal.co.kr/" },
-    { "name": "대구공공시설관리공단 나드리콜", "phone": "1577-6776", "url": "https://nadrihome.dpfc.or.kr/" },
-    { "name": "대전교통약자이동지원센터", "phone": "042-612-1010", "url": "https://www.djcall.or.kr/" },
-    { "name": "광주광역시교통약자이동지원센터 새빛콜", "phone": "1668-2222", "url": "https://gjtsc.com/" },
-    { "name": "울산교통약자이동지원센터 부르미", "phone": "052-292-8253", "url": "https://www.usdws.or.kr/" },
-    { "name": "세종도시교통공사 누리콜", "phone": "1899-9042", "url": "https://nuricall.sctc.kr/" },
-    { "name": "경기도교통약자광역이동지원센터", "phone": "1666-0420", "url": "https://ggsts.gg.go.kr/" },
-    { "name": "강원특별자치도광역이동지원센터", "phone": "1577-2014", "url": "https://call.gwd.go.kr/" },
-    { "name": "충청북도광역이동지원센터", "phone": "1533-0220", "url": "http://chungbuk-th-back.essetel.co.kr/" },
-    { "name": "충청남도광역이동지원센터", "phone": "1644-5588", "url": "http://www.16445588.or.kr/" },
-    { "name": "전북특별자치도광역이동지원센터", "phone": "063-227-0002", "url": "http://www.0632270002.com/" },
-    { "name": "전라남도광역이동지원센터 도움콜", "phone": "1899-1110", "url": "https://www.doumcall.kr/" },
-    { "name": "경북광역이동지원센터 부름콜", "phone": "1899-7770", "url": "http://brmcall.co.kr/" },
-    { "name": "경상남도광역이동지원센터", "phone": "1566-4488", "url": "http://15664488.co.kr/" },
-    { "name": "제주특별자치도교통약자이동지원센터", "phone": "1899-6884", "url": "http://www.jejuhappycall.com" }
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "국토교통부 교통복지 콜센터",
+      "phone": "1599-0001",
+      "url": "https://www.molit.go.kr/"
+    },
+    {
+      "name": "법제처 법령해석 콜센터",
+      "phone": "1110",
+      "url": "https://www.moleg.go.kr/"
+    },
+    {
+      "name": "서울시설공단 장애인콜택시(바로콜)",
+      "phone": "1588-4388",
+      "url": "https://www.sisul.or.kr/open_content/calltaxi/"
+    },
+    {
+      "name": "인천교통약자이동지원센터 반디콜",
+      "phone": "1577-0320",
+      "url": "https://www.intis.or.kr/"
+    },
+    {
+      "name": "부산시설공단 두리발",
+      "phone": "1555-1114",
+      "url": "http://www.duribal.co.kr/"
+    },
+    {
+      "name": "대구공공시설관리공단 나드리콜",
+      "phone": "1577-6776",
+      "url": "https://nadrihome.dpfc.or.kr/"
+    },
+    {
+      "name": "대전교통약자이동지원센터",
+      "phone": "042-612-1010",
+      "url": "https://www.djcall.or.kr/"
+    },
+    {
+      "name": "광주광역시교통약자이동지원센터 새빛콜",
+      "phone": "1668-2222",
+      "url": "https://gjtsc.com/"
+    },
+    {
+      "name": "울산교통약자이동지원센터 부르미",
+      "phone": "052-292-8253",
+      "url": "https://www.usdws.or.kr/"
+    },
+    {
+      "name": "세종도시교통공사 누리콜",
+      "phone": "1899-9042",
+      "url": "https://nuricall.sctc.kr/"
+    },
+    {
+      "name": "경기도교통약자광역이동지원센터",
+      "phone": "1666-0420",
+      "url": "https://ggsts.gg.go.kr/"
+    },
+    {
+      "name": "강원특별자치도광역이동지원센터",
+      "phone": "1577-2014",
+      "url": "https://call.gwd.go.kr/"
+    },
+    {
+      "name": "충청북도광역이동지원센터",
+      "phone": "1533-0220",
+      "url": "http://chungbuk-th-back.essetel.co.kr/"
+    },
+    {
+      "name": "충청남도광역이동지원센터",
+      "phone": "1644-5588",
+      "url": "http://www.16445588.or.kr/"
+    },
+    {
+      "name": "전북특별자치도광역이동지원센터",
+      "phone": "063-227-0002",
+      "url": "http://www.0632270002.com/"
+    },
+    {
+      "name": "전라남도광역이동지원센터 도움콜",
+      "phone": "1899-1110",
+      "url": "https://www.doumcall.kr/"
+    },
+    {
+      "name": "경북광역이동지원센터 부름콜",
+      "phone": "1899-7770",
+      "url": "http://brmcall.co.kr/"
+    },
+    {
+      "name": "경상남도광역이동지원센터",
+      "phone": "1566-4488",
+      "url": "http://15664488.co.kr/"
+    },
+    {
+      "name": "제주특별자치도교통약자이동지원센터",
+      "phone": "1899-6884",
+      "url": "http://www.jejuhappycall.com"
+    }
   ],
   "sources": [
     {
@@ -802,7 +908,11 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B001", "B002", "B039"],
+  "related_items": [
+    "B001",
+    "B002",
+    "B039"
+  ],
   "last_verified": "2026-05-22",
   "version": "1.0.0"
 }

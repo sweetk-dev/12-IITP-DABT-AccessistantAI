@@ -13,7 +13,10 @@
   },
   "eligibility": {
     "target": "「장애인복지법」에 따라 등록된 시각장애인 또는 청각장애인이 거주하는 세대(주거전용 주택에 한함).",
-    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
     "companion_allowed": null,
     "income_criteria": null,
     "age_criteria": null,
@@ -23,29 +26,56 @@
     {
       "name": "방송법",
       "article": "제64조(텔레비전수상기의 등록과 수신료 납부의무) 및 제65조(수신료의 결정)",
-      "url": "https://www.law.go.kr/법령/방송법"
+      "url": "https://www.law.go.kr/법령/방송법",
+      "law_id": "000794",
+      "law_serial_no": "285487",
+      "law_ref_type": "law",
+      "enforcement_date": "20260421",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "방송법 시행령",
       "article": "제44조(수신료 면제) 제1항 — 국가유공자·시각장애인·청각장애인·기초생활수급자 등이 거주하는 주거전용 주택의 수상기",
-      "url": "https://www.law.go.kr/법령/방송법시행령"
+      "url": "https://www.law.go.kr/법령/방송법시행령",
+      "law_id": "003581",
+      "law_serial_no": "286311",
+      "law_ref_type": "law",
+      "enforcement_date": "20260526",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법",
       "article": "제30조(경제적 부담의 경감)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "방송법 시행령 제43조(수신료 분리고지·분리납부 등)",
       "article": "2023.7.12. 개정·시행 — 수신료를 전기요금과 분리해 별도 납부 가능",
-      "url": "https://www.law.go.kr/법령/방송법시행령"
+      "url": "https://www.law.go.kr/법령/방송법시행령",
+      "law_id": "003581",
+      "law_serial_no": "286311",
+      "law_ref_type": "law",
+      "enforcement_date": "20260526",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "전국 (수상기 등록·수신료 부과)",
       "agency": "KBS(한국방송공사) 수신료국",
-      "lines_or_routes": ["TV 수상기 등록·해지·면제 처리", "수신료 콜센터 운영"],
+      "lines_or_routes": [
+        "TV 수상기 등록·해지·면제 처리",
+        "수신료 콜센터 운영"
+      ],
       "apply_channel": "KBS 수신료 콜센터(1588-1801), 우편, 팩스 또는 KBS 영업소 방문",
       "card_or_proof_type": "장애인등록증(복지카드) 사본 또는 장애인증명서",
       "url": "https://office.kbs.co.kr/susinlyo/",
@@ -54,7 +84,9 @@
     {
       "region": "전국 (수신료 합산 징수)",
       "agency": "한국전력공사(KEPCO)",
-      "lines_or_routes": ["전기요금에 통합 부과되는 수신료 면제 처리(아파트 등 단체계약 포함)"],
+      "lines_or_routes": [
+        "전기요금에 통합 부과되는 수신료 면제 처리(아파트 등 단체계약 포함)"
+      ],
       "apply_channel": "한전 고객센터 국번없이 123, 또는 한전ON(online.kepco.co.kr) 인터넷 신청, 한전사업소 방문",
       "card_or_proof_type": "장애인등록증 사본 또는 장애인증명서",
       "url": "https://online.kepco.co.kr/",
@@ -63,7 +95,9 @@
     {
       "region": "전국 (행정 안내)",
       "agency": "방송미디어통신위원회(구 방송통신위원회)",
-      "lines_or_routes": ["수신료 정책 일반 안내, 분리징수 정책 운영"],
+      "lines_or_routes": [
+        "수신료 정책 일반 안내, 분리징수 정책 운영"
+      ],
       "apply_channel": "정책 보도자료·민원",
       "card_or_proof_type": "",
       "url": "https://www.kmcc.go.kr/",
@@ -72,7 +106,9 @@
     {
       "region": "전국 (참고)",
       "agency": "한국전파진흥협회 — 시·청각장애인용 TV 보급사업",
-      "lines_or_routes": ["연 1회 시각·청각장애인 대상 TV 무상/유상 보급"],
+      "lines_or_routes": [
+        "연 1회 시각·청각장애인 대상 TV 무상/유상 보급"
+      ],
       "apply_channel": "연 1회 공고(통상 4~6월), 신청서 우편·온라인 접수",
       "card_or_proof_type": "장애인등록증, 주민등록등본 등",
       "url": "https://www.korea.kr/multi/mediaNewsView.do?newsId=148941832",
@@ -87,12 +123,36 @@
   },
   "application": {
     "where": [
-      { "channel": "KBS 수신료 콜센터", "method": "전화", "url": "https://office.kbs.co.kr/susinlyo/" },
-      { "channel": "한국전력공사 고객센터(국번없이 123)", "method": "전화", "url": "https://online.kepco.co.kr/" },
-      { "channel": "한전ON(인터넷 신청)", "method": "온라인", "url": "https://online.kepco.co.kr/" },
-      { "channel": "KBS 영업소(전국)", "method": "방문", "url": "https://office.kbs.co.kr/susinlyo/" },
-      { "channel": "관리사무소(공동주택의 경우 대행 신청)", "method": "방문", "url": null },
-      { "channel": "주소지 동주민센터(공공요금 일괄 안내·연계)", "method": "방문", "url": "https://www.gov.kr/" }
+      {
+        "channel": "KBS 수신료 콜센터",
+        "method": "전화",
+        "url": "https://office.kbs.co.kr/susinlyo/"
+      },
+      {
+        "channel": "한국전력공사 고객센터(국번없이 123)",
+        "method": "전화",
+        "url": "https://online.kepco.co.kr/"
+      },
+      {
+        "channel": "한전ON(인터넷 신청)",
+        "method": "온라인",
+        "url": "https://online.kepco.co.kr/"
+      },
+      {
+        "channel": "KBS 영업소(전국)",
+        "method": "방문",
+        "url": "https://office.kbs.co.kr/susinlyo/"
+      },
+      {
+        "channel": "관리사무소(공동주택의 경우 대행 신청)",
+        "method": "방문",
+        "url": null
+      },
+      {
+        "channel": "주소지 동주민센터(공공요금 일괄 안내·연계)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      }
     ],
     "required_documents": [
       "장애인등록증(또는 장애인복지카드) 사본",
@@ -171,11 +231,31 @@
     }
   ],
   "contact": [
-    { "name": "KBS 수신료 콜센터", "phone": "1588-1801", "url": "https://office.kbs.co.kr/susinlyo/" },
-    { "name": "한국전력공사 고객센터", "phone": "123", "url": "https://online.kepco.co.kr/" },
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr/" },
-    { "name": "방송미디어통신위원회 민원실", "phone": "02-2110-1234", "url": "https://www.kmcc.go.kr/" },
-    { "name": "한국전파진흥협회(시·청각장애인용 TV 보급)", "phone": "02-317-6125", "url": "https://www.rapa.or.kr/" }
+    {
+      "name": "KBS 수신료 콜센터",
+      "phone": "1588-1801",
+      "url": "https://office.kbs.co.kr/susinlyo/"
+    },
+    {
+      "name": "한국전력공사 고객센터",
+      "phone": "123",
+      "url": "https://online.kepco.co.kr/"
+    },
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr/"
+    },
+    {
+      "name": "방송미디어통신위원회 민원실",
+      "phone": "02-2110-1234",
+      "url": "https://www.kmcc.go.kr/"
+    },
+    {
+      "name": "한국전파진흥협회(시·청각장애인용 TV 보급)",
+      "phone": "02-317-6125",
+      "url": "https://www.rapa.or.kr/"
+    }
   ],
   "sources": [
     {

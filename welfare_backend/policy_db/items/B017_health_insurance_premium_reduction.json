@@ -13,7 +13,10 @@
   },
   "eligibility": {
     "target": "「장애인복지법」에 따라 등록된 장애인이 있는 국민건강보험 **지역가입자** 세대.",
-    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
     "companion_allowed": null,
     "income_criteria": "**소득 360만원 이하** 및 **재산 과세표준액 1억 3,500만원 이하** 동시 충족(상한 변동 가능 — 보험료 경감고시 별표2 확인). 두 기준을 동시에 만족해야 경감 적용. 소득·재산 어느 한쪽이라도 초과하면 경감 미적용.",
     "age_criteria": null,
@@ -23,29 +26,53 @@
     {
       "name": "국민건강보험법",
       "article": "제75조(보험료의 경감 등)",
-      "url": "https://www.law.go.kr/법령/국민건강보험법"
+      "url": "https://www.law.go.kr/법령/국민건강보험법",
+      "law_id": "001971",
+      "law_serial_no": "276651",
+      "law_ref_type": "law",
+      "enforcement_date": "20260102",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "국민건강보험법 시행령",
       "article": "제45조(보험료 경감의 종류 및 기준)",
-      "url": "https://www.law.go.kr/법령/국민건강보험법시행령"
+      "url": "https://www.law.go.kr/법령/국민건강보험법시행령",
+      "law_id": "002813",
+      "law_serial_no": "283469",
+      "law_ref_type": "law",
+      "enforcement_date": "20260219",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "국민건강보험 보험료 경감고시(보건복지부 고시)",
       "article": "별표2 — 장애인이 있는 세대의 보험료 경감 기준(중증 30%, 경증 20%, 소득·재산 상한)",
-      "url": "https://www.law.go.kr/행정규칙/국민건강보험보험료경감고시"
+      "url": "https://www.law.go.kr/행정규칙/국민건강보험보험료경감고시",
+      "law_ref_type": "admrul",
+      "mapping_status": "not_found",
+      "mapping_confidence": ""
     },
     {
       "name": "장애인복지법",
       "article": "제30조(경제적 부담의 경감)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "전국",
       "agency": "국민건강보험공단(NHIS)",
-      "lines_or_routes": ["지역가입자 보험료 부과·고지", "장애인 세대 경감 자동 적용 및 조정"],
+      "lines_or_routes": [
+        "지역가입자 보험료 부과·고지",
+        "장애인 세대 경감 자동 적용 및 조정"
+      ],
       "apply_channel": "전국 국민건강보험공단 지사 방문, 1577-1000 콜센터, nhis.or.kr 또는 The건강보험 앱 민원",
       "card_or_proof_type": "장애인등록증, 주민등록등본(세대 구성 확인용)",
       "url": "https://www.nhis.or.kr/static/html/wbma/b/wbmab0301.html",
@@ -54,7 +81,10 @@
     {
       "region": "전국",
       "agency": "보건복지부",
-      "lines_or_routes": ["보험료 경감고시 운영", "장애인 등록자료 제공"],
+      "lines_or_routes": [
+        "보험료 경감고시 운영",
+        "장애인 등록자료 제공"
+      ],
       "apply_channel": "고시 개정 공고",
       "card_or_proof_type": "",
       "url": "https://www.mohw.go.kr/",
@@ -69,11 +99,31 @@
   },
   "application": {
     "where": [
-      { "channel": "국민건강보험공단 전국 지사", "method": "방문", "url": "https://www.nhis.or.kr/" },
-      { "channel": "국민건강보험공단 홈페이지(민원여기요)", "method": "온라인", "url": "https://www.nhis.or.kr/nhis/minwon/retrieveCsmrIndvSrhRoadSearch.do" },
-      { "channel": "The건강보험 모바일 앱", "method": "모바일 앱", "url": "https://www.nhis.or.kr/" },
-      { "channel": "국민건강보험공단 고객센터", "method": "전화", "url": "https://www.nhis.or.kr/" },
-      { "channel": "주소지 동주민센터(자료 확인·연계)", "method": "방문", "url": "https://www.gov.kr/" }
+      {
+        "channel": "국민건강보험공단 전국 지사",
+        "method": "방문",
+        "url": "https://www.nhis.or.kr/"
+      },
+      {
+        "channel": "국민건강보험공단 홈페이지(민원여기요)",
+        "method": "온라인",
+        "url": "https://www.nhis.or.kr/nhis/minwon/retrieveCsmrIndvSrhRoadSearch.do"
+      },
+      {
+        "channel": "The건강보험 모바일 앱",
+        "method": "모바일 앱",
+        "url": "https://www.nhis.or.kr/"
+      },
+      {
+        "channel": "국민건강보험공단 고객센터",
+        "method": "전화",
+        "url": "https://www.nhis.or.kr/"
+      },
+      {
+        "channel": "주소지 동주민센터(자료 확인·연계)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      }
     ],
     "required_documents": [
       "장애인등록증(또는 장애인복지카드) 사본",
@@ -153,10 +203,26 @@
     }
   ],
   "contact": [
-    { "name": "국민건강보험공단 고객센터", "phone": "1577-1000", "url": "https://www.nhis.or.kr/" },
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr/" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
-    { "name": "건강보험심사평가원 고객센터", "phone": "1644-2000", "url": "https://www.hira.or.kr/" }
+    {
+      "name": "국민건강보험공단 고객센터",
+      "phone": "1577-1000",
+      "url": "https://www.nhis.or.kr/"
+    },
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr/"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    },
+    {
+      "name": "건강보험심사평가원 고객센터",
+      "phone": "1644-2000",
+      "url": "https://www.hira.or.kr/"
+    }
   ],
   "sources": [
     {
@@ -380,7 +446,9 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B013"],
+  "related_items": [
+    "B013"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

@@ -85,7 +85,14 @@ def extract_chunks(data):
     for i, faq in enumerate(data.get("faq", [])):
         chunks.append(("faq", f"faq_q{i+1}", "자주 묻는 질문(FAQ)", f"질문: {faq.get('q')}\n답변: {faq.get('a')}", {}))
     chunks.append(("exceptions", None, "예외 사항 및 주의점", data.get("exceptions_and_caveats"), {}))
-    chunks.append(("legal_basis", None, "법적 근거", data.get("legal_basis"), {}))
+    # 법적 근거 청크는 표시용 필드만 담는다 — 법령ID 매핑 메타(law_id, mapping_status 등,
+    # Issue #164)는 오픈API용 기계판독 필드라 임베딩 텍스트에 넣으면 검색 노이즈가 된다.
+    lb_display = [
+        {k: v for k, v in (lb or {}).items() if k in ("name", "article", "url") and v}
+        for lb in (data.get("legal_basis") or [])
+    ]
+    lb_display = [lb for lb in lb_display if lb]
+    chunks.append(("legal_basis", None, "법적 근거", lb_display or None, {}))
     for i, agency in enumerate(data.get("operating_agencies", [])):
         chunks.append(("agency_specific", f"agency_{i}", f"{agency.get('region')} {agency.get('agency')} 세부 운영", agency, {"region": agency.get("region"), "agency": agency.get("agency")}))
     chunks.append(("validity", None, "유효기간 및 갱신", data.get("validity"), {}))

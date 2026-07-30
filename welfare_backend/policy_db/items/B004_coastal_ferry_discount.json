@@ -13,7 +13,10 @@
   },
   "eligibility": {
     "target": "「장애인복지법」 제32조에 따라 등록된 장애인",
-    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
     "companion_allowed": {
       "applicable_to": "심한 장애(중증)",
       "count": 1,
@@ -27,29 +30,55 @@
     {
       "name": "장애인복지법",
       "article": "제30조(경제적 부담의 경감)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행령",
       "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "law_id": "004628",
+      "law_serial_no": "280293",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "해운법",
       "article": "제11조(해상여객운송사업의 면허), 제13조(운임·요금의 신고 등)",
-      "url": "https://www.law.go.kr/법령/해운법"
+      "url": "https://www.law.go.kr/법령/해운법",
+      "law_id": "001743",
+      "law_serial_no": "286933",
+      "law_ref_type": "law",
+      "enforcement_date": "20260616",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "교통약자의 이동편의 증진법",
       "article": "제3조(이동권), 제17조(이동편의시설의 설치기준)",
-      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법"
+      "url": "https://www.law.go.kr/법령/교통약자의이동편의증진법",
+      "law_id": "009886",
+      "law_serial_no": "268757",
+      "law_ref_type": "law",
+      "enforcement_date": "20260201",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "전국",
       "agency": "한국해운조합 — 통합 예매(가보고싶은섬)",
-      "lines_or_routes": ["전국 100여 개 연안여객선 항로 통합 예매"],
+      "lines_or_routes": [
+        "전국 100여 개 연안여객선 항로 통합 예매"
+      ],
       "apply_channel": "'가보고 싶은 섬' 홈페이지(island.haewoon.co.kr / island.theksa.co.kr) 회원가입 후 예매. 일부 선사는 한국해운조합 통합 예매 미연동(선사 홈페이지 직접 예매 필요).",
       "card_or_proof_type": "장애인등록증(복지카드) 원본. 터미널에서 발권 시 검증.",
       "url": "https://island.haewoon.co.kr/",
@@ -58,7 +87,11 @@
     {
       "region": "제주 항로 — 인천/목포/완도",
       "agency": "에이치엘라인해운(HL해운, 구 한일고속해운/씨월드훼리)",
-      "lines_or_routes": ["인천~제주(카훼리)", "완도~제주", "녹동(고흥)~제주"],
+      "lines_or_routes": [
+        "인천~제주(카훼리)",
+        "완도~제주",
+        "녹동(고흥)~제주"
+      ],
       "apply_channel": "에이치엘라인해운 홈페이지 또는 해당 항만 터미널 매표소. 통합 예매 '가보고싶은섬' 일부 연동.",
       "card_or_proof_type": "장애인복지카드 원본 + 신분증",
       "url": "https://www.hlhi.co.kr/",
@@ -67,7 +100,10 @@
     {
       "region": "제주 항로 — 목포·진도",
       "agency": "씨월드고속훼리(주)",
-      "lines_or_routes": ["목포~제주(카훼리/쾌속선)", "진도~제주(카훼리)"],
+      "lines_or_routes": [
+        "목포~제주(카훼리/쾌속선)",
+        "진도~제주(카훼리)"
+      ],
       "apply_channel": "씨월드고속훼리 홈페이지(seaferry.co.kr) 회원가입 후 예매 / 모바일 앱 / 터미널 매표소",
       "card_or_proof_type": "장애인복지카드 원본 + 신분증",
       "url": "https://www.seaferry.co.kr/",
@@ -76,7 +112,9 @@
     {
       "region": "제주 항로 — 부산",
       "agency": "남해고속(MS훼리)",
-      "lines_or_routes": ["부산~제주(카훼리)"],
+      "lines_or_routes": [
+        "부산~제주(카훼리)"
+      ],
       "apply_channel": "남해고속 홈페이지(namhaegosok.co.kr) / 부산항·제주항 터미널 매표소",
       "card_or_proof_type": "장애인복지카드 원본 + 신분증. 미제출 시 정상운임 부과.",
       "url": "http://www.namhaegosok.co.kr/s2/s2_2.php",
@@ -85,7 +123,13 @@
     {
       "region": "인천 — 백령·연평·덕적·이작도·굴업도(서해5도 포함)",
       "agency": "고려고속훼리(주) (KEF Ship)",
-      "lines_or_routes": ["인천~백령도", "인천~연평도", "인천~덕적도", "인천~이작도", "인천~굴업도"],
+      "lines_or_routes": [
+        "인천~백령도",
+        "인천~연평도",
+        "인천~덕적도",
+        "인천~이작도",
+        "인천~굴업도"
+      ],
       "apply_channel": "고려고속훼리 홈페이지(kefship.com) / 인천항 연안여객터미널 매표소 / 가보고싶은섬",
       "card_or_proof_type": "장애인복지카드 원본 + 신분증",
       "url": "https://www.kefship.com/",
@@ -94,7 +138,13 @@
     {
       "region": "통영 — 욕지도·연화도·비진도 등",
       "agency": "통영해운 / 욕지선 외 통영권 선사",
-      "lines_or_routes": ["통영~욕지도", "통영~연화도", "통영~비진도", "통영~매물도", "통영~사량도"],
+      "lines_or_routes": [
+        "통영~욕지도",
+        "통영~연화도",
+        "통영~비진도",
+        "통영~매물도",
+        "통영~사량도"
+      ],
       "apply_channel": "각 선사 홈페이지·터미널 매표소 / 가보고싶은섬",
       "card_or_proof_type": "장애인복지카드 원본 + 신분증",
       "url": "https://island.haewoon.co.kr/",
@@ -103,7 +153,11 @@
     {
       "region": "여수 — 거문도·손죽도·금오열도",
       "agency": "여수~거문도 선사 (한림해운 등)",
-      "lines_or_routes": ["여수~거문도", "여수~손죽도", "여수~나로도~거문도"],
+      "lines_or_routes": [
+        "여수~거문도",
+        "여수~손죽도",
+        "여수~나로도~거문도"
+      ],
       "apply_channel": "각 선사 홈페이지·터미널 매표소 / 가보고싶은섬",
       "card_or_proof_type": "장애인복지카드 원본 + 신분증",
       "url": "https://island.haewoon.co.kr/",
@@ -112,7 +166,11 @@
     {
       "region": "포항·묵호 — 울릉도",
       "agency": "대저해운 / 씨플라워(에이치해운) / JH페리 등",
-      "lines_or_routes": ["포항~울릉도", "묵호~울릉도", "후포~울릉도"],
+      "lines_or_routes": [
+        "포항~울릉도",
+        "묵호~울릉도",
+        "후포~울릉도"
+      ],
       "apply_channel": "각 선사 홈페이지·터미널 매표소 / 가보고싶은섬",
       "card_or_proof_type": "장애인복지카드 원본 + 신분증",
       "url": "https://island.haewoon.co.kr/",
@@ -127,13 +185,41 @@
   },
   "application": {
     "where": [
-      { "channel": "'가보고 싶은 섬' 통합 예매(한국해운조합)", "method": "온라인", "url": "https://island.haewoon.co.kr/" },
-      { "channel": "한국해운조합 통합 예매(보조)", "method": "온라인", "url": "https://island.theksa.co.kr/" },
-      { "channel": "각 선사 홈페이지(에이치엘라인·씨월드·고려고속훼리·남해고속 등)", "method": "온라인", "url": null },
-      { "channel": "선사 모바일 앱", "method": "모바일 앱", "url": null },
-      { "channel": "전국 연안여객터미널 매표소", "method": "방문", "url": null },
-      { "channel": "선사 고객센터", "method": "전화", "url": null },
-      { "channel": "한국해운조합 경영지원팀", "method": "전화", "url": "tel:02-6096-2044" }
+      {
+        "channel": "'가보고 싶은 섬' 통합 예매(한국해운조합)",
+        "method": "온라인",
+        "url": "https://island.haewoon.co.kr/"
+      },
+      {
+        "channel": "한국해운조합 통합 예매(보조)",
+        "method": "온라인",
+        "url": "https://island.theksa.co.kr/"
+      },
+      {
+        "channel": "각 선사 홈페이지(에이치엘라인·씨월드·고려고속훼리·남해고속 등)",
+        "method": "온라인",
+        "url": null
+      },
+      {
+        "channel": "선사 모바일 앱",
+        "method": "모바일 앱",
+        "url": null
+      },
+      {
+        "channel": "전국 연안여객터미널 매표소",
+        "method": "방문",
+        "url": null
+      },
+      {
+        "channel": "선사 고객센터",
+        "method": "전화",
+        "url": null
+      },
+      {
+        "channel": "한국해운조합 경영지원팀",
+        "method": "전화",
+        "url": "tel:02-6096-2044"
+      }
     ],
     "required_documents": [
       "장애인등록증(복지카드) 원본 — 발권·승선 시 지참",
@@ -224,15 +310,51 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "해양수산부 연안해운과", "phone": "044-200-5736", "url": "https://www.mof.go.kr/" },
-    { "name": "한국해운조합 경영지원팀", "phone": "02-6096-2044", "url": "https://www.haewoon.or.kr/" },
-    { "name": "가보고 싶은 섬(통합 예매)", "phone": "1666-0950", "url": "https://island.haewoon.co.kr/" },
-    { "name": "에이치엘라인해운(HL해운)", "phone": "1577-3567", "url": "https://www.hlhi.co.kr/" },
-    { "name": "씨월드고속훼리", "phone": "1577-3567", "url": "https://www.seaferry.co.kr/" },
-    { "name": "고려고속훼리(서해5도)", "phone": "1577-2891", "url": "https://www.kefship.com/" },
-    { "name": "남해고속(MS훼리·부산~제주)", "phone": "1577-7676", "url": "http://www.namhaegosok.co.kr/" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" }
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "해양수산부 연안해운과",
+      "phone": "044-200-5736",
+      "url": "https://www.mof.go.kr/"
+    },
+    {
+      "name": "한국해운조합 경영지원팀",
+      "phone": "02-6096-2044",
+      "url": "https://www.haewoon.or.kr/"
+    },
+    {
+      "name": "가보고 싶은 섬(통합 예매)",
+      "phone": "1666-0950",
+      "url": "https://island.haewoon.co.kr/"
+    },
+    {
+      "name": "에이치엘라인해운(HL해운)",
+      "phone": "1577-3567",
+      "url": "https://www.hlhi.co.kr/"
+    },
+    {
+      "name": "씨월드고속훼리",
+      "phone": "1577-3567",
+      "url": "https://www.seaferry.co.kr/"
+    },
+    {
+      "name": "고려고속훼리(서해5도)",
+      "phone": "1577-2891",
+      "url": "https://www.kefship.com/"
+    },
+    {
+      "name": "남해고속(MS훼리·부산~제주)",
+      "phone": "1577-7676",
+      "url": "http://www.namhaegosok.co.kr/"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    }
   ],
   "sources": [
     {
@@ -544,7 +666,11 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B001", "B002", "B003"],
+  "related_items": [
+    "B001",
+    "B002",
+    "B003"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

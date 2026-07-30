@@ -23,19 +23,33 @@
     {
       "name": "문화예술진흥법",
       "article": "제15조의3(통합문화이용권의 지급), 제15조의4(통합문화이용권의 사용 제한 등)",
-      "url": "https://www.law.go.kr/법령/문화예술진흥법"
+      "url": "https://www.law.go.kr/법령/문화예술진흥법",
+      "law_id": "000836",
+      "law_serial_no": "279667",
+      "law_ref_type": "law",
+      "enforcement_date": "20251111",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "문화예술진흥법 (영문 — KLRI)",
       "article": "제15조의3, 제15조의4",
-      "url": "https://elaw.klri.re.kr/kor_service/lawView.do?hseq=66979&lang=KOR"
+      "url": "https://elaw.klri.re.kr/kor_service/lawView.do?hseq=66979&lang=KOR",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [
     {
       "region": "전국(총괄)",
       "agency": "한국문화예술위원회",
-      "lines_or_routes": ["통합문화이용권 사업 전담 운영", "가맹점 관리", "부정사용 관리", "고객지원센터 운영"],
+      "lines_or_routes": [
+        "통합문화이용권 사업 전담 운영",
+        "가맹점 관리",
+        "부정사용 관리",
+        "고객지원센터 운영"
+      ],
       "apply_channel": "문화누리카드 누리집(mnuri.kr) 또는 고객지원센터 1544-3412",
       "card_or_proof_type": "문화누리카드(NH농협체크카드 방식)",
       "url": "https://www.arko.or.kr/content/5622",
@@ -44,7 +58,12 @@
     {
       "region": "전국(카드 발급)",
       "agency": "NH농협카드(주된 발급사)",
-      "lines_or_routes": ["실물 체크카드 발급", "모바일 카드 발급", "온라인 사용 등록(인터넷 사용 등록)", "분실 신고 및 재발급"],
+      "lines_or_routes": [
+        "실물 체크카드 발급",
+        "모바일 카드 발급",
+        "온라인 사용 등록(인터넷 사용 등록)",
+        "분실 신고 및 재발급"
+      ],
       "apply_channel": "NH농협카드 고객센터 1644-4000 (24시간)",
       "card_or_proof_type": "NH농협 문화누리카드 (실물 또는 모바일)",
       "url": "https://www.nonghyupcard.co.kr/",
@@ -53,7 +72,11 @@
     {
       "region": "전국(신청·발급 현장)",
       "agency": "거주지 읍·면·동 행정복지센터(주민센터)",
-      "lines_or_routes": ["현장 신청 접수", "카드 현장 즉시 발급(공카드 재고 있을 때)", "재발급 접수"],
+      "lines_or_routes": [
+        "현장 신청 접수",
+        "카드 현장 즉시 발급(공카드 재고 있을 때)",
+        "재발급 접수"
+      ],
       "apply_channel": "방문 (신분증 지참)",
       "card_or_proof_type": "신분증",
       "url": "https://www.gov.kr/",
@@ -62,7 +85,11 @@
     {
       "region": "17개 광역시·도(위탁 운영)",
       "agency": "광역시도 지역주관처(서울문화재단·부산문화재단 등 17개 시·도 광역별 위탁)",
-      "lines_or_routes": ["지역 내 가맹점 관리", "지역 특화 사업 운영", "현장 지원"],
+      "lines_or_routes": [
+        "지역 내 가맹점 관리",
+        "지역 특화 사업 운영",
+        "현장 지원"
+      ],
       "apply_channel": "각 시·도별 위탁기관 홈페이지 또는 전화",
       "card_or_proof_type": null,
       "url": "https://www.mnuri.kr/munhwa/introduceNuri.do",
@@ -71,7 +98,12 @@
     {
       "region": "전국(가맹 온라인)",
       "agency": "가맹 OTT·도서·영화예매·교통 플랫폼",
-      "lines_or_routes": ["OTT: 티빙·웨이브·넷플릭스·왓챠·디즈니플러스·유튜브(가맹 등록 시)", "도서·예매: 예스24·알라딘·교보문고·인터파크", "영화관: CGV·롯데시네마·메가박스", "교통: KTX·SRT·고속버스"],
+      "lines_or_routes": [
+        "OTT: 티빙·웨이브·넷플릭스·왓챠·디즈니플러스·유튜브(가맹 등록 시)",
+        "도서·예매: 예스24·알라딘·교보문고·인터파크",
+        "영화관: CGV·롯데시네마·메가박스",
+        "교통: KTX·SRT·고속버스"
+      ],
       "apply_channel": "각 플랫폼 홈페이지 또는 앱 (NH농협카드 인터넷 사용 등록 선행 필요)",
       "card_or_proof_type": "문화누리카드 카드번호 + NH농협카드 홈 인터넷 사용 등록",
       "url": "https://www.mnuri.kr/useOfCard/onlineMerchants.do",
@@ -673,7 +705,9 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B041"],
+  "related_items": [
+    "B041"
+  ],
   "last_verified": "2026-05-22",
   "version": "1.0.0"
 }

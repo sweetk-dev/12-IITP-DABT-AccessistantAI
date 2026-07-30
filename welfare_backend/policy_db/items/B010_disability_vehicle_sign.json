@@ -26,27 +26,54 @@
     {
       "name": "장애인복지법",
       "article": "제39조(장애인 사용 자동차 등에 대한 지원)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행규칙",
       "article": "제26조(장애인 사용 자동차 등 표지의 발급대상) 및 별표",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙",
+      "law_id": "007972",
+      "law_serial_no": "282417",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인·노인·임산부 등의 편의증진 보장에 관한 법률",
       "article": "제17조(장애인전용주차구역) 및 동법 시행령·시행규칙",
-      "url": "https://www.law.go.kr/법령/장애인·노인·임산부등의편의증진보장에관한법률"
+      "url": "https://www.law.go.kr/법령/장애인·노인·임산부등의편의증진보장에관한법률",
+      "law_id": "000186",
+      "law_serial_no": "267429",
+      "law_ref_type": "law",
+      "enforcement_date": "20251221",
+      "mapping_status": "fuzzy",
+      "mapping_confidence": "fuzzy"
     },
     {
       "name": "장애정도판정기준 (보건복지부 고시)",
       "article": "장애유형별 보행상 장애 표준기준표",
-      "url": "https://www.law.go.kr/admRulSc.do?menuId=5&subMenuId=41&tabMenuId=183"
+      "url": "https://www.law.go.kr/admRulSc.do?menuId=5&subMenuId=41&tabMenuId=183",
+      "law_id": "27366",
+      "law_serial_no": "2100000271088",
+      "law_ref_type": "admrul",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "각 지방자치단체 주차장 설치 및 관리 조례",
       "article": "공영주차장 주차요금 감면 규정",
-      "url": "https://www.elis.go.kr/"
+      "url": "https://www.elis.go.kr/",
+      "law_ref_type": "ordin",
+      "mapping_status": "not_found",
+      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [
