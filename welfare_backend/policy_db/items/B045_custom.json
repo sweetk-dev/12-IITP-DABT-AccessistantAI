@@ -18,7 +18,13 @@
     {
       "name": "장애인ㆍ노인ㆍ임산부 등의 편의증진 보장에 관한 법률",
       "article": "제3조(편의시설 설치의 기본 원칙)",
-      "url": "https://www.law.go.kr/법령/장애인ㆍ노인ㆍ임산부등의편의증진보장에관한법률"
+      "url": "https://www.law.go.kr/법령/장애인ㆍ노인ㆍ임산부등의편의증진보장에관한법률",
+      "law_id": "000186",
+      "law_serial_no": "267429",
+      "law_ref_type": "law",
+      "enforcement_date": "20251221",
+      "mapping_status": "fuzzy",
+      "mapping_confidence": "fuzzy"
     }
   ],
   "how_to_use": {

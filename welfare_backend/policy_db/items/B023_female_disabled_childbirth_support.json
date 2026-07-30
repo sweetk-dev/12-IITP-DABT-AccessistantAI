@@ -13,7 +13,10 @@
   },
   "eligibility": {
     "target": "「장애인복지법」 제32조에 따라 등록한 여성장애인으로서 ① 출산한 자(출산일 기준) 또는 ② 임신 4개월(임신 16주) 이상의 태아를 유산·사산한 자",
-    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
     "companion_allowed": null,
     "income_criteria": "소득기준 없음(전 소득계층 대상). 별도 소득·재산 조사 없음.",
     "age_criteria": "여성장애인 본인의 연령 제한 없음. 단, 미성년자(만 19세 미만) 신청 시 친권자/법정대리인이 대리신청.",
@@ -23,22 +26,43 @@
     {
       "name": "장애인복지법",
       "article": "제7조(여성장애인의 권익보호 등), 제9조제2항(국가와 지방자치단체의 책임), 제32조(장애인 등록)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행령",
       "article": "여성장애인 출산비용 지원사업 근거 규정",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "law_id": "004628",
+      "law_serial_no": "280293",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "모자보건법",
       "article": "제14조제1항(인공임신중절수술의 허용한계) — 예외 인정 조항",
-      "url": "https://www.law.go.kr/법령/모자보건법"
+      "url": "https://www.law.go.kr/법령/모자보건법",
+      "law_id": "000183",
+      "law_serial_no": "270399",
+      "law_ref_type": "law",
+      "enforcement_date": "20250401",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "2026년 장애인복지사업안내(보건복지부 사업지침)",
       "article": "Ⅱ. 여성장애인 출산비용 지원사업",
-      "url": "https://www.mohw.go.kr/menu.es?mid=a10710060800"
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710060800",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [
@@ -78,9 +102,21 @@
   },
   "application": {
     "where": [
-      { "channel": "주소지 읍·면·동 주민센터(행정복지센터)", "method": "방문", "url": "https://www.gov.kr/" },
-      { "channel": "복지로 온라인 신청", "method": "온라인", "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003278" },
-      { "channel": "정부24(행복출산 원스톱)", "method": "온라인", "url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=17410000001" }
+      {
+        "channel": "주소지 읍·면·동 주민센터(행정복지센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "복지로 온라인 신청",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003278"
+      },
+      {
+        "channel": "정부24(행복출산 원스톱)",
+        "method": "온라인",
+        "url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=17410000001"
+      }
     ],
     "required_documents": [
       "여성장애인 출산비용 지원 신청서(주민센터 비치)",
@@ -164,10 +200,26 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
-    { "name": "보건복지부 장애인서비스과", "phone": "044-202-3361", "url": "https://www.mohw.go.kr/menu.es?mid=a10710060800" },
-    { "name": "주소지 읍·면·동 주민센터", "phone": "지역별 상이", "url": "https://www.gov.kr/" }
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    },
+    {
+      "name": "보건복지부 장애인서비스과",
+      "phone": "044-202-3361",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710060800"
+    },
+    {
+      "name": "주소지 읍·면·동 주민센터",
+      "phone": "지역별 상이",
+      "url": "https://www.gov.kr/"
+    }
   ],
   "sources": [
     {

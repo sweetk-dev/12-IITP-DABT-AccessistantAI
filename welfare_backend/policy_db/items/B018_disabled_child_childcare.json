@@ -26,27 +26,54 @@
     {
       "name": "영유아보육법",
       "article": "제34조(무상보육), 제34조의2(양육수당), 제35조(보육 우선 제공), 제36조(국가 및 지방자치단체의 비용 보조)",
-      "url": "https://www.law.go.kr/법령/영유아보육법"
+      "url": "https://www.law.go.kr/법령/영유아보육법",
+      "law_id": "000191",
+      "law_serial_no": "286057",
+      "law_ref_type": "law",
+      "enforcement_date": "20260519",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "영유아보육법 시행령",
       "article": "제22조(무상보육 실시), 제23조(보육비용의 보조)",
-      "url": "https://www.law.go.kr/법령/영유아보육법시행령"
+      "url": "https://www.law.go.kr/법령/영유아보육법시행령",
+      "law_id": "004216",
+      "law_serial_no": "284623",
+      "law_ref_type": "law",
+      "enforcement_date": "20260324",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법",
       "article": "제38조(자녀교육비 지급)·제39조(보육의 우선 제공) 관련",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인 등에 대한 특수교육법",
       "article": "제15조(특수교육대상자의 선정), 제18조(장애영아 교육지원)",
-      "url": "https://www.law.go.kr/법령/장애인등에대한특수교육법"
+      "url": "https://www.law.go.kr/법령/장애인등에대한특수교육법",
+      "law_id": "010449",
+      "law_serial_no": "276191",
+      "law_ref_type": "law",
+      "enforcement_date": "20251001",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "보건복지부 보육사업안내(연도별 고시)",
       "article": "장애아 보육료 지원 단가표",
-      "url": "https://central.childcare.go.kr/"
+      "url": "https://central.childcare.go.kr/",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [

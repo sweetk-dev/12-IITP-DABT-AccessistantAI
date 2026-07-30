@@ -13,7 +13,9 @@
   },
   "eligibility": {
     "target": "만 18세 미만의 장애의 정도가 심한 장애아동(중증 장애아동)과 생계·주거를 같이하는 가정.",
-    "severity_levels": ["심한 장애(중증)"],
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
     "companion_allowed": null,
     "income_criteria": "돌봄서비스: 기준 중위소득 120% 이하 가정 무료, 초과 가정 이용료 40% 본인부담. 가족휴식프로그램: 소득기준 없이 만 18세 미만 모든 장애아 가족 참여 가능(돌봄서비스 이용 가정 우선).",
     "age_criteria": "만 18세 미만(아동복지법상 아동 기준). 만 18세 도달 시 서비스 종료. 단, 특수교육대상자로서 만 18세 이후에도 학교에 재학 중인 경우 예외 적용 여부는 지자체 확인 필요.",
@@ -23,24 +25,45 @@
     {
       "name": "장애아동 복지지원법",
       "article": "제37조(가족지원), 제38조(돌봄 및 일시적 휴식 지원 서비스)",
-      "url": "https://www.law.go.kr/법령/장애아동복지지원법"
+      "url": "https://www.law.go.kr/법령/장애아동복지지원법",
+      "law_id": "011443",
+      "law_serial_no": "267353",
+      "law_ref_type": "law",
+      "enforcement_date": "20251221",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애아동 복지지원법 시행규칙",
       "article": "돌봄서비스·가족지원 절차 및 기준",
-      "url": "https://www.law.go.kr/법령/장애아동복지지원법시행규칙"
+      "url": "https://www.law.go.kr/법령/장애아동복지지원법시행규칙",
+      "law_id": "011669",
+      "law_serial_no": "280637",
+      "law_ref_type": "law",
+      "enforcement_date": "20251221",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법",
       "article": "제32조(장애인 등록)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "전국",
       "agency": "보건복지부",
-      "lines_or_routes": ["장애아가족 양육지원사업 총괄·예산", "사업지침 수립"],
+      "lines_or_routes": [
+        "장애아가족 양육지원사업 총괄·예산",
+        "사업지침 수립"
+      ],
       "apply_channel": "보건복지상담센터 129",
       "card_or_proof_type": null,
       "url": "https://www.mohw.go.kr/menu.es?mid=a10710040400",
@@ -49,7 +72,10 @@
     {
       "region": "전국",
       "agency": "한국장애인부모회 중앙지원단(브로소)",
-      "lines_or_routes": ["장애아가족 양육지원사업 중앙운영", "돌보미 교육·파견 관리"],
+      "lines_or_routes": [
+        "장애아가족 양육지원사업 중앙운영",
+        "돌보미 교육·파견 관리"
+      ],
       "apply_channel": "브로소 홈페이지(broso.or.kr) 또는 지역 장애인부모회",
       "card_or_proof_type": null,
       "url": "https://www.broso.or.kr/contents.do?menuId=0509000000",
@@ -58,7 +84,10 @@
     {
       "region": "전국(읍·면·동)",
       "agency": "주소지 읍·면·동 주민센터(행정복지센터)",
-      "lines_or_routes": ["서비스 신청 접수", "대상자 선정 및 사례 관리"],
+      "lines_or_routes": [
+        "서비스 신청 접수",
+        "대상자 선정 및 사례 관리"
+      ],
       "apply_channel": "방문 신청",
       "card_or_proof_type": "장애인등록증, 주민등록등본, 건강보험료 납부확인서 등",
       "url": "https://www.gov.kr/",
@@ -67,7 +96,9 @@
     {
       "region": "서울",
       "agency": "서울시장애인부모회",
-      "lines_or_routes": ["서울 지역 돌보미 교육·파견"],
+      "lines_or_routes": [
+        "서울 지역 돌보미 교육·파견"
+      ],
       "apply_channel": "서울시장애인부모회 홈페이지 또는 동주민센터 연계",
       "card_or_proof_type": null,
       "url": "https://www.broso.or.kr/",
@@ -76,7 +107,9 @@
     {
       "region": "충청남도(금산군 예시)",
       "agency": "금산군(지자체 예산 확대 사례)",
-      "lines_or_routes": ["연 지원시간 확대(2026년 연 1,200시간 운영 사례)"],
+      "lines_or_routes": [
+        "연 지원시간 확대(2026년 연 1,200시간 운영 사례)"
+      ],
       "apply_channel": "금산군청 또는 주민센터",
       "card_or_proof_type": null,
       "url": "https://www.geumsan.go.kr/",
@@ -91,11 +124,31 @@
   },
   "application": {
     "where": [
-      { "channel": "주소지 읍·면·동 주민센터(행정복지센터)", "method": "방문", "url": "https://www.gov.kr/" },
-      { "channel": "복지로 홈페이지", "method": "온라인", "url": "https://www.bokjiro.go.kr/" },
-      { "channel": "브로소(한국장애인부모회 중앙지원단)", "method": "온라인", "url": "https://www.broso.or.kr/dcsp/fo/" },
-      { "channel": "보건복지상담센터", "method": "전화", "url": "https://www.129.go.kr" },
-      { "channel": "정부24", "method": "온라인", "url": "https://www.gov.kr/portal/service/serviceInfo/391000000295" }
+      {
+        "channel": "주소지 읍·면·동 주민센터(행정복지센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "복지로 홈페이지",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/"
+      },
+      {
+        "channel": "브로소(한국장애인부모회 중앙지원단)",
+        "method": "온라인",
+        "url": "https://www.broso.or.kr/dcsp/fo/"
+      },
+      {
+        "channel": "보건복지상담센터",
+        "method": "전화",
+        "url": "https://www.129.go.kr"
+      },
+      {
+        "channel": "정부24",
+        "method": "온라인",
+        "url": "https://www.gov.kr/portal/service/serviceInfo/391000000295"
+      }
     ],
     "required_documents": [
       "장애아가족 양육지원 신청서(주민센터 비치 또는 복지로 양식)",
@@ -172,10 +225,26 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
-    { "name": "한국장애인부모회 중앙지원단(브로소)", "phone": "02-2088-8500", "url": "https://www.broso.or.kr/" },
-    { "name": "주소지 동주민센터(행정복지센터)", "phone": null, "url": "https://www.gov.kr/" }
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    },
+    {
+      "name": "한국장애인부모회 중앙지원단(브로소)",
+      "phone": "02-2088-8500",
+      "url": "https://www.broso.or.kr/"
+    },
+    {
+      "name": "주소지 동주민센터(행정복지센터)",
+      "phone": null,
+      "url": "https://www.gov.kr/"
+    }
   ],
   "sources": [
     {
@@ -377,7 +446,11 @@
       "priority": "primary"
     }
   ],
-  "related_items": ["B024", "B026", "B020"],
+  "related_items": [
+    "B024",
+    "B026",
+    "B020"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

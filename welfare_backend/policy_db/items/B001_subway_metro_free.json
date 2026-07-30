@@ -13,7 +13,10 @@
   },
   "eligibility": {
     "target": "「장애인복지법」에 따라 등록된 장애인",
-    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
     "companion_allowed": {
       "applicable_to": "심한 장애(중증)",
       "count": 1,
@@ -27,29 +30,62 @@
     {
       "name": "장애인복지법",
       "article": "제30조(경제적 부담의 경감)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행령",
       "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "law_id": "004628",
+      "law_serial_no": "280293",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "도시철도법",
       "article": "운임 등에 관한 무임수송 근거 조항",
-      "url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=94620"
+      "url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=94620",
+      "law_id": "001751",
+      "law_serial_no": "258315",
+      "law_ref_type": "law",
+      "enforcement_date": "20240109",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "도시철도법 시행령",
       "article": "무임수송 대상자 규정 (별표)",
-      "url": "https://www.law.go.kr/LSW//lsInfoP.do?lsiSeq=267695&chrClsCd=010202&urlMode=lsInfoP&efYd=20241231&ancYnChk="
+      "url": "https://www.law.go.kr/LSW//lsInfoP.do?lsiSeq=267695&chrClsCd=010202&urlMode=lsInfoP&efYd=20241231&ancYnChk=",
+      "law_id": "003429",
+      "law_serial_no": "288009",
+      "law_ref_type": "law",
+      "enforcement_date": "20260707",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "수도권",
       "agency": "서울교통공사",
-      "lines_or_routes": ["서울 지하철 1호선(서울 구간)", "2호선", "3호선", "4호선", "5호선", "6호선", "7호선", "8호선"],
+      "lines_or_routes": [
+        "서울 지하철 1호선(서울 구간)",
+        "2호선",
+        "3호선",
+        "4호선",
+        "5호선",
+        "6호선",
+        "7호선",
+        "8호선"
+      ],
       "apply_channel": "주소지 동주민센터(전국호환 장애인복지카드) / 서울 거주자는 서울시내 모든 동주민센터에서 단순무임카드 발급 가능",
       "card_or_proof_type": "전국호환 장애인복지카드, 우대용 단순무임카드, 장애인 통합복지 신한카드(신용/체크), 또는 역사 매표소 발권 우대용 1회권",
       "url": "http://www.seoulmetro.co.kr/kr/page.do?menuIdx=355",
@@ -58,7 +94,17 @@
     {
       "region": "수도권",
       "agency": "한국철도공사(코레일) 광역철도",
-      "lines_or_routes": ["1호선(코레일 구간)", "수인분당선", "경의중앙선", "경춘선", "경강선", "동해선 광역전철", "대구권 광역전철", "서해선 일부", "공항철도 일반열차(코레일 직결 구간 포함)"],
+      "lines_or_routes": [
+        "1호선(코레일 구간)",
+        "수인분당선",
+        "경의중앙선",
+        "경춘선",
+        "경강선",
+        "동해선 광역전철",
+        "대구권 광역전철",
+        "서해선 일부",
+        "공항철도 일반열차(코레일 직결 구간 포함)"
+      ],
       "apply_channel": "동주민센터에서 전국호환 장애인복지카드 발급. 카드 미소지 시 역사 매표창구에서 장애인등록증 제시 → 우대용 1회권 발급",
       "card_or_proof_type": "전국호환 장애인복지카드 / 우대용 1회권(발매당일 유효, 개표 후 5시간)",
       "url": "https://info.korail.com/crosseditor_u/binary/files/000001/korail_metro_policy_250623.pdf",
@@ -67,7 +113,9 @@
     {
       "region": "수도권",
       "agency": "서울시메트로9호선/SR(9호선)",
-      "lines_or_routes": ["9호선(개화~중앙보훈병원 전 구간)"],
+      "lines_or_routes": [
+        "9호선(개화~중앙보훈병원 전 구간)"
+      ],
       "apply_channel": "동일한 우대용 교통카드/등록증 인정",
       "card_or_proof_type": "전국호환 장애인복지카드, 우대용 1회권",
       "url": "https://news.seoul.go.kr/traffic/archives/1791",
@@ -76,7 +124,9 @@
     {
       "region": "수도권",
       "agency": "(주)신분당선",
-      "lines_or_routes": ["신분당선(신사~광교)"],
+      "lines_or_routes": [
+        "신분당선(신사~광교)"
+      ],
       "apply_channel": "동일한 우대용 교통카드/등록증 인정",
       "card_or_proof_type": "전국호환 장애인복지카드, 우대용 1회권",
       "url": "https://www.shinbundang.co.kr/dxline/dxline4_1.jsp",
@@ -85,7 +135,9 @@
     {
       "region": "수도권",
       "agency": "공항철도(AREX) — 일반열차",
-      "lines_or_routes": ["서울역~인천공항2터미널 일반열차"],
+      "lines_or_routes": [
+        "서울역~인천공항2터미널 일반열차"
+      ],
       "apply_channel": "동일한 우대용 교통카드/등록증 인정",
       "card_or_proof_type": "전국호환 장애인복지카드, 우대용 1회권",
       "url": "https://www.arex.or.kr/content.do?menuNo=MN201503300000000003&clientLocale=ko_KR&clientDevice=Normal",
@@ -94,7 +146,9 @@
     {
       "region": "수도권",
       "agency": "공항철도(AREX) — 직통열차",
-      "lines_or_routes": ["서울역↔인천공항 직통열차"],
+      "lines_or_routes": [
+        "서울역↔인천공항 직통열차"
+      ],
       "apply_channel": "공항철도 모바일 앱 발권 불가 → 서울역/인천공항1터미널역/인천공항2터미널역 매표창구에서 장애인등록증 제시 후 발권",
       "card_or_proof_type": "장애인등록증(복지카드) 제시 필수, 지정좌석제 발권",
       "url": "https://www.airportrailroad.com/co/steUsfGud.do",
@@ -103,7 +157,13 @@
     {
       "region": "수도권",
       "agency": "기타 수도권 노선",
-      "lines_or_routes": ["우이신설선(서울교통공사 위탁/우이신설경전철㈜)", "신림선", "김포골드라인", "용인경전철(에버라인)", "의정부경전철"],
+      "lines_or_routes": [
+        "우이신설선(서울교통공사 위탁/우이신설경전철㈜)",
+        "신림선",
+        "김포골드라인",
+        "용인경전철(에버라인)",
+        "의정부경전철"
+      ],
       "apply_channel": "수도권 통합환승체계에 포함, 동일한 우대용 카드/등록증 인정",
       "card_or_proof_type": "전국호환 장애인복지카드, 우대용 1회권",
       "url": "https://news.seoul.go.kr/traffic/archives/1791",
@@ -112,7 +172,9 @@
     {
       "region": "부산권",
       "agency": "부산교통공사",
-      "lines_or_routes": ["부산 도시철도 1·2·3·4호선"],
+      "lines_or_routes": [
+        "부산 도시철도 1·2·3·4호선"
+      ],
       "apply_channel": "주소지 동주민센터에서 전국호환 장애인복지카드(한국조폐공사 발급) 신청 또는 부산은행 영업점에서 부산지역 선불식 장애인 복지교통카드 발급",
       "card_or_proof_type": "전국호환 장애인복지카드, 부산하나로 복지카드(선불), 마이비 복지카드, 우대용 1회권",
       "url": "https://www.humetro.busan.kr/homepage/chs/page/subLocation.do?menu_no=1001010501",
@@ -121,7 +183,9 @@
     {
       "region": "부산·김해",
       "agency": "부산-김해경전철",
-      "lines_or_routes": ["부산-김해경전철 전 구간"],
+      "lines_or_routes": [
+        "부산-김해경전철 전 구간"
+      ],
       "apply_channel": "동일한 우대용 교통카드/등록증 인정",
       "card_or_proof_type": "전국호환 장애인복지카드, 우대용 1회권",
       "url": "https://www.bglrt.com/",
@@ -130,7 +194,9 @@
     {
       "region": "대구권",
       "agency": "대구교통공사",
-      "lines_or_routes": ["대구 도시철도 1·2·3호선"],
+      "lines_or_routes": [
+        "대구 도시철도 1·2·3호선"
+      ],
       "apply_channel": "거주지 관할 읍·면·동 주민센터에서 신청 (한국조폐공사 발급)",
       "card_or_proof_type": "장애인 무임교통카드(전국호환)",
       "url": "https://www.daegu.go.kr/tra/index.do?menu_id=00000354&servletPath=/tra",
@@ -139,7 +205,9 @@
     {
       "region": "광주권",
       "agency": "광주교통공사",
-      "lines_or_routes": ["광주 도시철도 1호선"],
+      "lines_or_routes": [
+        "광주 도시철도 1호선"
+      ],
       "apply_channel": "광주 거주자는 광주시내 하나은행 지점에서 광주 한정 카드 발급, 또는 동주민센터에서 전국호환 카드 발급",
       "card_or_proof_type": "광주 교통복지카드(하나은행) / 전국호환 장애인복지카드",
       "url": "https://welfare.gwangju.go.kr/main/board/4/1/category20/download/10932/3274",
@@ -148,7 +216,9 @@
     {
       "region": "대전권",
       "agency": "대전교통공사",
-      "lines_or_routes": ["대전 도시철도 1호선"],
+      "lines_or_routes": [
+        "대전 도시철도 1호선"
+      ],
       "apply_channel": "대전 거주자는 대전 시내 하나은행 지점에서 대전 한정 카드 발급, 또는 동주민센터에서 전국호환 카드 발급",
       "card_or_proof_type": "대전 교통복지카드(하나은행) / 전국호환 장애인복지카드",
       "url": "https://www.daejeon.go.kr/drh/DrhContentsHtmlView.do?menuSeq=7242",
@@ -157,7 +227,9 @@
     {
       "region": "인천권",
       "agency": "인천교통공사",
-      "lines_or_routes": ["인천 도시철도 1·2호선"],
+      "lines_or_routes": [
+        "인천 도시철도 1·2호선"
+      ],
       "apply_channel": "동일한 우대용 카드/등록증 인정",
       "card_or_proof_type": "전국호환 장애인복지카드, 우대용 1회권",
       "url": "https://www.ictr.or.kr/",
@@ -172,12 +244,36 @@
   },
   "application": {
     "where": [
-      { "channel": "주소지 동주민센터(행정복지센터)", "method": "방문", "url": "https://www.gov.kr/" },
-      { "channel": "복지로 홈페이지(기존 등록자 재발급)", "method": "온라인", "url": "https://www.bokjiro.go.kr/" },
-      { "channel": "신한은행 영업점(서울 우대용 신용/체크카드)", "method": "방문", "url": "https://www.shinhancard.com/" },
-      { "channel": "부산은행 영업점(부산 지역카드)", "method": "방문", "url": "https://www.busanbank.co.kr/" },
-      { "channel": "하나은행 영업점(대전·광주 지역카드)", "method": "방문", "url": "https://www.kebhana.com/" },
-      { "channel": "관할 보훈(지)청(국가유공자 겸 장애인의 경우)", "method": "방문", "url": "https://www.mpva.go.kr/" }
+      {
+        "channel": "주소지 동주민센터(행정복지센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "복지로 홈페이지(기존 등록자 재발급)",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/"
+      },
+      {
+        "channel": "신한은행 영업점(서울 우대용 신용/체크카드)",
+        "method": "방문",
+        "url": "https://www.shinhancard.com/"
+      },
+      {
+        "channel": "부산은행 영업점(부산 지역카드)",
+        "method": "방문",
+        "url": "https://www.busanbank.co.kr/"
+      },
+      {
+        "channel": "하나은행 영업점(대전·광주 지역카드)",
+        "method": "방문",
+        "url": "https://www.kebhana.com/"
+      },
+      {
+        "channel": "관할 보훈(지)청(국가유공자 겸 장애인의 경우)",
+        "method": "방문",
+        "url": "https://www.mpva.go.kr/"
+      }
     ],
     "required_documents": [
       "신청서(현장 비치)",
@@ -262,19 +358,71 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
-    { "name": "서울교통공사 고객센터", "phone": "1577-1234", "url": "http://www.seoulmetro.co.kr/" },
-    { "name": "한국철도공사(코레일) 고객센터", "phone": "1544-7788", "url": "https://www.korail.com/" },
-    { "name": "신한카드 상담센터(우대용 신용/체크)", "phone": "1544-7000", "url": "https://www.shinhancard.com/" },
-    { "name": "신한은행 단순무임카드 콜센터", "phone": "1544-8000", "url": "https://www.shinhan.com/" },
-    { "name": "부산교통공사", "phone": "1577-7445", "url": "https://www.humetro.busan.kr/" },
-    { "name": "대구교통공사", "phone": "1688-3650", "url": "https://www.dtro.or.kr/" },
-    { "name": "광주교통공사", "phone": "062-604-8000", "url": "https://www.gwangjusubway.co.kr/" },
-    { "name": "대전교통공사", "phone": "042-539-3114", "url": "https://www.djet.co.kr/" },
-    { "name": "인천교통공사", "phone": "1899-5600", "url": "https://www.ictr.or.kr/" },
-    { "name": "공항철도(AREX) 고객센터", "phone": "1599-7788", "url": "https://www.arex.or.kr/" },
-    { "name": "신분당선 고객센터", "phone": "031-8018-7777", "url": "https://www.shinbundang.co.kr/" }
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    },
+    {
+      "name": "서울교통공사 고객센터",
+      "phone": "1577-1234",
+      "url": "http://www.seoulmetro.co.kr/"
+    },
+    {
+      "name": "한국철도공사(코레일) 고객센터",
+      "phone": "1544-7788",
+      "url": "https://www.korail.com/"
+    },
+    {
+      "name": "신한카드 상담센터(우대용 신용/체크)",
+      "phone": "1544-7000",
+      "url": "https://www.shinhancard.com/"
+    },
+    {
+      "name": "신한은행 단순무임카드 콜센터",
+      "phone": "1544-8000",
+      "url": "https://www.shinhan.com/"
+    },
+    {
+      "name": "부산교통공사",
+      "phone": "1577-7445",
+      "url": "https://www.humetro.busan.kr/"
+    },
+    {
+      "name": "대구교통공사",
+      "phone": "1688-3650",
+      "url": "https://www.dtro.or.kr/"
+    },
+    {
+      "name": "광주교통공사",
+      "phone": "062-604-8000",
+      "url": "https://www.gwangjusubway.co.kr/"
+    },
+    {
+      "name": "대전교통공사",
+      "phone": "042-539-3114",
+      "url": "https://www.djet.co.kr/"
+    },
+    {
+      "name": "인천교통공사",
+      "phone": "1899-5600",
+      "url": "https://www.ictr.or.kr/"
+    },
+    {
+      "name": "공항철도(AREX) 고객센터",
+      "phone": "1599-7788",
+      "url": "https://www.arex.or.kr/"
+    },
+    {
+      "name": "신분당선 고객센터",
+      "phone": "031-8018-7777",
+      "url": "https://www.shinbundang.co.kr/"
+    }
   ],
   "sources": [
     {
@@ -630,7 +778,9 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B002"],
+  "related_items": [
+    "B002"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

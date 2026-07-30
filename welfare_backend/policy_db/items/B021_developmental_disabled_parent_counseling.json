@@ -25,22 +25,43 @@
     {
       "name": "발달장애인 권리보장 및 지원에 관한 법률",
       "article": "제24조(가족지원) — 발달장애인 가족의 휴식·상담·교육 지원",
-      "url": "https://www.law.go.kr/법령/발달장애인권리보장및지원에관한법률"
+      "url": "https://www.law.go.kr/법령/발달장애인권리보장및지원에관한법률",
+      "law_id": "012046",
+      "law_serial_no": "279671",
+      "law_ref_type": "law",
+      "enforcement_date": "20260512",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "사회서비스 이용 및 이용권 관리에 관한 법률",
       "article": "제3조, 제5조",
-      "url": "https://www.law.go.kr/법령/사회서비스이용및이용권관리에관한법률"
+      "url": "https://www.law.go.kr/법령/사회서비스이용및이용권관리에관한법률",
+      "law_id": "011444",
+      "law_serial_no": "257855",
+      "law_ref_type": "law",
+      "enforcement_date": "20250103",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법",
       "article": "제35조 자녀교육비 지원 관련",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "보건복지부 장애인복지시설 사업안내 / 장애아동가족지원 사업안내(연도별)",
       "article": "부모상담 단가·가족휴식 권역별 모집 기준",
-      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040500"
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040500",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [

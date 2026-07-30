@@ -25,27 +25,54 @@
     {
       "name": "발달장애인 권리보장 및 지원에 관한 법률",
       "article": "제9조(성년후견제 이용지원)",
-      "url": "https://www.law.go.kr/법령/발달장애인권리보장및지원에관한법률"
+      "url": "https://www.law.go.kr/법령/발달장애인권리보장및지원에관한법률",
+      "law_id": "012046",
+      "law_serial_no": "279671",
+      "law_ref_type": "law",
+      "enforcement_date": "20260512",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "민법",
       "article": "제9조~제14조의3(성년후견·한정후견·특정후견·임의후견)",
-      "url": "https://www.law.go.kr/법령/민법"
+      "url": "https://www.law.go.kr/법령/민법",
+      "law_id": "001706",
+      "law_serial_no": "284415",
+      "law_ref_type": "law",
+      "enforcement_date": "20260317",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "가사소송법",
       "article": "성년후견·한정후견·특정후견 사건의 관할·절차",
-      "url": "https://www.law.go.kr/법령/가사소송법"
+      "url": "https://www.law.go.kr/법령/가사소송법",
+      "law_id": "001206",
+      "law_serial_no": "265309",
+      "law_ref_type": "law",
+      "enforcement_date": "20260101",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법",
       "article": "제35조 관련",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "보건복지부 발달장애인 공공후견지원 사업안내(연도별)",
       "article": "후견심판청구비·활동비 단가",
-      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040100"
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710040100",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [

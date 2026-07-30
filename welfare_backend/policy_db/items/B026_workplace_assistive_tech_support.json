@@ -13,7 +13,9 @@
   },
   "eligibility": {
     "target": "「장애인고용촉진 및 직업재활법」상 중증장애인으로 근로 중이거나 취업 예정인 장애인. 사업주도 장애인 근로자를 위해 보조공학기기를 신청 가능.",
-    "severity_levels": ["심한 장애(중증)"],
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
     "companion_allowed": null,
     "income_criteria": null,
     "age_criteria": "근로연령 제한 없음. 단, 실제 근로 중이거나 3개월 내 취업 예정이어야 함.",
@@ -23,24 +25,42 @@
     {
       "name": "장애인고용촉진 및 직업재활법",
       "article": "제21조(장애인 고용 사업주에 대한 지원), 제21조의2(근로지원인 지원)",
-      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법"
+      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법",
+      "law_id": "001763",
+      "law_serial_no": "279737",
+      "law_ref_type": "law",
+      "enforcement_date": "20260512",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인고용촉진 및 직업재활법 시행령",
       "article": "보조공학기기·근로지원인 지원 기준",
-      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법시행령"
+      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법시행령",
+      "law_id": "004626",
+      "law_serial_no": "285611",
+      "law_ref_type": "law",
+      "enforcement_date": "20260512",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "사업주 및 장애인 등에 대한 융자·지원규정(한국장애인고용공단 내규)",
       "article": "보조공학기기 지원한도 및 근로지원인 운영 세부 기준",
-      "url": "https://www.kead.or.kr/bbs/plaw/bbsView.do?bbsCnId=200476&menuId=MENU0796"
+      "url": "https://www.kead.or.kr/bbs/plaw/bbsView.do?bbsCnId=200476&menuId=MENU0796",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [
     {
       "region": "전국",
       "agency": "한국장애인고용공단(KEAD)",
-      "lines_or_routes": ["보조공학기기 지원사업", "근로지원인 지원사업"],
+      "lines_or_routes": [
+        "보조공학기기 지원사업",
+        "근로지원인 지원사업"
+      ],
       "apply_channel": "장애인서비스신청포털(hub.kead.or.kr) 온라인, 전국 공단 지역본부·지사 방문, 1588-1519 전화",
       "card_or_proof_type": "장애인등록증(복지카드), 재직증명서 또는 근로계약서",
       "url": "https://www.kead.or.kr/",
@@ -49,7 +69,10 @@
     {
       "region": "전국",
       "agency": "고용노동부",
-      "lines_or_routes": ["장애인 고용 정책 총괄", "예산 지원"],
+      "lines_or_routes": [
+        "장애인 고용 정책 총괄",
+        "예산 지원"
+      ],
       "apply_channel": "고용노동부 고객상담센터 1350",
       "card_or_proof_type": null,
       "url": "https://www.moel.go.kr/",
@@ -64,11 +87,31 @@
   },
   "application": {
     "where": [
-      { "channel": "장애인서비스신청포털(KEAD)", "method": "온라인", "url": "https://hub.kead.or.kr/" },
-      { "channel": "한국장애인고용공단 전국 지역본부·지사", "method": "방문", "url": "https://www.kead.or.kr/" },
-      { "channel": "한국장애인고용공단 고객상담센터", "method": "전화", "url": "https://www.kead.or.kr/" },
-      { "channel": "고용노동부 고객상담센터", "method": "전화", "url": "https://www.moel.go.kr/" },
-      { "channel": "복지로(정보 안내)", "method": "온라인", "url": "https://www.bokjiro.go.kr/" }
+      {
+        "channel": "장애인서비스신청포털(KEAD)",
+        "method": "온라인",
+        "url": "https://hub.kead.or.kr/"
+      },
+      {
+        "channel": "한국장애인고용공단 전국 지역본부·지사",
+        "method": "방문",
+        "url": "https://www.kead.or.kr/"
+      },
+      {
+        "channel": "한국장애인고용공단 고객상담센터",
+        "method": "전화",
+        "url": "https://www.kead.or.kr/"
+      },
+      {
+        "channel": "고용노동부 고객상담센터",
+        "method": "전화",
+        "url": "https://www.moel.go.kr/"
+      },
+      {
+        "channel": "복지로(정보 안내)",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/"
+      }
     ],
     "required_documents": [
       "보조공학기기 지원 신청서(포털 또는 방문 비치)",
@@ -147,11 +190,31 @@
     }
   ],
   "contact": [
-    { "name": "한국장애인고용공단(KEAD) 고객상담센터", "phone": "1588-1519", "url": "https://www.kead.or.kr/" },
-    { "name": "장애인서비스신청포털", "phone": null, "url": "https://hub.kead.or.kr/" },
-    { "name": "고용노동부 고객상담센터", "phone": "1350", "url": "https://www.moel.go.kr/" },
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" }
+    {
+      "name": "한국장애인고용공단(KEAD) 고객상담센터",
+      "phone": "1588-1519",
+      "url": "https://www.kead.or.kr/"
+    },
+    {
+      "name": "장애인서비스신청포털",
+      "phone": null,
+      "url": "https://hub.kead.or.kr/"
+    },
+    {
+      "name": "고용노동부 고객상담센터",
+      "phone": "1350",
+      "url": "https://www.moel.go.kr/"
+    },
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    }
   ],
   "sources": [
     {
@@ -331,7 +394,9 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B027"],
+  "related_items": [
+    "B027"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

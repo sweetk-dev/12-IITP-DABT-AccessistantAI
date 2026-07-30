@@ -26,17 +26,35 @@
     {
       "name": "소득세법",
       "article": "제59조의4(특별세액공제) 제2항(의료비 세액공제)",
-      "url": "https://www.law.go.kr/법령/소득세법/제59조의4"
+      "url": "https://www.law.go.kr/법령/소득세법/제59조의4",
+      "law_id": "001565",
+      "law_serial_no": "280405",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "소득세법 시행령",
       "article": "제118조의5(의료비 세액공제 대상 의료비의 범위)",
-      "url": "https://www.law.go.kr/법령/소득세법시행령"
+      "url": "https://www.law.go.kr/법령/소득세법시행령",
+      "law_id": "003956",
+      "law_serial_no": "286211",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "소득세법 시행규칙",
       "article": "제50조의2(의료비 세액공제 신청 서식)",
-      "url": "https://www.law.go.kr/법령/소득세법시행규칙"
+      "url": "https://www.law.go.kr/법령/소득세법시행규칙",
+      "law_id": "007507",
+      "law_serial_no": "286379",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "how_to_use": {

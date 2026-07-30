@@ -13,7 +13,9 @@
   },
   "eligibility": {
     "target": "「장애인복지법」 제32조에 따라 등록된 장애의 정도가 심한 장애인(중증 장애인)으로서 국민건강보험 가입자(또는 피부양자)이나 노인장기요양보험 수급자로 결정되지 않은 자.",
-    "severity_levels": ["심한 장애(중증)"],
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
     "companion_allowed": null,
     "income_criteria": "소득기준 없음. 장기요양보험 수급자로 결정되지 않은 중증 장애인이면 소득에 관계없이 적용.",
     "age_criteria": "연령 제한 없음. 단, 만 65세 이상이 되어 장기요양 수급자로 결정되면 해당 경감은 종료되고 장기요양급여 체계로 전환.",
@@ -23,29 +25,56 @@
     {
       "name": "노인장기요양보험법",
       "article": "제9조(장기요양보험료의 징수 등)",
-      "url": "https://www.law.go.kr/법령/노인장기요양보험법"
+      "url": "https://www.law.go.kr/법령/노인장기요양보험법",
+      "law_id": "010436",
+      "law_serial_no": "286217",
+      "law_ref_type": "law",
+      "enforcement_date": "20260526",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "노인장기요양보험법 시행령",
       "article": "제5조(장애인 등에 대한 장기요양보험료의 경감)",
-      "url": "https://www.law.go.kr/법령/노인장기요양보험법시행령"
+      "url": "https://www.law.go.kr/법령/노인장기요양보험법시행령",
+      "law_id": "010526",
+      "law_serial_no": "286011",
+      "law_ref_type": "law",
+      "enforcement_date": "20260512",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장기요양보험료 경감고시(보건복지부 고시)",
       "article": "경감 대상·비율·절차",
-      "url": "https://www.nhis.or.kr/lm/lmxsrv/law/lawFullContent.do?SEQ=105&SEQ_HISTORY=79"
+      "url": "https://www.nhis.or.kr/lm/lmxsrv/law/lawFullContent.do?SEQ=105&SEQ_HISTORY=79",
+      "law_id": "27360",
+      "law_serial_no": "2100000179903",
+      "law_ref_type": "admrul",
+      "enforcement_date": "20190701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법",
       "article": "제32조(장애인 등록) — 등록 근거",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "전국",
       "agency": "국민건강보험공단(NHIS)",
-      "lines_or_routes": ["장기요양보험료 부과·고지", "중증 장애인 경감 자동 처리 및 조정"],
+      "lines_or_routes": [
+        "장기요양보험료 부과·고지",
+        "중증 장애인 경감 자동 처리 및 조정"
+      ],
       "apply_channel": "전국 국민건강보험공단 지사 방문, 1577-1000 콜센터, nhis.or.kr 또는 The건강보험 앱",
       "card_or_proof_type": "장애인등록증(장애인복지카드) — 공단 DB와 자동 연계되므로 별도 제출 불요(누락 시 제출)",
       "url": "https://www.nhis.or.kr/static/html/wbda/c/wbdac05.html",
@@ -54,7 +83,10 @@
     {
       "region": "전국",
       "agency": "보건복지부",
-      "lines_or_routes": ["장기요양보험료 경감고시 운영", "장애인 등록자료 공단 제공"],
+      "lines_or_routes": [
+        "장기요양보험료 경감고시 운영",
+        "장애인 등록자료 공단 제공"
+      ],
       "apply_channel": "경감고시 개정 공고",
       "card_or_proof_type": null,
       "url": "https://www.mohw.go.kr/",
@@ -69,11 +101,31 @@
   },
   "application": {
     "where": [
-      { "channel": "국민건강보험공단 전국 지사(자동 적용 누락 시 방문)", "method": "방문", "url": "https://www.nhis.or.kr/" },
-      { "channel": "국민건강보험공단 홈페이지(민원여기요)", "method": "온라인", "url": "https://www.nhis.or.kr/nhis/minwon/retrieveCsmrIndvSrhRoadSearch.do" },
-      { "channel": "The건강보험 모바일 앱", "method": "모바일 앱", "url": "https://www.nhis.or.kr/" },
-      { "channel": "국민건강보험공단 고객센터", "method": "전화", "url": "https://www.nhis.or.kr/" },
-      { "channel": "주소지 동주민센터(자료 확인·연계 요청)", "method": "방문", "url": "https://www.gov.kr/" }
+      {
+        "channel": "국민건강보험공단 전국 지사(자동 적용 누락 시 방문)",
+        "method": "방문",
+        "url": "https://www.nhis.or.kr/"
+      },
+      {
+        "channel": "국민건강보험공단 홈페이지(민원여기요)",
+        "method": "온라인",
+        "url": "https://www.nhis.or.kr/nhis/minwon/retrieveCsmrIndvSrhRoadSearch.do"
+      },
+      {
+        "channel": "The건강보험 모바일 앱",
+        "method": "모바일 앱",
+        "url": "https://www.nhis.or.kr/"
+      },
+      {
+        "channel": "국민건강보험공단 고객센터",
+        "method": "전화",
+        "url": "https://www.nhis.or.kr/"
+      },
+      {
+        "channel": "주소지 동주민센터(자료 확인·연계 요청)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      }
     ],
     "required_documents": [
       "장기요양보험료 경감신청서(공단 지사 비치)",
@@ -148,9 +200,21 @@
     }
   ],
   "contact": [
-    { "name": "국민건강보험공단 고객센터", "phone": "1577-1000", "url": "https://www.nhis.or.kr/" },
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" }
+    {
+      "name": "국민건강보험공단 고객센터",
+      "phone": "1577-1000",
+      "url": "https://www.nhis.or.kr/"
+    },
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    }
   ],
   "sources": [
     {
@@ -330,7 +394,9 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B017"],
+  "related_items": [
+    "B017"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

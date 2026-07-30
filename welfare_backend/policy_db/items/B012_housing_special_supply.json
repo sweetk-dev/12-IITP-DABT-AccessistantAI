@@ -26,32 +26,68 @@
     {
       "name": "장애인복지법",
       "article": "제27조(주택의 보급)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "주택공급에 관한 규칙",
       "article": "제35조(국가, 지방자치단체, 한국토지주택공사 및 지방공사인 사업주체의 국민주택 등의 특별공급) 및 제36조(민영주택의 특별공급)",
-      "url": "https://www.law.go.kr/법령/주택공급에관한규칙"
+      "url": "https://www.law.go.kr/법령/주택공급에관한규칙",
+      "law_id": "008243",
+      "law_serial_no": "286965",
+      "law_ref_type": "law",
+      "enforcement_date": "20260615",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "공공주택 특별법",
       "article": "공공주택의 공급 및 운영 관련 조항",
-      "url": "https://www.law.go.kr/법령/공공주택특별법"
+      "url": "https://www.law.go.kr/법령/공공주택특별법",
+      "law_id": "009595",
+      "law_serial_no": "276937",
+      "law_ref_type": "law",
+      "enforcement_date": "20260102",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "공공주택 특별법 시행규칙",
       "article": "별표(공공임대주택 입주자격 등)",
-      "url": "https://www.law.go.kr/법령/공공주택특별법시행규칙"
+      "url": "https://www.law.go.kr/법령/공공주택특별법시행규칙",
+      "law_id": "009724",
+      "law_serial_no": "287455",
+      "law_ref_type": "law",
+      "enforcement_date": "20260622",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인·고령자 등 주거약자 지원에 관한 법률",
       "article": "제5조(주거약자용 주택의 의무건설 등) 및 제9조(주거약자용 주택의 안전기준 및 편의시설 설치기준)",
-      "url": "https://www.law.go.kr/법령/장애인ㆍ고령자등주거약자지원에관한법률"
+      "url": "https://www.law.go.kr/법령/장애인ㆍ고령자등주거약자지원에관한법률",
+      "law_id": "011556",
+      "law_serial_no": "250085",
+      "law_ref_type": "law",
+      "enforcement_date": "20231019",
+      "mapping_status": "fuzzy",
+      "mapping_confidence": "fuzzy"
     },
     {
       "name": "장애인·고령자 등 주거약자 지원에 관한 법률 시행령",
       "article": "주거약자용 주택 의무건설 비율(수도권 5%, 그 밖의 지역 3% 이상)",
-      "url": "https://www.law.go.kr/법령/장애인ㆍ고령자등주거약자지원에관한법률시행령"
+      "url": "https://www.law.go.kr/법령/장애인ㆍ고령자등주거약자지원에관한법률시행령",
+      "law_id": "011683",
+      "law_serial_no": "277975",
+      "law_ref_type": "law",
+      "enforcement_date": "20251001",
+      "mapping_status": "fuzzy",
+      "mapping_confidence": "fuzzy"
     }
   ],
   "operating_agencies": [

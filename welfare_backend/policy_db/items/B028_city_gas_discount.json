@@ -13,7 +13,9 @@
   },
   "eligibility": {
     "target": "「장애인복지법」 제32조에 따라 등록된 장애의 정도가 심한 장애인(중증장애인) 본인 또는 해당 장애인이 속한 세대의 주민등록표상 주소지에 설치된 주택용 도시가스 계정.",
-    "severity_levels": ["심한 장애(중증)"],
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
     "companion_allowed": null,
     "income_criteria": "소득 기준 없음(중증장애인 자격만으로 신청 가능). 단, 기초생활수급자·차상위계층 자격을 동시에 보유한 경우 더 높은 경감한도 적용 가능.",
     "age_criteria": null,
@@ -23,27 +25,57 @@
     {
       "name": "도시가스사업법",
       "article": "제20조의2(사회적 배려대상자에 대한 요금경감)",
-      "url": "https://www.law.go.kr/법령/도시가스사업법"
+      "url": "https://www.law.go.kr/법령/도시가스사업법",
+      "law_id": "001851",
+      "law_serial_no": "276497",
+      "law_ref_type": "law",
+      "enforcement_date": "20251001",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "도시가스사업법 시행규칙",
       "article": "별표 9의2(도시가스요금 경감 등의 지원 대상자)",
-      "url": "https://www.law.go.kr/법령/도시가스사업법시행규칙"
+      "url": "https://www.law.go.kr/법령/도시가스사업법시행규칙",
+      "law_id": "007095",
+      "law_serial_no": "285295",
+      "law_ref_type": "law",
+      "enforcement_date": "20260331",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "도시가스요금 경감지원금액 한도 산정 등에 관한 지침",
       "article": "산업통상자원부고시 제2025-024호(매년 개정)",
-      "url": "https://www.law.go.kr/행정규칙/도시가스요금경감지원금액한도산정등에관한지침"
+      "url": "https://www.law.go.kr/행정규칙/도시가스요금경감지원금액한도산정등에관한지침",
+      "law_id": "94919",
+      "law_serial_no": "2100000268902",
+      "law_ref_type": "admrul",
+      "enforcement_date": "20251201",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법",
       "article": "제30조(경제적 부담의 경감)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행령",
       "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "law_id": "004628",
+      "law_serial_no": "280293",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
@@ -146,11 +178,31 @@
   },
   "application": {
     "where": [
-      { "channel": "정부24 — 요금감면 일괄신청", "method": "온라인", "url": "https://www.gov.kr/portal/service/serviceInfo/174100000049" },
-      { "channel": "복지로 — 도시가스 요금 경감 신청", "method": "온라인", "url": "https://www.bokjiro.go.kr/" },
-      { "channel": "주소지 동주민센터(행정복지센터)", "method": "방문", "url": "https://www.gov.kr/" },
-      { "channel": "거주지 관할 도시가스사 고객센터(지역별 상이)", "method": "전화", "url": "http://www.citygas.or.kr/social/index.jsp" },
-      { "channel": "거주지 관할 도시가스사 방문창구", "method": "방문", "url": "http://www.citygas.or.kr/social/index.jsp" }
+      {
+        "channel": "정부24 — 요금감면 일괄신청",
+        "method": "온라인",
+        "url": "https://www.gov.kr/portal/service/serviceInfo/174100000049"
+      },
+      {
+        "channel": "복지로 — 도시가스 요금 경감 신청",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/"
+      },
+      {
+        "channel": "주소지 동주민센터(행정복지센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "거주지 관할 도시가스사 고객센터(지역별 상이)",
+        "method": "전화",
+        "url": "http://www.citygas.or.kr/social/index.jsp"
+      },
+      {
+        "channel": "거주지 관할 도시가스사 방문창구",
+        "method": "방문",
+        "url": "http://www.citygas.or.kr/social/index.jsp"
+      }
     ],
     "required_documents": [
       "도시가스요금 경감 신청서(신청처 비치 또는 온라인 양식)",
@@ -235,18 +287,66 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
-    { "name": "산업통상자원부 에너지산업정책관", "phone": "044-203-5240", "url": "https://www.motie.go.kr/" },
-    { "name": "한국도시가스협회(지역 도시가스사 조회)", "phone": "02-2105-0600", "url": "http://www.citygas.or.kr/social/index.jsp" },
-    { "name": "한국가스공사 고객지원", "phone": "1544-4500", "url": "https://www.kogas.or.kr/site/koGas/1020408030000" },
-    { "name": "서울도시가스 고객센터", "phone": "02-3450-4114", "url": "https://www.seoulgas.co.kr/" },
-    { "name": "코원에너지서비스(SK E&S) 고객센터", "phone": "1544-3002", "url": "https://www.skens.com/koone/" },
-    { "name": "삼천리 고객센터", "phone": "1588-3500", "url": "https://www.samchully.co.kr/" },
-    { "name": "예스코 고객센터", "phone": "1588-0070", "url": "https://www.yesco.co.kr/" },
-    { "name": "인천도시가스 고객센터", "phone": "032-560-3000", "url": "https://www.incheoncitygas.co.kr/" },
-    { "name": "부산도시가스(SK E&S) 고객센터", "phone": "051-630-3000", "url": "https://www.skens.com/busan/" },
-    { "name": "대성청정에너지 고객센터", "phone": "1588-3667", "url": "https://www.daesungcleanenergy.co.kr/" }
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    },
+    {
+      "name": "산업통상자원부 에너지산업정책관",
+      "phone": "044-203-5240",
+      "url": "https://www.motie.go.kr/"
+    },
+    {
+      "name": "한국도시가스협회(지역 도시가스사 조회)",
+      "phone": "02-2105-0600",
+      "url": "http://www.citygas.or.kr/social/index.jsp"
+    },
+    {
+      "name": "한국가스공사 고객지원",
+      "phone": "1544-4500",
+      "url": "https://www.kogas.or.kr/site/koGas/1020408030000"
+    },
+    {
+      "name": "서울도시가스 고객센터",
+      "phone": "02-3450-4114",
+      "url": "https://www.seoulgas.co.kr/"
+    },
+    {
+      "name": "코원에너지서비스(SK E&S) 고객센터",
+      "phone": "1544-3002",
+      "url": "https://www.skens.com/koone/"
+    },
+    {
+      "name": "삼천리 고객센터",
+      "phone": "1588-3500",
+      "url": "https://www.samchully.co.kr/"
+    },
+    {
+      "name": "예스코 고객센터",
+      "phone": "1588-0070",
+      "url": "https://www.yesco.co.kr/"
+    },
+    {
+      "name": "인천도시가스 고객센터",
+      "phone": "032-560-3000",
+      "url": "https://www.incheoncitygas.co.kr/"
+    },
+    {
+      "name": "부산도시가스(SK E&S) 고객센터",
+      "phone": "051-630-3000",
+      "url": "https://www.skens.com/busan/"
+    },
+    {
+      "name": "대성청정에너지 고객센터",
+      "phone": "1588-3667",
+      "url": "https://www.daesungcleanenergy.co.kr/"
+    }
   ],
   "sources": [
     {
@@ -580,7 +680,9 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B029"],
+  "related_items": [
+    "B029"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

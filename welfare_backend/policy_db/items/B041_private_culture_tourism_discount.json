@@ -30,12 +30,24 @@
     {
       "name": "장애인복지법",
       "article": "제30조(경제적 부담의 경감) — 국가·지방자치단체는 장애인이 공공시설을 이용하는 데에 필요한 경비를 감면하도록 노력하여야 한다. 민간 시설에 대한 법적 강제 규정 아님. 권고(노력 의무).",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "문화예술진흥법",
       "article": "제15조의2(장애인 문화예술 활동의 지원) — 국가·지자체가 운영하는 문화시설 중심. 민간 시설에 대한 강제 규정 아님. 권고.",
-      "url": "https://www.law.go.kr/법령/문화예술진흥법"
+      "url": "https://www.law.go.kr/법령/문화예술진흥법",
+      "law_id": "000836",
+      "law_serial_no": "279667",
+      "law_ref_type": "law",
+      "enforcement_date": "20251111",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
@@ -849,7 +861,12 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B008", "B009", "B014", "B042"],
+  "related_items": [
+    "B008",
+    "B009",
+    "B014",
+    "B042"
+  ],
   "last_verified": "2026-05-22",
   "version": "1.0.0"
 }

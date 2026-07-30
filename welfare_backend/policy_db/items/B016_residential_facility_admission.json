@@ -26,22 +26,43 @@
     {
       "name": "장애인복지법",
       "article": "제58조(장애인복지시설), 제59조(장애인복지시설의 설치·운영), 제60조(장애인거주시설의 이용절차 등)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행규칙",
       "article": "제41조 및 별표4(장애인복지시설의 종류·기능)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙",
+      "law_id": "007972",
+      "law_serial_no": "282417",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "국민기초생활 보장법",
       "article": "보장시설(생계·의료급여 수급자 거주시설) 관련 조항",
-      "url": "https://www.law.go.kr/법령/국민기초생활보장법"
+      "url": "https://www.law.go.kr/법령/국민기초생활보장법",
+      "law_id": "001973",
+      "law_serial_no": "276653",
+      "law_ref_type": "law",
+      "enforcement_date": "20251001",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지사업안내",
       "article": "보건복지부 연간 사업안내(제3권 장애인복지시설)",
-      "url": "https://www.mohw.go.kr/board.es?mid=a10413000000&bid=0021"
+      "url": "https://www.mohw.go.kr/board.es?mid=a10413000000&bid=0021",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [
