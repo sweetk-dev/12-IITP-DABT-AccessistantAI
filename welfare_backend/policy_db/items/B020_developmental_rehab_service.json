@@ -26,22 +26,43 @@
     {
       "name": "장애아동 복지지원법",
       "article": "제21조(발달재활서비스 지원)",
-      "url": "https://www.law.go.kr/법령/장애아동복지지원법"
+      "url": "https://www.law.go.kr/법령/장애아동복지지원법",
+      "law_id": "011443",
+      "law_serial_no": "267353",
+      "law_ref_type": "law",
+      "enforcement_date": "20251221",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "사회서비스 이용 및 이용권 관리에 관한 법률",
       "article": "제3조, 제5조",
-      "url": "https://www.law.go.kr/법령/사회서비스이용및이용권관리에관한법률"
+      "url": "https://www.law.go.kr/법령/사회서비스이용및이용권관리에관한법률",
+      "law_id": "011444",
+      "law_serial_no": "257855",
+      "law_ref_type": "law",
+      "enforcement_date": "20250103",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법",
       "article": "제38조 자녀교육비 지원 관련",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "보건복지부 장애아동가족지원 사업안내(연도별)",
       "article": "발달재활서비스 단가·소득기준·본인부담금",
-      "url": "https://www.mohw.go.kr/menu.es?mid=a10710060600"
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10710060600",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [

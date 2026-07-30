@@ -13,7 +13,9 @@
   },
   "eligibility": {
     "target": "「장애인복지법」 제32조에 따라 등록된 심한 장애인(중증) 중, 보철용·생업활동용으로 사용하기 위하여 아래 차량 요건을 충족하는 자동차를 취득하는 자. 본인 명의 또는 동일 세대 보호자와의 공동명의 1대에 한함.",
-    "severity_levels": ["심한 장애(중증)"],
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
     "companion_allowed": null,
     "income_criteria": null,
     "age_criteria": null,
@@ -23,39 +25,74 @@
     {
       "name": "지방세특례제한법",
       "article": "제17조(장애인용 자동차에 대한 감면)",
-      "url": "https://www.law.go.kr/법령/지방세특례제한법"
+      "url": "https://www.law.go.kr/법령/지방세특례제한법",
+      "law_id": "011178",
+      "law_serial_no": "286607",
+      "law_ref_type": "law",
+      "enforcement_date": "20260602",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "지방세특례제한법 시행령",
       "article": "장애인용 자동차 감면 관련 시행령",
-      "url": "https://www.law.go.kr/법령/지방세특례제한법시행령"
+      "url": "https://www.law.go.kr/법령/지방세특례제한법시행령",
+      "law_id": "011278",
+      "law_serial_no": "287191",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "지방세법",
       "article": "제6조(정의), 제7조(납세의무자), 제10조(과세표준) — 취득세 과세 일반 근거",
-      "url": "https://www.law.go.kr/법령/지방세법"
+      "url": "https://www.law.go.kr/법령/지방세법",
+      "law_id": "001649",
+      "law_serial_no": "282559",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "지방세법",
       "article": "제127조 이하 — 자동차세 과세 근거",
-      "url": "https://www.law.go.kr/법령/지방세법"
+      "url": "https://www.law.go.kr/법령/지방세법",
+      "law_id": "001649",
+      "law_serial_no": "282559",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "환경개선비용 부담법",
       "article": "제9조(면제 대상) — 장애인용 자동차 환경개선부담금 면제",
-      "url": "https://www.law.go.kr/법령/환경개선비용부담법"
+      "url": "https://www.law.go.kr/법령/환경개선비용부담법",
+      "law_id": "000171",
+      "law_serial_no": "276819",
+      "law_ref_type": "law",
+      "enforcement_date": "20251001",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "각 지방자치단체 지방세 감면 조례",
       "article": "시각장애인 구 4급(현 경증) 차량 지방세 감면 규정 (지자체별 상이)",
-      "url": "https://www.elis.go.kr/"
+      "url": "https://www.elis.go.kr/",
+      "law_ref_type": "ordin",
+      "mapping_status": "not_found",
+      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [
     {
       "region": "전국",
       "agency": "주소지(차량 등록지) 관할 시·군·구청 세무과",
-      "lines_or_routes": ["전국 모든 시·군·구"],
+      "lines_or_routes": [
+        "전국 모든 시·군·구"
+      ],
       "apply_channel": "거주지(차량 등록지) 관할 시·군·구청 세무과 방문 또는 정부24 온라인 신청",
       "card_or_proof_type": "감면 신청서, 장애인등록증(복지카드), 자동차등록증, 신분증",
       "url": "https://www.gov.kr/portal/service/serviceInfo/131200000004",
@@ -64,7 +101,9 @@
     {
       "region": "서울",
       "agency": "서울특별시 자치구청 세무과(차량 등록지 기준)",
-      "lines_or_routes": ["서울 25개 자치구"],
+      "lines_or_routes": [
+        "서울 25개 자치구"
+      ],
       "apply_channel": "거주지 자치구청 세무과 방문 또는 위택스(wetax.go.kr) 온라인",
       "card_or_proof_type": "감면 신청서, 장애인등록증, 자동차등록증, 신분증",
       "url": "https://www.seoul.go.kr/main/index.jsp",
@@ -457,7 +496,11 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B031", "B010", "B007"],
+  "related_items": [
+    "B031",
+    "B010",
+    "B007"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

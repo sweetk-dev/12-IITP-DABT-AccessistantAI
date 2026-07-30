@@ -13,7 +13,10 @@
   },
   "eligibility": {
     "target": "「장애인복지법」 제32조에 따라 등록된 장애인",
-    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
     "companion_allowed": {
       "applicable_to": "심한 장애(중증)",
       "count": 1,
@@ -27,29 +30,58 @@
     {
       "name": "장애인복지법",
       "article": "제30조(경제적 부담의 경감)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행령",
       "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "law_id": "004628",
+      "law_serial_no": "280293",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "철도사업법",
       "article": "제9조(여객 운임·요금) 및 제9조의2(여객 운임·요금의 감면)",
-      "url": "https://www.law.go.kr/법령/철도사업법"
+      "url": "https://www.law.go.kr/법령/철도사업법",
+      "law_id": "009846",
+      "law_serial_no": "277031",
+      "law_ref_type": "law",
+      "enforcement_date": "20260102",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "한국철도공사법",
       "article": "제9조(사업) 및 여객운송약관(여객운송 부속약관 — 운임 감면)",
-      "url": "https://www.law.go.kr/법령/한국철도공사법"
+      "url": "https://www.law.go.kr/법령/한국철도공사법",
+      "law_id": "009594",
+      "law_serial_no": "277049",
+      "law_ref_type": "law",
+      "enforcement_date": "20260102",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "전국",
       "agency": "한국철도공사(코레일) — KTX·KTX-산천·KTX-이음",
-      "lines_or_routes": ["경부고속선(서울~부산)", "호남고속선(용산~목포·광주송정)", "수서평택고속선 연결 일부", "경부선·호남선·전라선·동해선·중앙선·강릉선·중부내륙선 KTX-이음 등 전국 고속·준고속 노선"],
+      "lines_or_routes": [
+        "경부고속선(서울~부산)",
+        "호남고속선(용산~목포·광주송정)",
+        "수서평택고속선 연결 일부",
+        "경부선·호남선·전라선·동해선·중앙선·강릉선·중부내륙선 KTX-이음 등 전국 고속·준고속 노선"
+      ],
       "apply_channel": "코레일톡 앱 → 마이페이지 → '할인/장애인 등록' 메뉴에서 복지카드 사진 등록(최초 1회) / 또는 역 매표창구에서 복지카드 제시 후 발권 / 또는 letskorail.com 홈페이지 로그인 후 '우대고객' 등록",
       "card_or_proof_type": "장애인등록증(복지카드, 모바일 복지카드 포함)",
       "url": "https://www.korail.com/ticket/discountSystem/discount",
@@ -58,7 +90,20 @@
     {
       "region": "전국",
       "agency": "한국철도공사(코레일) — 일반열차(새마을·ITX·무궁화·누리로 등)",
-      "lines_or_routes": ["경부선", "호남선", "전라선", "장항선", "충북선", "중앙선", "태백선", "영동선", "경전선", "동해선", "경춘선(ITX-청춘)", "경강선 일반열차 등 전국 일반철도"],
+      "lines_or_routes": [
+        "경부선",
+        "호남선",
+        "전라선",
+        "장항선",
+        "충북선",
+        "중앙선",
+        "태백선",
+        "영동선",
+        "경전선",
+        "동해선",
+        "경춘선(ITX-청춘)",
+        "경강선 일반열차 등 전국 일반철도"
+      ],
       "apply_channel": "동일(코레일톡 / 레츠코레일 / 역 매표창구)",
       "card_or_proof_type": "장애인등록증(복지카드, 모바일 복지카드 포함)",
       "url": "https://www.korail.com/ticket/discountSystem/discount",
@@ -67,7 +112,11 @@
     {
       "region": "수도권·충청권",
       "agency": "SR(주식회사 에스알) — SRT 수서고속철도",
-      "lines_or_routes": ["경부선 SRT(수서~부산)", "호남선 SRT(수서~목포·광주송정)", "동탄·평택지제·천안아산·오송·대전·동대구·울산·신경주·울산·부산 등"],
+      "lines_or_routes": [
+        "경부선 SRT(수서~부산)",
+        "호남선 SRT(수서~목포·광주송정)",
+        "동탄·평택지제·천안아산·오송·대전·동대구·울산·신경주·울산·부산 등"
+      ],
       "apply_channel": "SR 홈페이지(etk.srail.kr) → 회원가입 후 '공공할인 신청하기'(우대고객 등록) → 본인 인증 및 복지카드 정보 등록 / 또는 SRT 모바일 앱 / 또는 역 매표창구",
       "card_or_proof_type": "장애인등록증(복지카드, 모바일 복지카드 포함). 본인 외 보호자는 신분증 추가 확인 가능.",
       "url": "https://etk.srail.kr/cms/archive.do?pageId=TK0401010000",
@@ -82,13 +131,41 @@
   },
   "application": {
     "where": [
-      { "channel": "코레일톡 앱", "method": "모바일 앱", "url": "https://www.korail.com/ticket/main" },
-      { "channel": "레츠코레일 홈페이지", "method": "온라인", "url": "https://www.letskorail.com/" },
-      { "channel": "SR 홈페이지(SRT)", "method": "온라인", "url": "https://etk.srail.kr/main.do" },
-      { "channel": "SRT 모바일 앱", "method": "모바일 앱", "url": "https://etk.srail.kr/main.do" },
-      { "channel": "코레일·SR 역 매표창구", "method": "방문", "url": "https://www.korail.com/" },
-      { "channel": "코레일 고객센터", "method": "전화", "url": "tel:1544-7788" },
-      { "channel": "SR 고객센터", "method": "전화", "url": "tel:1800-1472" }
+      {
+        "channel": "코레일톡 앱",
+        "method": "모바일 앱",
+        "url": "https://www.korail.com/ticket/main"
+      },
+      {
+        "channel": "레츠코레일 홈페이지",
+        "method": "온라인",
+        "url": "https://www.letskorail.com/"
+      },
+      {
+        "channel": "SR 홈페이지(SRT)",
+        "method": "온라인",
+        "url": "https://etk.srail.kr/main.do"
+      },
+      {
+        "channel": "SRT 모바일 앱",
+        "method": "모바일 앱",
+        "url": "https://etk.srail.kr/main.do"
+      },
+      {
+        "channel": "코레일·SR 역 매표창구",
+        "method": "방문",
+        "url": "https://www.korail.com/"
+      },
+      {
+        "channel": "코레일 고객센터",
+        "method": "전화",
+        "url": "tel:1544-7788"
+      },
+      {
+        "channel": "SR 고객센터",
+        "method": "전화",
+        "url": "tel:1800-1472"
+      }
     ],
     "required_documents": [
       "장애인등록증(복지카드) 원본 또는 모바일 복지카드(정부24 발급)",
@@ -175,12 +252,36 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "한국철도공사(코레일) 고객센터", "phone": "1544-7788", "url": "https://www.korail.com/" },
-    { "name": "SR(SRT) 고객센터", "phone": "1800-1472", "url": "https://etk.srail.kr/" },
-    { "name": "한국철도공사 교통약자 배려서비스", "phone": "1544-7788", "url": "https://www.korail.com/ticket/guest/weakService" },
-    { "name": "국토교통부 철도정책관실", "phone": "044-201-3938", "url": "https://www.molit.go.kr/" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" }
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "한국철도공사(코레일) 고객센터",
+      "phone": "1544-7788",
+      "url": "https://www.korail.com/"
+    },
+    {
+      "name": "SR(SRT) 고객센터",
+      "phone": "1800-1472",
+      "url": "https://etk.srail.kr/"
+    },
+    {
+      "name": "한국철도공사 교통약자 배려서비스",
+      "phone": "1544-7788",
+      "url": "https://www.korail.com/ticket/guest/weakService"
+    },
+    {
+      "name": "국토교통부 철도정책관실",
+      "phone": "044-201-3938",
+      "url": "https://www.molit.go.kr/"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    }
   ],
   "sources": [
     {
@@ -448,7 +549,11 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B001", "B003", "B004"],
+  "related_items": [
+    "B001",
+    "B003",
+    "B004"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

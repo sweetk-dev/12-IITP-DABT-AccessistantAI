@@ -13,7 +13,10 @@
   },
   "eligibility": {
     "target": "「장애인복지법」 제32조에 따라 등록된 장애인",
-    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
     "companion_allowed": {
       "applicable_to": "심한 장애(중증)",
       "count": 1,
@@ -27,24 +30,50 @@
     {
       "name": "장애인복지법",
       "article": "제30조(경제적 부담의 경감)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행령",
       "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준) — 권고적 성격",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "law_id": "004628",
+      "law_serial_no": "280293",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "항공사업법",
       "article": "제2조 및 제62조(국내항공운송 사업자의 운임·요금 신고)",
-      "url": "https://www.law.go.kr/법령/항공사업법"
+      "url": "https://www.law.go.kr/법령/항공사업법",
+      "law_id": "012523",
+      "law_serial_no": "280131",
+      "law_ref_type": "law",
+      "enforcement_date": "20260603",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "전국(국내선)",
       "agency": "대한항공(Korean Air, KE)",
-      "lines_or_routes": ["김포~제주", "김포~김해(부산)", "김포~울산", "김포~여수·사천·포항", "김포~광주·대구", "인천~제주", "제주~김해(부산)·청주·대구·광주·여수·울산"],
+      "lines_or_routes": [
+        "김포~제주",
+        "김포~김해(부산)",
+        "김포~울산",
+        "김포~여수·사천·포항",
+        "김포~광주·대구",
+        "인천~제주",
+        "제주~김해(부산)·청주·대구·광주·여수·울산"
+      ],
       "apply_channel": "대한항공 홈페이지(koreanair.com) 예약 시 '개인 할인 → 장애인 할인' 선택 / 모바일 앱 / 고객센터(1588-2001) / 공항 카운터",
       "card_or_proof_type": "장애인등록증(복지카드) 원본. 탑승 수속 시 제시 필수.",
       "url": "https://www.koreanair.com/contents/booking/reservation-guide/fares/domestic",
@@ -53,7 +82,13 @@
     {
       "region": "전국(국내선)",
       "agency": "아시아나항공(Asiana Airlines, OZ)",
-      "lines_or_routes": ["김포~제주", "김포~김해(부산)", "김포~청주·대구·광주·여수", "인천~제주", "제주~김해"],
+      "lines_or_routes": [
+        "김포~제주",
+        "김포~김해(부산)",
+        "김포~청주·대구·광주·여수",
+        "인천~제주",
+        "제주~김해"
+      ],
       "apply_channel": "아시아나 홈페이지(flyasiana.com) 예약 시 '장애인 할인' 선택 / 모바일 앱 / 고객센터(1588-8000) / 공항 카운터",
       "card_or_proof_type": "장애인등록증(복지카드) 원본",
       "url": "https://flyasiana.com/C/KR/KO/contents/reservation-information",
@@ -62,7 +97,15 @@
     {
       "region": "전국(국내선)",
       "agency": "제주항공(Jeju Air, 7C)",
-      "lines_or_routes": ["김포~제주", "김포~김해", "김포~여수·울산", "인천~제주", "청주~제주", "대구~제주", "광주~제주" ],
+      "lines_or_routes": [
+        "김포~제주",
+        "김포~김해",
+        "김포~여수·울산",
+        "인천~제주",
+        "청주~제주",
+        "대구~제주",
+        "광주~제주"
+      ],
       "apply_channel": "제주항공 홈페이지(jejuair.net) / 모바일 앱 / 고객센터(1599-1500). 일부 할인 운임은 공항 카운터·고객센터 발권만 가능한 경우 있음.",
       "card_or_proof_type": "장애인등록증(복지카드) 원본",
       "url": "https://www.jejuair.net/jejuair/ko/help/faq.do",
@@ -71,7 +114,14 @@
     {
       "region": "전국(국내선)",
       "agency": "진에어(Jin Air, LJ)",
-      "lines_or_routes": ["김포~제주", "김포~김해(부산)", "김포~울산", "인천~제주", "청주~제주", "제주~김해"],
+      "lines_or_routes": [
+        "김포~제주",
+        "김포~김해(부산)",
+        "김포~울산",
+        "인천~제주",
+        "청주~제주",
+        "제주~김해"
+      ],
       "apply_channel": "진에어 홈페이지(jinair.com) → 예약 → '신분할인 선택' 메뉴 / 고객센터(1600-6200)",
       "card_or_proof_type": "장애인등록증(복지카드) 원본. 공항 카운터에서 검증.",
       "url": "https://www.jinair.com/discount/identify?snsLang=ko_KR&ctrCd=KOR",
@@ -80,7 +130,14 @@
     {
       "region": "전국(국내선)",
       "agency": "티웨이항공(T'way Air, TW)",
-      "lines_or_routes": ["김포~제주", "김포~광주·대구·울산·사천", "인천~제주", "청주~제주", "대구~제주", "광주~제주"],
+      "lines_or_routes": [
+        "김포~제주",
+        "김포~광주·대구·울산·사천",
+        "인천~제주",
+        "청주~제주",
+        "대구~제주",
+        "광주~제주"
+      ],
       "apply_channel": "티웨이 홈페이지(twayair.com) / 모바일 앱 / 고객센터(1688-8686)",
       "card_or_proof_type": "장애인등록증(복지카드) 원본",
       "url": "https://m.twayair.com/service/serviceInfo.do?menuSeq=277",
@@ -89,7 +146,12 @@
     {
       "region": "전국(국내선)",
       "agency": "에어부산(Air Busan, BX)",
-      "lines_or_routes": ["부산(김해)~김포·제주", "김포~제주·울산", "울산~제주", "대구~제주" ],
+      "lines_or_routes": [
+        "부산(김해)~김포·제주",
+        "김포~제주·울산",
+        "울산~제주",
+        "대구~제주"
+      ],
       "apply_channel": "에어부산 홈페이지(airbusan.com) / 모바일 앱 / 고객센터(1666-3060)",
       "card_or_proof_type": "장애인등록증(복지카드) 원본",
       "url": "https://www.airbusan.com/content/individual/service/serviceCustomerInfo",
@@ -98,7 +160,9 @@
     {
       "region": "전국(국내선)",
       "agency": "에어서울(Air Seoul, RS)",
-      "lines_or_routes": ["김포~제주"],
+      "lines_or_routes": [
+        "김포~제주"
+      ],
       "apply_channel": "에어서울 홈페이지(flyairseoul.com) / 고객센터(1800-8100)",
       "card_or_proof_type": "장애인등록증(복지카드) 원본",
       "url": "https://flyairseoul.com/CW/ko/terms07.do",
@@ -113,15 +177,51 @@
   },
   "application": {
     "where": [
-      { "channel": "대한항공 홈페이지/앱", "method": "온라인", "url": "https://www.koreanair.com/" },
-      { "channel": "아시아나항공 홈페이지/앱", "method": "온라인", "url": "https://flyasiana.com/" },
-      { "channel": "제주항공 홈페이지/앱", "method": "온라인", "url": "https://www.jejuair.net/" },
-      { "channel": "진에어 홈페이지/앱", "method": "온라인", "url": "https://www.jinair.com/" },
-      { "channel": "티웨이항공 홈페이지/앱", "method": "온라인", "url": "https://www.twayair.com/" },
-      { "channel": "에어부산 홈페이지/앱", "method": "온라인", "url": "https://www.airbusan.com/" },
-      { "channel": "에어서울 홈페이지/앱", "method": "온라인", "url": "https://flyairseoul.com/" },
-      { "channel": "각 항공사 고객센터", "method": "전화", "url": null },
-      { "channel": "공항 카운터", "method": "방문", "url": null }
+      {
+        "channel": "대한항공 홈페이지/앱",
+        "method": "온라인",
+        "url": "https://www.koreanair.com/"
+      },
+      {
+        "channel": "아시아나항공 홈페이지/앱",
+        "method": "온라인",
+        "url": "https://flyasiana.com/"
+      },
+      {
+        "channel": "제주항공 홈페이지/앱",
+        "method": "온라인",
+        "url": "https://www.jejuair.net/"
+      },
+      {
+        "channel": "진에어 홈페이지/앱",
+        "method": "온라인",
+        "url": "https://www.jinair.com/"
+      },
+      {
+        "channel": "티웨이항공 홈페이지/앱",
+        "method": "온라인",
+        "url": "https://www.twayair.com/"
+      },
+      {
+        "channel": "에어부산 홈페이지/앱",
+        "method": "온라인",
+        "url": "https://www.airbusan.com/"
+      },
+      {
+        "channel": "에어서울 홈페이지/앱",
+        "method": "온라인",
+        "url": "https://flyairseoul.com/"
+      },
+      {
+        "channel": "각 항공사 고객센터",
+        "method": "전화",
+        "url": null
+      },
+      {
+        "channel": "공항 카운터",
+        "method": "방문",
+        "url": null
+      }
     ],
     "required_documents": [
       "장애인등록증(복지카드) 원본 — 탑승 당일 지참 필수",
@@ -208,17 +308,61 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "대한항공 고객센터", "phone": "1588-2001", "url": "https://www.koreanair.com/" },
-    { "name": "아시아나항공 고객센터", "phone": "1588-8000", "url": "https://flyasiana.com/" },
-    { "name": "제주항공 고객센터", "phone": "1599-1500", "url": "https://www.jejuair.net/" },
-    { "name": "진에어 고객센터", "phone": "1600-6200", "url": "https://www.jinair.com/" },
-    { "name": "티웨이항공 고객센터", "phone": "1688-8686", "url": "https://www.twayair.com/" },
-    { "name": "에어부산 고객센터", "phone": "1666-3060", "url": "https://www.airbusan.com/" },
-    { "name": "에어서울 고객센터", "phone": "1800-8100", "url": "https://flyairseoul.com/" },
-    { "name": "한국공항공사", "phone": "1661-2626", "url": "https://www.airport.co.kr/" },
-    { "name": "국토교통부 항공정책실", "phone": "044-201-4193", "url": "https://www.molit.go.kr/" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" }
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "대한항공 고객센터",
+      "phone": "1588-2001",
+      "url": "https://www.koreanair.com/"
+    },
+    {
+      "name": "아시아나항공 고객센터",
+      "phone": "1588-8000",
+      "url": "https://flyasiana.com/"
+    },
+    {
+      "name": "제주항공 고객센터",
+      "phone": "1599-1500",
+      "url": "https://www.jejuair.net/"
+    },
+    {
+      "name": "진에어 고객센터",
+      "phone": "1600-6200",
+      "url": "https://www.jinair.com/"
+    },
+    {
+      "name": "티웨이항공 고객센터",
+      "phone": "1688-8686",
+      "url": "https://www.twayair.com/"
+    },
+    {
+      "name": "에어부산 고객센터",
+      "phone": "1666-3060",
+      "url": "https://www.airbusan.com/"
+    },
+    {
+      "name": "에어서울 고객센터",
+      "phone": "1800-8100",
+      "url": "https://flyairseoul.com/"
+    },
+    {
+      "name": "한국공항공사",
+      "phone": "1661-2626",
+      "url": "https://www.airport.co.kr/"
+    },
+    {
+      "name": "국토교통부 항공정책실",
+      "phone": "044-201-4193",
+      "url": "https://www.molit.go.kr/"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    }
   ],
   "sources": [
     {
@@ -508,7 +652,11 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B001", "B002", "B004"],
+  "related_items": [
+    "B001",
+    "B002",
+    "B004"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

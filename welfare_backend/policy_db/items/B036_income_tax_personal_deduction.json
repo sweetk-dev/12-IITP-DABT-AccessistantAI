@@ -26,17 +26,35 @@
     {
       "name": "소득세법",
       "article": "제51조(추가공제) 제1항 제1호",
-      "url": "https://www.law.go.kr/법령/소득세법/제51조"
+      "url": "https://www.law.go.kr/법령/소득세법/제51조",
+      "law_id": "001565",
+      "law_serial_no": "280405",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "소득세법",
       "article": "제50조(기본공제) — 부양가족 요건",
-      "url": "https://www.law.go.kr/법령/소득세법/제50조"
+      "url": "https://www.law.go.kr/법령/소득세법/제50조",
+      "law_id": "001565",
+      "law_serial_no": "280405",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "소득세법 시행령",
       "article": "제51조(추가공제 요건 세부사항), 제107조(장애인의 범위)",
-      "url": "https://www.law.go.kr/법령/소득세법시행령/제107조"
+      "url": "https://www.law.go.kr/법령/소득세법시행령/제107조",
+      "law_id": "003956",
+      "law_serial_no": "286211",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "how_to_use": {

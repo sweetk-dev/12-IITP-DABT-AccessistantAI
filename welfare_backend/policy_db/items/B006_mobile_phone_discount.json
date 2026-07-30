@@ -13,7 +13,10 @@
   },
   "eligibility": {
     "target": "「장애인복지법」 제32조에 따라 등록된 장애인 본인. 「장애인복지법」에 따른 장애인복지시설·장애인복지단체에 대한 이동통신요금도 감면 대상(단체는 2회선까지).",
-    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
     "companion_allowed": null,
     "income_criteria": null,
     "age_criteria": null,
@@ -23,29 +26,55 @@
     {
       "name": "장애인복지법",
       "article": "제30조(경제적 부담의 경감)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행령",
       "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "law_id": "004628",
+      "law_serial_no": "280293",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "전기통신사업법",
       "article": "제4조 제3항(보편적 역무 및 사회적 약자 요금감면)",
-      "url": "https://www.law.go.kr/법령/전기통신사업법"
+      "url": "https://www.law.go.kr/법령/전기통신사업법",
+      "law_id": "001733",
+      "law_serial_no": "286079",
+      "law_ref_type": "law",
+      "enforcement_date": "20260519",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "전기통신사업법 시행령",
       "article": "제2조 제1항 제3호 및 제2항 제3호(요금감면 대상 및 감면 내용)",
-      "url": "https://www.law.go.kr/법령/전기통신사업법시행령"
+      "url": "https://www.law.go.kr/법령/전기통신사업법시행령",
+      "law_id": "004708",
+      "law_serial_no": "285721",
+      "law_ref_type": "law",
+      "enforcement_date": "20260428",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "전국",
       "agency": "SK텔레콤(SKT)",
-      "lines_or_routes": ["SKT 이동전화(LTE/5G/표준요금제 포함 전 요금제)"],
+      "lines_or_routes": [
+        "SKT 이동전화(LTE/5G/표준요금제 포함 전 요금제)"
+      ],
       "apply_channel": "T world 홈페이지·앱 / 고객센터(이동 114 무료 또는 1599-0011) / 이통3사 공동 ARS 1523 / 직영점·대리점 방문 / 정부24·복지로",
       "card_or_proof_type": "장애인복지카드(장애인등록증) 사본. 정부24 일괄신청 시 행정정보 공동이용으로 서류 생략 가능.",
       "url": "https://www.tworld.co.kr/poc/html/product/ATS3.3.1T.15.html",
@@ -54,7 +83,9 @@
     {
       "region": "전국",
       "agency": "KT",
-      "lines_or_routes": ["KT 이동전화(LTE/5G/Y요금제 등 전 요금제)"],
+      "lines_or_routes": [
+        "KT 이동전화(LTE/5G/Y요금제 등 전 요금제)"
+      ],
       "apply_channel": "KT닷컴 홈페이지 / 고객센터(이동 114 무료 또는 유선 100) / ARS 1523 / KT플라자·대리점 방문 / 정부24·복지로",
       "card_or_proof_type": "장애인복지카드 사본. 행정안전부 주민서비스 통합정보시스템으로 자격 자동조회.",
       "url": "https://product.kt.com/benefit/membership/web/welfare_sale.html",
@@ -63,7 +94,9 @@
     {
       "region": "전국",
       "agency": "LG U+",
-      "lines_or_routes": ["LG U+ 이동전화(LTE/5G/유쓰모바일 자회사 분리 별도)"],
+      "lines_or_routes": [
+        "LG U+ 이동전화(LTE/5G/유쓰모바일 자회사 분리 별도)"
+      ],
       "apply_channel": "LG U+ 홈페이지 / 고객센터(1544-0001) / 복지할인 전용 ARS 1523 / 직영점·대리점 방문 / 정부24·복지로",
       "card_or_proof_type": "장애인복지카드 사본.",
       "url": "https://www.lguplus.com/benefit-uplus/price-discount/B400000008",
@@ -72,7 +105,9 @@
     {
       "region": "전국",
       "agency": "알뜰폰(MVNO) — KT엠모바일, SK세븐모바일, U+알뜰모바일, LG헬로비전(헬로모바일), KB리브엠 등 약 50여 개 사업자",
-      "lines_or_routes": ["전 알뜰폰 사업자의 LTE·5G·3G 요금제(복지할인 운영 사업자에 한함)"],
+      "lines_or_routes": [
+        "전 알뜰폰 사업자의 LTE·5G·3G 요금제(복지할인 운영 사업자에 한함)"
+      ],
       "apply_channel": "각 알뜰폰사 고객센터·홈페이지·전용 앱(요금감면·복지할인 메뉴). 정부24·복지로 일괄신청도 알뜰폰 일부 사업자 연계.",
       "card_or_proof_type": "장애인복지카드 사본 또는 정부24 자격증명.",
       "url": "https://www.smartchoice.or.kr/smc/service/vulnerable.do",
@@ -87,18 +122,66 @@
   },
   "application": {
     "where": [
-      { "channel": "정부24 — 요금감면 통합신청", "method": "온라인", "url": "https://www.gov.kr/portal/service/serviceInfo/174100000049" },
-      { "channel": "복지로 — 이동통신요금감면", "method": "온라인", "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003257" },
-      { "channel": "이통3사 공동 ARS 1523 (무료)", "method": "전화", "url": null },
-      { "channel": "SK텔레콤 T world", "method": "온라인", "url": "https://www.tworld.co.kr/poc/html/product/ATS3.3.1T.15.html" },
-      { "channel": "SK텔레콤 고객센터", "method": "전화", "url": "https://www.tworld.co.kr/" },
-      { "channel": "KT닷컴", "method": "온라인", "url": "https://product.kt.com/benefit/membership/web/welfare_sale.html" },
-      { "channel": "KT 고객센터", "method": "전화", "url": "https://help.kt.com/" },
-      { "channel": "LG U+ 홈페이지", "method": "온라인", "url": "https://www.lguplus.com/benefit-uplus/price-discount/B400000008" },
-      { "channel": "LG U+ 고객센터", "method": "전화", "url": "https://www.lguplus.com/" },
-      { "channel": "알뜰폰(MVNO) 고객센터·홈페이지·앱", "method": "온라인", "url": "https://www.smartchoice.or.kr/smc/service/vulnerable.do" },
-      { "channel": "통신사 직영점·대리점·KT플라자", "method": "방문", "url": null },
-      { "channel": "주소지 동주민센터(행정복지센터)", "method": "방문", "url": "https://www.gov.kr/" }
+      {
+        "channel": "정부24 — 요금감면 통합신청",
+        "method": "온라인",
+        "url": "https://www.gov.kr/portal/service/serviceInfo/174100000049"
+      },
+      {
+        "channel": "복지로 — 이동통신요금감면",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003257"
+      },
+      {
+        "channel": "이통3사 공동 ARS 1523 (무료)",
+        "method": "전화",
+        "url": null
+      },
+      {
+        "channel": "SK텔레콤 T world",
+        "method": "온라인",
+        "url": "https://www.tworld.co.kr/poc/html/product/ATS3.3.1T.15.html"
+      },
+      {
+        "channel": "SK텔레콤 고객센터",
+        "method": "전화",
+        "url": "https://www.tworld.co.kr/"
+      },
+      {
+        "channel": "KT닷컴",
+        "method": "온라인",
+        "url": "https://product.kt.com/benefit/membership/web/welfare_sale.html"
+      },
+      {
+        "channel": "KT 고객센터",
+        "method": "전화",
+        "url": "https://help.kt.com/"
+      },
+      {
+        "channel": "LG U+ 홈페이지",
+        "method": "온라인",
+        "url": "https://www.lguplus.com/benefit-uplus/price-discount/B400000008"
+      },
+      {
+        "channel": "LG U+ 고객센터",
+        "method": "전화",
+        "url": "https://www.lguplus.com/"
+      },
+      {
+        "channel": "알뜰폰(MVNO) 고객센터·홈페이지·앱",
+        "method": "온라인",
+        "url": "https://www.smartchoice.or.kr/smc/service/vulnerable.do"
+      },
+      {
+        "channel": "통신사 직영점·대리점·KT플라자",
+        "method": "방문",
+        "url": null
+      },
+      {
+        "channel": "주소지 동주민센터(행정복지센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      }
     ],
     "required_documents": [
       "신청서(통신사 양식 또는 정부24 온라인)",
@@ -190,15 +273,51 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
-    { "name": "이통3사 공동 복지할인 ARS", "phone": "1523", "url": "https://www.smartchoice.or.kr/smc/service/vulnerable.do" },
-    { "name": "SK텔레콤 고객센터", "phone": "1599-0011 / 휴대폰 114", "url": "https://www.tworld.co.kr/" },
-    { "name": "KT 고객센터(이동)", "phone": "114 (KT 휴대폰) / 080-2580-114", "url": "https://help.kt.com/" },
-    { "name": "LG U+ 고객센터", "phone": "1544-0001 / 휴대폰 114", "url": "https://www.lguplus.com/" },
-    { "name": "KTOA 스마트초이스(통신요금정보포털)", "phone": "02-2015-9100", "url": "https://www.smartchoice.or.kr/" },
-    { "name": "방송통신위원회 이용자보호국", "phone": "1335", "url": "https://www.kcc.go.kr/" },
-    { "name": "과학기술정보통신부 통신정책관실", "phone": "044-202-4900", "url": "https://www.msit.go.kr/" }
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    },
+    {
+      "name": "이통3사 공동 복지할인 ARS",
+      "phone": "1523",
+      "url": "https://www.smartchoice.or.kr/smc/service/vulnerable.do"
+    },
+    {
+      "name": "SK텔레콤 고객센터",
+      "phone": "1599-0011 / 휴대폰 114",
+      "url": "https://www.tworld.co.kr/"
+    },
+    {
+      "name": "KT 고객센터(이동)",
+      "phone": "114 (KT 휴대폰) / 080-2580-114",
+      "url": "https://help.kt.com/"
+    },
+    {
+      "name": "LG U+ 고객센터",
+      "phone": "1544-0001 / 휴대폰 114",
+      "url": "https://www.lguplus.com/"
+    },
+    {
+      "name": "KTOA 스마트초이스(통신요금정보포털)",
+      "phone": "02-2015-9100",
+      "url": "https://www.smartchoice.or.kr/"
+    },
+    {
+      "name": "방송통신위원회 이용자보호국",
+      "phone": "1335",
+      "url": "https://www.kcc.go.kr/"
+    },
+    {
+      "name": "과학기술정보통신부 통신정책관실",
+      "phone": "044-202-4900",
+      "url": "https://www.msit.go.kr/"
+    }
   ],
   "sources": [
     {
@@ -532,7 +651,10 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B005", "B011"],
+  "related_items": [
+    "B005",
+    "B011"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

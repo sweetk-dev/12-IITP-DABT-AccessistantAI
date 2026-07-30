@@ -13,7 +13,9 @@
   },
   "eligibility": {
     "target": "「장애인복지법」 제32조에 따라 등록된 심한 장애인(중증). 장애인 본인 단독 명의 또는 동일 세대 보호자와의 공동명의 승용자동차 구입 시 적용. 장애인 1인당 1대 한정(동시에 여러 대 구입 시 1대만 면제).",
-    "severity_levels": ["심한 장애(중증)"],
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
     "companion_allowed": null,
     "income_criteria": null,
     "age_criteria": null,
@@ -23,34 +25,66 @@
     {
       "name": "개별소비세법",
       "article": "제18조(면세) 제1항 제1호 나목 — 장애인용 승용자동차",
-      "url": "https://www.law.go.kr/법령/개별소비세법"
+      "url": "https://www.law.go.kr/법령/개별소비세법",
+      "law_id": "001570",
+      "law_serial_no": "280345",
+      "law_ref_type": "law",
+      "enforcement_date": "20260424",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "개별소비세법 시행령",
       "article": "제30조(면세반출 신고 절차) 및 제35조(추징)",
-      "url": "https://www.law.go.kr/법령/개별소비세법시행령"
+      "url": "https://www.law.go.kr/법령/개별소비세법시행령",
+      "law_id": "005308",
+      "law_serial_no": "288441",
+      "law_ref_type": "law",
+      "enforcement_date": "20260730",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "개별소비세법 시행규칙",
       "article": "제13조(면세 신청 서류) — 승용자동차 개별소비세 면세반출 신고서",
-      "url": "https://www.law.go.kr/법령/개별소비세법시행규칙"
+      "url": "https://www.law.go.kr/법령/개별소비세법시행규칙",
+      "law_id": "008542",
+      "law_serial_no": "284605",
+      "law_ref_type": "law",
+      "enforcement_date": "20260401",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "교육세법",
       "article": "제5조(세율) — 개별소비세의 30%. 개별소비세 면제 시 교육세 동반 면제",
-      "url": "https://www.law.go.kr/법령/교육세법"
+      "url": "https://www.law.go.kr/법령/교육세법",
+      "law_id": "001729",
+      "law_serial_no": "280369",
+      "law_ref_type": "law",
+      "enforcement_date": "20260101",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "부가가치세법",
       "article": "제26조(면세) — 개별소비세·교육세 면제분의 부가세도 과세표준에서 제외",
-      "url": "https://www.law.go.kr/법령/부가가치세법"
+      "url": "https://www.law.go.kr/법령/부가가치세법",
+      "law_id": "001571",
+      "law_serial_no": "276117",
+      "law_ref_type": "law",
+      "enforcement_date": "20260102",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "전국(국내 제조차)",
       "agency": "자동차 제조사(현대·기아·GM 등) 영업소·딜러 및 관할 세무서",
-      "lines_or_routes": ["전국 자동차 판매 영업소"],
+      "lines_or_routes": [
+        "전국 자동차 판매 영업소"
+      ],
       "apply_channel": "차량 출고 전 자동차 영업소(딜러)에서 면세 신청서 제출 → 딜러가 관할 세무서에 면세반출 신고 대행(또는 직접 세무서 신고)",
       "card_or_proof_type": "승용자동차 개별소비세 면세반출 신고서, 장애인등록증(복지카드) 사본",
       "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2282&cntntsId=7737",
@@ -59,7 +93,9 @@
     {
       "region": "전국(수입차)",
       "agency": "수입 자동차 딜러 및 관할 세관장",
-      "lines_or_routes": ["수입차 공식 딜러 전국 전시장·영업소"],
+      "lines_or_routes": [
+        "수입차 공식 딜러 전국 전시장·영업소"
+      ],
       "apply_channel": "차량 출고(통관) 전 수입 딜러 영업소에서 면세 신청 → 딜러가 보세구역 관할 세관장에 면세반출 신고 대행",
       "card_or_proof_type": "승용자동차 개별소비세 면세반출 신고서, 장애인등록증(복지카드) 사본, 자동차매매계약서 사본",
       "url": "https://www.customs.go.kr/",
@@ -127,7 +163,7 @@
     "장애인 등록 말소(장애 호전 등) 후에는 해당 자동차에 대해 추징 사유가 발생할 수 있음 — 5년 이내 장애 등록 말소 시 담당 세무서에 사전 확인 필요.",
     "개별소비세 면제 차량의 명의를 같은 장애인에게 이전하거나(같은 사람이 차를 바꾸는 경우 아님), 사망·혼인·해외이민 등 특별한 사유가 있는 경우 추징이 면제될 수 있음 — 개별 사안별로 세무서 확인 필요."
   ],
-  "penalties_for_misuse": "구입일로부터 5년 이내 명의 이전 또는 용도 변경 시 면제된 개별소비세 전액 신고·납부 의무 발생(개별소비세법 제18조 제2항 및 시행령 제35조). 납부 지연 시 가산세(지연일수 × 일 0.022%) 추가. 허위 서류 제출로 면세를 받은 경우 면세액의 2배 이하 벌금(개별소비세법 제23조)."  ,
+  "penalties_for_misuse": "구입일로부터 5년 이내 명의 이전 또는 용도 변경 시 면제된 개별소비세 전액 신고·납부 의무 발생(개별소비세법 제18조 제2항 및 시행령 제35조). 납부 지연 시 가산세(지연일수 × 일 0.022%) 추가. 허위 서류 제출로 면세를 받은 경우 면세액의 2배 이하 벌금(개별소비세법 제23조).",
   "faq": [
     {
       "q": "개별소비세 면제는 얼마나 절약되나요?",
@@ -445,7 +481,11 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B030", "B010", "B007"],
+  "related_items": [
+    "B030",
+    "B010",
+    "B007"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

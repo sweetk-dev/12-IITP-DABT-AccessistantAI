@@ -13,7 +13,10 @@
   },
   "eligibility": {
     "target": "「장애인복지법」에 따라 등록된 장애인으로서 만 18세 이상이고 국민기초생활보장 수급자(생계·의료·주거·교육급여) 또는 차상위계층에 해당하는 사람 중, 「장애인연금법」에 따른 장애인연금 수급 대상이 아닌 자",
-    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
     "companion_allowed": null,
     "income_criteria": "기초생활보장 수급자(생계·의료·주거·교육급여 해당자) 또는 차상위계층(소득인정액 기준 중위소득 50% 이하). 소득·재산 조사를 통해 해당 여부 결정. '장애인연금법상 중증장애인'이 아닌 경우에만 장애수당 지급 대상(중증이라도 장애인연금 수급 대상이면 장애수당 수급 불가).",
     "age_criteria": "만 18세 이상. 18세 미만은 B034 장애아동수당 대상.",
@@ -23,24 +26,46 @@
     {
       "name": "장애인복지법",
       "article": "제49조(장애수당)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행령",
       "article": "제30조(장애수당의 지급 대상자 등), 제32조(장애수당 등의 지급 방법 등)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "law_id": "004628",
+      "law_serial_no": "280293",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행규칙",
       "article": "제23조(장애수당 신청), 제24조(장애수당 결정·통지)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙",
+      "law_id": "007972",
+      "law_serial_no": "282417",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "전국",
       "agency": "시·군·구청(장애인복지 담당) / 읍·면·동 행정복지센터",
-      "lines_or_routes": ["수급 결정(시군구장)", "신청 접수·조사(읍면동)", "지급(시군구)"],
+      "lines_or_routes": [
+        "수급 결정(시군구장)",
+        "신청 접수·조사(읍면동)",
+        "지급(시군구)"
+      ],
       "apply_channel": "주소지 읍면동 행정복지센터 방문 또는 복지로 온라인 신청",
       "card_or_proof_type": null,
       "url": "https://www.mohw.go.kr/menu.es?mid=a10710030200",
@@ -55,9 +80,21 @@
   },
   "application": {
     "where": [
-      { "channel": "주소지 읍면동 행정복지센터(동주민센터)", "method": "방문", "url": "https://www.gov.kr/" },
-      { "channel": "복지로 홈페이지", "method": "온라인", "url": "https://www.bokjiro.go.kr/" },
-      { "channel": "복지로 모바일 앱", "method": "모바일 앱", "url": "https://www.bokjiro.go.kr/" }
+      {
+        "channel": "주소지 읍면동 행정복지센터(동주민센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "복지로 홈페이지",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/"
+      },
+      {
+        "channel": "복지로 모바일 앱",
+        "method": "모바일 앱",
+        "url": "https://www.bokjiro.go.kr/"
+      }
     ],
     "required_documents": [
       "사회보장급여(서비스) 신청서(현장 비치 또는 복지로 다운로드)",
@@ -115,9 +152,21 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr/" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
-    { "name": "주소지 읍면동 행정복지센터", "phone": null, "url": "https://www.gov.kr/" }
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr/"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    },
+    {
+      "name": "주소지 읍면동 행정복지센터",
+      "phone": null,
+      "url": "https://www.gov.kr/"
+    }
   ],
   "sources": [
     {
@@ -253,7 +302,10 @@
       "priority": "secondary"
     }
   ],
-  "related_items": ["B032", "B034"],
+  "related_items": [
+    "B032",
+    "B034"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

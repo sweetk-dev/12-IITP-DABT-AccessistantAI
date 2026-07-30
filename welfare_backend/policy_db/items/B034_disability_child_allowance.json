@@ -13,7 +13,10 @@
   },
   "eligibility": {
     "target": "「장애인복지법」에 따라 등록된 장애아동으로서 만 18세 미만이고 국민기초생활보장 수급자(생계·의료·주거·교육급여) 또는 차상위계층에 해당하는 사람",
-    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
     "companion_allowed": null,
     "income_criteria": "기초생활보장 수급자(생계·의료·주거·교육급여) 또는 차상위계층(소득인정액이 기준 중위소득 50% 이하). 소득·재산 조사로 결정. 계층에 따라 지급 단가가 상이함.",
     "age_criteria": "만 18세 미만. 만 18세 도달 시 장애아동수당 지급 종료. 단, 만 18세 이상~만 20세 이하이면서 초·중·고·특수학교에 재학 중인 경우 학교 졸업·중퇴·휴학 시까지 장애아동수당 계속 지급 가능(장애수당 B033으로 전환 전).",
@@ -23,24 +26,46 @@
     {
       "name": "장애인복지법",
       "article": "제50조(장애아동수당 및 보호수당)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행령",
       "article": "제30조의2(장애아동수당의 지급 대상자 및 금액 등), 제32조(장애수당 등의 지급 방법)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "law_id": "004628",
+      "law_serial_no": "280293",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행규칙",
       "article": "제23조(장애수당 등의 신청), 제24조(결정·통지)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행규칙",
+      "law_id": "007972",
+      "law_serial_no": "282417",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "전국",
       "agency": "시·군·구청(장애인복지 담당) / 읍·면·동 행정복지센터",
-      "lines_or_routes": ["수급 결정(시군구장)", "신청 접수·조사(읍면동)", "지급(시군구)"],
+      "lines_or_routes": [
+        "수급 결정(시군구장)",
+        "신청 접수·조사(읍면동)",
+        "지급(시군구)"
+      ],
       "apply_channel": "아동 주소지 읍면동 행정복지센터 방문 또는 복지로(bokjiro.go.kr) 온라인 신청(부모만 가능)",
       "card_or_proof_type": null,
       "url": "https://www.mohw.go.kr/menu.es?mid=a10710030200",
@@ -55,9 +80,21 @@
   },
   "application": {
     "where": [
-      { "channel": "아동 주소지 읍면동 행정복지센터(동주민센터)", "method": "방문", "url": "https://www.gov.kr/" },
-      { "channel": "복지로 홈페이지(부모 보호자에 한해 온라인 신청 가능)", "method": "온라인", "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003198" },
-      { "channel": "복지로 모바일 앱(부모 보호자에 한해 가능)", "method": "모바일 앱", "url": "https://www.bokjiro.go.kr/" }
+      {
+        "channel": "아동 주소지 읍면동 행정복지센터(동주민센터)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "복지로 홈페이지(부모 보호자에 한해 온라인 신청 가능)",
+        "method": "온라인",
+        "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003198"
+      },
+      {
+        "channel": "복지로 모바일 앱(부모 보호자에 한해 가능)",
+        "method": "모바일 앱",
+        "url": "https://www.bokjiro.go.kr/"
+      }
     ],
     "required_documents": [
       "사회보장급여(서비스) 신청서(현장 비치 또는 복지로 다운로드)",
@@ -122,9 +159,21 @@
     }
   ],
   "contact": [
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr/" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" },
-    { "name": "주소지 읍면동 행정복지센터", "phone": null, "url": "https://www.gov.kr/" }
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr/"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    },
+    {
+      "name": "주소지 읍면동 행정복지센터",
+      "phone": null,
+      "url": "https://www.gov.kr/"
+    }
   ],
   "sources": [
     {
@@ -260,7 +309,10 @@
       "priority": "secondary"
     }
   ],
-  "related_items": ["B032", "B033"],
+  "related_items": [
+    "B032",
+    "B033"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

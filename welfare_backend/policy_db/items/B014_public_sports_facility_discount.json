@@ -30,32 +30,65 @@
     {
       "name": "장애인복지법",
       "article": "제30조(경제적 부담의 경감)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행령",
       "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "law_id": "004628",
+      "law_serial_no": "280293",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "체육시설의 설치ㆍ이용에 관한 법률",
       "article": "제5조(전문체육시설)·제6조(생활체육시설)·제8조(공공체육시설의 사용료 감면)",
-      "url": "https://www.law.go.kr/법령/체육시설의설치ㆍ이용에관한법률"
+      "url": "https://www.law.go.kr/법령/체육시설의설치ㆍ이용에관한법률",
+      "law_id": "000820",
+      "law_serial_no": "285605",
+      "law_ref_type": "law",
+      "enforcement_date": "20260729",
+      "mapping_status": "fuzzy",
+      "mapping_confidence": "fuzzy"
     },
     {
       "name": "체육시설의 설치ㆍ이용에 관한 법률 시행령",
       "article": "제4조의2(전문체육시설 및 생활체육시설의 사용료 감면)",
-      "url": "https://www.law.go.kr/법령/체육시설의설치ㆍ이용에관한법률시행령"
+      "url": "https://www.law.go.kr/법령/체육시설의설치ㆍ이용에관한법률시행령",
+      "law_id": "005234",
+      "law_serial_no": "270135",
+      "law_ref_type": "law",
+      "enforcement_date": "20260326",
+      "mapping_status": "fuzzy",
+      "mapping_confidence": "fuzzy"
     },
     {
       "name": "장애인ㆍ노인ㆍ임산부 등의 편의증진 보장에 관한 법률",
       "article": "공공체육시설 접근 및 이용 편의 일반 근거",
-      "url": "https://www.law.go.kr/법령/장애인ㆍ노인ㆍ임산부등의편의증진보장에관한법률"
+      "url": "https://www.law.go.kr/법령/장애인ㆍ노인ㆍ임산부등의편의증진보장에관한법률",
+      "law_id": "000186",
+      "law_serial_no": "267429",
+      "law_ref_type": "law",
+      "enforcement_date": "20251221",
+      "mapping_status": "fuzzy",
+      "mapping_confidence": "fuzzy"
     },
     {
       "name": "각 지자체 체육시설물 관리 및 운영 조례",
       "article": "사용료 감면 규정(통상 100분의 50)",
-      "url": "https://www.elis.go.kr/"
+      "url": "https://www.elis.go.kr/",
+      "law_ref_type": "ordin",
+      "mapping_status": "not_found",
+      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [

@@ -13,7 +13,10 @@
   },
   "eligibility": {
     "target": "「장애인복지법」에 따라 등록된 장애인 중, 해당 보조기기의 처방을 받은 자. 건강보험 가입자(직장·지역 모두 포함)와 그 피부양자, 또는 의료급여 수급권자, 차상위 본인부담경감 대상자(시각·청각·지체·뇌병변·심장 장애 중증).",
-    "severity_levels": ["심한 장애(중증)", "심하지 않은 장애(경증)"],
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
     "companion_allowed": null,
     "income_criteria": "건강보험 가입자는 소득 무관. 의료급여 100% 지원은 의료급여 수급권자 또는 차상위 본인부담경감 대상자에 한함.",
     "age_criteria": "품목별 상이. 예: 전동휠체어·전동스쿠터는 만 6세 이상 신체적·정신적·인지적 조작이 가능한 자로 보행 곤란이 인정되는 경우, 자세보조용구는 만 6세 이상 등록 장애인.",
@@ -23,34 +26,66 @@
     {
       "name": "국민건강보험법",
       "article": "제51조(장애인에 대한 특례)",
-      "url": "https://www.law.go.kr/법령/국민건강보험법"
+      "url": "https://www.law.go.kr/법령/국민건강보험법",
+      "law_id": "001971",
+      "law_serial_no": "276651",
+      "law_ref_type": "law",
+      "enforcement_date": "20260102",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "국민건강보험법 시행규칙",
       "article": "제26조(장애인 보조기기에 대한 보험급여기준 등) 및 별표7",
-      "url": "https://www.law.go.kr/법령/국민건강보험법시행규칙"
+      "url": "https://www.law.go.kr/법령/국민건강보험법시행규칙",
+      "law_id": "006696",
+      "law_serial_no": "285129",
+      "law_ref_type": "law",
+      "enforcement_date": "20260501",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인보조기기 보험급여 기준 등 세부사항",
       "article": "보건복지부 고시 제2023-210호 등(별표1 품목별 지급기준, 별표5 기준액·내구연한)",
-      "url": "https://www.law.go.kr/행정규칙/장애인보조기기%20보험급여%20기준%20등%20세부사항"
+      "url": "https://www.law.go.kr/행정규칙/장애인보조기기%20보험급여%20기준%20등%20세부사항",
+      "law_id": "28462",
+      "law_serial_no": "2100000276312",
+      "law_ref_type": "admrul",
+      "enforcement_date": "20260325",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "의료급여법",
       "article": "제13조 및 동법 시행규칙 제25조(장애인보조기기 급여)",
-      "url": "https://www.law.go.kr/법령/의료급여법"
+      "url": "https://www.law.go.kr/법령/의료급여법",
+      "law_id": "001780",
+      "law_serial_no": "252715",
+      "law_ref_type": "law",
+      "enforcement_date": "20250719",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법",
       "article": "제65조(장애인보조기구의 교부 등) 및 제66조",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     }
   ],
   "operating_agencies": [
     {
       "region": "전국 (건강보험)",
       "agency": "국민건강보험공단",
-      "lines_or_routes": ["보장구 지급 신청·심사·환급"],
+      "lines_or_routes": [
+        "보장구 지급 신청·심사·환급"
+      ],
       "apply_channel": "전국 국민건강보험공단 지사 방문, The건강보험 앱 또는 nhis.or.kr 온라인 청구",
       "card_or_proof_type": "장애인등록증, 건강보험증, 보장구 처방전, 검수확인서, 영수증",
       "url": "https://www.nhis.or.kr/static/html/wbma/c/wbmac0206_2.html",
@@ -59,7 +94,9 @@
     {
       "region": "전국 (의료급여)",
       "agency": "시·군·구청 장애인복지(의료급여) 담당부서",
-      "lines_or_routes": ["의료급여 수급권자 보조기기 지급"],
+      "lines_or_routes": [
+        "의료급여 수급권자 보조기기 지급"
+      ],
       "apply_channel": "주소지 시·군·구청 또는 읍·면·동 주민센터 방문 신청",
       "card_or_proof_type": "장애인등록증, 의료급여증, 보장구 처방전, 검수확인서, 영수증",
       "url": "https://www.mohw.go.kr/menu.es?mid=a10708030900",
@@ -68,7 +105,9 @@
     {
       "region": "전국 (정책·고시)",
       "agency": "보건복지부",
-      "lines_or_routes": ["품목·기준액·내구연한 고시 운영"],
+      "lines_or_routes": [
+        "품목·기준액·내구연한 고시 운영"
+      ],
       "apply_channel": "고시 개정 공고 및 사업안내",
       "card_or_proof_type": "",
       "url": "https://www.mohw.go.kr/menu.es?mid=a10708030900",
@@ -77,7 +116,9 @@
     {
       "region": "전국 (정보·상담)",
       "agency": "보건복지부 국립재활원 중앙보조기기센터",
-      "lines_or_routes": ["보조기기 정보·상담·교부사업 안내(국가지원)"],
+      "lines_or_routes": [
+        "보조기기 정보·상담·교부사업 안내(국가지원)"
+      ],
       "apply_channel": "전화상담(1670-5529), 누리집 검색",
       "card_or_proof_type": "",
       "url": "https://www.knat.go.kr/knw/home/knat_DB/assist_detail.php?assist_biz_idx=2",
@@ -92,13 +133,41 @@
   },
   "application": {
     "where": [
-      { "channel": "국민건강보험공단 전국 지사(건강보험)", "method": "방문", "url": "https://www.nhis.or.kr/" },
-      { "channel": "The건강보험 모바일 앱(건강보험 보장구 급여비 지급청구)", "method": "모바일 앱", "url": "https://www.nhis.or.kr/" },
-      { "channel": "국민건강보험공단 홈페이지(보장구 급여비 지급청구)", "method": "온라인", "url": "https://www.nhis.or.kr/nhis/minwon/retrieveCsmrAdvssArtfBnft.do" },
-      { "channel": "주소지 시·군·구청(의료급여 담당부서)", "method": "방문", "url": "https://www.mohw.go.kr/" },
-      { "channel": "주소지 읍·면·동 주민센터(의료급여 1차 접수)", "method": "방문", "url": "https://www.gov.kr/" },
-      { "channel": "보건복지상담센터(129) — 일반 상담", "method": "전화", "url": "https://www.129.go.kr/" },
-      { "channel": "국립재활원 중앙보조기기센터(품목·업소 정보)", "method": "전화", "url": "https://www.knat.go.kr/" }
+      {
+        "channel": "국민건강보험공단 전국 지사(건강보험)",
+        "method": "방문",
+        "url": "https://www.nhis.or.kr/"
+      },
+      {
+        "channel": "The건강보험 모바일 앱(건강보험 보장구 급여비 지급청구)",
+        "method": "모바일 앱",
+        "url": "https://www.nhis.or.kr/"
+      },
+      {
+        "channel": "국민건강보험공단 홈페이지(보장구 급여비 지급청구)",
+        "method": "온라인",
+        "url": "https://www.nhis.or.kr/nhis/minwon/retrieveCsmrAdvssArtfBnft.do"
+      },
+      {
+        "channel": "주소지 시·군·구청(의료급여 담당부서)",
+        "method": "방문",
+        "url": "https://www.mohw.go.kr/"
+      },
+      {
+        "channel": "주소지 읍·면·동 주민센터(의료급여 1차 접수)",
+        "method": "방문",
+        "url": "https://www.gov.kr/"
+      },
+      {
+        "channel": "보건복지상담센터(129) — 일반 상담",
+        "method": "전화",
+        "url": "https://www.129.go.kr/"
+      },
+      {
+        "channel": "국립재활원 중앙보조기기센터(품목·업소 정보)",
+        "method": "전화",
+        "url": "https://www.knat.go.kr/"
+      }
     ],
     "required_documents": [
       "보장구 처방전(전문의 또는 해당 자격 보유 의사 발급)",
@@ -184,11 +253,31 @@
     }
   ],
   "contact": [
-    { "name": "국민건강보험공단 고객센터", "phone": "1577-1000", "url": "https://www.nhis.or.kr/" },
-    { "name": "보건복지부 보건복지상담센터", "phone": "129", "url": "https://www.129.go.kr/" },
-    { "name": "국립재활원 중앙보조기기센터", "phone": "1670-5529", "url": "https://www.knat.go.kr/" },
-    { "name": "건강보험심사평가원 고객센터", "phone": "1644-2000", "url": "https://www.hira.or.kr/" },
-    { "name": "복지로", "phone": "1566-0313", "url": "https://www.bokjiro.go.kr/" }
+    {
+      "name": "국민건강보험공단 고객센터",
+      "phone": "1577-1000",
+      "url": "https://www.nhis.or.kr/"
+    },
+    {
+      "name": "보건복지부 보건복지상담센터",
+      "phone": "129",
+      "url": "https://www.129.go.kr/"
+    },
+    {
+      "name": "국립재활원 중앙보조기기센터",
+      "phone": "1670-5529",
+      "url": "https://www.knat.go.kr/"
+    },
+    {
+      "name": "건강보험심사평가원 고객센터",
+      "phone": "1644-2000",
+      "url": "https://www.hira.or.kr/"
+    },
+    {
+      "name": "복지로",
+      "phone": "1566-0313",
+      "url": "https://www.bokjiro.go.kr/"
+    }
   ],
   "sources": [
     {
@@ -434,7 +523,9 @@
       "priority": "supplementary"
     }
   ],
-  "related_items": ["B017"],
+  "related_items": [
+    "B017"
+  ],
   "last_verified": "2026-05-19",
   "version": "1.0.0"
 }

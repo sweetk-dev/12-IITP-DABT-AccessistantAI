@@ -30,32 +30,59 @@
     {
       "name": "장애인복지법",
       "article": "제30조(경제적 부담의 경감)",
-      "url": "https://www.law.go.kr/법령/장애인복지법"
+      "url": "https://www.law.go.kr/법령/장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "장애인복지법 시행령",
       "article": "제17조 및 별표2(공공시설 등의 이용요금 감면 기준)",
-      "url": "https://www.law.go.kr/법령/장애인복지법시행령"
+      "url": "https://www.law.go.kr/법령/장애인복지법시행령",
+      "law_id": "004628",
+      "law_serial_no": "280293",
+      "law_ref_type": "law",
+      "enforcement_date": "20260701",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
     },
     {
       "name": "서울특별시 장애인 등 교통약자 이동편의 증진에 관한 조례",
       "article": null,
-      "url": "https://www.law.go.kr/ordinSc.do?section=lawNm&query=%EC%84%9C%EC%9A%B8%ED%8A%B9%EB%B3%84%EC%8B%9C+%EC%9E%A5%EC%95%A0%EC%9D%B8+%EB%93%B1+%EA%B5%90%ED%86%B5%EC%95%BD%EC%9E%90+%EC%9D%B4%EB%8F%99%ED%8E%B8%EC%9D%98"
+      "url": "https://www.law.go.kr/ordinSc.do?section=lawNm&query=%EC%84%9C%EC%9A%B8%ED%8A%B9%EB%B3%84%EC%8B%9C+%EC%9E%A5%EC%95%A0%EC%9D%B8+%EB%93%B1+%EA%B5%90%ED%86%B5%EC%95%BD%EC%9E%90+%EC%9D%B4%EB%8F%99%ED%8E%B8%EC%9D%98",
+      "law_ref_type": "ordin",
+      "mapping_status": "not_found",
+      "mapping_confidence": ""
     },
     {
       "name": "충청남도 교통약자 이동편의 증진에 관한 조례 (버스비 지원 근거)",
       "article": null,
-      "url": "https://transport.chungnam.go.kr/guide/chargeBus.do"
+      "url": "https://transport.chungnam.go.kr/guide/chargeBus.do",
+      "law_id": "2147729",
+      "law_serial_no": "2036547",
+      "law_ref_type": "ordin",
+      "enforcement_date": "20250512",
+      "mapping_status": "fuzzy",
+      "mapping_confidence": "fuzzy"
     },
     {
       "name": "제주특별자치도 교통복지카드 운영 조례",
       "article": null,
-      "url": "https://www.jeju.go.kr/traffic/bus2/card.htm"
+      "url": "https://www.jeju.go.kr/traffic/bus2/card.htm",
+      "law_ref_type": "ordin",
+      "mapping_status": "not_found",
+      "mapping_confidence": ""
     },
     {
       "name": "각 광역지자체 버스 및 여객자동차 운수사업 관련 조례 (지자체별 상이)",
       "article": null,
-      "url": null
+      "url": null,
+      "law_ref_type": "ordin",
+      "mapping_status": "not_found",
+      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [
