@@ -184,10 +184,14 @@ async def find_bf_tour_spots(
     disabilities: str = Query("지체장애", description="쉼표 구분. 예: '지체장애,시각장애'"),
     sigungu: str = Query("안양"),
     topk: int = Query(5, ge=1, le=50),
+    origin_lat: float = Query(None, description="출발지 위도 — 주면 거리 오름차순"),
+    origin_lng: float = Query(None, description="출발지 경도"),
+    offset: int = Query(0, ge=0, description="거리순 목록에서 건너뛸 개수(무한스크롤)"),
 ):
     types_ = [d.strip() for d in disabilities.split(",") if d.strip()]
     return await tool_handlers.tool_find_bf_tour_spots(
-        disabilities=types_, sigungu=sigungu, topk=topk
+        disabilities=types_, sigungu=sigungu, topk=topk,
+        origin_lat=origin_lat, origin_lng=origin_lng, offset=offset,
     )
 
 
@@ -268,14 +272,16 @@ async def synthesize_tts(
 @app.get("/api/v1/tools/plan_accessible_route", tags=["tools"],
          summary="[7] 현위치 → 목적지 무장애 경로")
 async def plan_accessible_route(
-    destination_poi_id: str = Query(...),
     origin_lat: float = Query(...),
     origin_lng: float = Query(...),
+    destination_poi_id: str = Query(""),
+    destination_place: str = Query(""),
     destination_type: str = Query("tour"),
     profile: str = Query("wheelchair_manual"),
 ):
     return await tool_handlers.tool_plan_accessible_route(
         destination_poi_id=destination_poi_id,
+        destination_place=destination_place,
         destination_type=destination_type,
         profile=profile,
         origin_lat=origin_lat,

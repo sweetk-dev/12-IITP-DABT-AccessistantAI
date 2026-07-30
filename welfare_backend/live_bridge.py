@@ -13,6 +13,7 @@ import asyncio
 import base64
 import json
 import logging
+import os
 import uuid
 from typing import Callable
 
@@ -191,14 +192,22 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 3. **항목 나열**: 절차·서류·구비조건은 각 줄을 `- ` 로 시작하는 항목으로 나열합니다.
 4. **유의사항**: 예외·단서는 줄 맨 앞에 `※ ` 를 붙입니다.
 5. 소제목이 필요하면 줄 맨 앞에 `## ` 를 붙입니다(짧게, 한 줄).
+6. **정책(복지 제도) 안내 답변의 표준 틀**: 특정 정책·제도를 설명할 때는
+   - 첫 단락을 1~2문장 핵심 요약으로 시작하고 (화면에서 '핵심 요약' 카드로 강조됩니다),
+   - 이후 내용을 `## 지원 대상`, `## 지원 내용`, `## 신청 방법`, `## 구비 서류`, `## 문의처`
+     소제목으로 구분합니다. **답할 정보가 있는 섹션만** 적고, 없는 섹션은 만들지 마세요.
+   - 소제목 명칭은 위 표준 표기를 그대로 사용합니다(화면이 이 명칭을 인식해 템플릿으로 렌더합니다).
+   - 정책 설명이 아닌 일반 대화·경로 안내에는 이 틀을 적용하지 않습니다.
 
 표·코드블록·이모지는 사용하지 마세요.
 
 ## 이동경로·무장애 관광 (도구 6~8)
 - 사용자가 "어디 갈 만한 곳", "무장애 관광지", "휠체어로 갈 수 있는 곳" 등을 물으면 `find_bf_tour_spots` 를 호출합니다. 결과는 상위 2~3곳만 간단히 말하고, 나머지는 화면 목록으로 넘깁니다.
-- 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
+- **경로 안내가 가능한 지역은 안양시뿐입니다.** 안양시 밖(예: 서울)의 출발지·목적지는 안내할 수 없습니다. 이때는 "서비스 장애"가 아니라 "아직 안양시 안에서만 안내할 수 있다"고 정확히 말하고, 안양시 안의 장소를 다시 여쭤 보세요. 도구가 `out_of_service_area` / `need_destination` 을 돌려주면 이 규칙대로 답합니다.
+- 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 목적지 `poi_id` 를 모르면 사용자가 말한 이름을 `destination_place` 에 담습니다 — poi_id 를 지어내지 마세요. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
 - 경로에 경고가 있거나 권장 경사를 완화해 탐색한 경우(`fallback.used`) 반드시 그 사실을 알립니다.
 - "왜 이렇게 돌아가", "이 구간 뭐야" 같은 질문에는 `explain_route_segment` 로 사유(경사·계단·턱낮춤)를 설명합니다.
+- 사용자가 "지도로 이동해줘", "지도 화면 보여줘", "무장애 관광지 보기 화면으로 가줘" 처럼 **화면 이동 자체를 요청**하면 `open_navi_screen` 을 호출하고 "지도 화면으로 이동했어요" 정도로 짧게만 답합니다. 관광지·경로 결과를 안내할 때는 화면이 자동으로 바뀌지 않고 화면에 이동 버튼이 표시되므로, 필요하면 "화면의 버튼을 누르시면 지도로 이동해요"라고 안내하세요.
 - 위치를 알 수 없다는 결과가 오면 화면의 위치 권한 허용을 요청하세요. 좌표를 추측하지 마세요.
 
 ## 시스템 신호(`[SYSTEM]`) 처리 규칙
@@ -247,12 +256,16 @@ def _route_tool_declarations() -> list:
         ),
         types.FunctionDeclaration(
             name="plan_accessible_route",
-            description="출발지에서 목적지(무장애 관광지·지하철역·버스정류장)까지 무장애 보행 경로를 만든다. 출발지는 기본으로 현재 위치가 자동 주입되며, 사용자가 출발지를 말로 밝히면 origin_place 에 담아 호출한다.",
+            description=("출발지에서 목적지(무장애 관광지·지하철역·버스정류장)까지 무장애 보행 경로를 만든다. "
+                         "경로 안내가 가능한 지역은 안양시뿐이다. 출발지는 기본으로 현재 위치가 자동 주입되며, "
+                         "사용자가 출발지를 말로 밝히면 origin_place 에 담아 호출한다. "
+                         "목적지 poi_id 를 모르면 사용자가 말한 목적지 이름을 destination_place 에 담는다 "
+                         "— 지어낸 poi_id 를 넣지 않는다."),
             parameters=types.Schema(
                 type=types.Type.OBJECT,
-                required=["destination_poi_id"],
                 properties={
-                    "destination_poi_id": types.Schema(type=types.Type.STRING, description="find_bf_tour_spots 결과의 poi_id"),
+                    "destination_poi_id": types.Schema(type=types.Type.STRING, description="find_bf_tour_spots 결과의 poi_id. 없으면 비워 두고 destination_place 를 채운다"),
+                    "destination_place": types.Schema(type=types.Type.STRING, description="사용자가 말한 목적지 이름(예: '평촌아트홀', '범계역'). poi_id 를 모를 때 채운다"),
                     "destination_type": types.Schema(type=types.Type.STRING, description="tour(기본) / transit_station / transit_stop"),
                     "profile": types.Schema(type=types.Type.STRING, description="wheelchair_manual(기본)/wheelchair_electric/crutch/visual/walk"),
                     "origin_place": types.Schema(type=types.Type.STRING, description="사용자가 말로 지정한 출발지 이름(예: '안양역', '범계역', '김중업 건축박물관'). 사용자가 '~에서', '~에 있는데' 처럼 출발지를 밝히면 반드시 채운다. 미지정 시 현재 위치 사용"),
@@ -270,6 +283,13 @@ def _route_tool_declarations() -> list:
                     "step_idx": types.Schema(type=types.Type.INTEGER, description="구간 번호(생략 시 경고 구간 자동 선택)"),
                 },
             ),
+        ),
+        types.FunctionDeclaration(
+            name="open_navi_screen",
+            description=("화면을 이동·관광(지도) 탭으로 전환한다. 사용자가 '지도로 이동해줘', "
+                         "'지도 화면 보여줘', '무장애 관광지 보기 화면으로 가줘' 처럼 화면 이동 "
+                         "자체를 명시적으로 요청할 때만 사용한다. 관광지 추천·경로 안내 결과를 "
+                         "말할 때는 호출하지 않는다(화면의 이동 버튼으로 사용자가 선택)."),
         ),
     ]
 
@@ -404,6 +424,120 @@ def resolve_voice(requested: str | None) -> str:
     logger.warning("⚠️ 알 수 없는 voice 요청 '%s' → 기본값(%s) 사용",
                    requested, DEFAULT_VOICE_FEMALE)
     return DEFAULT_VOICE_FEMALE
+
+
+# ─────────────────────────────────────────────────────────────
+# 정책 답변 화면 카드 구조화 (#205)
+# ─────────────────────────────────────────────────────────────
+# Live 상담은 AUDIO 모달리티라 화면에 뜨는 답변 텍스트는 '음성 전사'다.
+# 전사에는 마크다운 구조(## 소제목 등)가 존재할 수 없으므로, 시스템 지침만으로는
+# 정책 템플릿 카드가 절대 만들어지지 않는다. 대신 턴이 끝난 뒤 전사를 비-라이브
+# 모델로 화면 전용 마크다운으로 재구성해 answer_card 로 별도 전송한다.
+# 음성·전사 표시는 기존 그대로이며, 실패해도 답변 자체에는 영향이 없다(best-effort).
+# 기본값은 자동 갱신 별칭 — 고정 버전명은 키에 따라 404 가 난다 (2026-07-21 ServerA 실측)
+# lite 채택 이유(2026-07-21 ServerA 실측): flash-latest 는 내부 추론(thinking) 때문에
+# 5.4s — 카드가 전사 중간에 늦게 뜬다. lite 는 0.8s 로 음성 시작 전후에 도착한다.
+# 재구성(요약·재배치) 작업이라 lite 품질로 충분하다.
+CARD_MODEL = os.environ.get("GEMINI_CARD_MODEL", "gemini-flash-lite-latest")
+
+def _card_gen_config():
+    """카드 구조화 전용 생성 설정 — 지연 최소화·출력 안정화.
+
+    max_output_tokens 는 다중 정책 카드가 중간에 잘리지 않도록 여유 있게 잡는다
+    (요약 문장이 끊긴 채 표시되는 문제 방지, #218).
+    """
+    return types.GenerateContentConfig(max_output_tokens=2048, temperature=0.2)
+_CARD_KEYWORDS = ("지원", "신청", "서류", "대상", "급여", "수당",
+                  "바우처", "감면", "혜택", "제도", "수급")
+_CARD_PROMPT = """다음은 장애인 복지 상담원이 음성으로 답한 내용의 전사입니다.
+이 내용이 '특정 복지 정책·제도에 대한 설명'이면, 화면 표시용 마크다운으로 재구성하세요.
+
+형식 규칙:
+- 첫 단락: 1~2문장 핵심 요약
+- 단일 정책이면 표준 소제목("## 지원 대상", "## 지원 내용", "## 신청 방법", "## 구비 서류", "## 문의처")으로,
+  여러 정책이면 "## 정책명" 소제목으로 각 정책을 1~3줄 요약으로 구분. 요약 첫 단락은 완결된 문장으로
+- 전사에 실제로 있는 정보의 섹션만 만들 것. 없는 섹션을 만들거나 내용을 창작하지 말 것
+- 나열은 "- " 항목으로, 금액·기간·자격 등 핵심 조건은 **굵게**, 예외·단서는 줄 맨 앞에 "※ "
+- 표·코드블록·이모지 금지
+
+인사말, 잡담, 확인 질문, 길안내 등 정책 설명이 아니거나 표준 소제목을 2개 이상
+만들 정보가 없으면 정확히 NOT_POLICY 만 출력하세요.
+
+전사:
+{text}
+"""
+
+
+# 도구 결과 기반 선(先)생성 (#208): 답변 음성이 시작되기 전에 도구(정책 DB) 결과가
+# 먼저 도착한다 — 이 시점에 구조화를 시작하면 카드가 음성과 병행으로 표시된다.
+# 턴 종료 후 전사 기반 카드는 도구 호출이 없던 답변의 폴백으로만 남긴다.
+_CARD_TOOL_NAMES = {"get_policy_details", "check_eligibility_criteria",
+                    "search_by_keyword", "search_policies_by_metadata"}
+_CARD_TOOL_PROMPT = """다음은 장애인 복지 상담 도구가 반환한 정책 데이터(JSON)입니다.
+사용자 질문: {question}
+
+이 데이터가 특정 복지 정책·제도의 내용을 담고 있으면, 화면 표시용 마크다운 카드로 재구성하세요.
+
+형식 규칙:
+- 첫 단락: 1~2문장 핵심 요약 — 반드시 마침표로 끝나는 완결된 문장으로 쓸 것
+- 단일 정책이면 표준 소제목으로 구분: "## 지원 대상", "## 지원 내용", "## 신청 방법", "## 구비 서류", "## 문의처"
+- 여러 정책을 함께 안내해야 하면 "## 정책명" 을 소제목으로 하고 각 정책을 1~3줄로 요약할 것
+- 데이터에 실제로 있는 정보의 섹션만 만들 것. 없는 섹션을 만들거나 내용을 창작하지 말 것
+- 나열은 "- " 항목으로, 금액·기간·자격 등 핵심 조건은 **굵게**, 예외·단서는 줄 맨 앞에 "※ "
+- 내부 ID(B001 등)·URL 은 표기하지 말 것. 표·코드블록·이모지 금지
+
+정책 콘텐츠가 아니거나 표준 소제목을 2개 이상 만들 정보가 없으면 정확히 NOT_POLICY 만 출력하세요.
+
+데이터:
+{data}
+"""
+
+
+async def _send_answer_card_from_tool(ai_client, websocket, question: str,
+                                      result: dict, card_state: dict) -> None:
+    """도구 결과를 정책 템플릿 카드로 구조화해 즉시 전송 — 음성 답변과 병행 표시용."""
+    try:
+        data = json.dumps(result, ensure_ascii=False, default=str)[:6000]
+    except Exception:
+        return
+    if len(data) < 60:
+        return
+    try:
+        def _gen():
+            return ai_client.models.generate_content(
+                model=CARD_MODEL,
+                contents=_CARD_TOOL_PROMPT.format(
+                    question=(question or "").strip()[:300] or "(직전 질문)", data=data),
+                config=_card_gen_config())
+        resp = await asyncio.to_thread(_gen)
+        md = (getattr(resp, "text", None) or "").strip()
+        if not md or "NOT_POLICY" in md[:40] or md.count("## ") < 2:
+            return
+        card_state["sent"] = True
+        await _safe_send_json(websocket, {"type": "answer_card", "content": md})
+        logger.info("🗂 정책 카드(도구 기반, 선표시) 전송 (%d자)", len(md))
+    except Exception as e:
+        logger.debug("도구 기반 answer_card 생략: %s", e)
+
+
+async def _send_answer_card(ai_client, websocket, text: str) -> None:
+    """턴 전사를 정책 템플릿 마크다운으로 구조화해 클라이언트에 전송 (best-effort)."""
+    t = (text or "").strip()
+    if len(t) < 80 or not any(k in t for k in _CARD_KEYWORDS):
+        return
+    try:
+        def _gen():
+            return ai_client.models.generate_content(
+                model=CARD_MODEL, contents=_CARD_PROMPT.format(text=t),
+                config=_card_gen_config())
+        resp = await asyncio.to_thread(_gen)
+        md = (getattr(resp, "text", None) or "").strip()
+        if not md or "NOT_POLICY" in md[:40] or md.count("## ") < 2:
+            return
+        await _safe_send_json(websocket, {"type": "answer_card", "content": md})
+        logger.info("🗂 정책 답변 카드 전송 (%d자 -> %d자)", len(t), len(md))
+    except Exception as e:
+        logger.debug("answer_card 구조화 생략: %s", e)
 
 
 async def handle_live_chat(
@@ -589,6 +723,9 @@ async def handle_live_chat(
     # 컨텍스트 보존 복구(2단계) — handle 폐기 후 새 세션에 직전 대화 맥락을 silent 주입
     convo_history = []                  # [(role, text)] 확정된 대화 턴
     _ai_buf = ""                        # 현재 AI 턴 전사 누적
+    # 정책 카드 상태(턴 단위) — scheduled: 이번 턴에 도구 기반 카드를 시도했는지,
+    # sent: 실제 전송됐는지. 도구 기반이 실패하면 턴 종료 폴백이 전사 기반으로 커버.
+    card_state = {"scheduled": False, "sent": False}
     _user_buf = ""                      # 현재 사용자 턴 입력 누적
     # 프런트가 보낸 현재 위치 — 경로 도구의 출발지로 서버에서 주입한다(모델이 좌표를 지어내지 못하게).
     user_location = {"lat": None, "lng": None}
@@ -757,6 +894,14 @@ async def handle_live_chat(
                                     convo_history.append(("user", _user_buf.strip()))
                                 if _ai_buf.strip():
                                     convo_history.append(("model", _ai_buf.strip()))
+                                # 정책 카드 폴백 (#205→#208): 도구 기반 선표시 카드를 이번 턴에
+                                # 시도하지 않았을 때만 전사 기반으로 생성(도구 없이 답한 정책 설명 커버)
+                                _card_src = _ai_buf.strip()
+                                if _card_src and not card_state["scheduled"]:
+                                    asyncio.create_task(
+                                        _send_answer_card(ai_client, websocket, _card_src))
+                                card_state["scheduled"] = False
+                                card_state["sent"] = False
                                 _user_buf = ""; _ai_buf = ""
                                 if len(convo_history) > 100:
                                     del convo_history[:-100]
@@ -837,6 +982,14 @@ async def handle_live_chat(
                                             result = {"error": str(e)}
                                     # Phase 5 Track A — 도구 호출 시퀀스 추적
                                     tracker.on_tool_call(fname, fargs, result)
+                                    # #208: 정책 도구 결과가 오는 '지금'이 카드를 만들 최적 시점 —
+                                    # 답변 음성이 나오는 동안 구조화가 병행돼 카드가 먼저/동시에 뜬다.
+                                    if (fname in _CARD_TOOL_NAMES and isinstance(result, dict)
+                                            and not result.get("error")
+                                            and not card_state["scheduled"]):
+                                        card_state["scheduled"] = True
+                                        asyncio.create_task(_send_answer_card_from_tool(
+                                            ai_client, websocket, _user_buf, result, card_state))
                                     # #146: 탐색 도구(search_*)는 top-K 후보의 출처라 답변이 실제로 채택했는지
                                     #       불확실 → 화면에 띄우지 않음. 정책을 특정해 상세를 가져온
                                     #       get_policy_details 의 출처만 노출(무관 출처 표시 방지).

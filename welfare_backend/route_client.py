@@ -25,6 +25,9 @@ TIMEOUT_SEC = float(os.environ.get("ROUTE_API_TIMEOUT", "6"))
 FEATURE_ROUTE = os.environ.get("FEATURE_ROUTE", "0") == "1"
 FEATURE_TOUR = os.environ.get("FEATURE_TOUR", "0") == "1"
 
+# 경로 안내가 가능한 지역. 안내문에서 "왜 안 되는지" 를 정확히 말하기 위해 필요하다.
+SERVICE_AREA = os.environ.get("ROUTE_SERVICE_AREA", "안양시")
+
 _FAIL_THRESHOLD = 3
 _OPEN_SEC = 30.0
 _fail_count = 0
@@ -58,24 +61,78 @@ def _record(success: bool):
         logger.warning("경로 API 연속 실패 %d회 — %.0f초간 호출 차단", _fail_count, _OPEN_SEC)
 
 
+# "일시적 장애" 는 서비스가 실제로 응답하지 못할 때(5xx·타임아웃·서킷 오픈)만 쓴다.
+# 요청 자체가 처리 불가한 4xx 에까지 이 문구가 붙으면, 사용자는 "잠시 후 다시 하면 되겠지"
+# 라고 오해한 채 영원히 되지 않는 요청을 반복하게 된다.
+_AI_TRANSIENT = (
+    "경로 안내 서비스에 지금 연결할 수 없다고 사용자에게 짧게 알리고, 잠시 후 다시 시도해 "
+    "달라고 안내하세요. 정책 상담은 계속 이용 가능하다고 덧붙이세요. 경로를 추측해서 만들어내지 마세요."
+)
+_AI_NEUTRAL = (
+    "경로를 만들지 못한 이유를 사용자에게 그대로 짧게 전달하세요. "
+    "일시적인 오류라고 말하지 말고, 경로를 추측해서 만들어내지 마세요."
+)
+
+
+def _ai_for_4xx(detail: str) -> str:
+    """4xx 사유별 안내문. 4xx 는 서비스 장애가 아니라 요청 자체의 문제다."""
+    d = str(detail or "")
+
+    # 목적지를 찾지 못함 — 서비스 범위 밖이거나 아직 등록되지 않은 장소
+    if ("목적지 POI" in d) or ("poi_id" in d) or ("관광지를 찾을 수 없" in d) or ("출입구 정보" in d):
+        return (
+            "요청하신 목적지는 경로 안내가 가능한 지역(%s) 밖이거나 아직 등록되지 않은 장소라 "
+            "길을 안내할 수 없다고 정확히 안내하세요. 현재 경로 안내는 %s 안에서만 가능하다는 점을 "
+            "분명히 밝히고, %s 안의 장소를 말씀해 주시거나 이동·관광 화면에서 목적지를 골라 달라고 "
+            "요청하세요. 서비스 장애나 일시적인 오류라고 말하지 말고, 경로를 추측하지 마세요."
+            % (SERVICE_AREA, SERVICE_AREA, SERVICE_AREA)
+        )
+
+    # 출발지가 보행망에서 너무 멀다 — 대개 현재 위치가 서비스 지역 밖
+    if "떨어져" in d:
+        return (
+            "출발지(또는 현재 위치)가 경로 안내가 가능한 지역(%s)의 보행 데이터 범위를 벗어나 "
+            "경로를 만들 수 없다고 정확히 안내하세요. %s 안의 출발지 이름(예: 안양역)을 말씀해 "
+            "주시거나 이동·관광 화면의 지도를 눌러 출발지를 지정하면 안내할 수 있다고 덧붙이세요. "
+            "일시적인 오류라고 말하지 말고, 경로를 추측하지 마세요."
+            % (SERVICE_AREA, SERVICE_AREA)
+        )
+
+    # 안내했던 경로가 만료됨 — 다시 요청하면 된다
+    if "만료" in d:
+        return (
+            "이전에 안내한 경로 정보가 만료되었다고 알리고, 목적지를 다시 말씀해 주시면 "
+            "새로 안내해 드리겠다고 요청하세요. 일시적인 오류라고 말하지 말고, 경로를 추측하지 마세요."
+        )
+
+    # 통행 가능한 경로 자체가 없음 — 접근성 제약 때문일 수 있다
+    if ("경로를 찾지 못" in d) or ("같은 지점" in d) or ("통행 가능한" in d):
+        return (
+            "출발지에서 목적지까지 이동 수단(휠체어 등)으로 통행 가능한 보행 경로를 찾지 못했다고 "
+            "안내하고, 출발지나 목적지를 조금 바꿔 다시 시도해 보시라고 제안하세요. "
+            "일시적인 오류라고 말하지 말고, 경로를 추측하지 마세요."
+        )
+
+    return _AI_NEUTRAL
+
+
 def _err(message: str, detail: str = "", ai_instruction: str = None) -> dict:
     return {
         "status": "error",
         "message": message,
         "detail": detail,
-        "ai_instruction": ai_instruction or (
-            "경로 안내 서비스에 일시적으로 연결할 수 없다고 사용자에게 짧게 알리고, "
-            "정책 상담은 계속 이용 가능하다고 안내하세요. 경로를 추측해서 만들어내지 마세요."
-        ),
+        # 기본값은 중립 문구다. "일시적" 은 진짜 연결 실패 지점에서만 명시적으로 붙인다.
+        "ai_instruction": ai_instruction or _AI_NEUTRAL,
     }
 
 
 async def _call(method: str, path: str, *, params: Optional[dict] = None,
                 json: Optional[dict] = None) -> dict:
     if not BASE_URL:
-        return _err("경로 서비스가 설정되지 않았습니다")
+        return _err("경로 서비스가 설정되지 않았습니다", ai_instruction=_AI_TRANSIENT)
     if _circuit_open():
-        return _err("경로 서비스가 일시적으로 응답하지 않습니다")
+        return _err("경로 서비스가 일시적으로 응답하지 않습니다",
+                    ai_instruction=_AI_TRANSIENT)
 
     url = "%s%s" % (BASE_URL, path)
     last_detail = ""
@@ -96,16 +153,10 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
                     body = {}
                 detail_msg = body.get("detail") or "경로를 만들 수 없습니다"
                 # 4xx 는 "일시적 장애"가 아니라 요청 자체의 문제(서비스 지역 밖 등) —
-                # 오해를 낳지 않도록 사유 기반 안내문을 함께 전달한다.
-                custom_ai = None
-                if ("떨어져" in str(detail_msg)) or ("네트워크" in str(detail_msg)):
-                    custom_ai = (
-                        "출발지(또는 현재 위치)가 서비스 지역인 안양시 보행 데이터 범위를 벗어나 "
-                        "경로를 만들 수 없다고 정확히 안내하세요. 안양시 내 출발지 이름(예: 안양역)을 "
-                        "말씀해 주시거나 이동·관광 화면의 지도를 눌러 출발지를 지정하면 안내할 수 있다고 "
-                        "덧붙이세요. 일시적인 오류라고 말하지 말고, 경로를 추측하지 마세요."
-                    )
-                return _err(detail_msg, "HTTP %d" % r.status_code, custom_ai)
+                # 오해를 낳지 않도록 사유별 안내문을 함께 전달한다.
+                logger.info("경로 API 4xx %s %s — %s", method, path, detail_msg)
+                return _err(detail_msg, "HTTP %d" % r.status_code,
+                            _ai_for_4xx(detail_msg))
             return r.json()
         except (httpx.TimeoutException, httpx.TransportError) as e:
             last_detail = "%s: %s" % (type(e).__name__, e)
@@ -113,7 +164,7 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
 
     _record(False)
     logger.warning("경로 API 호출 실패 %s %s — %s", method, path, last_detail)
-    return _err("경로 서비스에 연결하지 못했습니다", last_detail)
+    return _err("경로 서비스에 연결하지 못했습니다", last_detail, _AI_TRANSIENT)
 
 
 # ── 경로 ──
@@ -158,12 +209,16 @@ async def tour_detail(poi_id: str) -> dict:
 
 
 async def tour_recommend(disabilities: list, sigungu: str = "안양",
-                         match_mode: str = "all", topk: int = 10) -> dict:
-    return await _call(
-        "POST", "/tour/recommend",
-        json={"disabilities": disabilities, "sigungu": sigungu,
-              "match_mode": match_mode, "topk": topk},
-    )
+                         match_mode: str = "all", topk: int = 10,
+                         origin_lat: float = None, origin_lng: float = None,
+                         offset: int = 0) -> dict:
+    # origin 을 주면 02 route-api(v1.9.0+)가 거리 오름차순 + offset 페이징으로 응답한다.
+    body = {"disabilities": disabilities, "sigungu": sigungu,
+            "match_mode": match_mode, "topk": topk, "offset": offset}
+    if origin_lat is not None and origin_lng is not None:
+        body["origin_lat"] = origin_lat
+        body["origin_lng"] = origin_lng
+    return await _call("POST", "/tour/recommend", json=body)
 
 
 # ── 대중교통 접근점 ──

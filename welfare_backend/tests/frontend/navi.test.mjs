@@ -74,7 +74,9 @@ function fakeKakao() {
     maps: {
       load: (cb) => cb(),
       Map: class {
-        constructor() { this.__isMap = true; }
+        constructor() { this.__isMap = true; this.__level = 5; }
+        getLevel() { return this.__level; }
+        setLevel(lv) { this.__level = lv; zoomHandlers.forEach((cb) => cb()); }
         setBounds(b) { mapCalls.push(["setBounds", b]); }
         setCenter(c) { mapCalls.push(["setCenter", c]); }
         relayout() { mapCalls.push(["relayout"]); }
@@ -84,9 +86,15 @@ function fakeKakao() {
       Marker: function () { return mk(); },
       Circle: function () { return mk(); },
       Polyline: function () { return mk(); },
+      CustomOverlay: class {
+        constructor(o) { this.content = o.content; this.position = o.position; this.visible = false; overlays.push(this); }
+        setMap(m) { this.visible = !!m; }
+      },
       event: {
         addListener: (target, type, cb) => {
-          if (type === "click" && target && target.__isMap) mapClickHandlers.push(cb);
+          if (!target || !target.__isMap) return;
+          if (type === "click") mapClickHandlers.push(cb);
+          if (type === "zoom_changed") zoomHandlers.push(cb);
         },
       },
     },
@@ -96,6 +104,8 @@ function fakeKakao() {
 const spoken = [];
 const mapClickHandlers = [];
 const mapCalls = [];
+const zoomHandlers = [];
+const overlays = [];
 const results = [];
 function check(name, fn) {
   try { fn(); results.push(["PASS", name]); }
@@ -167,9 +177,50 @@ check("서비스 지역 밖이면 출발지 지정을 안내", () => {
 });
 
 window.NAVI.openNavi();
+await sleep(30);
+check("첫 진입: 장애유형 선택 게이트 표시 (목록 미로드)", () => {
+  assert.ok($("naviTypeGo"), "'관광지 보기' 버튼 없음");
+  assert.equal(window.document.querySelectorAll("#naviFilters .chip").length, 4);
+  assert.equal($("naviSpots"), null, "게이트 전에 목록이 로드됨");
+});
+check("게이트: 기본 선택 = 지체장애", () => {
+  const on = [...window.document.querySelectorAll('#naviFilters .chip[aria-pressed="true"]')];
+  assert.equal(on.length, 1);
+  assert.equal(on[0].getAttribute("data-dis"), "지체장애");
+});
+$("naviTypeGo").dispatchEvent(new window.Event("click"));
 await sleep(60);
-check("지역 밖 안내가 목록 패널에도 표시", () => {
+check("유형 확인 후 목록 로드 + 지역 밖 안내가 목록 패널에도 표시", () => {
+  assert.ok($("naviSpots"), "목록 미로드");
   assert.match($("naviSheetBody").textContent, /현재 위치가 안양시 밖입니다/);
+});
+check("목록 화면에도 유형 칩 유지 (변경 가능)", () => {
+  assert.equal(window.document.querySelectorAll("#naviFilters .chip").length, 4);
+});
+
+// 1-c) 범위 밖 안내 — 문장만이 아니라 다음에 할 동작을 함께 준다
+check("범위 밖 배너에 '출발지 지정'·'정책 상담' 두 가지 조치 버튼", () => {
+  const note = window.document.querySelector("#naviSheetBody .navi-note");
+  assert.ok(note, "배너 없음");
+  assert.match(note.querySelector(".navi-note__t").textContent, /현재 위치가 안양시 밖입니다/);
+  assert.ok($("naviPickOrigin"), "'지도에서 출발지 지정' 버튼 없음");
+  assert.ok($("naviBackToChat"), "'정책 상담으로 돌아가기' 버튼 없음");
+});
+check("범위 밖 상태 표시는 경고 색으로 구분", () => {
+  assert.ok($("naviStatus").classList.contains("navi-status--warn"), "경고 표시 미적용");
+});
+check("'정책 상담으로 돌아가기'로 화면 전환", () => {
+  $("naviBackToChat").dispatchEvent(new window.Event("click"));
+  assert.ok($("view-chat").classList.contains("active"), "상담 화면으로 못 감");
+  window.show("view-navi");   // 이후 검사를 위해 원래 화면으로 되돌린다
+});
+check("'지도에서 출발지 지정'은 지도를 넓히되 손잡이로 되돌릴 수 있어야 한다", () => {
+  $("naviPickOrigin").dispatchEvent(new window.Event("click"));
+  assert.ok($("naviSheet").classList.contains("collapsed"), "지도를 넓히지 않음");
+  assert.equal($("naviGripLabel").textContent, "목록 펼치기");
+  $("naviGrip").dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 700, bubbles: true }));
+  $("naviGrip").dispatchEvent(new window.MouseEvent("pointerup", { clientY: 700, bubbles: true }));
+  assert.ok(!$("naviSheet").classList.contains("collapsed"), "손잡이로 다시 펼쳐지지 않음");
 });
 
 check("지도 클릭 핸들러 등록됨", () => assert.ok(mapClickHandlers.length >= 1));
@@ -217,8 +268,18 @@ check("지도 로드 성공 시 폴백 오버레이가 숨겨짐", () => {
   assert.match(css, /\.map-fallback\[hidden\]\s*\{\s*display:\s*none/);
 });
 
-// 3) 관광지 선택 -> 경로 요약
+// 3) 관광지 선택 -> 출발/도착 팝업 -> 경로 요약 (#196: 즉시 경로 대신 팝업)
+const choiceBtn = (re) =>
+  [...window.document.querySelectorAll(".spot-choice__btn")].find((b) => re.test(b.textContent));
 window.document.querySelectorAll("#naviSpots .spot")[0].dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("목록 선택 -> 출발지/도착지 선택 팝업 표시", () => {
+  assert.ok(window.document.querySelector(".spot-choice"), "팝업 없음");
+  assert.match(window.document.querySelector(".spot-choice__nm").textContent, /테스트 무장애 공원/);
+  assert.ok(choiceBtn(/여기로 가기/), "도착지 버튼 없음");
+  assert.ok(choiceBtn(/여기서 출발/), "출발지 버튼 없음");
+});
+choiceBtn(/여기로 가기/).dispatchEvent(new window.Event("click"));
 await sleep(80);
 check("경로 요약(거리·시간·최대경사·계단) 표시", () => {
   const t = $("naviSheetBody").textContent;
@@ -265,12 +326,30 @@ check("다음 안내 지점 근접 시 스텝 자동 전환 + 재발화", () => 
   assert.match(window.document.querySelector(".step-now .wr").textContent, /턱낮춤 없음/);
 });
 
-// 6) 상담 세션 ui_action -> 지도 화면 자동 전환
-window.NAVI.onUiAction({ type: "ui_action", action: "show_route", payload: ROUTE.ui_action });
+// 6) 상담 세션 ui_action -> 자동 전환 없이 데이터 준비 + 이동 버튼 (#213)
+const uiAct = window.NAVI.onUiAction({ type: "ui_action", action: "show_route", payload: ROUTE.ui_action });
 await sleep(20);
-check("ui_action(show_route) 수신 시 지도 화면 전환", () => {
+check("ui_action(show_route): 자동 전환 없이 라벨 반환 + 경로 데이터 준비", () => {
+  assert.ok(uiAct && /경로 보기/.test(uiAct.label), "라벨 없음");
+  assert.match($("naviSheetBody").textContent, /320m/);   // 시트에는 미리 렌더됨
+});
+const uiAct2 = window.NAVI.onUiAction({ type: "ui_action", action: "show_tour_spots",
+  payload: { items: SPOTS.results } });
+check("ui_action(show_tour_spots): 목록 준비 + 개수 포함 라벨", () => {
+  assert.ok(uiAct2 && /관광지 보기/.test(uiAct2.label));
+  assert.match(uiAct2.label, /2곳/);
+});
+window.NAVI.showPreparedView();
+await sleep(30);
+check("버튼(showPreparedView) 선택 시에만 지도 화면 전환", () => {
   assert.ok($("view-navi").classList.contains("active"));
-  assert.match($("naviSheetBody").textContent, /320m/);
+});
+// 음성 명령 화면 이동 (#215): open_navi ui_action -> 버튼 없이 즉시 전환
+const uiAct3 = window.NAVI.onUiAction({ type: "ui_action", action: "open_navi", payload: {} });
+await sleep(30);
+check("ui_action(open_navi): 음성 요청 시 즉시 화면 전환 + 버튼 라벨 없음", () => {
+  assert.equal(uiAct3, null, "이동 버튼이 뜨면 안 됨");
+  assert.ok($("view-navi").classList.contains("active"));
 });
 
 // 7) 답변 카드 렌더러
@@ -294,6 +373,405 @@ check("답변 카드: HTML 주입 방지(이스케이프)", () => {
   const t2 = window.document.createElement("div");
   window.renderAnswerCard(t2, "<img src=x onerror=alert(1)>");
   assert.equal(t2.querySelectorAll("img").length, 0);
+});
+
+// 7-b) 정책 답변 표준 템플릿 (#197) — 핵심 요약 + 5섹션 블록
+const polTarget = window.document.createElement("div");
+window.renderAnswerCard(polTarget, [
+  "장애인 활동지원 서비스는 혼자 일상생활이 어려운 장애인을 돕는 제도입니다.",
+  "",
+  "## 지원 대상",
+  "- **만 6세~65세 미만** 등록 장애인",
+  "",
+  "## 지원 내용",
+  "- 월 **60~480시간** 활동지원급여 바우처",
+  "",
+  "## 신청 방법",
+  "- 주소지 행정복지센터 방문 또는 복지로 온라인",
+  "",
+  "## 구비 서류",
+  "- 사회보장급여 신청서",
+  "",
+  "## 문의처",
+  "- 보건복지상담센터 **129**",
+  "※ 65세 이후에는 노인장기요양보험으로 전환될 수 있어요.",
+].join("\n"));
+check("정책 템플릿: 첫 단락 -> 핵심 요약 카드", () => {
+  const sum = polTarget.querySelector(".c-sum");
+  assert.ok(sum, "핵심 요약 카드 없음");
+  assert.match(sum.textContent, /핵심 요약/);
+  assert.match(sum.textContent, /활동지원 서비스/);
+});
+check("정책 템플릿: 표준 5섹션 아이콘 블록 렌더", () => {
+  assert.ok(polTarget.querySelector(".p-sec--target"), "지원 대상 없음");
+  assert.ok(polTarget.querySelector(".p-sec--benefit"), "지원 내용 없음");
+  assert.ok(polTarget.querySelector(".p-sec--how"), "신청 방법 없음");
+  assert.ok(polTarget.querySelector(".p-sec--docs"), "구비 서류 없음");
+  assert.ok(polTarget.querySelector(".p-sec--contact"), "문의처 없음");
+  assert.match(polTarget.querySelector(".p-sec--target .p-sec__h").textContent, /👥 지원 대상/);
+  assert.match(polTarget.querySelector(".p-sec--target .p-sec__b").textContent, /만 6세~65세 미만/);
+});
+check("정책 템플릿: 섹션 내부 강조·유의사항 유지", () => {
+  assert.ok([...polTarget.querySelectorAll("mark")].some((m) => m.textContent === "129"));
+  assert.match(polTarget.querySelector(".p-sec--contact .c-note").textContent, /노인장기요양보험/);
+});
+check("정책 템플릿: 표준 섹션 2개 미만이면 기존 카드 유지", () => {
+  const t3 = window.document.createElement("div");
+  window.renderAnswerCard(t3, ["요금 안내입니다.", "", "## 필요 서류", "- 복지카드"].join("\n"));
+  assert.equal(t3.querySelector(".c-sum"), null, "일반 답변에 요약 카드가 생김");
+  assert.ok(t3.querySelector(".c-sub"), "기존 소제목 렌더가 사라짐");
+});
+check("정책 템플릿: 유사 표기(신청 절차·필요 서류 등) 인식", () => {
+  const t4 = window.document.createElement("div");
+  window.renderAnswerCard(t4, ["요약입니다.", "", "## 신청 절차", "- 방문", "", "## 필요 서류", "- 신분증"].join("\n"));
+  assert.ok(t4.querySelector(".p-sec--how"), "신청 절차 미인식");
+  assert.ok(t4.querySelector(".p-sec--docs"), "필요 서류 미인식");
+});
+
+// 8) 무장애 목록 — 10개 단위 무한스크롤 + 현위치 거리순 (#194)
+let lastSpotsQuery = null;
+const page = (offset, n, total) => ({
+  status: "success",
+  total, offset, has_more: offset + n < total,
+  results: Array.from({ length: n }, (_, i) => ({
+    poi_id: "TBF-P" + (offset + i),
+    name: "관광지 " + (offset + i + 1),
+    addr: "경기도 안양시 " + (offset + i + 1),
+    lat: 37.39 + (offset + i) * 0.001, lng: 126.95,
+    distance_m: (offset + i) === 0 ? 378 : (offset + i) * 120 + 378,
+    facilities: ["경사로"], score: 0.5,
+  })),
+});
+window.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes("find_bf_tour_spots")) {
+    lastSpotsQuery = u;
+    const m = u.match(/offset=(\d+)/);
+    const off = m ? parseInt(m[1], 10) : 0;
+    return { ok: true, json: async () => page(off, Math.min(10, 25 - off), 25) };
+  }
+  if (u.includes("/api/v1/config")) return { ok: true, json: async () => CONFIG };
+  if (u.includes("plan_accessible_route")) { lastPlanQuery = u; return { ok: true, json: async () => ROUTE }; }
+  return { ok: true, json: async () => ({}) };
+};
+// jsdom 에는 IntersectionObserver 가 없다 — 콜백을 잡아 수동으로 발화시킨다
+const ioObserved = [];
+let ioCallback = null;
+window.IntersectionObserver = function (cb) {
+  ioCallback = cb;
+  return { observe: (el) => ioObserved.push(el), disconnect: () => {} };
+};
+window.NAVI.openNavi();
+await sleep(60);
+check("무한스크롤: 1페이지 10건 렌더 + 감시 지점 등록", () => {
+  assert.equal(window.document.querySelectorAll("#naviSpots .spot").length, 10);
+  assert.ok($("naviSpotsMore"), "sentinel 없음");
+  assert.ok(ioObserved.length >= 1, "IntersectionObserver 미등록");
+});
+check("거리순 요청: origin_lat/lng·offset·topk 파라미터 전달", () => {
+  assert.match(lastSpotsQuery, /origin_lat=37\.3943/);
+  assert.match(lastSpotsQuery, /origin_lng=126\.9568/);
+  assert.match(lastSpotsQuery, /offset=0/);
+  assert.match(lastSpotsQuery, /topk=10/);
+});
+check("가까운 곳부터 거리 라벨 표시", () => {
+  const d = window.document.querySelectorAll("#naviSpots .spot .dist");
+  assert.equal(d[0].textContent, "378m");
+});
+ioCallback([{ isIntersecting: true }]);
+await sleep(30);
+check("무한스크롤: 감시 지점 도달 시 다음 10건 이어붙임", () => {
+  assert.equal(window.document.querySelectorAll("#naviSpots .spot").length, 20);
+  assert.match(lastSpotsQuery, /offset=10/);
+});
+check("km 단위 거리 라벨", () => {
+  const d = window.document.querySelectorAll("#naviSpots .spot .dist");
+  assert.match(d[10].textContent, /km$/);
+});
+ioCallback([{ isIntersecting: true }]);
+await sleep(30);
+check("무한스크롤: 마지막 페이지(총 25건) 후 감시 지점 제거", () => {
+  assert.equal(window.document.querySelectorAll("#naviSpots .spot").length, 25);
+  assert.equal($("naviSpotsMore"), null);
+});
+
+// 9) 지도 이름 태그 + 겹침 묶음/줌 분리 (#195)
+const liveTags = () => overlays.filter((o) => o.visible);
+check("이름 태그: 마커 대신 CustomOverlay 태그로 표시", () => {
+  assert.ok(liveTags().length > 0, "태그 없음");
+  assert.match(liveTags()[0].content.className, /poi-tag/);
+  assert.ok(liveTags()[0].content.textContent.length > 0);
+});
+check("겹침: 대표 1개만 표시 + '외 N' 묶음 태그", () => {
+  assert.ok(liveTags().length < 25, "묶이지 않음 — 25개 전부 표시됨");
+  assert.ok(liveTags().some((o) => /외 \d+/.test(o.content.textContent)), "'외 N' 태그 없음");
+});
+const tagsBefore = liveTags().length;
+const multiTag = liveTags().find((o) => o.content.className.includes("poi-tag--multi"));
+multiTag.content.dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("묶음 태그 클릭(줌 확대) 시 태그 분리", () => {
+  assert.ok(liveTags().length > tagsBefore,
+    `분리 안 됨 (${tagsBefore} -> ${liveTags().length})`);
+});
+// 단일 태그가 나올 때까지 묶음 태그를 눌러 계속 확대 (레벨 1 하한까지)
+let singleTag = null;
+for (let i = 0; i < 6 && !singleTag; i++) {
+  singleTag = liveTags().find((o) => !o.content.className.includes("poi-tag--multi"));
+  if (singleTag) break;
+  const m = liveTags().find((o) => o.content.className.includes("poi-tag--multi"));
+  if (!m) break;
+  m.content.dispatchEvent(new window.Event("click"));
+  await sleep(10);
+}
+lastPlanQuery = null;
+singleTag.content.dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("도착지 유지 상태에서 태그 클릭 -> 맥락 팝업 (#210)", () => {
+  assert.ok(window.document.querySelector(".spot-choice"), "팝업 없음");
+  assert.ok(choiceBtn(/도착지를 여기로 변경/), "도착지 변경 버튼 없음");
+});
+choiceBtn(/도착지를 여기로 변경/).dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("도착지 변경(출발지 있음) -> 즉시 경로 요청", () => {
+  assert.ok(lastPlanQuery, "경로 요청 안 감");
+});
+
+// 10) 출발지/도착지 상호 보완 플로우 (#196)
+// 10-a) 출발지 먼저: 태그에서 '여기서 출발' -> 다음 선택이 도착지가 된다
+window.NAVI._internals().resetTrip();   // 직전 여정 초기화 (#210: 도착지는 유지되는 상태)
+window.NAVI.openNavi();
+await sleep(60);
+let tag0 = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+if (tag0.length < 2) {
+  // 확대해서 단일 태그 2개 확보
+  for (let i = 0; i < 6 && tag0.length < 2; i++) {
+    const m = liveTags().find((o) => o.content.className.includes("poi-tag--multi"));
+    if (!m) break;
+    m.content.dispatchEvent(new window.Event("click"));
+    await sleep(10);
+    tag0 = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+  }
+}
+tag0[0].content.dispatchEvent(new window.Event("click"));
+await sleep(20);
+choiceBtn(/여기서 출발/).dispatchEvent(new window.Event("click"));
+await sleep(30);
+check("출발지 먼저 선택 -> 도착지 선택 안내", () => {
+  assert.match($("naviStatus").textContent, /도착지를 선택/);
+});
+lastPlanQuery = null;
+const tag1 = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+tag1[1].content.dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("이어서 태그 선택 = 도착지 -> 즉시 경로 요청", () => {
+  assert.ok(lastPlanQuery, "경로 요청 안 감");
+});
+
+// 10-b) 도착지 먼저(출발지 없음): 출발지 물음 -> 지도·목록에서 선택 -> 자동 안내
+window.NAVI.openNavi();
+await sleep(60);
+// 출발지 초기화: '현재 위치로 되돌리기' + 현재 위치 제거
+const resetBtn = [...$("naviSheetBody").querySelectorAll("button")]
+  .find((b) => /현재 위치로 되돌리기/.test(b.textContent));
+if (resetBtn) { resetBtn.dispatchEvent(new window.Event("click")); await sleep(40); }
+window.NAVI._internals().setHere(null);
+window.NAVI._internals().resetTrip();
+let tags = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+tags[0].content.dispatchEvent(new window.Event("click"));
+await sleep(20);
+choiceBtn(/여기로 가기/).dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("출발지 없이 도착지 선택 -> 출발지 선택 팝업", () => {
+  assert.match(window.document.querySelector(".spot-choice__nm").textContent, /출발지를 선택/);
+  assert.ok(choiceBtn(/현재 위치에서 출발/), "현위치 버튼 없음");
+});
+choiceBtn(/지도·목록에서 출발지 선택/).dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("지도·목록 선택 모드 안내", () => {
+  assert.match($("naviStatus").textContent, /출발지를 선택해 주세요/);
+});
+lastPlanQuery = null;
+tags = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+tags[1].content.dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("출발지 태그 선택 -> 대기 중 도착지로 자동 안내", () => {
+  assert.ok(lastPlanQuery, "경로 요청 안 감");
+  assert.match($("naviSheetBody").textContent, /320m/);
+});
+
+// 11) 도착지 선택 유지 (#204) — 팝업을 닫아도 도착지를 기억하고, 출발지 선택 시 자동 안내
+window.NAVI.openNavi();
+await sleep(60);
+const resetBtn2 = [...$("naviSheetBody").querySelectorAll("button")]
+  .find((b) => /현재 위치로 되돌리기/.test(b.textContent));
+if (resetBtn2) { resetBtn2.dispatchEvent(new window.Event("click")); await sleep(40); }
+window.NAVI._internals().setHere(null);
+window.NAVI._internals().resetTrip();
+let tagsB = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+tagsB[0].content.dispatchEvent(new window.Event("click"));
+await sleep(20);
+choiceBtn(/여기로 가기/).dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("출발지 팝업 '닫기'가 도착지를 유지함을 안내", () => {
+  assert.ok(choiceBtn(/닫기.*도착지는 유지/), "닫기 버튼 없음");
+});
+choiceBtn(/닫기/).dispatchEvent(new window.Event("click"));
+await sleep(20);
+tagsB = liveTags().filter((o) => !o.content.className.includes("poi-tag--multi"));
+tagsB[1].content.dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("닫은 뒤 다른 태그 클릭 -> 도착지 유지 맥락 팝업", () => {
+  assert.ok(choiceBtn(/여기서 출발 →/), "'여기서 출발 → 도착지' 버튼 없음");
+  assert.ok(choiceBtn(/도착지를 여기로 변경/), "도착지 변경 버튼 없음");
+  assert.ok(choiceBtn(/선택 초기화/), "초기화 버튼 없음");
+});
+lastPlanQuery = null;
+choiceBtn(/여기서 출발 →/).dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("맥락 팝업에서 출발지 선택 -> 도착지 재선택 없이 자동 안내", () => {
+  assert.ok(lastPlanQuery, "경로 요청 안 감");
+  assert.match($("naviSheetBody").textContent, /320m/);
+});
+
+// 11-b) #210 핵심 시나리오: 안내 이후 '지도 빈 곳 클릭'으로 출발지를 바꿔도
+//       태그로 바꿀 때와 동일하게 같은 도착지로 자동 재안내되어야 한다
+lastPlanQuery = null;
+mapClickHandlers[0]({ latLng: { getLat: () => 37.3950, getLng: () => 126.9550 } });
+await sleep(60);
+check("지도 클릭 출발지 변경 -> 같은 도착지로 자동 재안내 (#210)", () => {
+  assert.ok(lastPlanQuery, "재안내 안 감");
+  assert.match(lastPlanQuery, /origin_lat=37\.395/);
+  assert.match($("naviSheetBody").textContent, /320m/);
+});
+check("재안내 음성/상태 안내", () => {
+  assert.match(spoken.at(-1) || "", /다시 안내/);
+});
+// 선택 초기화 후에는 지도 클릭 = 출발지만 지정(목록 갱신), 재안내 없음
+window.NAVI._internals().resetTrip();
+lastPlanQuery = null;
+mapClickHandlers[0]({ latLng: { getLat: () => 37.3960, getLng: () => 126.9560 } });
+await sleep(60);
+check("초기화 후 지도 클릭 -> 재안내 없이 목록 화면 (#210)", () => {
+  assert.equal(lastPlanQuery, null, "초기화 후에도 재안내됨");
+  assert.ok($("naviSpots"), "목록 미표시");
+});
+
+// 12) 유휴 방지·카드 배선 존재 검증 (#203·#205) — 소스 레벨 회귀 가드
+check("이동·관광 화면 체류 하트비트 코드 존재", () => {
+  assert.match(HTML, /navi_view_heartbeat/);
+  assert.match(HTML, /guidance_heartbeat/);
+});
+check("answer_card 수신 배선 존재", () => {
+  assert.match(HTML, /case "answer_card"/);
+  assert.match(HTML, /applyAnswerCard/);
+});
+
+// 13) 정책 카드 선표시 + 전사 병행 배치 (#208)
+const C = window.__CHAT;
+check("__CHAT 테스트 훅 노출", () => assert.ok(C && C.applyAnswerCard && C.appendAiTranscript));
+// (a) 카드가 전사보다 먼저 도착 (도구 기반 선표시 경로)
+C.applyAnswerCard("활동지원 요약입니다.\n\n## 지원 대상\n- **등록 장애인**\n\n## 문의처\n- 129");
+C.appendAiTranscript("장애인 활동지원 서비스는 ");
+C.appendAiTranscript("행정복지센터에서 신청하실 수 있어요.");
+check("선도착 카드: 말풍선 생성 시 전사 '위'에 부착", () => {
+  const bubbles = window.document.querySelectorAll("#chat .bubble--ai");
+  const b = bubbles[bubbles.length - 1];
+  const kids = [...b.children];
+  const cardIdx = kids.findIndex((k) => k.querySelector && k.querySelector(".card"));
+  const txtIdx = kids.indexOf(b._textNode);
+  assert.ok(cardIdx >= 0, "카드 없음");
+  assert.ok(txtIdx > cardIdx, "카드가 전사 아래에 있음");
+  assert.match(b.querySelector(".c-sum").textContent, /활동지원 요약/);
+  assert.match(b._textNode.textContent, /행정복지센터/);
+});
+C.finalizeAiBubble();
+// (b) 턴 종료 후 늦게 도착한 카드(전사 폴백 경로)도 그 말풍선 상단에
+C.appendAiTranscript("보청기는 최대 백삼십일만원까지 지원됩니다.");
+C.finalizeAiBubble();
+C.applyAnswerCard("보청기 요약.\n\n## 지원 내용\n- **131만원**\n\n## 신청 방법\n- 주민센터");
+check("턴 종료 후 도착한 카드도 해당 말풍선 상단에 부착", () => {
+  const bubbles = window.document.querySelectorAll("#chat .bubble--ai");
+  const b = bubbles[bubbles.length - 1];
+  assert.ok(b.querySelector(".p-sec--benefit"), "카드 없음");
+  const kids = [...b.children];
+  const cardIdx = kids.findIndex((k) => k.querySelector && k.querySelector(".p-sec--benefit"));
+  assert.ok(kids.indexOf(b._textNode) > cardIdx, "카드가 전사 아래에 있음");
+});
+
+// 13-b) 카드 컨테이너·비표준 소제목 카드 (#218)
+check("카드 컨테이너: 헤더·테두리로 전사와 구분", () => {
+  const wrap = window.document.querySelector("#chat .answer-card-wrap");
+  assert.ok(wrap, "컨테이너 없음");
+  assert.match(wrap.querySelector(".answer-card-wrap__head").textContent, /정책 요약 카드/);
+});
+C.appendAiTranscript("여러 제도를 안내드릴게요.");
+C.finalizeAiBubble();
+C.applyAnswerCard("주거 지원 제도 두 가지를 안내드립니다.\n\n## 장애인연금\n- **기초급여** 지원\n\n## 무주택 특별공급\n- 특별 분양 알선");
+check("비표준 소제목(정책명) 카드도 핵심요약 + 중립 섹션 블록으로 렌더", () => {
+  const wraps = window.document.querySelectorAll("#chat .answer-card-wrap");
+  const w = wraps[wraps.length - 1];
+  assert.ok(w.querySelector(".c-sum"), "요약 박스 없음");
+  const secs = w.querySelectorAll(".p-sec--etc");
+  assert.equal(secs.length, 2, "중립 섹션 블록 미적용");
+  assert.match(secs[0].querySelector(".p-sec__h").textContent, /장애인연금/);
+});
+check("일반(비카드) 답변 렌더는 기존 유지 — assumePolicy 없이 요약 박스 미생성", () => {
+  const t5 = window.document.createElement("div");
+  window.renderAnswerCard(t5, ["요금 안내입니다.", "", "## 필요 서류", "- 복지카드"].join("\n"));
+  assert.equal(t5.querySelector(".c-sum"), null);
+});
+
+// 13-c) 내장 음성 중단 배선 (#217) — 소스 레벨 회귀 가드
+check("내장 TTS 중단(stopLocalTts)·barge-in 배선 존재", () => {
+  assert.match(HTML, /stopLocalTts/);
+  assert.match(HTML, /LOCAL_TTS_BARGE_RMS/);
+  assert.match(HTML, /서버\(상담원\) 음성이 오면 기기 내장 음성은 즉시 멈춘다/);
+});
+
+// 14) 이동·관광 화면 이동 버튼 말풍선 (#213)
+C.addNaviJumpBubble("🗺️ 지도에서 무장애 관광지 보기 (5곳)");
+check("이동 버튼 말풍선이 대화에 표시", () => {
+  const btn = [...window.document.querySelectorAll("#chat .bubble--nav .navjump")].pop();
+  assert.ok(btn, "버튼 없음");
+  assert.match(btn.textContent, /지도에서 무장애 관광지 보기/);
+});
+
+// 15) 하단 시트 접힘 UX — 지도 조작 후에도 목록으로 돌아갈 수 있어야 한다
+const sheetEl = $("naviSheet");
+const gripEl = $("naviGrip");
+const mapEl = $("naviMap");
+const ptr = (type, x, y) =>
+  mapEl.dispatchEvent(new window.MouseEvent(type, { clientX: x, clientY: y, bubbles: true }));
+
+check("지도를 '탭'만 하면 목록이 접히지 않는다 (한 번 누르는 조작 보호)", () => {
+  ptr("pointerdown", 100, 200);
+  ptr("pointerup", 100, 200);
+  assert.ok(!sheetEl.classList.contains("collapsed"), "탭만으로 접힘");
+});
+
+check("지도를 실제로 움직이면(패닝) 목록이 접힌다", () => {
+  ptr("pointerdown", 100, 200);
+  ptr("pointermove", 100, 120);
+  assert.ok(sheetEl.classList.contains("collapsed"), "패닝인데 안 접힘");
+});
+
+check("접힘 상태: 본문은 감추고 손잡이는 '펼치기'로 라벨이 바뀐다", () => {
+  // 예전에는 max-height:38px 로 잘라 본문 첫 줄이 반쯤 잘린 채 남았다
+  assert.match(HTML, /\.sheet\.collapsed #naviSheetBody\{display:none;\}/);
+  assert.equal($("naviGripLabel").textContent, "목록 펼치기");
+  assert.equal(gripEl.getAttribute("aria-expanded"), "false");
+  assert.equal(gripEl.getAttribute("aria-label"), "관광지 목록 펼치기");
+});
+
+check("손잡이 터치 영역이 앱 최소 기준(--tap-min)을 따른다", () => {
+  assert.match(HTML, /\.gripzone\{[^}]*min-height:var\(--tap-min\)/);
+  assert.doesNotMatch(HTML, /\.sheet\.collapsed\{max-height:38px/);
+});
+
+check("하단 탭바는 세로 공간이 부족해도 줄어들지 않는다(flex:none)", () => {
+  assert.match(HTML, /\.modebar\{flex:none;/);
+  assert.match(HTML, /#view-navi>\.appbar\{flex:none;\}/);
 });
 
 // ── 결과 ──
