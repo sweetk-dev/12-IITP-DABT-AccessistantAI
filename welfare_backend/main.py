@@ -466,6 +466,8 @@ async def get_policy_details(
         "how_to_use": fd.get("how_to_use"),
         "application": fd.get("application"),
         "key_contact": (fd.get("contact") or [None])[0],
+        # 이 정책 정보가 언제 확인된 것인지 — 금액·기준은 해마다 바뀌므로 답변에 반드시 실어야 한다
+        "last_verified": fd.get("last_verified"),
         "sources_top3": [
             {"publisher": s.get("publisher"), "url": s.get("url"), "priority": s.get("priority")}
             for s in sources_top3
@@ -473,7 +475,8 @@ async def get_policy_details(
         "full_details": fd,  # 추가 깊은 정보 필요 시 AI가 직접 참조
         "ai_instruction": (
             "supported_amount, how_to_use, application 을 중심으로 3문장 이내 음성 요약. "
-            "sources_top3 의 publisher 만 짧게 언급하고 URL은 음성으로 읽지 말 것."
+            "sources_top3 의 publisher 만 짧게 언급하고 URL은 음성으로 읽지 말 것. "
+            "금액·기준을 말할 때는 last_verified 의 연도를 함께 안내할 것."
         ),
     }
 

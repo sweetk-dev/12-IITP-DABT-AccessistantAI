@@ -259,6 +259,7 @@ async def tool_search_by_keyword(query: str, top_k: int = 5, expand: bool = Fals
                     "policy_summary": r.short_summary,
                     "matched_chunk_type": r.chunk_type,
                     "matched_content": r.content,
+                    "last_verified": (r.full_data or {}).get("last_verified"),
                 }
                 for r in rows
             ],
@@ -291,6 +292,8 @@ async def tool_get_policy_details(policy_id: str) -> dict:
             "how_to_use": fd.get("how_to_use"),
             "application": fd.get("application"),
             "key_contact": (fd.get("contact") or [None])[0],
+        # 이 정책 정보가 언제 확인된 것인지 — 금액·기준은 해마다 바뀌므로 답변에 반드시 실어야 한다
+        "last_verified": fd.get("last_verified"),
             "sources_top3": [
                 {"publisher": s.get("publisher"), "url": s.get("url"), "priority": s.get("priority")}
                 for s in sources_top3
@@ -330,6 +333,7 @@ async def tool_check_eligibility_criteria(policy_id: str) -> dict:
                 "age_min": p.age_min,
                 "age_max": p.age_max,
                 "income_criteria": (fd.get("eligibility") or {}).get("income_criteria"),
+            "last_verified": fd.get("last_verified"),
                 "residency_criteria": (fd.get("eligibility") or {}).get("residency_criteria"),
             },
             "eligibility_details": "\n\n".join(chunks) if chunks else "자격 요건 상세 청크 없음.",
