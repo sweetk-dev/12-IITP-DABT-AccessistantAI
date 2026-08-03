@@ -54,8 +54,8 @@
     "online_available": true,
     "proxy_allowed": false
   },
-  "last_verified": "2026-07-03",
-  "version": "1.0.0",
+  "last_verified": "2026-08-03",
+  "version": "1.1.0",
   "sources": [
     {
       "title": "장애인복지법",
@@ -64,10 +64,32 @@
       "priority": "primary"
     },
     {
-      "title": "장애인 보조견 지원",
-      "publisher": "찾기쉬운 생활법령정보",
-      "url": "https://easylaw.go.kr/",
-      "priority": "secondary"
+      "title": "찾기쉬운 생활법령정보 — 장애인 보조견 지원",
+      "publisher": "법제처",
+      "publisher_type": "법령DB",
+      "priority": "secondary",
+      "url": "https://easylaw.go.kr/CSP/CnpClsMain.laf?popMenu=ov&csmSeq=1003&ccfNo=2&cciNo=3&cnpClsNo=2",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "본문 최종수정일 기준 감시"
+      }
+    },
+    {
+      "title": "삼성화재 시각장애인 안내견 지원사업",
+      "publisher": "삼성화재",
+      "publisher_type": "민간",
+      "priority": "supplementary",
+      "url": "https://www.samsungfire.com/v2/html/company/05/M_050_020_001.html",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "실제 분양 기관(연 12~15두) — 사업 변경 감시"
+      }
     }
   ],
   "operating_agencies": [
