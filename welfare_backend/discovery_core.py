@@ -266,14 +266,22 @@ def _schema_enums():
 def _ensure_processed_col():
     con = _db(); cur = con.cursor()
     cur.execute("ALTER TABLE unresolved_queries ADD COLUMN IF NOT EXISTS discovery_processed_at TIMESTAMPTZ")
+    cur.execute("ALTER TABLE unresolved_queries ADD COLUMN IF NOT EXISTS discovery_excluded BOOLEAN")
+    cur.execute("ALTER TABLE unresolved_queries ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ")
     con.commit(); con.close()
 
 
-def _mark_processed(ids):
+def _mark_processed(ids, excluded=False):
+    """발굴 처리 표시. excluded=True 면 '정책 무관으로 걸러짐' 으로 구분 기록한다.
+
+    구분이 필요한 이유: 처리 시각만 찍으면 콘솔에서 '검토되어 후보가 된 질의' 와
+    '정책과 무관해 버려진 질의' 가 똑같이 보여, 운영자가 목록을 신뢰할 수 없다.
+    """
     if not ids:
         return
     con = _db(); cur = con.cursor()
-    cur.execute("UPDATE unresolved_queries SET discovery_processed_at = NOW() WHERE id = ANY(%s)", (list(ids),))
+    cur.execute("UPDATE unresolved_queries SET discovery_processed_at = NOW(), "
+                "discovery_excluded = %s WHERE id = ANY(%s)", (bool(excluded), list(ids)))
     con.commit(); con.close()
 
 
@@ -334,8 +342,19 @@ def run_discovery():
             "키: id(빈 문자열), leaflet_section, leaflet_number(0), title, short_summary, category, "
             "benefit_type, supported_amount{rate,amount,scope}, eligibility{target}, legal_basis(배열), "
             'legal_basis(배열, 각 항목은 객체 {"name":법령명(필수), "article":조항(선택), "url":(선택)} — 확실치 않으면 빈 배열 []), ' "how_to_use{default}, application{}, last_verified, version(\"1.0.0\"), "
-            'sources(배열, 각 항목 필수키 title·publisher·url + priority 는 ["primary","secondary","supplementary"] 중 하나, 최소 1개 실제 URL). '
-            "확인 안 되는 필드는 보수적으로 비우되(배열은 [], 객체는 {}) sources 는 실제 URL 과 publisher 를 포함. 모든 배열·객체는 위 키 구조를 지킬 것."
+            "sources(배열). \n"
+            "\n[sources 작성 규칙 — 반드시 지킬 것]\n"
+            "이 정책은 등록 후 정기적으로 출처를 다시 읽어 변경을 감지합니다. 따라서 출처는 "
+            "'그 정책 내용이 실제로 적힌 페이지' 여야 하며, 아래 규칙을 어기면 그 정책은 이후 갱신되지 않습니다.\n"
+            '- 각 항목 필수키: title, publisher, url, priority(["primary","secondary","supplementary"] 중 하나)\n'
+            "- **최소 3개** 이상. 근거 법령 페이지 + 소관 부처/기관 안내 페이지 + 신청 안내 페이지를 각각 찾으세요.\n"
+            "- **도메인 루트 URL 금지.** https://www.bokjiro.go.kr 처럼 첫 화면을 가리키면 안 됩니다. "
+            "해당 제도를 설명하는 구체 페이지 경로까지 포함하세요.\n"
+            '- 각 항목에 crawl 객체를 함께 넣으세요: {"frequency": "monthly|quarterly", '
+            '"change_detection_method": "page_hash|last_modified_field|pdf_hash", '
+            '"css_selector_hint": 본문 위치 힌트 또는 null, "notes": 무엇을 감시하는지 한 줄}\n'
+            "- 법령 페이지(law.go.kr·easylaw.go.kr)는 last_modified_field, PDF 는 pdf_hash, 일반 안내 페이지는 page_hash 를 쓰세요.\n"
+            "\n확인 안 되는 필드는 보수적으로 비우되(배열은 [], 객체는 {}) sources 는 실제 URL 과 publisher 를 포함. 모든 배열·객체는 위 키 구조를 지킬 것."
         )
         draft = None
         try:
@@ -368,18 +387,26 @@ def run_discovery():
             logger.warning("보강 staged 실패(pid=%s): %s", c.get("covered_by"), e)
 
     # 처리한 질의는 '발굴됨'으로 표시 → 다음 발굴에서 제외(중복 후보 방지)
-    processed_ids = [m["id"] for cl in clusters for m in cl["members"]]
+    # 이때 정책과 무관하다고 분류된 군집은 '제외됨'으로 따로 표시해 콘솔에서 구분되게 한다.
+    excluded_idx = {c.get("idx") for c in clf if not c.get("policy_related")}
+    excluded_ids, processed_ids = [], []
+    for k, cl in enumerate(clusters):
+        ids = [m["id"] for m in cl["members"]]
+        (excluded_ids if k in excluded_idx else processed_ids).extend(ids)
     try:
-        _mark_processed(processed_ids)
+        _mark_processed(processed_ids, excluded=False)
+        _mark_processed(excluded_ids, excluded=True)
     except Exception as e:
         logger.warning("processed 표시 실패: %s", e)
 
     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
     summary = {"date": date.today().isoformat(), "clusters": len(clusters),
-               "classified": clf, "new": len(new_cl), "gap": len(gap_cl), "candidates": created, "gaps": gaps}
+               "classified": clf, "new": len(new_cl), "gap": len(gap_cl), "candidates": created,
+               "gaps": gaps, "excluded": len(excluded_ids)}
     (_REPORT_DIR / f"{date.today().isoformat()}.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"clusters": len(clusters), "new_candidates": len(created), "gap_staged": len(gaps), "processed": len(processed_ids)}
+    return {"clusters": len(clusters), "new_candidates": len(created), "gap_staged": len(gaps),
+            "processed": len(processed_ids), "excluded": len(excluded_ids)}
 
 
 def list_candidates():

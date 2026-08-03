@@ -66,7 +66,16 @@ except ImportError:
 
 
 def _load_targets() -> dict:
-    return json.loads(CRAWL_TARGETS.read_text(encoding="utf-8"))
+    """기준 crawl_targets.json ⊕ 영속 오버레이(crawl_targets.local.json) 병합 결과.
+
+    기준 파일은 코드 경로에 있어 이미지에 포함되므로 런타임 쓰기가 보존되지 않는다.
+    콘솔에서 자동 등록한 타겟은 오버레이(볼륨)에 쌓이고 여기서 합쳐진다.
+    """
+    try:
+        from .target_sync import load_all
+    except ImportError:
+        from crawler.target_sync import load_all  # type: ignore
+    return load_all()
 
 
 def _items_index() -> dict:
