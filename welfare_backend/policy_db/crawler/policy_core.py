@@ -49,6 +49,14 @@ def list_policies():
             d = _load(f)
         except Exception:
             continue
+        # 근거 법령 매핑 요약 (#238) — 콘솔 목록에서 법령ID 확인용
+        legal = [{
+            "name": x.get("name"),
+            "article": x.get("article"),
+            "law_id": x.get("law_id"),
+            "law_serial_no": x.get("law_serial_no"),
+            "mapping_status": x.get("mapping_status"),
+        } for x in (d.get("legal_basis") or [])]
         out.append({
             "policy_id": d.get("id"),
             "title": d.get("title"),
@@ -60,6 +68,7 @@ def list_policies():
             "file": f.name,
             # 이 정책의 출처를 감시 중인 크롤 타겟 수. 0 이면 갱신 사각지대.
             "crawl_targets": cov.get(d.get("id"), 0),
+            "legal_basis": legal,
             "last_applied_at": datetime.fromtimestamp(f.stat().st_mtime).isoformat(timespec="seconds"),
         })
     return sorted(out, key=lambda x: (x["policy_id"] or ""))

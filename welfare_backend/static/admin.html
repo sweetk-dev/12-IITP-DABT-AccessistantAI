@@ -141,7 +141,7 @@
       <button class="primary" onclick="openEditor(null)">+ 새 정책 추가</button>
       <span class="msg" id="pmsg"></span>
     </div>
-    <div class="card"><table id="ptable"><thead><tr><th>ID</th><th>제목</th><th>분류</th><th>상태</th><th style="width:96px">크롤</th><th>버전</th><th>마지막 적용</th><th>작업</th></tr></thead><tbody><tr><td colspan="8"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
+    <div class="card"><table id="ptable"><thead><tr><th>ID</th><th style="width:120px">법령ID</th><th>제목</th><th>분류</th><th>상태</th><th style="width:96px">크롤</th><th>버전</th><th>마지막 적용</th><th>작업</th></tr></thead><tbody><tr><td colspan="9"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
   </div>
 </div>
 
@@ -484,6 +484,38 @@ async function rejectOne(pid){ if(!confirm(pid+" staging을 반려할까요?"))r
 }
 
 /* ===== 정책 관리 ===== */
+let _plist=[];
+// 근거 법령 매핑 배지 (#238)
+//  전부 매핑 → 녹색(첫 법령ID + 외 n) / 일부·전부 미매핑 → 주황(미매핑 n) / 근거 없음 → '-'
+//  hover: 법령명→ID(상태) 전체 목록 / click: 목록 + 국가법령정보 원문 이동
+function legalBadge(p){
+  const lbs = p.legal_basis||[];
+  if(!lbs.length) return '<span class="b off" title="legal_basis 없음">-</span>';
+  const mapped = lbs.filter(x=>x.law_id);
+  const tip = lbs.map(x=>`${x.name||"?"} → ${x.law_id||"미매핑"}${x.mapping_status?` (${x.mapping_status})`:""}`).join("\n");
+  const label = mapped.length
+    ? `${mapped[0].law_id}${lbs.length>1?` 외 ${lbs.length-1}`:""}`
+    : `미매핑 ${lbs.length}`;
+  const cls = (mapped.length===lbs.length) ? "ok" : "warn";
+  return `<span class="b ${cls}" style="cursor:pointer" title="${escapeHtml(tip)}" onclick="showLegal('${p.policy_id}')">${escapeHtml(label)}</span>`;
+}
+function showLegal(pid){
+  const p=_plist.find(r=>r.policy_id===pid); if(!p) return;
+  const lbs=p.legal_basis||[];
+  const withSerial=lbs.filter(x=>x.law_serial_no);
+  const lines=lbs.map((x,i)=>`${i+1}. ${x.name||"?"}${x.article?` ${x.article}`:""}\n   법령ID ${x.law_id||"미매핑"} · ${x.mapping_status||"-"}`);
+  if(withSerial.length===1){
+    if(confirm(`${pid} 근거 법령\n\n${lines.join("\n")}\n\n국가법령정보센터에서 원문을 열까요?`))
+      window.open(`https://www.law.go.kr/lsInfoP.do?lsiSeq=${withSerial[0].law_serial_no}`,"_blank");
+  } else if(withSerial.length>1){
+    const idx=prompt(`${pid} 근거 법령\n\n${lines.join("\n")}\n\n원문을 열 번호를 입력하세요 (취소=닫기)`);
+    const n=parseInt(idx,10);
+    const sel=lbs[n-1];
+    if(sel&&sel.law_serial_no) window.open(`https://www.law.go.kr/lsInfoP.do?lsiSeq=${sel.law_serial_no}`,"_blank");
+  } else {
+    alert(`${pid} 근거 법령\n\n${lines.join("\n")}`);
+  }
+}
 async function registerCrawl(pid){
   if(!confirm(pid+" 의 출처를 크롤 대상에 등록할까요?\n(도메인 루트처럼 감지가 어려운 출처는 수동검토로 등록됩니다)")) return;
   try{
@@ -494,13 +526,14 @@ async function registerCrawl(pid){
   }catch(e){ alert("등록 실패: "+e); }
 }
 async function loadPolicies(){
-  const tb=document.querySelector("#ptable tbody"); tb.innerHTML='<tr><td colspan="8"><div class="empty">불러오는 중…</div></td></tr>';
+  const tb=document.querySelector("#ptable tbody"); tb.innerHTML='<tr><td colspan="9"><div class="empty">불러오는 중…</div></td></tr>';
   try{ const rows=await (await fetch(PLIST)).json();
-    if(!rows.length){ tb.innerHTML='<tr><td colspan="8"><div class="empty">정책 없음</div></td></tr>'; return; }
+    _plist=rows;
+    if(!rows.length){ tb.innerHTML='<tr><td colspan="9"><div class="empty">정책 없음</div></td></tr>'; return; }
     tb.innerHTML="";
     for(const p of rows){ const tr=document.createElement("tr");
       const active = p.active!==false;
-      tr.innerHTML=`<td><b>${p.policy_id}</b></td><td>${escapeHtml(p.title||"")}</td><td>${escapeHtml(p.category||"")}</td>
+      tr.innerHTML=`<td><b>${p.policy_id}</b></td><td>${legalBadge(p)}</td><td>${escapeHtml(p.title||"")}</td><td>${escapeHtml(p.category||"")}</td>
         <td>${active?'<span class="b ok">활성</span>':'<span class="b off">비활성</span>'}${p.deactivated_at?`<div style="font-size:10px;color:var(--muted)">${escapeHtml(p.deactivated_at)}</div>`:''}</td>
         <td>${(p.crawl_targets||0)>0
               ? `<span class="b ok" title="이 정책의 출처를 감시 중인 크롤 타겟 수">${p.crawl_targets}건</span>`
