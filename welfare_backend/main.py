@@ -58,6 +58,7 @@ def _embed(text_query: str) -> list[float]:
 
 import route_client
 import tool_handlers
+from tool_handlers import expand_query
 
 app = FastAPI(
     title="Welfare Policy AI Bridge API",
@@ -102,6 +103,20 @@ except Exception as _e:  # 라우터 로드 실패가 본 서비스 기동을 �
 
 
 # 운영 스케줄러(크롤/백업) 기동 — 단일 워커 전제
+@app.on_event("startup")
+async def _ensure_schema_migrations():
+    """운영 DB 스키마를 최신 상태로 맞춘다(멱등). 실패해도 서비스는 계속 뜬다."""
+    import logging as _lg
+    try:
+        from create_unresolved_table import ensure_migrations
+        async with engine.begin() as conn:
+            applied = await ensure_migrations(conn)
+        if applied:
+            _lg.getLogger("main").info("스키마 확장 적용: %s", ", ".join(applied))
+    except Exception as _e:
+        _lg.getLogger("main").warning("스키마 확장 실패 (무시하고 계속): %s", _e)
+
+
 @app.on_event("startup")
 def _start_ops_scheduler():
     try:
@@ -367,9 +382,20 @@ async def search_policies_by_metadata(
 async def search_by_keyword(
     query: str = Query(..., description="자연어 질문"),
     top_k: int = Query(5, ge=1, le=15),
+    expand: bool = Query(
+        False,
+        description="생활 언어 발화를 정책 어휘로 확장한 뒤 검색. "
+                    "곤란·결핍을 호소하는 상태 발화일 때만 true.",
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    qvec = await asyncio.to_thread(_embed, query)
+    search_text = query
+    expanded_query = None
+    if expand:
+        expanded_query = await expand_query(query)
+        if expanded_query:
+            search_text = expanded_query
+    qvec = await asyncio.to_thread(_embed, search_text)
     stmt = (
         select(
             models.PolicyChunk.policy_id,
@@ -388,6 +414,8 @@ async def search_by_keyword(
         "status": "success",
         "tool_name": "search_by_keyword",
         "query": query,
+        # 확장이 실제로 적용됐는지 관측 가능하게 노출 (미적용 시 None)
+        "expanded_query": expanded_query,
         "results": [
             {
                 "policy_id": r.policy_id,
@@ -400,7 +428,10 @@ async def search_by_keyword(
             for r in rows
         ],
         "ai_instruction": (
-            "matched_content 우선 활용. 정책 단위로 묶어 3~4문장 음성 요약."
+            "matched_content 우선 활용. 정책 단위로 묶어 3~4문장 음성 요약. "
+            "expanded_query 가 있으면 사용자의 상태 발화를 정책 영역으로 해석한 결과이므로, "
+            "먼저 어려움에 공감하는 한 문장을 말한 뒤 정책을 안내하고, "
+            "마지막에 실제로 어떤 도움이 필요한지 되묻는 질문 하나로 마무리하세요."
         ),
     }
 

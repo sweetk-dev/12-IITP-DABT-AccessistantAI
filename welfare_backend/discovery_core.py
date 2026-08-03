@@ -266,14 +266,22 @@ def _schema_enums():
 def _ensure_processed_col():
     con = _db(); cur = con.cursor()
     cur.execute("ALTER TABLE unresolved_queries ADD COLUMN IF NOT EXISTS discovery_processed_at TIMESTAMPTZ")
+    cur.execute("ALTER TABLE unresolved_queries ADD COLUMN IF NOT EXISTS discovery_excluded BOOLEAN")
+    cur.execute("ALTER TABLE unresolved_queries ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ")
     con.commit(); con.close()
 
 
-def _mark_processed(ids):
+def _mark_processed(ids, excluded=False):
+    """발굴 처리 표시. excluded=True 면 '정책 무관으로 걸러짐' 으로 구분 기록한다.
+
+    구분이 필요한 이유: 처리 시각만 찍으면 콘솔에서 '검토되어 후보가 된 질의' 와
+    '정책과 무관해 버려진 질의' 가 똑같이 보여, 운영자가 목록을 신뢰할 수 없다.
+    """
     if not ids:
         return
     con = _db(); cur = con.cursor()
-    cur.execute("UPDATE unresolved_queries SET discovery_processed_at = NOW() WHERE id = ANY(%s)", (list(ids),))
+    cur.execute("UPDATE unresolved_queries SET discovery_processed_at = NOW(), "
+                "discovery_excluded = %s WHERE id = ANY(%s)", (bool(excluded), list(ids)))
     con.commit(); con.close()
 
 
@@ -368,18 +376,26 @@ def run_discovery():
             logger.warning("보강 staged 실패(pid=%s): %s", c.get("covered_by"), e)
 
     # 처리한 질의는 '발굴됨'으로 표시 → 다음 발굴에서 제외(중복 후보 방지)
-    processed_ids = [m["id"] for cl in clusters for m in cl["members"]]
+    # 이때 정책과 무관하다고 분류된 군집은 '제외됨'으로 따로 표시해 콘솔에서 구분되게 한다.
+    excluded_idx = {c.get("idx") for c in clf if not c.get("policy_related")}
+    excluded_ids, processed_ids = [], []
+    for k, cl in enumerate(clusters):
+        ids = [m["id"] for m in cl["members"]]
+        (excluded_ids if k in excluded_idx else processed_ids).extend(ids)
     try:
-        _mark_processed(processed_ids)
+        _mark_processed(processed_ids, excluded=False)
+        _mark_processed(excluded_ids, excluded=True)
     except Exception as e:
         logger.warning("processed 표시 실패: %s", e)
 
     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
     summary = {"date": date.today().isoformat(), "clusters": len(clusters),
-               "classified": clf, "new": len(new_cl), "gap": len(gap_cl), "candidates": created, "gaps": gaps}
+               "classified": clf, "new": len(new_cl), "gap": len(gap_cl), "candidates": created,
+               "gaps": gaps, "excluded": len(excluded_ids)}
     (_REPORT_DIR / f"{date.today().isoformat()}.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"clusters": len(clusters), "new_candidates": len(created), "gap_staged": len(gaps), "processed": len(processed_ids)}
+    return {"clusters": len(clusters), "new_candidates": len(created), "gap_staged": len(gaps),
+            "processed": len(processed_ids), "excluded": len(excluded_ids)}
 
 
 def list_candidates():

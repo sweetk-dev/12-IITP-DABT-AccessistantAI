@@ -150,14 +150,21 @@ def policy_init_baseline(policy_id: str):
 
 # ── 미답변 질의 조회 (읽기 전용) ──
 _FALLBACK_REASONS = ["low_similarity", "empty_result", "category_mismatch",
-                     "explicit_no_info", "google_search", "tool_error", "unknown"]
+                     "explicit_no_info", "no_tool_call", "google_search",
+                     "tool_error", "unknown"]
 
 
-def _reflect_status(user_query, processed_at, cand_idx):
-    """반영 구분: 신규 후보로 분류됨=reflected / 발굴 처리만 됨(후보 아님)=reviewed / 미처리=pending."""
+def _reflect_status(user_query, processed_at, cand_idx, excluded=False):
+    """반영 구분.
+
+    reflected = 신규 후보로 분류됨 / excluded = 발굴에서 정책 무관으로 걸러짐
+    reviewed  = 발굴 처리만 됨(후보 아님) / pending = 미처리
+    """
     info = cand_idx.get(user_query)
     if info:
         return "reflected", info
+    if excluded:
+        return "excluded", None
     if processed_at is not None:
         return "reviewed", None
     return "pending", None
@@ -167,7 +174,8 @@ def _ser_unresolved(r, cand_idx=None):
     fr = r.fallback_reason
     cand_idx = cand_idx or {}
     dpa = getattr(r, "discovery_processed_at", None)
-    status, info = _reflect_status(r.user_query, dpa, cand_idx)
+    exc = bool(getattr(r, "discovery_excluded", False))
+    status, info = _reflect_status(r.user_query, dpa, cand_idx, exc)
     return {
         "id": r.id,
         "created_at": r.created_at.isoformat() if r.created_at else None,
@@ -180,6 +188,7 @@ def _ser_unresolved(r, cand_idx=None):
         "embedded": r.embedded_at is not None,
         "has_grounding": bool(r.grounding_info),
         "discovery_processed_at": dpa.isoformat() if dpa else None,
+        "deleted_at": r.deleted_at.isoformat() if getattr(r, "deleted_at", None) else None,
         "reflected": status,
         "candidate_id": (info or {}).get("candidate_id"),
         "candidate_status": (info or {}).get("status"),
@@ -189,31 +198,44 @@ def _ser_unresolved(r, cand_idx=None):
 
 @router.get("/admin/api/unresolved/summary")
 async def unresolved_summary():
+    live = models.UnresolvedQuery.deleted_at.is_(None)   # 삭제(숨김)분은 집계에서 제외
     async with AsyncSessionLocal() as db:
-        total = (await db.execute(select(safunc.count()).select_from(models.UnresolvedQuery))).scalar_one()
+        total = (await db.execute(
+            select(safunc.count()).select_from(models.UnresolvedQuery).where(live)
+        )).scalar_one()
+        deleted = (await db.execute(
+            select(safunc.count()).select_from(models.UnresolvedQuery)
+            .where(models.UnresolvedQuery.deleted_at.isnot(None))
+        )).scalar_one()
         rows = (await db.execute(
             select(models.UnresolvedQuery.fallback_reason, safunc.count())
-            .group_by(models.UnresolvedQuery.fallback_reason)
+            .where(live).group_by(models.UnresolvedQuery.fallback_reason)
         )).all()
         by = {getattr(k, "value", str(k)): v for k, v in rows}
         qrows = (await db.execute(
-            select(models.UnresolvedQuery.user_query, models.UnresolvedQuery.discovery_processed_at)
+            select(models.UnresolvedQuery.user_query,
+                   models.UnresolvedQuery.discovery_processed_at,
+                   models.UnresolvedQuery.discovery_excluded).where(live)
         )).all()
     cand_idx = dc.candidate_query_index()
-    by_reflected = {"reflected": 0, "reviewed": 0, "pending": 0}
-    for uq, dpa in qrows:
-        st, _ = _reflect_status(uq, dpa, cand_idx)
+    by_reflected = {"reflected": 0, "excluded": 0, "reviewed": 0, "pending": 0}
+    for uq, dpa, exc in qrows:
+        st, _ = _reflect_status(uq, dpa, cand_idx, bool(exc))
         by_reflected[st] = by_reflected.get(st, 0) + 1
-    return {"total": total, "by_reason": by, "reasons": _FALLBACK_REASONS, "by_reflected": by_reflected}
+    return {"total": total, "deleted": deleted, "by_reason": by,
+            "reasons": _FALLBACK_REASONS, "by_reflected": by_reflected}
 
 
 @router.get("/admin/api/unresolved")
 async def unresolved_list(limit: int = 50, offset: int = 0,
                           fallback_reason: Optional[str] = None,
-                          days: Optional[int] = None):
+                          days: Optional[int] = None,
+                          include_deleted: bool = False):
     lim = min(max(limit, 1), 200)
     off = max(offset, 0)
     conds = []
+    if not include_deleted:
+        conds.append(models.UnresolvedQuery.deleted_at.is_(None))
     if fallback_reason:
         try:
             conds.append(models.UnresolvedQuery.fallback_reason == models.FallbackReason(fallback_reason))
@@ -232,6 +254,37 @@ async def unresolved_list(limit: int = 50, offset: int = 0,
     cand_idx = dc.candidate_query_index()
     return {"total": total, "count": len(rows), "limit": lim, "offset": off,
             "items": [_ser_unresolved(r, cand_idx) for r in rows]}
+
+
+# ── 미답변 질의 삭제(숨김) / 복원 ──
+#
+# 물리 삭제하지 않는 이유: 신규 후보가 query_ids 로 원 질의를 참조한다.
+# 행을 지우면 이미 승인된 후보의 근거가 끊기고 되돌릴 수 없다.
+# deleted_at 만 찍어 목록·집계·발굴 대상에서 제외한다.
+async def _set_deleted(ids: list, value):
+    ids = [int(i) for i in (ids or [])][:500]
+    if not ids:
+        raise HTTPException(status_code=400, detail="ids 가 비어 있습니다")
+    async with AsyncSessionLocal() as db:
+        rows = (await db.execute(
+            select(models.UnresolvedQuery).where(models.UnresolvedQuery.id.in_(ids))
+        )).scalars().all()
+        for r in rows:
+            r.deleted_at = value
+        await db.commit()
+        return len(rows)
+
+
+@router.post("/admin/api/unresolved/delete")
+async def unresolved_delete(payload: dict = Body(...)):
+    n = await _set_deleted(payload.get("ids"), datetime.now(timezone.utc))
+    return {"ok": True, "deleted": n}
+
+
+@router.post("/admin/api/unresolved/restore")
+async def unresolved_restore(payload: dict = Body(...)):
+    n = await _set_deleted(payload.get("ids"), None)
+    return {"ok": True, "restored": n}
 
 
 # ── 운영(크롤/백업 지금 실행 + 상태) ──

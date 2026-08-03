@@ -158,11 +158,15 @@
         <select id="uReason" onchange="loadUnresolved(true)"><option value="">전체</option></select>
       </label>
       <label>반영상태
-        <select id="uReflected" onchange="filterReflected()"><option value="">전체</option><option value="reflected">반영</option><option value="reviewed">검토됨</option><option value="pending">미반영</option></select>
+        <select id="uReflected" onchange="filterReflected()"><option value="">전체</option><option value="reflected">반영</option><option value="excluded">제외됨</option><option value="reviewed">검토됨</option><option value="pending">미반영</option></select>
       </label>
+      <label style="display:flex;align-items:center;gap:4px">
+        <input type="checkbox" id="uShowDeleted" onchange="loadUnresolved(true)"> 삭제 항목 보기
+      </label>
+      <button id="uDelBtn" onclick="deleteSelectedU()" disabled>선택 삭제</button>
       <span class="msg" id="usum"></span>
     </div>
-    <div class="card"><table id="utable"><thead><tr><th style="width:140px">일시</th><th style="width:120px">폴백사유</th><th style="width:84px">반영</th><th>사용자 질문</th><th>AI 답변(발췌)</th></tr></thead><tbody><tr><td colspan="5"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
+    <div class="card"><table id="utable"><thead><tr><th style="width:28px"><input type="checkbox" id="uAll" onclick="toggleAllU(this)"></th><th style="width:140px">일시</th><th style="width:120px">폴백사유</th><th style="width:84px">반영</th><th>사용자 질문</th><th>AI 답변(발췌)</th><th style="width:64px"></th></tr></thead><tbody><tr><td colspan="7"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
     <div id="upager" style="margin-top:10px;text-align:center;display:flex;gap:6px;justify-content:center;align-items:center"></div>
   </div>
 </div>
@@ -600,25 +604,36 @@ async function loadUnresolved(reset){
     const sel=document.getElementById("uReason"); (sm.reasons||[]).forEach(r=>{ const o=document.createElement("option"); o.value=r; o.textContent=r+(sm.by_reason&&sm.by_reason[r]?` (${sm.by_reason[r]})`:""); sel.appendChild(o); });
     if(sm.by_reflected) uReflectedCounts=sm.by_reflected; uReasonsLoaded=true; }catch(e){} }
   const days=document.getElementById("uDays").value, reason=document.getElementById("uReason").value;
+  const showDel=document.getElementById("uShowDeleted").checked;
   const qs=new URLSearchParams({limit:UPAGE, offset:uPage*UPAGE}); if(days) qs.set("days",days); if(reason) qs.set("fallback_reason",reason);
+  if(showDel) qs.set("include_deleted","true");
   try{ const d=await (await fetch(UAPI+"?"+qs)).json();
     uTotal=d.total||0;
     const tb=document.querySelector("#utable tbody"); tb.innerHTML="";
-    if(!d.items.length){ tb.innerHTML='<tr><td colspan="5"><div class="empty">미답변 질의 없음</div></td></tr>'; }
+    if(!d.items.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">미답변 질의 없음</div></td></tr>'; }
     for(const it of d.items){ const tr=document.createElement("tr");
       tr.dataset.reflected = it.reflected||"pending";
+      const del = !!it.deleted_at;
       const rb = it.reflected==="reflected" ? `<span class="b ok" title="후보: ${escapeHtml(it.candidate_topic||"")}">반영</span>`
-               : (it.reflected==="reviewed" ? '<span class="b off">검토됨</span>' : '<span class="b warn">미반영</span>');
-      tr.innerHTML=`<td style="font-size:11px;color:var(--muted)">${escapeHtml((it.created_at||"").replace("T"," ").slice(0,16))}</td>
+               : (it.reflected==="excluded" ? '<span class="b off" title="발굴에서 정책과 무관하다고 분류됨">제외됨</span>'
+               : (it.reflected==="reviewed" ? '<span class="b off">검토됨</span>' : '<span class="b warn">미반영</span>'));
+      const act = del ? `<button onclick="restoreU(${it.id})">복원</button>`
+                      : `<button onclick="deleteU(${it.id})">삭제</button>`;
+      if(del) tr.style.opacity="0.5";
+      tr.innerHTML=`<td>${del?"":`<input type="checkbox" class="uck" value="${it.id}" onclick="syncUDelBtn()">`}</td>
+        <td style="font-size:11px;color:var(--muted)">${escapeHtml((it.created_at||"").replace("T"," ").slice(0,16))}</td>
         <td><span class="b warn">${escapeHtml(it.fallback_reason)}</span>${it.has_grounding?'<div style="font-size:10px;color:var(--muted)">검색폴백</div>':''}</td>
         <td>${rb}</td>
         <td>${escapeHtml(it.user_query||"")}</td>
-        <td style="font-size:12px;color:#444">${escapeHtml(it.ai_final_answer||"")}</td>`;
+        <td style="font-size:12px;color:#444">${escapeHtml(it.ai_final_answer||"")}</td>
+        <td><div class="act">${act}</div></td>`;
       tb.appendChild(tr); }
+    const ua=document.getElementById("uAll"); if(ua) ua.checked=false;
+    syncUDelBtn();
     filterReflected();
     const rc=uReflectedCounts||{};
     const from=uTotal?(uPage*UPAGE+1):0, to=uPage*UPAGE+d.items.length;
-    setMsg("usum",`총 ${uTotal}건 · 반영 ${rc.reflected||0} / 검토됨 ${rc.reviewed||0} / 미반영 ${rc.pending||0} · 표시 ${from}–${to}`);
+    setMsg("usum",`총 ${uTotal}건 · 반영 ${rc.reflected||0} / 제외됨 ${rc.excluded||0} / 검토됨 ${rc.reviewed||0} / 미반영 ${rc.pending||0} · 표시 ${from}–${to}`);
     renderUPager();
   }catch(e){ setMsg("usum","로드 실패: "+e,true); }
 }
@@ -727,6 +742,35 @@ async function rejectCand(){
   try{ const r=await fetch(DAPI+"/candidate/"+curCand+"/reject",{method:"POST"});
     if(r.ok){ document.getElementById("dmodal").classList.remove("on"); loadDiscovery(); }
   }catch(e){ setMsg("dmodalmsg","오류: "+e,true); }
+}
+function selectedUIds(){ return Array.from(document.querySelectorAll("#utable tbody .uck:checked")).map(c=>parseInt(c.value,10)); }
+function syncUDelBtn(){ const b=document.getElementById("uDelBtn"); if(b) b.disabled = selectedUIds().length===0; }
+function toggleAllU(box){
+  document.querySelectorAll("#utable tbody tr").forEach(tr=>{
+    if(tr.style.display==="none") return;                 // 필터로 숨겨진 행은 건드리지 않음
+    const c=tr.querySelector(".uck"); if(c) c.checked=box.checked;
+  });
+  syncUDelBtn();
+}
+async function postUIds(path, ids){
+  const r=await fetch(UAPI+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids})});
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function deleteU(id){
+  if(!confirm("이 항목을 목록에서 삭제할까요? (기록은 보존되며 복원할 수 있습니다)")) return;
+  try{ await postUIds("/delete",[id]); loadUnresolved(false); }
+  catch(e){ setMsg("usum","삭제 실패: "+e,true); }
+}
+async function deleteSelectedU(){
+  const ids=selectedUIds(); if(!ids.length) return;
+  if(!confirm(ids.length+"건을 목록에서 삭제할까요? (기록은 보존되며 복원할 수 있습니다)")) return;
+  try{ await postUIds("/delete",ids); uReasonsLoaded=false; loadUnresolved(true); }
+  catch(e){ setMsg("usum","삭제 실패: "+e,true); }
+}
+async function restoreU(id){
+  try{ await postUIds("/restore",[id]); loadUnresolved(false); }
+  catch(e){ setMsg("usum","복원 실패: "+e,true); }
 }
 function filterReflected(){
   const v=document.getElementById("uReflected").value;

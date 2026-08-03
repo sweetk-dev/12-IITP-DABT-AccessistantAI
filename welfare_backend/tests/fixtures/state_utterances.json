@@ -1,0 +1,169 @@
+{
+  "description": "상태 발화 회귀 테스트셋 — 정책을 명시적으로 묻지 않고 겪는 어려움만 말하는 발화. 이 발화들은 잡담으로 처리되면 안 되며, 도구 호출 없이 답한 turn 은 미답변 질의로 적재되어야 한다.",
+  "cases": [
+    {
+      "utterance": "배고파 죽겠어",
+      "need_area": "식생활"
+    },
+    {
+      "utterance": "며칠째 제대로 먹지도 못했어",
+      "need_area": "식생활"
+    },
+    {
+      "utterance": "쌀이 다 떨어졌는데 살 돈이 없어",
+      "need_area": "식생활"
+    },
+    {
+      "utterance": "밥 사 먹을 돈도 없어",
+      "need_area": "식생활"
+    },
+    {
+      "utterance": "먹을 게 하나도 없네",
+      "need_area": "식생활"
+    },
+    {
+      "utterance": "끼니를 계속 거르고 있어",
+      "need_area": "식생활"
+    },
+    {
+      "utterance": "집이 너무 추워",
+      "need_area": "주거"
+    },
+    {
+      "utterance": "보일러를 못 켜고 있어",
+      "need_area": "주거"
+    },
+    {
+      "utterance": "월세가 밀렸어",
+      "need_area": "주거"
+    },
+    {
+      "utterance": "당장 오늘 잘 곳이 없어",
+      "need_area": "주거"
+    },
+    {
+      "utterance": "전기가 끊긴다고 하네",
+      "need_area": "주거"
+    },
+    {
+      "utterance": "가스비가 너무 많이 나왔어",
+      "need_area": "주거"
+    },
+    {
+      "utterance": "병원비가 없어서 못 가고 있어",
+      "need_area": "의료"
+    },
+    {
+      "utterance": "약값이 너무 부담돼",
+      "need_area": "의료"
+    },
+    {
+      "utterance": "치료를 계속 받아야 하는데 돈이 없어",
+      "need_area": "의료"
+    },
+    {
+      "utterance": "보청기가 고장났는데 새로 못 사",
+      "need_area": "의료"
+    },
+    {
+      "utterance": "휠체어가 낡아서 위험해",
+      "need_area": "의료"
+    },
+    {
+      "utterance": "병원 가기가 너무 힘들어",
+      "need_area": "이동"
+    },
+    {
+      "utterance": "혼자서는 밖에 나갈 수가 없어",
+      "need_area": "이동"
+    },
+    {
+      "utterance": "버스를 탈 수가 없어",
+      "need_area": "이동"
+    },
+    {
+      "utterance": "택시비가 너무 많이 들어",
+      "need_area": "이동"
+    },
+    {
+      "utterance": "장 보러 가기가 어려워",
+      "need_area": "이동"
+    },
+    {
+      "utterance": "생활비가 하나도 없어",
+      "need_area": "생계"
+    },
+    {
+      "utterance": "일을 못 하게 됐어",
+      "need_area": "생계"
+    },
+    {
+      "utterance": "돈이 하나도 없어",
+      "need_area": "생계"
+    },
+    {
+      "utterance": "빚 때문에 너무 힘들어",
+      "need_area": "생계"
+    },
+    {
+      "utterance": "수입이 끊겼어",
+      "need_area": "생계"
+    },
+    {
+      "utterance": "혼자 씻기가 힘들어",
+      "need_area": "돌봄"
+    },
+    {
+      "utterance": "돌봐줄 사람이 없어",
+      "need_area": "돌봄"
+    },
+    {
+      "utterance": "집안일을 못 하겠어",
+      "need_area": "돌봄"
+    },
+    {
+      "utterance": "아이를 맡길 데가 없어",
+      "need_area": "돌봄"
+    },
+    {
+      "utterance": "부모님이 나를 못 돌보셔",
+      "need_area": "돌봄"
+    },
+    {
+      "utterance": "너무 외로워",
+      "need_area": "정서"
+    },
+    {
+      "utterance": "아무도 찾아오지 않아",
+      "need_area": "정서"
+    },
+    {
+      "utterance": "하루종일 말할 사람이 없어",
+      "need_area": "정서"
+    },
+    {
+      "utterance": "일자리를 구하고 싶은데 어디서 알아봐야 할지 모르겠어",
+      "need_area": "일자리"
+    },
+    {
+      "utterance": "취업이 안 돼",
+      "need_area": "일자리"
+    },
+    {
+      "utterance": "휴대폰 요금이 너무 비싸",
+      "need_area": "통신"
+    },
+    {
+      "utterance": "인터넷 요금이 부담돼",
+      "need_area": "통신"
+    },
+    {
+      "utterance": "공부를 더 하고 싶은데 학비가 없어",
+      "need_area": "교육"
+    },
+    {
+      "utterance": "아이 학원비를 못 내고 있어",
+      "need_area": "교육"
+    }
+  ]
+}
