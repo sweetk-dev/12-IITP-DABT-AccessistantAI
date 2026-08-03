@@ -141,7 +141,7 @@
       <button class="primary" onclick="openEditor(null)">+ 새 정책 추가</button>
       <span class="msg" id="pmsg"></span>
     </div>
-    <div class="card"><table id="ptable"><thead><tr><th>ID</th><th>제목</th><th>분류</th><th>상태</th><th>버전</th><th>마지막 적용</th><th>작업</th></tr></thead><tbody><tr><td colspan="7"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
+    <div class="card"><table id="ptable"><thead><tr><th>ID</th><th>제목</th><th>분류</th><th>상태</th><th style="width:96px">크롤</th><th>버전</th><th>마지막 적용</th><th>작업</th></tr></thead><tbody><tr><td colspan="8"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
   </div>
 </div>
 
@@ -484,21 +484,34 @@ async function rejectOne(pid){ if(!confirm(pid+" staging을 반려할까요?"))r
 }
 
 /* ===== 정책 관리 ===== */
+async function registerCrawl(pid){
+  if(!confirm(pid+" 의 출처를 크롤 대상에 등록할까요?\n(도메인 루트처럼 감지가 어려운 출처는 수동검토로 등록됩니다)")) return;
+  try{
+    const r = await (await fetch("/admin/api/policy/"+pid+"/register-crawl",{method:"POST"})).json();
+    const n = (r.added||[]).length, l = (r.linked||[]).length, m = (r.manual_review||[]).length;
+    alert(`등록 ${n}건 · 기존 출처 연결 ${l}건`+(m?`\n그중 ${m}건은 수동검토로 등록됨 — 구체 페이지 URL로 교체 권장`:""));
+    loadPolicies();
+  }catch(e){ alert("등록 실패: "+e); }
+}
 async function loadPolicies(){
-  const tb=document.querySelector("#ptable tbody"); tb.innerHTML='<tr><td colspan="7"><div class="empty">불러오는 중…</div></td></tr>';
+  const tb=document.querySelector("#ptable tbody"); tb.innerHTML='<tr><td colspan="8"><div class="empty">불러오는 중…</div></td></tr>';
   try{ const rows=await (await fetch(PLIST)).json();
-    if(!rows.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">정책 없음</div></td></tr>'; return; }
+    if(!rows.length){ tb.innerHTML='<tr><td colspan="8"><div class="empty">정책 없음</div></td></tr>'; return; }
     tb.innerHTML="";
     for(const p of rows){ const tr=document.createElement("tr");
       const active = p.active!==false;
       tr.innerHTML=`<td><b>${p.policy_id}</b></td><td>${escapeHtml(p.title||"")}</td><td>${escapeHtml(p.category||"")}</td>
         <td>${active?'<span class="b ok">활성</span>':'<span class="b off">비활성</span>'}${p.deactivated_at?`<div style="font-size:10px;color:var(--muted)">${escapeHtml(p.deactivated_at)}</div>`:''}</td>
+        <td>${(p.crawl_targets||0)>0
+              ? `<span class="b ok" title="이 정책의 출처를 감시 중인 크롤 타겟 수">${p.crawl_targets}건</span>`
+              : `<span class="b warn" title="출처가 크롤 대상에 없어 변경 감지를 받지 못합니다">미등록</span>`}</td>
         <td>${escapeHtml(p.version||"")}</td>
         <td style="font-size:11px;color:var(--muted)">${escapeHtml((p.last_applied_at||"").replace("T"," ").slice(0,16))}</td>
         <td><div class="act">
           <button onclick="openEditor('${p.policy_id}')">편집</button>
           <button onclick="crawlPolicy('${p.policy_id}')">재검증</button>
           <button onclick="initBaselinePolicy('${p.policy_id}')">기준확정</button>
+          ${(p.crawl_targets||0)>0?'':`<button onclick="registerCrawl('${p.policy_id}')">크롤등록</button>`}
           ${active?`<button class="warn" onclick="toggleActive('${p.policy_id}',false)">비활성</button>`
                   :`<button class="primary" onclick="toggleActive('${p.policy_id}',true)">재활성</button>`}
         </div></td>`;

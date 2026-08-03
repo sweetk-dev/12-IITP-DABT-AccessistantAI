@@ -20,6 +20,7 @@ if str(_PDB) not in sys.path:
     sys.path.insert(0, str(_PDB))
 from crawler import review_core as rc  # noqa: E402
 from crawler import policy_core as pc  # noqa: E402
+from crawler import target_sync as tsync  # noqa: E402
 from database import AsyncSessionLocal, get_iitp_db, iitp_db_configured  # noqa: E402
 import models  # noqa: E402
 import scheduler as ops  # noqa: E402
@@ -146,6 +147,31 @@ def policy_crawl(policy_id: str):
 @router.post("/admin/api/policy/{policy_id}/init-baseline")
 def policy_init_baseline(policy_id: str):
     return ops.run_init_baseline(policy_id)
+
+
+# ── 크롤 대상 등록 (#235) ──
+# 정책의 출처가 크롤 대상에 없으면 그 정책은 변경 감지를 받지 못한다.
+@router.get("/admin/api/policy/crawl-coverage")
+def policy_crawl_coverage():
+    missing = tsync.unregistered_policies()
+    return {"unregistered": missing, "count": len(missing)}
+
+
+@router.post("/admin/api/policy/{policy_id}/register-crawl")
+def policy_register_crawl(policy_id: str):
+    d = pc.get_policy(policy_id)
+    if d.get("error"):
+        raise HTTPException(status_code=404, detail=d["error"])
+    r = tsync.register_policy(d)
+    if not r.get("ok"):
+        raise HTTPException(status_code=400, detail=r)
+    # 새로 등록한 출처는 비교 기준이 없어 첫 크롤에서 전부 변경으로 잡힌다 → baseline 확정
+    if r.get("added"):
+        try:
+            r["baseline"] = ops.run_init_baseline(policy_id)
+        except Exception as e:
+            r["baseline"] = {"started": False, "reason": str(e)}
+    return r
 
 
 # ── 미답변 질의 조회 (읽기 전용) ──
