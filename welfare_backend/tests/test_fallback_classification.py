@@ -139,3 +139,24 @@ def test_scrub_pii_keeps_working():
     out = scrub_pii("연락처는 010-1234-5678 이고 문의는 1577-1000 입니다")
     assert "010-1234-5678" not in out
     assert "[PHONE]" in out
+
+
+# ── 화이트리스트 과잉 제외 회귀 (세션 리뷰에서 발견) ────────
+# 인사 뒤에 실제 질문이 이어지는 발화가 제외되면, 도구 미호출 실패가
+# 관측 밖으로 사라진다 — #227 이 고치려던 문제의 재발 경로.
+@pytest.mark.parametrize("text", [
+    "안녕하세요 지하철 요금 할인 좀 알려주세요",
+    "고마워 그런데 장애인연금 신청은 어떻게 해?",
+    "감사합니다 활동지원 신청 방법도 알려주세요",
+    "수고하세요 아 맞다 보청기 지원 되나요?",
+])
+def test_greeting_with_question_is_not_excluded(text):
+    assert is_excluded_utterance(text) is False
+
+
+def test_greeting_with_question_without_tool_is_logged():
+    assert classify_fallback(
+        has_grounding=False, tool_steps=[],
+        user_text="안녕하세요 지하철 요금 할인 좀 알려주세요",
+        ai_text="네 안녕하세요! 좋은 하루 보내세요.",
+    ) is FallbackReason.NO_TOOL_CALL

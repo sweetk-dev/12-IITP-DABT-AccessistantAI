@@ -612,7 +612,7 @@ let uOffset=0, uReasonsLoaded=false, uReflectedCounts=null;
 const UPAGE=100; let uPage=0, uTotal=0;
 async function loadUnresolved(reset){
   if(reset){ uPage=0; }
-  document.querySelector("#utable tbody").innerHTML='<tr><td colspan="5"><div class="empty">불러오는 중…</div></td></tr>';
+  document.querySelector("#utable tbody").innerHTML='<tr><td colspan="7"><div class="empty">불러오는 중…</div></td></tr>';
   if(!uReasonsLoaded){ try{ const sm=await (await fetch(UAPI+"/summary")).json();
     const sel=document.getElementById("uReason"); (sm.reasons||[]).forEach(r=>{ const o=document.createElement("option"); o.value=r; o.textContent=r+(sm.by_reason&&sm.by_reason[r]?` (${sm.by_reason[r]})`:""); sel.appendChild(o); });
     if(sm.by_reflected) uReflectedCounts=sm.by_reflected; uReasonsLoaded=true; }catch(e){} }

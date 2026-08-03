@@ -98,6 +98,16 @@ def policies_list():
     return pc.list_policies()
 
 
+# ⚠️ 이 정적 경로는 아래 /admin/api/policy/{policy_id} 보다 먼저 등록해야 한다.
+#    FastAPI 는 등록 순서로 매칭하므로, 뒤에 두면 policy_id="crawl-coverage" 로
+#    잡혀 항상 404 가 난다.
+@router.get("/admin/api/policy/crawl-coverage")
+def policy_crawl_coverage():
+    """크롤 대상에 등록되지 않은 정책 목록 (#235)."""
+    missing = tsync.unregistered_policies()
+    return {"unregistered": missing, "count": len(missing)}
+
+
 @router.get("/admin/api/policy/{policy_id}")
 def policy_get(policy_id: str):
     r = pc.get_policy(policy_id)
@@ -151,12 +161,6 @@ def policy_init_baseline(policy_id: str):
 
 # ── 크롤 대상 등록 (#235) ──
 # 정책의 출처가 크롤 대상에 없으면 그 정책은 변경 감지를 받지 못한다.
-@router.get("/admin/api/policy/crawl-coverage")
-def policy_crawl_coverage():
-    missing = tsync.unregistered_policies()
-    return {"unregistered": missing, "count": len(missing)}
-
-
 @router.post("/admin/api/policy/{policy_id}/register-crawl")
 def policy_register_crawl(policy_id: str):
     d = pc.get_policy(policy_id)

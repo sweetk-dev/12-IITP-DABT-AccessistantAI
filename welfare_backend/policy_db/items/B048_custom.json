@@ -18,7 +18,13 @@
     {
       "name": "장애인복지법",
       "article": "제40조(장애인 보조견의 훈련ㆍ보급 지원 등)",
-      "url": "https://www.law.go.kr/법령/장애인복지법/제40조"
+      "url": "https://www.law.go.kr/법령/장애인복지법/제40조",
+      "law_ref_type": "law",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "enforcement_date": "20260701"
     }
   ],
   "how_to_use": {

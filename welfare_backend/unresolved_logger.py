@@ -58,12 +58,21 @@ def scrub_pii(text: Optional[str]) -> Optional[str]:
 # ⚠️ 여기 없는 발화는 전부 적재한다. "도구를 안 불렀으니 잡담" 이라는 역추론은 금지:
 #    '배고파 죽겠어' 같은 상태 발화가 잡담으로 오분류되어 도구 없이 답해도
 #    그 사실 자체가 미답변 질의로 남아야 발굴 대상이 된다.
-_EXCLUDE_PATTERNS = [
-    re.compile(r"^\s*\[SYSTEM:"),                       # 백엔드가 보낸 시스템 신호
+_SYSTEM_SIGNAL = re.compile(r"^\s*\[SYSTEM:")            # 백엔드가 보낸 시스템 신호
+
+_SMALLTALK_PATTERNS = [
     re.compile(r"^(안녕|반가|반갑|처음 ?뵙|하이|헬로|여보세요)"),  # 인사
     re.compile(r"(고마워|고맙습|감사합|감사해|감사드)"),        # 감사
     re.compile(r"(잘 ?있어|안녕히|수고하|그만할|이만 ?끊|종료할)"),  # 작별
 ]
+
+# 질문 표지 — 인사말에 이런 표지가 섞여 있으면 실제 문의로 보고 제외하지 않는다.
+_QUESTION_MARKERS = re.compile(
+    r"[?？]|알려|어떻|어디|언제|얼마|무엇|뭐|신청|방법|되나|될까|가능|받을")
+
+# 인사·감사·작별로 보고 제외할 수 있는 최대 길이. 이보다 길면 인사말 뒤에
+# 다른 내용이 붙어 있을 가능성이 높으므로 제외하지 않는다(과잉 적재가 과소 관측보다 낫다).
+_SMALLTALK_MAX_LEN = 20
 
 # 상담원이 스스로 "모른다"고 답한 문구 — SYSTEM_INSTRUCTION 이 지시하는 표현과 그 변형.
 # 도구를 호출해 결과를 받고도 안내에 실패한 turn 을 잡기 위한 판정이다.
@@ -83,10 +92,20 @@ def _matches_any(text: Optional[str], patterns) -> bool:
 
 
 def is_excluded_utterance(user_text: Optional[str]) -> bool:
-    """적재 제외 대상(인사·감사·작별·시스템 신호·빈 발화) 여부."""
+    """적재 제외 대상(인사·감사·작별·시스템 신호·빈 발화) 여부.
+
+    좁게 판정한다 — "안녕하세요 지하철 할인 알려주세요" 처럼 인사 뒤에
+    질문이 이어지는 발화를 여기서 삼키면 #227 이 고치려던 문제가 재발한다.
+    인사·감사·작별은 (짧고) 그리고 (질문 표지가 없는) 발화만 제외한다.
+    """
     if not user_text or not user_text.strip():
         return True
-    return _matches_any(user_text, _EXCLUDE_PATTERNS)
+    t = user_text.strip()
+    if _SYSTEM_SIGNAL.search(t):
+        return True
+    if len(t) > _SMALLTALK_MAX_LEN or _QUESTION_MARKERS.search(t):
+        return False
+    return _matches_any(t, _SMALLTALK_PATTERNS)
 
 
 def is_explicit_no_info(ai_text: Optional[str]) -> bool:

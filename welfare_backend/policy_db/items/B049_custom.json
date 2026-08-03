@@ -18,12 +18,24 @@
     {
       "name": "장애인고용촉진 및 직업재활법",
       "article": "제30조(장애인 고용장려금의 지급)",
-      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법"
+      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법",
+      "law_ref_type": "law",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact",
+      "law_id": "001763",
+      "law_serial_no": "279737",
+      "enforcement_date": "20260512"
     },
     {
       "name": "장애인고용촉진 및 직업재활법 시행령",
       "article": "제28조(고용장려금의 지급)",
-      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법시행령"
+      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법시행령",
+      "law_ref_type": "law",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact",
+      "law_id": "004626",
+      "law_serial_no": "285611",
+      "enforcement_date": "20260512"
     }
   ],
   "how_to_use": {

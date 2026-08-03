@@ -17,11 +17,23 @@
   "legal_basis": [
     {
       "name": "장애인복지법",
-      "article": "제2조"
+      "article": "제2조",
+      "law_ref_type": "law",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact",
+      "law_id": "000187",
+      "law_serial_no": "281941",
+      "enforcement_date": "20260701"
     },
     {
       "name": "장애인ㆍ고령자 등 주거약자 지원에 관한 법률 시행령",
-      "article": "제7조"
+      "article": "제7조",
+      "law_ref_type": "law",
+      "mapping_status": "fuzzy",
+      "mapping_confidence": "fuzzy",
+      "law_id": "011683",
+      "law_serial_no": "277975",
+      "enforcement_date": "20251001"
     }
   ],
   "how_to_use": {

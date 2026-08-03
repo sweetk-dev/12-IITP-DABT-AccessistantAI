@@ -69,3 +69,6 @@ welfare_backend/policy_db/items/*.md
 # 프런트 테스트 의존성
 node_modules/
 package-lock.json
+
+# 콘솔이 런타임에 쓰는 크롤 타겟 오버레이 (영속 볼륨/로컬 실행 산출물)
+crawl_targets.local.json

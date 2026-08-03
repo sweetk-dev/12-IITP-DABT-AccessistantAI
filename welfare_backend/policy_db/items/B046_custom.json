@@ -18,7 +18,13 @@
     {
       "name": "조세특례제한법",
       "article": "제88조의2(비과세종합저축에 대한 과세특례)",
-      "url": "https://www.law.go.kr/법령/조세특례제한법"
+      "url": "https://www.law.go.kr/법령/조세특례제한법",
+      "law_ref_type": "law",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact",
+      "law_id": "001584",
+      "law_serial_no": "280409",
+      "enforcement_date": "20260701"
     }
   ],
   "how_to_use": {

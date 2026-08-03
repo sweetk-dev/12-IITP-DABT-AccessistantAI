@@ -16,7 +16,13 @@
   },
   "legal_basis": [
     {
-      "name": "공공주택 특별법"
+      "name": "공공주택 특별법",
+      "law_ref_type": "law",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact",
+      "law_id": "009595",
+      "law_serial_no": "276937",
+      "enforcement_date": "20260102"
     }
   ],
   "how_to_use": {
