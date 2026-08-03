@@ -7,6 +7,7 @@
 # 그대로 넣을 수 없어, 같은 DB 세션 헬퍼를 받는 일반 함수로 분리했습니다.
 import asyncio
 import logging
+import os
 import re
 from typing import Optional
 
@@ -17,6 +18,77 @@ from database import AsyncSessionLocal
 import models
 
 logger = logging.getLogger(__name__)
+
+
+# ─────────────────────────────────────────────────────────────
+# 생활 언어 → 정책 어휘 질의 확장 (#229)
+#
+# 정책 청크는 행정 문체라 "배고파 죽겠어" 같은 생활 언어를 그대로 임베딩하면
+# 코사인 거리가 붙지 않는다. 상태 발화일 때만 확장을 발동해
+# 일반 질문의 응답 지연은 그대로 두고 검색 재현율만 끌어올린다.
+#
+# 원칙: 확장은 검색을 돕는 보조 단계다. 실패·지연 시 원 질의로 그대로 검색한다.
+# ─────────────────────────────────────────────────────────────
+EXPAND_MODEL = os.environ.get("GEMINI_EXPAND_MODEL", "gemini-flash-lite-latest")
+EXPAND_TIMEOUT_S = float(os.environ.get("GEMINI_EXPAND_TIMEOUT_S", "3.0"))
+
+_EXPAND_PROMPT = """사용자가 음성 상담에서 한 말을 복지 정책 문서 검색용 질의로 바꾸세요.
+
+사용자 말: "{utterance}"
+
+규칙:
+- 사용자가 겪는 어려움이 어떤 지원 영역에 해당하는지 판단해 그 영역의 행정 용어로 바꿉니다.
+- 관련 있는 제도명·급여명·지원 항목을 쉼표로 나열합니다. 3~6개.
+- 장애인 복지 정책 문서에서 실제 쓰이는 표현을 씁니다.
+- 설명·따옴표·머리말 없이 질의문 한 줄만 출력합니다.
+
+예시:
+"배고파 죽겠어" -> 식생활 지원, 생계급여, 긴급복지 생계지원, 식품 지원, 저소득 급식 지원
+"집이 너무 추워" -> 연료비 지원, 난방비 감면, 도시가스 요금 감면, 전기요금 할인, 주거 지원
+"병원비가 없어" -> 의료비 지원, 의료급여, 건강보험료 경감, 긴급복지 의료지원, 장애인 의료비"""
+
+_expand_client = None
+
+
+def _get_expand_client():
+    """확장용 경량 모델 클라이언트 (지연 초기화). 키가 없으면 None."""
+    global _expand_client
+    if _expand_client is None:
+        key = os.environ.get("GEMINI_API_KEY")
+        if not key:
+            return None
+        from google import genai
+        _expand_client = genai.Client(api_key=key)
+    return _expand_client
+
+
+def _expand_query_sync(utterance: str) -> Optional[str]:
+    client = _get_expand_client()
+    if client is None:
+        return None
+    from google.genai import types as _gtypes
+    resp = client.models.generate_content(
+        model=EXPAND_MODEL,
+        contents=_EXPAND_PROMPT.format(utterance=utterance[:200]),
+        config=_gtypes.GenerateContentConfig(temperature=0.0, max_output_tokens=120),
+    )
+    out = (getattr(resp, "text", None) or "").strip()
+    out = out.strip("\"'` \n")          # 모델이 따옴표·머리말을 붙이는 경우 방어
+    if not out or len(out) > 300:
+        return None
+    return out
+
+
+async def expand_query(utterance: str) -> Optional[str]:
+    """확장 질의 반환. 실패·시간 초과 시 None (호출부는 원 질의로 계속 진행)."""
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(_expand_query_sync, utterance),
+            timeout=EXPAND_TIMEOUT_S,
+        )
+    except Exception as e:
+        logger.info("질의 확장 생략 (원 질의로 검색): %s", str(e)[:120])
+        return None
 
 
 async def _with_session(handler):
@@ -135,19 +207,28 @@ async def _keyword_text_search(query: str, top_k: int = 5) -> dict:
     return await _with_session(run)
 
 
-async def tool_search_by_keyword(query: str, top_k: int = 5, *, embed_fn) -> dict:
+async def tool_search_by_keyword(query: str, top_k: int = 5, expand: bool = False,
+                                 *, embed_fn) -> dict:
     """자연어 질문을 768차원 벡터로 변환한 뒤 모든 청크에서 의미적으로 가까운 결과를 찾습니다.
 
     Args:
         query: 자연어 질문
         top_k: 반환 개수
+        expand: 생활 언어 발화를 정책 어휘로 확장한 뒤 검색할지 (상태 발화일 때 true)
         embed_fn: 임베딩 함수 (main.py 의 _embed)
     """
+    search_text = query
+    expanded = None
+    if expand:
+        expanded = await expand_query(query)
+        if expanded:
+            search_text = expanded
+            logger.info("질의 확장: %r -> %r", query[:40], expanded[:80])
     try:
-        qvec = await asyncio.to_thread(embed_fn, query)
+        qvec = await asyncio.to_thread(embed_fn, search_text)
     except Exception as e:
         logger.warning("임베딩 실패 — 키워드 텍스트 검색 폴백: %s", str(e)[:120])
-        return await _keyword_text_search(query, top_k)
+        return await _keyword_text_search(search_text, top_k)
 
     async def run(db: AsyncSession):
         stmt = (
@@ -167,6 +248,8 @@ async def tool_search_by_keyword(query: str, top_k: int = 5, *, embed_fn) -> dic
         rows = (await db.execute(stmt)).all()
         return {
             "query": query,
+            # 확장이 실제로 적용됐는지 관측 가능하게 노출 (미적용 시 None)
+            "expanded_query": expanded,
             "sources_top3": _top_sources_from_fd(rows[0].full_data) if rows else [],
             "results": [
                 {
@@ -176,6 +259,7 @@ async def tool_search_by_keyword(query: str, top_k: int = 5, *, embed_fn) -> dic
                     "policy_summary": r.short_summary,
                     "matched_chunk_type": r.chunk_type,
                     "matched_content": r.content,
+                    "last_verified": (r.full_data or {}).get("last_verified"),
                 }
                 for r in rows
             ],
@@ -208,6 +292,8 @@ async def tool_get_policy_details(policy_id: str) -> dict:
             "how_to_use": fd.get("how_to_use"),
             "application": fd.get("application"),
             "key_contact": (fd.get("contact") or [None])[0],
+        # 이 정책 정보가 언제 확인된 것인지 — 금액·기준은 해마다 바뀌므로 답변에 반드시 실어야 한다
+        "last_verified": fd.get("last_verified"),
             "sources_top3": [
                 {"publisher": s.get("publisher"), "url": s.get("url"), "priority": s.get("priority")}
                 for s in sources_top3
@@ -247,6 +333,7 @@ async def tool_check_eligibility_criteria(policy_id: str) -> dict:
                 "age_min": p.age_min,
                 "age_max": p.age_max,
                 "income_criteria": (fd.get("eligibility") or {}).get("income_criteria"),
+            "last_verified": fd.get("last_verified"),
                 "residency_criteria": (fd.get("eligibility") or {}).get("residency_criteria"),
             },
             "eligibility_details": "\n\n".join(chunks) if chunks else "자격 요건 상세 청크 없음.",
