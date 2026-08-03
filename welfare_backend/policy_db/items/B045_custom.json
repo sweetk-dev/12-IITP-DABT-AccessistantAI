@@ -31,20 +31,50 @@
     "default": "복지로 웹사이트(www.bokjiro.go.kr) 또는 복지로 모바일 앱 접속 후 '복지지도' 메뉴에서 방문하고자 하는 장소(예: 주민센터)를 검색하여 휠체어 접근성 및 편의시설 설치 현황 확인"
   },
   "application": {},
-  "last_verified": "2026-06-18",
-  "version": "1.0.0",
+  "last_verified": "2026-08-03",
+  "version": "1.1.0",
   "sources": [
     {
-      "title": "장애인 편의시설 안내 서비스(복지지도) 시범 운영",
-      "publisher": "보건복지부",
-      "url": "https://www.mohw.go.kr/react/al/sal0301vw.jsp?PAR_MENU_ID=04&MENU_ID=0403&page=1&CONT_SEQ=374465",
-      "priority": "primary"
+      "title": "복지로 복지지도 (전국 복지시설·편의시설 지도)",
+      "publisher": "복지로",
+      "publisher_type": "공기업",
+      "priority": "primary",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twatca/wlfcl/wlfclPage.do",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "복지지도 서비스 페이지 — 서비스 개편·중단 감시"
+      }
     },
     {
-      "title": "복지로 복지지도",
-      "publisher": "복지로",
-      "url": "https://www.bokjiro.go.kr",
-      "priority": "secondary"
+      "title": "장애인 편의시설 안내 서비스(복지지도) 시범 운영 보도자료",
+      "publisher": "보건복지부",
+      "publisher_type": "중앙정부",
+      "priority": "secondary",
+      "url": "https://www.mohw.go.kr/board.es?mid=a10503010100&bid=0027&act=view&list_no=374382",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "구 react URL 404 로 board.es 형식으로 교체(2026-08-03)"
+      }
+    },
+    {
+      "title": "복지로 위치정보 서비스 소개 (한국사회보장정보원)",
+      "publisher": "한국사회보장정보원",
+      "publisher_type": "공기업",
+      "priority": "supplementary",
+      "url": "http://www.ssis.or.kr/lay1/bbs/S1T67C101/B/101/view.do?article_seq=125995",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "운영기관 서비스 소개"
+      }
     }
   ],
   "active": true

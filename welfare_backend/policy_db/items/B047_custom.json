@@ -63,14 +63,50 @@
     "online_available": false,
     "proxy_allowed": true
   },
-  "last_verified": "2026-07-03",
-  "version": "1.0.0",
+  "last_verified": "2026-08-03",
+  "version": "1.1.0",
   "sources": [
     {
-      "title": "복지서비스 - 장애인 주택 개조",
+      "title": "복지로 중증장애인 주택개조사업 (지자체)",
       "publisher": "복지로",
-      "url": "https://www.bokjiro.go.kr",
-      "priority": "primary"
+      "publisher_type": "공기업",
+      "priority": "primary",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003471",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "지원 대상·금액 변경 감시"
+      }
+    },
+    {
+      "title": "서울시 저소득 장애인 주거편의 지원사업",
+      "publisher": "서울특별시",
+      "publisher_type": "광역지자체",
+      "priority": "secondary",
+      "url": "https://housing.seoul.go.kr/site/main/content/sh01_070702",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "가구당 지원액(평균 340만원)·항목 변경 감시"
+      }
+    },
+    {
+      "title": "경기도 장애인 주택개조사업",
+      "publisher": "경기도",
+      "publisher_type": "광역지자체",
+      "priority": "secondary",
+      "url": "https://housing.gg.go.kr/html/24305.do",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "소득기준·지원항목 변경 감시"
+      }
     }
   ],
   "operating_agencies": [

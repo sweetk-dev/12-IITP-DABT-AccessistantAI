@@ -66,20 +66,50 @@
     "online_available": true,
     "proxy_allowed": true
   },
-  "last_verified": "2026-07-03",
-  "version": "1.0.0",
+  "last_verified": "2026-08-03",
+  "version": "1.1.0",
   "sources": [
     {
-      "title": "장애인고용장려금 신청방법",
+      "title": "한국장애인고용공단 장애인고용장려금 안내",
       "publisher": "한국장애인고용공단",
-      "url": "https://www.kead.or.kr",
-      "priority": "primary"
+      "publisher_type": "공기업",
+      "priority": "primary",
+      "url": "https://www.kead.or.kr/edsysdesc/cntntsPage.do?menuId=MENU0684",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "지급 단가(경증 35~50만·중증 70~90만) 변경 감시"
+      }
     },
     {
-      "title": "장애인 고용장려금",
-      "publisher": "고용24",
-      "url": "https://www.work24.go.kr",
-      "priority": "secondary"
+      "title": "고용24 장애인 고용장려금 제도안내",
+      "publisher": "고용노동부",
+      "publisher_type": "중앙정부",
+      "priority": "secondary",
+      "url": "https://www.work24.go.kr/cm/c/f/1100/selecSystInfo.do?currentPageNo=1&recordCountPerPage=10&upprSystClId=&systClId=SC00000321&systId=SI00000376&systCnntId=CI00001898",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "지원자격·절차 변경 감시"
+      }
+    },
+    {
+      "title": "정부24 장애인고용장려금지원",
+      "publisher": "행정안전부(정부24)",
+      "publisher_type": "중앙정부",
+      "priority": "supplementary",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/149200000053",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "민원 신청 안내"
+      }
     }
   ],
   "operating_agencies": [
