@@ -82,6 +82,7 @@ class FallbackReason(str, enum.Enum):
     EXPLICIT_NO_INFO  = "explicit_no_info"    # AI 가 명시적으로 "정보 없음" 답변
     GOOGLE_SEARCH     = "google_search"       # 폴백으로 외부 검색 발동
     TOOL_ERROR        = "tool_error"          # DB 도구 호출 예외
+    NO_TOOL_CALL      = "no_tool_call"        # 도구를 아예 호출하지 않고 답변 (상태 발화 오분류 등)
     UNKNOWN           = "unknown"             # 분류 불가
 
 
@@ -119,6 +120,12 @@ class UnresolvedQuery(Base):
 
     # 발굴(군집·분류) 처리 시각 — discovery_core 가 ALTER 로 추가. '반영' 판정 보조.
     discovery_processed_at = Column(DateTime(timezone=True), nullable=True)
+    # 발굴에서 '정책 무관'으로 걸러진 질의 — 검토되어 후보가 된 것과 구분하기 위한 플래그.
+    discovery_excluded = Column(Boolean, nullable=True)
+
+    # 운영자가 목록에서 걷어낸 시각 — 소프트 삭제. 행은 보존하고 목록·발굴에서만 제외한다
+    # (신규 후보가 query_ids 로 원 질의를 참조하므로 물리 삭제하면 후보의 근거가 끊긴다).
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     created_at = Column(DateTime(timezone=True),
                         server_default=func.now(), nullable=False, index=True)

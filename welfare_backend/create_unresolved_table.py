@@ -29,6 +29,67 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# ─────────────────────────────────────────────────────────────
+# 멱등 마이그레이션 — 운영 DB 에 이미 만들어진 테이블/enum 을 앞으로 확장한다.
+#
+# create_all(checkfirst=True) 은 "테이블이 없을 때만" 만들기 때문에
+# 이미 존재하는 테이블의 신규 컬럼·신규 enum 값은 반영되지 않는다.
+# 앱 기동 시 매번 호출해도 안전하도록 전부 IF NOT EXISTS 로 작성.
+# ─────────────────────────────────────────────────────────────
+
+# (enum 타입명, 추가할 값) — FallbackReason 에 값이 늘면 여기에만 추가하면 된다.
+_ENUM_ADDITIONS = [
+    ("fallback_reason_enum", "no_tool_call"),
+]
+
+# (테이블명, 컬럼명, 컬럼 정의)
+_COLUMN_ADDITIONS = [
+    ("unresolved_queries", "deleted_at", "TIMESTAMPTZ NULL"),
+    ("unresolved_queries", "discovery_excluded", "BOOLEAN NULL"),
+]
+
+
+async def ensure_migrations(conn) -> list[str]:
+    """이미 존재하는 unresolved_queries 스키마를 최신 상태로 맞춘다(멱등).
+
+    반환: 실제로 적용된 변경 설명 목록(없으면 빈 리스트).
+    """
+    applied: list[str] = []
+
+    # enum 값 추가 — ADD VALUE 는 트랜잭션 제약이 있어 개별 실행한다.
+    for enum_name, value in _ENUM_ADDITIONS:
+        exists = (await conn.execute(text(
+            "SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
+            "WHERE t.typname = :t AND e.enumlabel = :v"
+        ), {"t": enum_name, "v": value})).first()
+        if exists:
+            continue
+        # 타입 자체가 없으면(테이블 최초 생성 전) create_all 이 만들므로 건너뛴다.
+        has_type = (await conn.execute(text(
+            "SELECT 1 FROM pg_type WHERE typname = :t"
+        ), {"t": enum_name})).first()
+        if not has_type:
+            continue
+        await conn.execute(text(
+            f"ALTER TYPE {enum_name} ADD VALUE IF NOT EXISTS '{value}'"
+        ))
+        applied.append(f"enum {enum_name} += '{value}'")
+
+    # 컬럼 추가
+    for table, column, ddl in _COLUMN_ADDITIONS:
+        has_table = (await conn.execute(text(
+            "SELECT 1 FROM information_schema.tables WHERE table_name = :t"
+        ), {"t": table})).first()
+        if not has_table:
+            continue
+        await conn.execute(text(
+            f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {ddl}"
+        ))
+        applied.append(f"column {table}.{column}")
+
+    return applied
+
+
 def _version_at_least(v: str, target: tuple) -> bool:
     try:
         parts = [int(p) for p in v.split(".")[:3]]
@@ -63,6 +124,11 @@ async def main() -> int:
                 checkfirst=True,
             )
             logger.info("[2/3] ✅ unresolved_queries 테이블 + 일반/복합 인덱스 생성")
+
+            # ─ 2-b) 기존 테이블 확장 (신규 컬럼·enum 값) ────────────
+            applied = await ensure_migrations(conn)
+            if applied:
+                logger.info("      ↳ 스키마 확장 적용: %s", ", ".join(applied))
 
             # ─ 3) 벡터 인덱스 (HNSW 또는 IVFFLAT 폴백) ──────────────
             if hnsw_ok:

@@ -12,8 +12,10 @@ import jsonschema
 
 try:
     from . import confirm_apply as ca
+    from . import target_sync as ts
 except ImportError:
     import confirm_apply as ca  # type: ignore
+    import target_sync as ts  # type: ignore
 
 
 def _files():
@@ -38,11 +40,23 @@ def _validate(data):
 
 def list_policies():
     out = []
+    try:
+        cov = ts.coverage_map()
+    except Exception:
+        cov = {}
     for f in _files():
         try:
             d = _load(f)
         except Exception:
             continue
+        # 근거 법령 매핑 요약 (#238) — 콘솔 목록에서 법령ID 확인용
+        legal = [{
+            "name": x.get("name"),
+            "article": x.get("article"),
+            "law_id": x.get("law_id"),
+            "law_serial_no": x.get("law_serial_no"),
+            "mapping_status": x.get("mapping_status"),
+        } for x in (d.get("legal_basis") or [])]
         out.append({
             "policy_id": d.get("id"),
             "title": d.get("title"),
@@ -52,6 +66,9 @@ def list_policies():
             "deactivated_at": d.get("deactivated_at"),
             "version": d.get("version"),
             "file": f.name,
+            # 이 정책의 출처를 감시 중인 크롤 타겟 수. 0 이면 갱신 사각지대.
+            "crawl_targets": cov.get(d.get("id"), 0),
+            "legal_basis": legal,
             "last_applied_at": datetime.fromtimestamp(f.stat().st_mtime).isoformat(timespec="seconds"),
         })
     return sorted(out, key=lambda x: (x["policy_id"] or ""))
@@ -128,6 +145,11 @@ def update_policy(policy_id, data, reingest=True):
     shutil.copy2(p, ca.BACKUPS_DIR / f"{p.stem}.{datetime.now().strftime('%Y%m%d_%H%M%S')}.bak.json")
     p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     res = {"ok": True, "policy_id": policy_id}
+    # 편집으로 출처가 추가됐을 수 있으므로 등록도 다시 맞춘다(멱등).
+    try:
+        res["crawl_targets"] = ts.register_policy(data)
+    except Exception as e:
+        res["crawl_targets"] = {"ok": False, "error": str(e)}
     if reingest:
         ok, err = _reingest(policy_id)
         res["reingested"] = ok; res["reingest_error"] = err
@@ -148,8 +170,13 @@ def create_policy(data, slug=None, reingest=True):
     fp = ca.ITEMS_DIR / f"{pid}_{slug}.json"
     ca.ITEMS_DIR.mkdir(parents=True, exist_ok=True)
     fp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    res = {"ok": True, "policy_id": pid, "file": fp.name,
-           "note": "crawl_targets 출처 등록은 별도 수동(필요 시)"}
+    res = {"ok": True, "policy_id": pid, "file": fp.name}
+    # 출처를 크롤 대상에 함께 등록한다. 이 단계가 없으면 새로 만든 정책은
+    # 이후 어떤 변경 감지도 받지 못하고 만들어진 시점에 고정된다.
+    try:
+        res["crawl_targets"] = ts.register_policy(data)
+    except Exception as e:
+        res["crawl_targets"] = {"ok": False, "error": str(e)}
     if reingest:
         ok, err = _reingest(pid)
         res["reingested"] = ok; res["reingest_error"] = err

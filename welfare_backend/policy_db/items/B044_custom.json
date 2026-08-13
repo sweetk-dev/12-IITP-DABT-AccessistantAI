@@ -31,20 +31,36 @@
     "default": "경기민원24 누리집(gg24.gg.go.kr) 온라인 접수 또는 주민등록상 주소지 읍·면·동 행정복지센터 방문 신청"
   },
   "application": {},
-  "last_verified": "2026-06-18",
-  "version": "1.0.0",
+  "last_verified": "2026-08-03",
+  "version": "1.1.0",
   "sources": [
     {
-      "title": "경기도 장애인 기회소득 참여자 모집 공고",
-      "publisher": "경기도청",
-      "url": "https://www.gg.go.kr",
-      "priority": "primary"
+      "title": "경기도 장애인 기회소득 사업 안내",
+      "publisher": "경기도",
+      "publisher_type": "광역지자체",
+      "priority": "primary",
+      "url": "https://job.gg.go.kr/jobSprt/detail.do?seq=1085",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "지원대상·지급액(월 10만원)·신청기간 변경 감시"
+      }
     },
     {
-      "title": "경기민원24 (장애인 기회소득 신청)",
+      "title": "2026년 경기도 장애인 기회소득 참여자 모집 공고",
       "publisher": "경기도청",
-      "url": "https://gg24.gg.go.kr",
-      "priority": "secondary"
+      "publisher_type": "광역지자체",
+      "priority": "secondary",
+      "url": "https://www.gg.go.kr/bbs/boardView.do?bsIdx=469&bIdx=224783996&menuId=1547&bcIdx=601",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "연도별 모집 공고 — 차년도 공고 게시 시 URL 교체 필요"
+      }
     }
   ],
   "active": true

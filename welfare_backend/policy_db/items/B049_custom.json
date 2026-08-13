@@ -1,0 +1,172 @@
+{
+  "id": "B049",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "장애인 고용장려금 신청 방법",
+  "short_summary": "장애인 의무고용률을 초과하여 장애인을 고용한 사업주에게 고용장려금을 지원하는 제도",
+  "category": "기타",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": "해당 장애인근로자 월 임금액의 60%와 지급단가 중 낮은 금액 적용",
+    "amount": "월 35만원 ~ 90만원 (경증 남성 35만원, 경증 여성 50만원, 중증 남성 70만원, 중증 여성 90만원)",
+    "scope": "의무고용률을 초과하여 고용한 장애인 근로자 수"
+  },
+  "eligibility": {
+    "target": "월별 상시근로자의 의무고용률(민간 3.1%, 공공기관 및 지방공기업 3.8%)을 초과하여 장애인을 고용한 사업주 (단, 최저임금 이상 지급 및 고용보험 가입 필수)"
+  },
+  "legal_basis": [
+    {
+      "name": "장애인고용촉진 및 직업재활법",
+      "article": "제30조(장애인 고용장려금의 지급)",
+      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법",
+      "law_ref_type": "law",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact",
+      "law_id": "001763",
+      "law_serial_no": "279737",
+      "enforcement_date": "20260512"
+    },
+    {
+      "name": "장애인고용촉진 및 직업재활법 시행령",
+      "article": "제28조(고용장려금의 지급)",
+      "url": "https://www.law.go.kr/법령/장애인고용촉진및직업재활법시행령",
+      "law_ref_type": "law",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact",
+      "law_id": "004626",
+      "law_serial_no": "285611",
+      "enforcement_date": "20260512"
+    }
+  ],
+  "how_to_use": {
+    "default": "한국장애인고용공단 e신고(www.esingo.or.kr)를 통한 전자신청, 또는 관할 지역본부 및 지사에 우편·방문 접수"
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "온라인",
+        "url": "https://www.esingo.or.kr"
+      },
+      {
+        "channel": "방문/우편",
+        "url": "https://www.kead.or.kr"
+      }
+    ],
+    "required_documents": [
+      "장애인 고용장려금 지급신청서",
+      "장애인근로자 명부",
+      "장애인 또는 중증장애인임을 인정할 수 있는 서류 사본 (최초 신청 시)",
+      "장애인의 월별 임금대장 사본",
+      "월별 원천징수이행상황신고서 또는 전체 근로자의 월별 임금대장 사본"
+    ],
+    "processing_period": "신청일로부터 30일 이내 (공휴일, 토요일 제외)",
+    "fee": {
+      "default": "없음"
+    },
+    "online_available": true,
+    "proxy_allowed": true
+  },
+  "last_verified": "2026-08-03",
+  "version": "1.1.0",
+  "sources": [
+    {
+      "title": "한국장애인고용공단 장애인고용장려금 안내",
+      "publisher": "한국장애인고용공단",
+      "publisher_type": "공기업",
+      "priority": "primary",
+      "url": "https://www.kead.or.kr/edsysdesc/cntntsPage.do?menuId=MENU0684",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "지급 단가(경증 35~50만·중증 70~90만) 변경 감시"
+      }
+    },
+    {
+      "title": "고용24 장애인 고용장려금 제도안내",
+      "publisher": "고용노동부",
+      "publisher_type": "중앙정부",
+      "priority": "secondary",
+      "url": "https://www.work24.go.kr/cm/c/f/1100/selecSystInfo.do?currentPageNo=1&recordCountPerPage=10&upprSystClId=&systClId=SC00000321&systId=SI00000376&systCnntId=CI00001898",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "지원자격·절차 변경 감시"
+      }
+    },
+    {
+      "title": "정부24 장애인고용장려금지원",
+      "publisher": "행정안전부(정부24)",
+      "publisher_type": "중앙정부",
+      "priority": "supplementary",
+      "url": "https://www.gov.kr/portal/service/serviceInfo/149200000053",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "robots_txt_ok": true,
+        "notes": "민원 신청 안내"
+      }
+    }
+  ],
+  "operating_agencies": [
+    {
+      "agency": "한국장애인고용공단"
+    }
+  ],
+  "validity": {
+    "expiry": "매월의 장려금을 다음 달 1일부터 3년 이내 신청 가능 (소멸시효 3년). 분기, 반기, 연 단위 신청도 가능"
+  },
+  "exceptions_and_caveats": [
+    "최저임금 미만 지급자(최저임금적용제외 인가자 제외) 및 고용보험 미가입자는 지원 제외. 타 지원금(고용보험법, 산업재해보상보험법, 사회적기업 육성법 등) 수급 시 차액만 지급(단, 청년내일채움공제는 전액 중복지급 가능). 고용개선장려금과 동일 근로자 중복 지급 불가."
+  ],
+  "contact": [
+    {
+      "agency": "한국장애인고용공단",
+      "phone": "1588-1519",
+      "url": "https://www.kead.or.kr"
+    }
+  ],
+  "faq": [
+    {
+      "q": "장애인 고용장려금은 어떻게 신청하나요",
+      "a": "한국장애인고용공단 e신고(www.esingo.or.kr)를 통해 전자신청하거나, 사업장 관할 한국장애인고용공단 지역본부 및 지사에 우편 또는 방문하여 신청할 수 있습니다. 매월의 장려금을 다음 달 1일부터 3년 이내에 신청해야 하며, 분기·반기·연 단위 신청도 가능합니다."
+    },
+    {
+      "q": "고용장려금 지급 단가는 얼마인가요?",
+      "a": "경증 남성 35만원, 경증 여성 50만원, 중증 남성 70만원, 중증 여성 90만원입니다. 단, 해당 장애인 근로자에게 지급한 월 임금액(최저임금 산입범위)의 60%와 지급 단가를 비교하여 더 낮은 금액이 지급됩니다."
+    },
+    {
+      "q": "다른 고용지원금과 중복해서 받을 수 있나요?",
+      "a": "고용보험법, 산업재해보상보험법, 사회적기업 육성법 등에 따른 지원금이나 장려금을 받는 경우, 해당 지원금을 뺀 차액만 지급됩니다. 또한 신규고용장려금이나 고용개선장려금과 동일 근로자에 대해 중복으로 지급받을 수 없습니다. (단, 청년내일채움공제는 중복 가능)"
+    },
+    {
+      "q": "고용장려금 신청 시 필요한 서류는 무엇인가요?",
+      "a": "장애인 고용장려금 지급신청서, 장애인근로자 명부, 장애인 근로자의 월별 임금대장 사본, 원천징수이행상황신고서(또는 전체 근로자 임금대장)가 필요합니다. 최초 신청 시에는 장애인 또는 중증장애인임을 인정할 수 있는 서류 사본도 제출해야 합니다."
+    },
+    {
+      "q": "신청 시 필요한 서류는 무엇인가요?",
+      "a": "지급신청서, 장애인근로자 명부, 임금대장 사본, 원천징수이행상황신고서가 필요하며, 최초 신청 시에는 장애인 증명 서류 사본을 추가로 제출해야 합니다."
+    },
+    {
+      "q": "의무고용률을 초과하지 않은 경우에도 받을 수 있나요?",
+      "a": "아니요, 본 제도는 법정 의무고용률을 초과하여 고용한 장애인 근로자에 대해서만 지급되는 장려금입니다."
+    },
+    {
+      "q": "장애인 근로자가 퇴사하면 어떻게 되나요?",
+      "a": "퇴사한 달까지의 분에 대해서는 신청이 가능하나, 이후에는 해당 인원에 대한 장려금이 지급되지 않습니다. 정확한 정산은 관할 지사에 문의하시기 바랍니다."
+    },
+    {
+      "q": "신청 기간을 놓치면 어떻게 되나요?",
+      "a": "매월분 장려금은 다음 달 1일부터 3년 이내에 신청해야 합니다. 이 기간이 지나면 소멸시효에 따라 청구권이 소멸됩니다."
+    },
+    {
+      "q": "고용보험 미가입자도 대상이 되나요?",
+      "a": "아니요, 고용장려금을 받기 위해서는 해당 장애인 근로자가 반드시 고용보험에 가입되어 있어야 합니다."
+    }
+  ],
+  "active": true
+}
