@@ -50,12 +50,15 @@
       "mapping_confidence": "exact"
     },
     {
-      "name": "서울특별시 장애인 등 교통약자 이동편의 증진에 관한 조례",
+      "name": "서울특별시 교통약자의 이동편의 증진에 관한 조례",
       "article": null,
-      "url": "https://www.law.go.kr/ordinSc.do?section=lawNm&query=%EC%84%9C%EC%9A%B8%ED%8A%B9%EB%B3%84%EC%8B%9C+%EC%9E%A5%EC%95%A0%EC%9D%B8+%EB%93%B1+%EA%B5%90%ED%86%B5%EC%95%BD%EC%9E%90+%EC%9D%B4%EB%8F%99%ED%8E%B8%EC%9D%98",
+      "url": "https://www.law.go.kr/자치법규/서울특별시%20교통약자의%20이동편의%20증진에%20관한%20조례",
+      "law_id": "2001698",
+      "law_serial_no": "2130191",
       "law_ref_type": "ordin",
-      "mapping_status": "not_found",
-      "mapping_confidence": ""
+      "enforcement_date": "20260518",
+      "mapping_status": "matched",
+      "mapping_confidence": "manual"
     },
     {
       "name": "충청남도 교통약자 이동편의 증진에 관한 조례 (버스비 지원 근거)",
