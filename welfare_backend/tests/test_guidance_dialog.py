@@ -168,7 +168,9 @@ TRANSIT_RESP = {
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    # get_event_loop() 은 루프 없는 컨텍스트에서 3.12+ deprecated / 3.14 RuntimeError —
+    # 호출마다 새 루프를 만드는 asyncio.run 으로 실행한다.
+    return asyncio.run(coro)
 
 
 def t_transit_tool_contract():
