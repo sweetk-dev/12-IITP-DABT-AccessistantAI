@@ -675,6 +675,93 @@ async def tool_explain_route_segment(route_id: str, step_idx: int = None) -> dic
 
 
 # ─────────────────────────────────────────────────────────────
+# 도구 #10 — 주변 정류장·역 (#248, 02 v1.11.1 /transit/access-points)
+# ─────────────────────────────────────────────────────────────
+async def tool_find_nearby_transit(lat: float = None, lng: float = None,
+                                   place: str = "", radius_m: int = 500,
+                                   profile: str = "wheelchair_manual") -> dict:
+    """현재 위치(또는 말한 기준 장소) 주변의 버스 정류장·지하철역.
+
+    lat/lng 은 live_bridge 가 프런트의 현재 위치를 주입한다(place 미지정 시).
+    ⚠️ 정류장의 accessible 은 None(미판정)일 수 있다 — 저상버스 정차 여부가
+    정적 데이터에 없어 판정하지 않은 것이지 "이용 불가"가 아니다.
+    소비 측은 accessible_status(yes/no/unknown) 로만 판단해야 한다.
+    """
+    base_label = None
+    if place:
+        hit = await _resolve_place(place)
+        if hit is None:
+            return _out_of_service_area("기준 위치", place)
+        lat, lng, base_label = hit["lat"], hit["lng"], hit["label"]
+    if lat is None or lng is None:
+        return {
+            "status": "need_location",
+            "tool_name": "find_nearby_transit",
+            "ai_instruction": (
+                "현재 위치를 알 수 없다고 안내하고, 화면의 위치 권한을 허용하거나 "
+                "기준 장소 이름(예: 안양역 근처)을 말씀해 달라고 짧게 요청하세요."
+            ),
+        }
+    try:
+        radius_m = max(100, min(int(radius_m or 500), 2000))
+    except (TypeError, ValueError):
+        radius_m = 500
+
+    data = await route_client.transit_access(lat, lng, radius_m=radius_m, profile=profile)
+    if isinstance(data, dict) and data.get("status") == "error":
+        return data
+    items = (data.get("items") if isinstance(data, dict) else data) or []
+
+    out = []
+    for it in items[:8]:
+        if not isinstance(it, dict):
+            continue
+        routes = []
+        for r in (it.get("routes") or [])[:12]:
+            if isinstance(r, dict):
+                routes.append({
+                    "name": r.get("name"),
+                    "type": r.get("type"),
+                    "end_station": r.get("end_station"),
+                    "station_seq": r.get("station_seq"),
+                })
+            else:
+                routes.append({"name": r})
+        out.append({
+            "type": it.get("type"),
+            "name": it.get("name"),
+            "dist_m": it.get("dist_m"),
+            "mobile_no": it.get("mobile_no"),
+            "center_yn": it.get("center_yn"),
+            "accessible": it.get("accessible"),
+            "accessible_status": it.get("accessible_status")
+                                 or ("unknown" if it.get("accessible") is None
+                                     else ("yes" if it.get("accessible") else "no")),
+            "warnings": it.get("warnings") or [],
+            "routes": routes,
+        })
+
+    return {
+        "status": "success",
+        "tool_name": "find_nearby_transit",
+        "base_label": base_label,
+        "radius_m": radius_m,
+        "count": len(out),
+        "items": out,
+        "ai_instruction": (
+            ("기준 위치는 %s 입니다. " % base_label if base_label else "")
+            + "가까운 순으로 2~3곳만 이름·거리와 함께 말하고, 나머지는 생략하세요. "
+            "accessible_status 가 unknown 인 정류장은 '이용 불가'가 아니라 "
+            "'저상버스 정차 여부는 실시간 도착정보로 확인이 필요하다'고 말하세요. "
+            "버스 방면은 end_station(종점명)으로 안내하되, 양방향 종점명이 같은 순환 "
+            "노선은 station_seq(경유 순번) 차이로 구분됨을 알리고 정류장 이름·위치로 "
+            "확인을 권하세요. 같은 번호라도 유형(마을버스/일반형시내버스)이 다르면 "
+            "다른 노선이므로 유형을 함께 말하세요. warnings 가 있으면 반드시 알리세요."
+        ),
+    }
+
+
+# ─────────────────────────────────────────────────────────────
 # 도구 #9 — 화면 이동 (#215)
 # ─────────────────────────────────────────────────────────────
 async def tool_open_navi_screen() -> dict:
@@ -707,5 +794,6 @@ def get_tool_dispatcher(embed_fn):
         "find_bf_tour_spots": tool_find_bf_tour_spots,
         "plan_accessible_route": tool_plan_accessible_route,
         "explain_route_segment": tool_explain_route_segment,
+        "find_nearby_transit": tool_find_nearby_transit,
         "open_navi_screen": tool_open_navi_screen,
     }
