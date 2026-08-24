@@ -21,6 +21,8 @@ from fastapi import WebSocket, WebSocketDisconnect
 from google.genai import types
 from starlette.websockets import WebSocketState
 
+from nav_context import (update_nav_state, current_guidance_result,
+                         inject_nav_defaults, note_new_route)
 from tool_handlers import get_tool_dispatcher
 from unresolved_logger import TurnTracker
 from database import AsyncSessionLocal
@@ -241,7 +243,7 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 
 표·코드블록·이모지는 사용하지 마세요.
 
-## 이동경로·무장애 관광 (도구 6~8)
+## 이동경로·무장애 관광 (경로·관광 도구)
 - 사용자가 "어디 갈 만한 곳", "무장애 관광지", "휠체어로 갈 수 있는 곳" 등을 물으면 `find_bf_tour_spots` 를 호출합니다. 결과는 상위 2~3곳만 간단히 말하고, 나머지는 화면 목록으로 넘깁니다.
 - **경로 안내가 가능한 지역은 안양시뿐입니다.** 안양시 밖(예: 서울)의 출발지·목적지는 안내할 수 없습니다. 이때는 "서비스 장애"가 아니라 "아직 안양시 안에서만 안내할 수 있다"고 정확히 말하고, 안양시 안의 장소를 다시 여쭤 보세요. 도구가 `out_of_service_area` / `need_destination` 을 돌려주면 이 규칙대로 답합니다.
 - 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 목적지 `poi_id` 를 모르면 사용자가 말한 이름을 `destination_place` 에 담습니다 — poi_id 를 지어내지 마세요. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
@@ -249,6 +251,14 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - "왜 이렇게 돌아가", "이 구간 뭐야" 같은 질문에는 `explain_route_segment` 로 사유(경사·계단·턱낮춤)를 설명합니다.
 - 사용자가 "지도로 이동해줘", "지도 화면 보여줘", "무장애 관광지 보기 화면으로 가줘" 처럼 **화면 이동 자체를 요청**하면 `open_navi_screen` 을 호출하고 "지도 화면으로 이동했어요" 정도로 짧게만 답합니다. 관광지·경로 결과를 안내할 때는 화면이 자동으로 바뀌지 않고 화면에 이동 버튼이 표시되므로, 필요하면 "화면의 버튼을 누르시면 지도로 이동해요"라고 안내하세요.
 - 위치를 알 수 없다는 결과가 오면 화면의 위치 권한 허용을 요청하세요. 좌표를 추측하지 마세요.
+
+### 길안내 진행 중(이동 중) 대화 규칙
+- 사용자가 길안내를 따라 이동하는 중에도 질문할 수 있습니다. 이동 중 답변은 **1~2문장**으로 짧게 — 근거·문의처 멘트를 붙이지 마세요.
+- "지금 어디로 가야 해", "방금 뭐라고 했어", "다음엔 뭐야", "얼마나 남았어" → 반드시 `get_current_guidance` 를 먼저 호출해 현재 안내 상태를 확인하고 답합니다. 기억에 의존해 안내 문장을 지어내지 마세요.
+- "왜 이렇게 가", "왜 돌아가", "이 구간 뭐야" → `explain_route_segment` 를 호출합니다. 안내가 진행 중이면 서버가 현재 구간을 자동으로 채워 주므로 route_id·step_idx 를 지어내지 말고 생략하세요.
+- 안전 질의("여기 건너도 돼요?", "이 길이 맞아요?")가 최우선입니다 — 다른 말 없이 즉시 답하세요. 확신할 수 없으면 모른다고 말하고 주변 확인을 권하세요.
+- 이동 중에 긴 정책 질문이 오면 핵심 한 문장만 답하고 "도착하신 뒤에 자세히 안내해 드릴까요?" 라고 제안하세요.
+- "근처 정류장", "여기서 뭐 타", "버스 어디서 타" → `find_nearby_transit` 을 호출합니다. 결과의 `accessible` 이 null(unknown)이면 "이용 불가"가 아니라 "저상버스 정차 여부는 실시간 도착정보로 확인이 필요하다"고 안내하세요. 버스 방면은 종점명(end_station)으로 안내하되, 양방향 종점명이 같은 순환 노선은 경유 순번(station_seq)이 다르다는 점을 함께 알립니다. 같은 번호라도 노선 유형(마을버스/일반형시내버스)이 다르면 다른 노선입니다.
 
 ## 시스템 신호(`[SYSTEM]`) 처리 규칙
 사용자 발화가 아니라 백엔드가 직접 보내는 메시지가 `[SYSTEM]` 으로 시작하는 경우, 아래 규칙대로 처리하세요. 종류는 다음 5가지뿐입니다.
@@ -272,7 +282,7 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 
 
 def _route_tool_declarations() -> list:
-    """이동경로·관광 도구 3종. 경로 서비스가 설정되지 않았으면 빈 목록(선언 자체를 안 함)."""
+    """이동경로·관광 도구 6종. 경로 서비스가 설정되지 않았으면 빈 목록(선언 자체를 안 함)."""
     import route_client
 
     if not route_client.enabled():
@@ -321,6 +331,29 @@ def _route_tool_declarations() -> list:
                 properties={
                     "route_id": types.Schema(type=types.Type.STRING, description="plan_accessible_route 가 반환한 route_id"),
                     "step_idx": types.Schema(type=types.Type.INTEGER, description="구간 번호(생략 시 경고 구간 자동 선택)"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="get_current_guidance",
+            description=("진행 중인 길안내의 현재 상태(지금 할 안내 문장·다음 안내·다음 "
+                         "지점까지 남은 거리·목적지)를 조회한다. 이동 중 \"지금 어디로 "
+                         "가야 해\", \"방금 뭐라고 했어\", \"다음엔 뭐야\", \"얼마나 "
+                         "남았어\" 질문에는 반드시 이 도구를 먼저 호출한다."),
+        ),
+        types.FunctionDeclaration(
+            name="find_nearby_transit",
+            description=("주변의 버스 정류장·지하철역을 찾는다. \"근처 정류장\", \"여기서 "
+                         "뭐 타\", \"버스 어디서 타\" 질문에 사용. 기준 위치는 기본으로 "
+                         "현재 위치가 자동 주입되며, 사용자가 기준 장소를 말하면 place 에 "
+                         "담는다. ⚠️ 결과의 accessible 이 null 이면 \"이용 불가\"가 "
+                         "아니라 미판정이다 — accessible_status(yes/no/unknown) 로만 "
+                         "판단해 안내한다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "place": types.Schema(type=types.Type.STRING, description="사용자가 말한 기준 장소 이름(예: '안양역'). 미지정 시 현재 위치 사용"),
+                    "radius_m": types.Schema(type=types.Type.INTEGER, description="검색 반경(m), 기본 500, 최대 2000"),
                 },
             ),
         ),
@@ -777,6 +810,9 @@ async def handle_live_chat(
     _user_buf = ""                      # 현재 사용자 턴 입력 누적
     # 프런트가 보낸 현재 위치 — 경로 도구의 출발지로 서버에서 주입한다(모델이 좌표를 지어내지 못하게).
     user_location = {"lat": None, "lng": None}
+    # 프런트가 보내는 길안내 진행 상태(#248) — get_current_guidance 와
+    # explain_route_segment 기본 구간 주입의 근거가 된다.
+    nav_state = {}
     reseed_context = False              # 새 세션에 맥락 re-seed 필요 여부
     _BASE_SYS = SYSTEM_INSTRUCTION
     RESEED_MAX_TURNS = 8                # 주입할 최근 대화 턴 수(컨텍스트 비대화 방지)
@@ -875,6 +911,13 @@ async def handle_live_chat(
                             # 사용자가 말을 끝냈음을 알리는 신호 (VAD 가 없을 때)
                             await session.send_realtime_input(audio_stream_end=True)
                             mark_user_active("end_of_turn")
+                        elif msg.get("type") == "nav_state":
+                            # 길안내 진행 상태 갱신 (#248). 위치 갱신처럼 수동 신호라
+                            # 유휴 타이머는 건드리지 않는다.
+                            try:
+                                update_nav_state(nav_state, msg)
+                            except Exception:
+                                logger.warning("잘못된 nav_state 메시지 무시")
                         elif msg.get("type") == "activity":
                             # 길안내 화면의 상호작용/안내 진행 신호 — 발화가 없어도
                             # 서비스 이용 중이므로 유휴 종료(IDLE/AUTO_CLOSE) 대상이 아니다.
@@ -1019,7 +1062,12 @@ async def handle_live_chat(
                                         else:
                                             fargs.pop("origin_lat", None)
                                             fargs.pop("origin_lng", None)
-                                    if fname not in dispatcher:
+                                    # 세션이 아는 사실(현재 구간·현재 위치)을 기본값으로 주입 (#248)
+                                    fargs = inject_nav_defaults(fname, fargs, nav_state, user_location)
+                                    if fname == "get_current_guidance":
+                                        # 세션 상태만 읽는 도구 — 디스패처를 거치지 않는다
+                                        result = current_guidance_result(nav_state)
+                                    elif fname not in dispatcher:
                                         result = {"error": f"unknown tool: {fname}"}
                                     else:
                                         try:
@@ -1028,6 +1076,11 @@ async def handle_live_chat(
                                         except Exception as e:
                                             logger.exception("도구 실행 실패 %s: %s", fname, e)
                                             result = {"error": str(e)}
+                                    # 대화로 새 경로가 생기면 세션 안내 상태를 즉시 갱신 —
+                                    # 프런트 nav_state 도착 전 공백에 이전 경로가 주입되는 것 방지 (#248)
+                                    if (fname == "plan_accessible_route" and isinstance(result, dict)
+                                            and result.get("status") == "success"):
+                                        note_new_route(nav_state, result.get("route_id"))
                                     # Phase 5 Track A — 도구 호출 시퀀스 추적
                                     tracker.on_tool_call(fname, fargs, result)
                                     # #208: 정책 도구 결과가 오는 '지금'이 카드를 만들 최적 시점 —

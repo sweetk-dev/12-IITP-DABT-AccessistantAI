@@ -307,6 +307,15 @@ check("지정한 출발지가 경로 요청에 사용됨", () => {
 // 4) 안내 시작 -> 스텝 + 음성
 const startBtn = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "안내 시작");
 check("'안내 시작' 버튼 존재", () => assert.ok(startBtn));
+// ── 이동 중 대화 (#248): 가짜 WS 로 nav_state 송신 관찰 ──
+const wsSent = [];
+const fakeWs = { readyState: 1, send: (s) => wsSent.push(JSON.parse(s)) };
+window.NAVI.attachWs(fakeWs);
+check("세션 연결 시 이동 중 질문바 노출", () => {
+  assert.equal($("naviAskwrap").hidden, false, "질문바가 숨겨져 있음");
+  assert.ok($("naviTextInput"), "질문 입력창 없음");
+  assert.ok($("naviMicState"), "마이크 상태 표시 없음");
+});
 startBtn.dispatchEvent(new window.Event("click"));
 await sleep(30);
 check("첫 턴바이턴 스텝 카드 + 음성 발화", () => {
@@ -324,6 +333,58 @@ check("다음 안내 지점 근접 시 스텝 자동 전환 + 재발화", () => 
   assert.match(card.textContent, /횡단보도를 건너/);
   assert.equal(spoken.at(-1), "횡단보도를 건너 60m 이동합니다.");
   assert.match(window.document.querySelector(".step-now .wr").textContent, /턱낮춤 없음/);
+});
+
+// 5-b) 이동 중 대화 (#248) — nav_state 송신·답변 스트립·안내 복귀
+check("안내 시작·진행이 nav_state 로 세션에 전달", () => {
+  const nav = wsSent.filter((m) => m.type === "nav_state");
+  assert.ok(nav.length >= 2, "nav_state 미송신");
+  const started = nav.find((m) => m.guiding && m.step_idx === 0);
+  assert.ok(started, "안내 시작 nav_state 없음");
+  assert.equal(started.route_id, "r_test");
+  assert.equal(started.total_steps, 3);
+  assert.match(started.current, /중앙로를 따라 120m/);
+  const last = nav.at(-1);
+  assert.equal(last.step_idx, 1, "스텝 전환이 nav_state 에 반영 안 됨");
+  assert.match(last.current, /횡단보도를 건너/);
+  assert.match(String(last.next), /목적지에 도착/);
+});
+check("상담원 답변 텍스트가 지도 화면 스트립에 표시", () => {
+  window.NAVI.onAiText("2번 마을버스는 ");
+  window.NAVI.onAiText("순번으로 방면을 구분해요.");
+  const el = $("naviAnswer");
+  assert.equal(el.hidden, false);
+  assert.match(el.textContent, /순번으로 방면을 구분해요/);
+});
+check("턴 종료 후 다음 답변은 스트립을 새로 시작", () => {
+  window.NAVI.onAiTurnComplete();
+  window.NAVI.onAiText("새 답변입니다.");
+  assert.equal($("naviAnswer").textContent, "새 답변입니다.");
+});
+check("길안내 TTS barge-in: bargeStop 이 발화를 즉시 중단", () => {
+  window.__NAVI_SPEAKING = true;
+  window.NAVI.bargeStop();
+  assert.equal(window.__NAVI_SPEAKING, false, "발화가 멈추지 않음");
+});
+// 답변이 끝나면(턴 종료 + 음성 없음) 직전 안내 문장으로 복귀한다.
+// 스플래시의 1.5초 자동 전환(show("view-mode"))이 이 대기 중에 뒤늦게 발화해
+// navi 뷰를 빼앗으면 복귀가 (의도대로) 억제되므로, 타이머 경과 후 뷰를 되돌린다.
+await sleep(1600);
+window.show("view-navi");
+window.NAVI.onAiTurnComplete();
+await sleep(2400);
+check("답변 종료 후 직전 안내 문장 자동 복귀", () => {
+  assert.match(spoken.at(-1), /^안내를 이어갈게요\. 횡단보도를 건너/);
+});
+check("세션 미연결 상태의 텍스트 질문은 안내문으로 거절", () => {
+  $("naviTextInput").value = "지금 어디로 가요?";
+  $("naviSendBtn").dispatchEvent(new window.Event("click"));
+  assert.match($("naviStatus").textContent, /상담 세션이 아직 연결되지 않았습니다/);
+});
+check("마이크 게이트 barge-in 배선 존재 (소스 레벨 가드)", () => {
+  assert.match(HTML, /naviBargeRun/);
+  assert.match(HTML, /NAVI\.bargeStop/);
+  assert.doesNotMatch(HTML, /if \(window\.__NAVI_SPEAKING\) return;   \/\/ 길안내 음성 발화 중에도 동일하게 차단/);
 });
 
 // 6) 상담 세션 ui_action -> 자동 전환 없이 데이터 준비 + 이동 버튼 (#213)
