@@ -40,6 +40,8 @@ logger = logging.getLogger(__name__)
 # (enum 타입명, 추가할 값) — FallbackReason 에 값이 늘면 여기에만 추가하면 된다.
 _ENUM_ADDITIONS = [
     ("fallback_reason_enum", "no_tool_call"),
+    ("fallback_reason_enum", "needs_input"),
+    ("fallback_reason_enum", "out_of_service_area"),
 ]
 
 # (테이블명, 컬럼명, 컬럼 정의)

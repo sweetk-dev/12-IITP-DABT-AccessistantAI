@@ -374,6 +374,8 @@ class LocalVoiceSession:
             await self._send({"type": "turn_complete"})
             if tracker is not None:
                 try:
+                    # 응답 전사를 넘겨야 '정보 없음' 판정과 ai_final_answer 가 산다 (#253)
+                    tracker.on_ai_transcript(answer)
                     await tracker.finalize_turn()
                 except Exception:
                     pass
@@ -424,6 +426,11 @@ class LocalVoiceSession:
                     if content.strip():
                         tracker = self.tracker_factory()
                         await self._send({"type": "user_transcript", "content": content})
+                        if tracker is not None:
+                            try:
+                                tracker.on_user_transcript(content, raw=None)
+                            except Exception:
+                                pass
                         self.messages.append({"role": "user", "content": content})
                         try:
                             answer = await _run_llm_turn(self.messages, self.dispatcher, tracker, self._send_sources)
@@ -434,6 +441,7 @@ class LocalVoiceSession:
                         await self._send({"type": "turn_complete"})
                         if tracker is not None:
                             try:
+                                tracker.on_ai_transcript(answer)
                                 await tracker.finalize_turn()
                             except Exception:
                                 pass
