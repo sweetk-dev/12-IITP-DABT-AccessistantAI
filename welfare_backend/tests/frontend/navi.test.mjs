@@ -54,6 +54,48 @@ const ROUTE = {
   },
 };
 
+const MMROUTE = {
+  status: "success",
+  route_id: "r_mm",
+  mode_used: "walk_bus",
+  mode_label: "도보+버스",
+  ui_action: {
+    action: "show_route",
+    route: {
+      route_id: "r_mm",
+      destination: { resolved_by: "accessible_entrance", note: null },
+      fallback: { used: false },
+      routes: [{
+        summary: { total_distance_m: 2400, duration_sec: 1500, walk_distance_m: 300,
+                   max_slope_deg: 2.0, stairs_cnt: 0, crossing_cnt: 1,
+                   eta_note: "소요시간은 정거장 수 기반 추정이며 차량 대기 시간은 포함되지 않습니다",
+                   warnings: [] },
+        geometry: [[37.3900, 126.9500], [37.3905, 126.9505], [37.3909, 126.9511]],
+        steps: [
+          { idx: 0, maneuver: "depart", instruction: "정류장까지 100m 이동합니다.",
+            distance_m: 100, coord: [37.3900, 126.9500], link_type: "sidewalk", warnings: [] },
+          { idx: 1, maneuver: "bus_board", instruction: "소방서 정류장에서 마을버스 2번 버스에 승차합니다 — 신성중 방면, 8개 정거장 이동",
+            distance_m: 2000, coord: [37.3903, 126.9503], link_type: "bus", warnings: [] },
+          { idx: 2, maneuver: "bus_alight", instruction: "아르테자이정문 정류장에서 하차합니다",
+            distance_m: 0, coord: [37.3907, 126.9509], link_type: "bus", warnings: [] },
+          { idx: 3, maneuver: "arrive", instruction: "목적지에 도착했습니다.",
+            distance_m: 0, coord: [37.3909, 126.9511], link_type: null, warnings: [] },
+        ],
+        legs: [
+          { kind: "walk", to_label: "소방서 정류장",
+            summary: { total_distance_m: 100, duration_sec: 90 }, geometry: [] },
+          { kind: "bus", route: { route_id: "241253001", name: "2", type: "마을버스", end_station: "신성중" },
+            board: { name: "소방서", mobile_no: "09156", station_seq: 21 },
+            alight: { name: "아르테자이정문", mobile_no: "09328", station_seq: 41 },
+            stop_cnt: 8, warnings: ["저상버스 정차 여부는 보장되지 않습니다"], geometry: [] },
+          { kind: "walk", to_label: "목적지",
+            summary: { total_distance_m: 200, duration_sec: 180 }, geometry: [] },
+        ],
+      }],
+    },
+  },
+};
+
 const CONFIG = {
   kakao_js_key: "test-key",
   features: { route: true, tour: true },
@@ -122,7 +164,8 @@ window.fetch = async (url) => {
   if (u.includes("plan_accessible_route")) lastPlanQuery = u;
   const body = u.includes("/api/v1/config") ? CONFIG
     : u.includes("find_bf_tour_spots") ? SPOTS
-    : u.includes("plan_accessible_route") ? ROUTE
+    : u.includes("plan_accessible_route")
+      ? (u.includes("mode=walk_bus") ? MMROUTE : ROUTE)
     : {};
   return { ok: true, json: async () => body };
 };
@@ -304,6 +347,42 @@ check("지정한 출발지가 경로 요청에 사용됨", () => {
   assert.match(q, /origin_lng=126\.9568/);
 });
 
+// 3-b) 이동 방식 카드 + 멀티모달 렌더 (#251)
+check("이동 방식 카드 4개 — 기본 '추천' 선택", () => {
+  const cards = [...window.document.querySelectorAll(".mode-cards button")];
+  assert.equal(cards.length, 4);
+  assert.equal(cards[0].getAttribute("aria-pressed"), "true");
+  assert.match(cards[0].textContent, /추천/);
+});
+const busCard = [...window.document.querySelectorAll(".mode-cards button")]
+  .find((b) => b.getAttribute("data-mode") === "walk_bus");
+busCard.dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("'도보+버스' 카드 선택 → mode 파라미터로 재요청", () => {
+  assert.match(lastPlanQuery || "", /mode=walk_bus/);
+});
+check("멀티모달 legs 렌더 — 버스 승차 카드·방면·저상 고지", () => {
+  const card = window.document.querySelector(".leg-card");
+  assert.ok(card, "버스 leg 카드 없음");
+  assert.match(card.textContent, /마을버스 2번/);
+  assert.match(card.textContent, /신성중 방면/);
+  assert.match(card.textContent, /8개 정거장/);
+  assert.match(card.textContent, /저상버스 정차는 보장되지 않습니다/);
+});
+check("멀티모달 요약 — 추정 표기 + 도보 거리 분리", () => {
+  const t = $("naviSheetBody").textContent;
+  assert.match(t, /예상 시간\(추정\)/);
+  assert.match(t, /추정이며 차량 대기 시간은 포함되지 않습니다/);
+});
+// 이후 시나리오는 도보 경로 기준 — '추천' 카드로 복귀(도보 응답 재수신)
+[...window.document.querySelectorAll(".mode-cards button")]
+  .find((b) => b.getAttribute("data-mode") === "auto")
+  .dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("'추천' 복귀 시 mode 파라미터 없이 재요청", () => {
+  assert.doesNotMatch(lastPlanQuery || "", /mode=walk_bus/);
+});
+
 // 4) 안내 시작 -> 스텝 + 음성
 const startBtn = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "안내 시작");
 check("'안내 시작' 버튼 존재", () => assert.ok(startBtn));
@@ -375,6 +454,21 @@ window.NAVI.onAiTurnComplete();
 await sleep(2400);
 check("답변 종료 후 직전 안내 문장 자동 복귀", () => {
   assert.match(spoken.at(-1), /^안내를 이어갈게요\. 횡단보도를 건너/);
+});
+check("상단 '안내 종료' 버튼 — 안내 중 활성, 누르면 종료", () => {
+  const eb = $("naviEndBtn");
+  assert.ok(eb, "안내 종료 버튼 없음");
+  assert.equal(eb.disabled, false, "안내 중인데 비활성");
+  eb.dispatchEvent(new window.Event("click"));
+  assert.ok($("naviSpots"), "종료 후 목록 패널로 복귀하지 않음");
+  assert.equal(eb.disabled, true, "종료 후에도 활성");
+});
+check("음성안내 토글은 스텝 카드로 이동 (상단 토글 제거)", () => {
+  assert.equal(window.document.getElementById("naviVoiceBtn"), null);
+  assert.match(HTML, /음성 끄기/);
+});
+check("상담원 답변 스트립은 3줄 제한", () => {
+  assert.match(HTML, /\.navi-answer\{max-height:4\.2em/);
 });
 check("세션 미연결 상태의 텍스트 질문은 안내문으로 거절", () => {
   $("naviTextInput").value = "지금 어디로 가요?";

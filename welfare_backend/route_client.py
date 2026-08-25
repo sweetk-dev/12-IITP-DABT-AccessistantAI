@@ -169,12 +169,13 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
 
 # ── 경로 ──
 async def plan_route(origin: dict, destination: dict, profile: str = "wheelchair_manual",
-                     alternatives: int = 1) -> dict:
-    return await _call(
-        "POST", "/route/plan",
-        json={"origin": origin, "destination": destination,
-              "profile": profile, "alternatives": alternatives},
-    )
+                     alternatives: int = 1, mode: str = "") -> dict:
+    body = {"origin": origin, "destination": destination,
+            "profile": profile, "alternatives": alternatives}
+    # 02 v1.12.0 멀티모달(#36) — walk 은 기존 계약이므로 생략해 하위 서버와도 호환 유지
+    if mode in ("walk_bus", "walk_bus_subway"):
+        body["mode"] = mode
+    return await _call("POST", "/route/plan", json=body)
 
 
 async def reroute(current: dict, destination: dict, profile: str = "wheelchair_manual",

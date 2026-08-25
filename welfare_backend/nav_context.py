@@ -8,7 +8,8 @@
 
 # 프런트 nav_state 메시지에서 받아들이는 필드 — 이 외의 키는 버린다.
 _NAV_FIELDS = ("route_id", "guiding", "step_idx", "total_steps",
-               "current", "next", "remaining_m", "dest_name", "profile")
+               "current", "next", "remaining_m", "dest_name", "profile",
+               "leg_kind")   # walk | bus | subway — 현재 진행 구간의 이동 수단 (#251)
 
 
 def update_nav_state(nav: dict, msg: dict) -> None:
@@ -90,6 +91,7 @@ def current_guidance_result(nav: dict) -> dict:
         "current_instruction": nav.get("current"),
         "next_instruction": nav.get("next"),
         "remaining_m_to_next": nav.get("remaining_m"),
+        "leg_kind": nav.get("leg_kind") or "walk",
         "profile": nav.get("profile"),
         "ai_instruction": (
             "이동 중 답변입니다 — 1~2문장으로 짧게. current_instruction(지금 할 안내)을 "
