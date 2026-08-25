@@ -1005,6 +1005,9 @@ async def handle_live_chat(
                                 # 현재 tracker 를 finalize 에 넘기고, 다음 turn 을 위해
                                 # 새 tracker 인스턴스로 교체 (적재가 비동기로 미뤄져도 race 없음).
                                 _t_done = tracker
+                                # 길안내 진행 여부를 turn 종료 시점 값으로 고정 —
+                                # 안내 중 수긍·진행 지시는 상담 실패가 아니다 (#253).
+                                _t_done.guiding = bool(nav_state.get("guiding"))
                                 tracker = TurnTracker(session_id=session_id,
                                                       session_factory=AsyncSessionLocal)
                                 asyncio.create_task(_t_done.finalize_turn())

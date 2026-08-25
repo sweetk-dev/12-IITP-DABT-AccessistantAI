@@ -83,6 +83,8 @@ class FallbackReason(str, enum.Enum):
     GOOGLE_SEARCH     = "google_search"       # 폴백으로 외부 검색 발동
     TOOL_ERROR        = "tool_error"          # DB 도구 호출 예외
     NO_TOOL_CALL      = "no_tool_call"        # 도구를 아예 호출하지 않고 답변 (상태 발화 오분류 등)
+    NEEDS_INPUT       = "needs_input"         # 현재 위치·목적지 미확보로 안내 불가 (이용 안내 이슈)
+    OUT_OF_SERVICE_AREA = "out_of_service_area"  # 경로 안내 가능 지역 밖 요청 (커버리지 이슈)
     UNKNOWN           = "unknown"             # 분류 불가
 
 

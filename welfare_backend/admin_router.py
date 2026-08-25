@@ -181,7 +181,8 @@ def policy_register_crawl(policy_id: str):
 # ── 미답변 질의 조회 (읽기 전용) ──
 _FALLBACK_REASONS = ["low_similarity", "empty_result", "category_mismatch",
                      "explicit_no_info", "no_tool_call", "google_search",
-                     "tool_error", "unknown"]
+                     "tool_error", "needs_input", "out_of_service_area",
+                     "unknown"]
 
 
 def _reflect_status(user_query, processed_at, cand_idx, excluded=False):
