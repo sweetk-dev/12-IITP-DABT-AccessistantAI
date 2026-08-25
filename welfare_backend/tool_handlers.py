@@ -535,13 +535,22 @@ def _out_of_service_area(kind: str, place: str) -> dict:
     }
 
 
+AUTO_TRANSIT_MIN_M = 700     # 이 직선거리 미만이면 자동 모드는 도보를 쓴다
+
+
+def _mode_label(mode: str) -> str:
+    return {"walk": "도보", "walk_bus": "도보+버스",
+            "walk_bus_subway": "도보+버스+지하철"}.get(mode, mode)
+
+
 async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      destination_type: str = "tour",
                                      profile: str = "wheelchair_manual",
                                      origin_lat: float = None,
                                      origin_lng: float = None,
                                      origin_place: str = "",
-                                     destination_place: str = "") -> dict:
+                                     destination_place: str = "",
+                                     mode: str = "") -> dict:
     """현재 위치(또는 말로 지정한 출발지)에서 목적지까지 무장애 경로.
 
     origin_lat/lng 은 프런트가 보낸 현위치가 주입되고,
@@ -594,11 +603,36 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     dest = ({"type": "coord", "lat": dest_coord["lat"], "lng": dest_coord["lng"]}
             if dest_coord is not None
             else {"type": destination_type, "poi_id": destination_poi_id})
-    data = await route_client.plan_route(
-        {"lat": origin_lat, "lng": origin_lng}, dest, profile=profile,
-    )
-    if data.get("status") == "error":
-        return data
+
+    # ── 모드 결정 (#251) ──
+    # ""/auto = 자동 추천: 도보 경로를 먼저 만들고, 도보가 멀면(기준 이상)
+    # 대중교통 조합(walk_bus_subway)으로 승격을 시도한다. 조합이 없으면 도보 유지.
+    req_mode = (mode or "").strip().lower()
+    auto = req_mode in ("", "auto", "recommend")
+    if not auto and req_mode not in ("walk", "walk_bus", "walk_bus_subway"):
+        return {"status": "error",
+                "message": "지원하지 않는 이동 방식입니다: %s" % mode,
+                "ai_instruction": "이동 방식은 도보/도보+버스/도보+버스+지하철 중에서만 "
+                                  "고를 수 있다고 짧게 안내하세요."}
+
+    origin_pt = {"lat": origin_lat, "lng": origin_lng}
+    if auto:
+        data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk")
+        if data.get("status") == "error":
+            return data
+        mode_used = "walk"
+        walk_dist = ((data.get("routes") or [{}])[0].get("summary") or {}).get(
+            "total_distance_m") or 0
+        if walk_dist >= AUTO_TRANSIT_MIN_M:
+            upgraded = await route_client.plan_route(
+                origin_pt, dest, profile=profile, mode="walk_bus_subway")
+            if upgraded.get("status") != "error" and (upgraded.get("routes") or []):
+                data, mode_used = upgraded, "walk_bus_subway"
+    else:
+        data = await route_client.plan_route(origin_pt, dest, profile=profile, mode=req_mode)
+        if data.get("status") == "error":
+            return data
+        mode_used = req_mode
 
     routes = data.get("routes") or []
     if not routes:
@@ -606,15 +640,41 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
 
     primary = routes[0]
     summary = primary.get("summary", {})
+    legs = primary.get("legs") or []
+    transit_brief = []
+    for leg in legs:
+        if leg.get("kind") == "bus":
+            r = leg.get("route") or {}
+            transit_brief.append({
+                "kind": "bus", "route_name": r.get("name"), "route_type": r.get("type"),
+                "end_station": r.get("end_station"),
+                "board": (leg.get("board") or {}).get("name"),
+                "board_seq": (leg.get("board") or {}).get("station_seq"),
+                "alight": (leg.get("alight") or {}).get("name"),
+                "stop_cnt": leg.get("stop_cnt"),
+            })
+        elif leg.get("kind") == "subway":
+            transit_brief.append({
+                "kind": "subway", "line": leg.get("line"),
+                "board": (leg.get("board") or {}).get("name"),
+                "alight": (leg.get("alight") or {}).get("name"),
+                "station_cnt": leg.get("station_cnt"),
+            })
     return {
         "status": "success",
         "tool_name": "plan_accessible_route",
+        "mode_used": mode_used,
+        "mode_label": _mode_label(mode_used),
+        "auto_mode": auto,
+        "transit": transit_brief,
+        "eta_note": summary.get("eta_note"),
         "origin_label": origin_label,
         "destination_label": dest_label,
         "route_id": data.get("route_id"),
         "summary": {
             "distance_m": summary.get("total_distance_m"),
             "duration_min": round((summary.get("duration_sec") or 0) / 60),
+            "walk_distance_m": summary.get("walk_distance_m"),
             "max_slope_deg": summary.get("max_slope_deg"),
             "stairs_cnt": summary.get("stairs_cnt"),
             "crossing_cnt": summary.get("crossing_cnt"),
@@ -627,9 +687,16 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         "ai_instruction": (
             ("출발지는 %s 기준임을 먼저 밝히세요. " % origin_label if origin_label else "")
             + ("목적지는 %s 입니다. " % dest_label if dest_label else "")
+            + ("이동 방식은 %s 입니다%s. " % (_mode_label(mode_used),
+               " (자동 추천)" if auto else "") if mode_used else "")
+            + ("대중교통 구간이 있으면 transit 의 노선 번호·유형·방면(end_station)·"
+               "정거장 수를 함께 말하고, 저상버스 정차는 보장되지 않으니 실시간 도착정보 "
+               "확인이 필요하다고 알리세요. 소요시간은 대기 미포함 추정임을 밝히세요. "
+               if transit_brief else "")
             + "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로 요약하고, 첫 안내 한 문장을 덧붙이세요. "
             "경고(warnings)나 제약 완화(fallback.used=true)가 있으면 반드시 함께 알리세요. "
-            "전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다."
+            "전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다. "
+            "화면의 이동 방식 카드로 다른 방식을 고를 수 있다는 점을 필요할 때만 짧게 안내하세요."
         ),
     }
 
