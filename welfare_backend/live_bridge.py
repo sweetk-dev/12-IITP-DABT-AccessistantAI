@@ -366,6 +366,30 @@ def _route_tool_declarations() -> list:
                          "자체를 명시적으로 요청할 때만 사용한다. 관광지 추천·경로 안내 결과를 "
                          "말할 때는 호출하지 않는다(화면의 이동 버튼으로 사용자가 선택)."),
         ),
+        types.FunctionDeclaration(
+            name="report_accessibility_issue",
+            description=("현재 위치의 접근성 문제를 제보로 접수한다. 사용자가 \"여기 턱이 있어\", "
+                         "\"보도가 끊겼어\", \"횡단보도가 없어\", \"경사가 너무 심해\", \"못 지나가겠어\", "
+                         "\"신고해줘\" 처럼 현장의 통행 문제를 말하면 사용한다. 위치는 현재 위치가 "
+                         "자동 주입되므로 좌표를 만들지 않는다. 접수되면 그 지점의 경로 안내에 "
+                         "경고가 붙는다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                required=["reason"],
+                properties={
+                    "reason": types.Schema(
+                        type=types.Type.STRING,
+                        description=("문제 유형: curb(턱 있음) / no_sidewalk(보도 없음·끊김) / "
+                                     "no_crossing(횡단보도 없음) / steep(경사 심함) / "
+                                     "blocked(통행 불가·공사) / etc(기타)"),
+                    ),
+                    "detail": types.Schema(
+                        type=types.Type.STRING,
+                        description="사용자가 말한 문제 내용을 한 문장으로 요약(예: '보도 턱이 높아 휠체어가 못 오름')",
+                    ),
+                },
+            ),
+        ),
     ]
 
 

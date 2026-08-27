@@ -846,6 +846,45 @@ async def tool_open_navi_screen() -> dict:
     }
 
 
+_REPORT_REASONS = ("curb", "no_sidewalk", "no_crossing", "steep", "blocked", "etc")
+
+
+async def tool_report_accessibility(reason: str = "etc", detail: str = "",
+                                    lat: float = None, lng: float = None,
+                                    route_id: str = "") -> dict:
+    """접근성 문제 음성 제보 (v1.35.0) — 화면의 '신고' 버튼과 같은 02 수집 API 로 접수.
+
+    사용자가 "여기 턱이 있어", "길이 끊겼어, 신고해줘" 처럼 말하면 호출된다.
+    좌표는 모델이 지어내지 못하도록 서버가 현재 위치를 주입한다
+    (inject_nav_defaults). 접수 즉시 해당 지점 경로 안내에
+    '이용자 제보(미확인)' 경고가 붙는다.
+    """
+    if lat is None or lng is None:
+        return {
+            "status": "need_location",
+            "ai_instruction": (
+                "현재 위치를 알 수 없어 제보를 접수할 수 없다고 안내하고, "
+                "위치 권한을 허용하거나 이동·관광 화면을 열어 달라고 요청하세요."
+            ),
+        }
+    if reason not in _REPORT_REASONS:
+        reason = "etc"
+    payload = {"lat": float(lat), "lng": float(lng), "reason": reason,
+               "detail": (str(detail)[:500] if detail else None),
+               "route_id": (str(route_id)[:20] if route_id else None)}
+    r = await route_client.report_accessibility(payload)
+    if isinstance(r, dict) and r.get("status") == "error":
+        return r          # route_client 가 만든 안내문(ai_instruction) 그대로 전달
+    return {
+        "status": "success",
+        "report_id": (r or {}).get("report_id"),
+        "ai_instruction": (
+            "제보가 접수되었고, 확인 후 경로 안내에 반영된다고 짧게 감사 인사와 함께 "
+            "알리세요. 접수 번호 등 세부 정보는 말하지 마세요."
+        ),
+    }
+
+
 # ─────────────────────────────────────────────────────────────
 # 도구 디스패처 (Gemini 함수명 → 실제 핸들러)
 # ─────────────────────────────────────────────────────────────
@@ -863,4 +902,5 @@ def get_tool_dispatcher(embed_fn):
         "explain_route_segment": tool_explain_route_segment,
         "find_nearby_transit": tool_find_nearby_transit,
         "open_navi_screen": tool_open_navi_screen,
+        "report_accessibility_issue": tool_report_accessibility,
     }
