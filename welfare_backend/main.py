@@ -317,6 +317,46 @@ async def transit_access_points(
     return await route_client.transit_access(lat, lng, radius_m, profile)
 
 
+# ─────────────────────────────────────────────────────────────
+# 수집 장치화 (v1.34.0) — 안내 세션의 부산물이 데이터가 된다.
+# 참여자 식별자는 받지도 넘기지도 않는다 (route_id 익명).
+# ─────────────────────────────────────────────────────────────
+from fastapi import Body as _Body  # noqa: E402
+
+
+@app.post("/api/v1/nav/track", tags=["collect"],
+          summary="[10] 주행 GPS 트랙 업로드 (안내 종료 시 1회)")
+async def nav_track(payload: dict = _Body(...)):
+    pts = payload.get("points") or []
+    if not isinstance(pts, list) or len(pts) > 5000:
+        raise HTTPException(status_code=422, detail="points 는 5,000개 이하 배열이어야 합니다")
+    # 경로 API 계약 밖 필드는 넘기지 않는다 (개인정보 유입 차단)
+    clean = {"route_id": str(payload.get("route_id") or "")[:20],
+             "points": pts, "meta": payload.get("meta")}
+    if not clean["route_id"]:
+        raise HTTPException(status_code=422, detail="route_id 가 필요합니다")
+    return await route_client.log_track(clean)
+
+
+@app.post("/api/v1/nav/report", tags=["collect"],
+          summary="[11] 접근성 오류 제보 (원터치)")
+async def nav_report(payload: dict = _Body(...)):
+    try:
+        lat, lng = float(payload.get("lat")), float(payload.get("lng"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="lat/lng 가 필요합니다")
+    clean = {"lat": lat, "lng": lng,
+             "reason": str(payload.get("reason") or "etc")[:20],
+             "detail": (str(payload.get("detail"))[:500]
+                        if payload.get("detail") else None),
+             "route_id": (str(payload.get("route_id"))[:20]
+                          if payload.get("route_id") else None),
+             "photo_base64": payload.get("photo_base64"),
+             "photo_mime": (str(payload.get("photo_mime"))[:40]
+                            if payload.get("photo_mime") else None)}
+    return await route_client.report_accessibility(clean)
+
+
 @app.get("/api/v1/tools/explain_route_segment", tags=["tools"],
          summary="[8] 경로 구간 사유 설명")
 async def explain_route_segment(

@@ -929,6 +929,83 @@ check("하단 탭바는 세로 공간이 부족해도 줄어들지 않는다(fle
   assert.match(HTML, /#view-navi>\.appbar\{flex:none;\}/);
 });
 
+
+/* ===== 수집 장치화 (v1.34.0): 접근성 신고 + 주행 트랙 ===== */
+const navPosts = [];
+window.fetch = async (url, opts) => {
+  const u = String(url);
+  if (u.includes("/api/v1/nav/")) {
+    navPosts.push({ url: u, body: JSON.parse(opts && opts.body || "{}") });
+    return { ok: true, json: async () => ({ report_id: 7, stored_points: 3 }) };
+  }
+  if (u.includes("/api/v1/config")) return { ok: true, json: async () => CONFIG };
+  if (u.includes("plan_accessible_route")) { lastPlanQuery = u; return { ok: true, json: async () => ROUTE }; }
+  if (u.includes("find_bf_tour_spots")) return { ok: true, json: async () => page(0, 10, 25) };
+  return { ok: true, json: async () => ({}) };
+};
+
+watchCb({ coords: { latitude: 37.39, longitude: 126.95, accuracy: 8 } });
+await sleep(20);
+
+check("신고 버튼이 지도 위에 상시 노출, 시트는 접힘", () => {
+  assert.ok($("naviReportBtn"), "신고 버튼 없음");
+  assert.equal($("reportSheet").hidden, true);
+});
+$("naviReportBtn").dispatchEvent(new window.Event("click"));
+check("신고 버튼 -> 사유 시트 열림 (6개 사유 + 사진 첨부 + 닫기)", () => {
+  assert.equal($("reportSheet").hidden, false);
+  assert.equal($("reportSheet").querySelectorAll("button[data-reason]").length, 6);
+  assert.ok($("repPhotoInput"), "사진 입력 없음");
+  assert.ok($("reportCancelBtn"), "닫기 버튼 없음");
+});
+$("reportCancelBtn").dispatchEvent(new window.Event("click"));
+check("닫기 버튼으로 시트가 닫힘", () => assert.equal($("reportSheet").hidden, true));
+$("naviReportBtn").dispatchEvent(new window.Event("click"));
+$("reportSheet").querySelector('button[data-reason="curb"]').dispatchEvent(new window.Event("click"));
+await sleep(40);
+check("사유 원터치 -> 즉시 전송(좌표·사유·route_id) + 접수 안내", () => {
+  const p = navPosts.find((x) => x.url.includes("/nav/report"));
+  assert.ok(p, "신고 POST 없음");
+  assert.equal(p.body.reason, "curb");
+  assert.ok(Math.abs(p.body.lat - 37.39) < 0.02, "좌표 이상: " + p.body.lat);
+  assert.equal($("reportSheet").hidden, true);
+  assert.match($("naviStatus").textContent, /접수되었습니다/);
+});
+
+// 트랙: 새 경로 -> 안내 시작 -> 위치 갱신 -> 안내 종료 -> 업로드
+window.NAVI.openNavi();
+await sleep(60);
+window.document.querySelectorAll("#naviSpots .spot")[0].dispatchEvent(new window.Event("click"));
+await sleep(20);
+const cgo = [...window.document.querySelectorAll(".spot-choice__btn")].find((b) => /여기로 가기/.test(b.textContent));
+cgo.dispatchEvent(new window.Event("click"));
+await sleep(80);
+const sgBtn = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "안내 시작");
+check("트랙 검증용 경로에 '안내 시작' 버튼", () => assert.ok(sgBtn));
+sgBtn.dispatchEvent(new window.Event("click"));
+await sleep(30);
+watchCb({ coords: { latitude: 37.3902, longitude: 126.9502, accuracy: 5 } });
+watchCb({ coords: { latitude: 37.3905, longitude: 126.9506, accuracy: 5 } });
+await sleep(20);
+$("naviEndBtn").dispatchEvent(new window.Event("click"));
+await sleep(40);
+check("안내 종료 -> 주행 트랙 업로드 (points + outcome=canceled + 경로선)", () => {
+  const posts = navPosts.filter((x) => x.url.includes("/nav/track"));
+  assert.ok(posts.length >= 1, "트랙 POST 없음");
+  const p = posts[posts.length - 1];
+  assert.ok(p.body.points.length >= 2, "트랙 점 부족: " + p.body.points.length);
+  assert.equal(p.body.meta.outcome, "canceled");
+  assert.equal(p.body.route_id, "r_test");
+  assert.ok(Array.isArray(p.body.meta.geometry) && p.body.meta.geometry.length >= 2, "경로선 없음");
+  assert.equal(p.body.meta.planned_dist_m, 320);
+  assert.ok(p.body.points[0].ts, "타임스탬프 없음");
+});
+check("트랙 업로드에 참여자 식별 필드가 없다 (route_id 익명)", () => {
+  const p = navPosts.filter((x) => x.url.includes("/nav/track")).pop();
+  const keys = Object.keys(p.body).sort().join(",");
+  assert.equal(keys, "meta,points,route_id");
+});
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {

@@ -96,6 +96,7 @@
     <div class="tab" id="tab-unresolved" onclick="showTab('unresolved')">미답변 질의</div>
     <div class="tab" id="tab-discovery" onclick="showTab('discovery')">신규 후보</div>
       <div class="tab" id="tab-mobility" onclick="showTab('mobility')">이동편의 데이터</div>
+      <div class="tab" id="tab-navrep" onclick="showTab('navrep')">접근성 제보</div>
   </div>
   <button class="refresh" onclick="refresh()">새로고침</button>
 </header>
@@ -264,6 +265,29 @@
   </div>
 </div>
 
+
+<div id="view-navrep" style="display:none">
+  <div style="padding:12px 16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <b>접근성 오류 제보</b>
+      <select id="nr-status" onchange="loadNavReports()">
+        <option value="">전체</option>
+        <option value="new" selected>미검토</option>
+        <option value="confirmed">확인됨</option>
+        <option value="applied">속성 반영됨</option>
+        <option value="rejected">기각</option>
+      </select>
+      <span class="muted" style="font-size:12px">접수 즉시 해당 지점에 '이용자 제보(미확인)' 경고가 붙습니다.
+        확인=경고 확정 · 기각=경고 철회 · 속성 반영=경로 계산 자체에 반영(승인제)</span>
+    </div>
+    <div class="card"><table id="nr-table"><thead><tr>
+      <th style="width:52px">ID</th><th style="width:140px">일시</th><th style="width:130px">사유</th>
+      <th>내용</th><th style="width:150px">위치</th><th style="width:56px">사진</th>
+      <th style="width:78px">상태</th><th style="width:330px">작업</th>
+    </tr></thead><tbody><tr><td colspan="8"><div class="empty">불러오는 중…</div></td></tr></tbody></table></div>
+  </div>
+</div>
+
 <script>
 const SAPI="/admin/api/staging", PAPI="/admin/api/policy", PLIST="/admin/api/policies";
 const MAPI="/admin/api/mobility";
@@ -272,14 +296,14 @@ let current=null, editingId=null;
 let curTab="overview";
 function showTab(t){
   curTab=t;
-  for(const k of ["overview","review","policy","unresolved","ops","discovery","mobility"]){
+  for(const k of ["overview","review","policy","unresolved","ops","discovery","mobility","navrep"]){
     document.getElementById("tab-"+k).classList.toggle("on", t===k);
     document.getElementById("view-"+k).style.display = t===k?"":"none";
   }
   if(opsTimer){ clearInterval(opsTimer); opsTimer=null; }
-  if(t==="overview") loadOverview(); else if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else if(t==="ops") loadOps(); else if(t==="discovery") loadDiscovery(); else if(t==="mobility") loadMobility(); else loadList();
+  if(t==="overview") loadOverview(); else if(t==="policy") loadPolicies(); else if(t==="unresolved") loadUnresolved(true); else if(t==="ops") loadOps(); else if(t==="discovery") loadDiscovery(); else if(t==="mobility") loadMobility(); else if(t==="navrep") loadNavReports(); else loadList();
 }
-function refresh(){ if(curTab==="overview") loadOverview(); else if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else if(curTab==="ops") loadOps(); else if(curTab==="discovery") loadDiscovery(); else if(curTab==="mobility") loadMobility(); else loadList(); }
+function refresh(){ if(curTab==="overview") loadOverview(); else if(curTab==="policy") loadPolicies(); else if(curTab==="unresolved") loadUnresolved(true); else if(curTab==="ops") loadOps(); else if(curTab==="discovery") loadDiscovery(); else if(curTab==="mobility") loadMobility(); else if(curTab==="navrep") loadNavReports(); else loadList(); }
 
 /* ===== 이동편의 데이터 탭 (#165) ===== */
 async function loadMobility(){
@@ -958,6 +982,69 @@ async function confirmMetaOnly(){ const p=(metaOnlyItems||[]).map(function(x){re
   if(!confirm('재검증만 대기 '+p.length+'건을 일괄 확정할까요? (내용 변경 없음, last_verified 갱신)')) return;
   await runBulk(p,'apply'); }
 showTab("overview");
+
+/* ===== 접근성 제보 탭 (v1.34.0) ===== */
+const NRAPI="/admin/api/nav-reports";
+const NR_REASONS={curb:"턱 있음",no_sidewalk:"보도 없음·끊김",no_crossing:"횡단보도 없음",steep:"경사 심함",blocked:"통행 불가",etc:"기타"};
+const NR_STATUS={new:"미검토",confirmed:"확인됨",rejected:"기각",applied:"반영됨"};
+async function loadNavReports(){
+  const tb=document.querySelector("#nr-table tbody");
+  tb.innerHTML='<tr><td colspan="8"><div class="empty">불러오는 중…</div></td></tr>';
+  try{
+    const st=document.getElementById("nr-status").value;
+    const d=await (await fetch(NRAPI+"?limit=100"+(st?("&status="+st):""))).json();
+    if(d.status==="error"){ tb.innerHTML='<tr><td colspan="8"><div class="empty">'+escapeHtml(d.message||"경로 서비스 연결 실패")+'</div></td></tr>'; return; }
+    const items=d.items||[];
+    if(!items.length){ tb.innerHTML='<tr><td colspan="8"><div class="empty">제보가 없습니다.</div></td></tr>'; return; }
+    let html="";
+    for(const r of items){
+      const ll=(+r.lat).toFixed(6)+","+(+r.lon).toFixed(6);
+      const attrSel=`<select id="nr-attr-${r.report_id}" style="font-size:12px">
+        <option value="curb_cut:false">턱낮춤 없음</option>
+        <option value="tactile_paving:false">점자블록 없음</option>
+        <option value="passable:false">통행 불가(차단)</option>
+        <option value="width:">보도폭 입력…</option></select>`;
+      const acts = (r.status==="new"||r.status==="confirmed")
+        ? `<button onclick="nrAct(${r.report_id},'confirm')">확인</button>
+           <button onclick="nrAct(${r.report_id},'reject')">기각</button>
+           ${attrSel}<button onclick="nrApply(${r.report_id})">속성 반영</button>`
+        : `<span class="muted">${escapeHtml(r.review_note||"")}</span>`;
+      html+=`<tr><td>${r.report_id}</td>
+        <td>${escapeHtml(String(r.created_at||"").replace("T"," ").slice(0,16))}</td>
+        <td>${escapeHtml(NR_REASONS[r.reason]||r.reason)}</td>
+        <td>${escapeHtml(r.detail||"")}</td>
+        <td><a href="https://map.kakao.com/link/map/제보,${ll}" target="_blank" rel="noopener">${ll}</a></td>
+        <td>${r.has_photo?`<a href="${NRAPI}/${r.report_id}/photo" target="_blank" rel="noopener">보기</a>`:"-"}</td>
+        <td>${escapeHtml(NR_STATUS[r.status]||r.status)}</td>
+        <td style="white-space:nowrap">${acts}</td></tr>`;
+    }
+    tb.innerHTML=html;
+  }catch(e){ tb.innerHTML='<tr><td colspan="8"><div class="empty">불러오지 못했습니다.</div></td></tr>'; }
+}
+async function nrAct(id, action){
+  const note=window.prompt(action==="reject"?"기각 사유 (경고가 철회됩니다)":"확인 메모 (경고가 확정 문구로 바뀝니다)","");
+  if(note===null) return;
+  await nrPost(id,{action:action,note:note||null});
+}
+async function nrApply(id){
+  const sel=document.getElementById("nr-attr-"+id);
+  let parts=sel.value.split(":"), attr=parts[0], value=parts[1];
+  if(attr==="width"){
+    value=window.prompt("보도 유효폭(m)을 입력하세요 (예: 1.1)","");
+    if(value===null||value==="") return;
+  }
+  if(!window.confirm("경로 계산에 실제 반영됩니다. 진행할까요? ("+attr+"="+value+")")) return;
+  await nrPost(id,{action:"apply",attr:attr,value:value,note:"콘솔 승인 반영"});
+}
+async function nrPost(id, body){
+  try{
+    const r=await (await fetch(NRAPI+"/"+id+"/review",{method:"POST",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})).json();
+    if(r.status==="error"){ alert(r.message||"처리 실패"); }
+  }catch(e){ alert("처리 실패"); }
+  loadNavReports();
+}
+
 </script>
 </body>
 </html>
