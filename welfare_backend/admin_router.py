@@ -516,3 +516,38 @@ def mobility_status():
 def admin_page():
     html = (Path(__file__).resolve().parent / "static" / "admin.html").read_text(encoding="utf-8")
     return HTMLResponse(content=html)
+
+
+# ─────────────────────────────────────────────────────────────
+# 접근성 제보 검토 (v1.34.0) — 02 경로 API 패스스루.
+# 자동화 수위: 경고는 접수 즉시 자동, 속성 변경(curb_cut 등)은 여기서 승인해야 반영된다.
+# ─────────────────────────────────────────────────────────────
+import route_client as _rc  # noqa: E402
+from fastapi.responses import Response as _Resp  # noqa: E402
+
+
+@router.get("/admin/api/nav-reports")
+async def nav_reports_list(status: str = "", limit: int = 100, offset: int = 0):
+    return await _rc.list_access_reports(status, min(int(limit), 200), max(int(offset), 0))
+
+
+@router.get("/admin/api/nav-reports/{report_id}/photo")
+async def nav_reports_photo(report_id: int):
+    data, mime = await _rc.get_report_photo(report_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail="사진이 없습니다")
+    return _Resp(content=data, media_type=mime)
+
+
+@router.post("/admin/api/nav-reports/{report_id}/review")
+async def nav_reports_review(report_id: int, payload: dict = Body(default={})):
+    action = payload.get("action")
+    if action not in ("confirm", "reject", "apply"):
+        raise HTTPException(status_code=422, detail="action 은 confirm | reject | apply")
+    body = {"action": action, "note": payload.get("note")}
+    if action == "apply":
+        body["attr"] = payload.get("attr")
+        body["value"] = payload.get("value")
+        if payload.get("radius_m"):
+            body["radius_m"] = float(payload["radius_m"])
+    return await _rc.review_access_report(report_id, body)

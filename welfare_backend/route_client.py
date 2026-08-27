@@ -229,3 +229,40 @@ async def transit_access(lat: float, lng: float, radius_m: float = 800,
         "GET", "/transit/access-points",
         params={"lat": lat, "lng": lng, "radius_m": radius_m, "profile": profile},
     )
+
+
+# ── 수집 장치화 (02 v1.16.0 — 트랙·접근성 제보) ──
+async def log_track(payload: dict) -> dict:
+    """주행 GPS 트랙 배치 업로드 패스스루. 참여자 식별자는 넣지 않는다(route_id 익명)."""
+    return await _call("POST", "/track/log", json=payload)
+
+
+async def report_accessibility(payload: dict) -> dict:
+    """접근성 오류 제보 패스스루 — 접수 즉시 해당 지점에 '이용자 제보' 경고가 붙는다."""
+    return await _call("POST", "/report/accessibility", json=payload)
+
+
+async def list_access_reports(status: str = "", limit: int = 50, offset: int = 0) -> dict:
+    params = {"limit": limit, "offset": offset}
+    if status:
+        params["status"] = status
+    return await _call("GET", "/report/accessibility", params=params)
+
+
+async def review_access_report(report_id: int, payload: dict) -> dict:
+    return await _call("PATCH", "/report/accessibility/%d" % int(report_id), json=payload)
+
+
+async def get_report_photo(report_id: int):
+    """제보 사진 바이트 (bytes, mime) — 없으면 (None, None)."""
+    if not BASE_URL:
+        return None, None
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT_SEC) as client:
+            r = await client.get("%s/report/accessibility/%d/photo" % (BASE_URL, int(report_id)),
+                                 headers=_headers())
+        if r.status_code == 200:
+            return r.content, r.headers.get("content-type", "image/jpeg")
+    except (httpx.TimeoutException, httpx.TransportError):
+        pass
+    return None, None
