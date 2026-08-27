@@ -455,13 +455,15 @@ await sleep(2400);
 check("답변 종료 후 직전 안내 문장 자동 복귀", () => {
   assert.match(spoken.at(-1), /^안내를 이어갈게요\. 횡단보도를 건너/);
 });
-check("상단 '안내 종료' 버튼 — 안내 중 활성, 누르면 종료", () => {
+check("상단 종료 버튼 — 안내 중엔 '안내 종료', 누르면 안내만 종료·버튼은 계속 활성 (v1.35.0)", () => {
   const eb = $("naviEndBtn");
-  assert.ok(eb, "안내 종료 버튼 없음");
+  assert.ok(eb, "종료 버튼 없음");
   assert.equal(eb.disabled, false, "안내 중인데 비활성");
+  assert.equal(eb.textContent, "안내 종료");
   eb.dispatchEvent(new window.Event("click"));
   assert.ok($("naviSpots"), "종료 후 목록 패널로 복귀하지 않음");
-  assert.equal(eb.disabled, true, "종료 후에도 활성");
+  assert.equal(eb.disabled, false, "종료 후 비활성 — 항시 활성이어야 함");
+  assert.equal(eb.textContent, "종료", "안내 종료 후엔 서비스 종료 모드여야 함");
 });
 check("음성안내 토글은 스텝 카드로 이동 (상단 토글 제거)", () => {
   assert.equal(window.document.getElementById("naviVoiceBtn"), null);
@@ -1004,6 +1006,71 @@ check("트랙 업로드에 참여자 식별 필드가 없다 (route_id 익명)",
   const p = navPosts.filter((x) => x.url.includes("/nav/track")).pop();
   const keys = Object.keys(p.body).sort().join(",");
   assert.equal(keys, "meta,points,route_id");
+});
+
+
+/* ===== v1.35.0: 종료 버튼 서비스 종료 + 신고 버튼 축소 + 경로 이탈 자동 재안내 ===== */
+check("신고 버튼 축소 — 짧은 라벨 + 절반 크기 패딩 (지도 가림 최소화)", () => {
+  assert.equal($("naviReportBtn").textContent, "🚧 신고");
+  assert.match(HTML, /\.reportbtn\{[^}]*padding:9px 10px/);
+});
+
+// 평시(안내 없음) 종료 버튼 = 서비스 종료 -> 홈(모드 선택)
+check("평시 종료 버튼 활성 + '종료' 라벨", () => {
+  const eb = $("naviEndBtn");
+  assert.equal(eb.disabled, false);
+  assert.equal(eb.textContent, "종료");
+});
+$("naviEndBtn").dispatchEvent(new window.Event("click"));
+check("평시 종료 클릭 -> 상담 화면 경유 없이 바로 홈(모드 선택)으로", () => {
+  assert.ok($("view-mode").classList.contains("active"), "홈 화면으로 가지 않음");
+  assert.equal($("naviAskwrap").hidden, true, "질문 바가 남아 있음");
+});
+
+// 경로 이탈 -> 자동 재탐색 -> 안내 자동 재개
+window.show("view-navi");
+window.NAVI.openNavi();
+await sleep(60);
+window.document.querySelectorAll("#naviSpots .spot")[0].dispatchEvent(new window.Event("click"));
+await sleep(20);
+const cgo2 = [...window.document.querySelectorAll(".spot-choice__btn")].find((b) => /여기로 가기/.test(b.textContent));
+cgo2.dispatchEvent(new window.Event("click"));
+await sleep(80);
+const sgBtn2 = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "안내 시작");
+sgBtn2.dispatchEvent(new window.Event("click"));
+await sleep(30);
+check("안내 재시작 -> 버튼이 '안내 종료'로 전환", () => {
+  assert.equal($("naviEndBtn").textContent, "안내 종료");
+});
+const spokenBefore = spoken.length;
+const trackPostsBefore = navPosts.filter((x) => x.url.includes("/nav/track")).length;
+// 경로(37.390x대)에서 ~600m 북쪽 — 서비스 지역 안, 경로선 밖 30m 초과를 3회 연속
+watchCb({ coords: { latitude: 37.3955, longitude: 126.9500, accuracy: 5 } });
+watchCb({ coords: { latitude: 37.3956, longitude: 126.9502, accuracy: 5 } });
+watchCb({ coords: { latitude: 37.3957, longitude: 126.9504, accuracy: 5 } });
+await sleep(120);
+check("이탈 3회 연속 -> 이탈 안내 발화 + 트랙 마감(outcome=rerouted)", () => {
+  const said = spoken.slice(spokenBefore).join(" | ");
+  assert.match(said, /경로를 벗어나셨어요/, "이탈 안내 없음: " + said);
+  const posts = navPosts.filter((x) => x.url.includes("/nav/track"));
+  assert.ok(posts.length > trackPostsBefore, "이탈 트랙 업로드 없음");
+  assert.equal(posts[posts.length - 1].body.meta.outcome, "rerouted");
+});
+check("재탐색 후 안내 자동 재개 — 스텝 카드 + 첫 안내 발화", () => {
+  assert.ok(window.document.querySelector(".step-now"), "스텝 카드 없음 (안내 미재개)");
+  const said = spoken.slice(spokenBefore).join(" | ");
+  assert.match(said, /중앙로를 따라/, "재개 첫 안내 발화 없음: " + said);
+  assert.equal($("naviEndBtn").textContent, "안내 종료", "재개 후 버튼 상태");
+});
+check("GPS 튐 1~2회는 재탐색을 유발하지 않는다 (연속 3회 조건)", () => {
+  // 위에서 정확히 3회 만에 발화 1건 — 추가로 1회 이탈 후 정상 복귀 시 카운터 리셋 확인
+  const beforeCnt = spoken.filter((s) => /경로를 벗어나셨어요/.test(s)).length;
+  watchCb({ coords: { latitude: 37.3955, longitude: 126.9500, accuracy: 5 } });
+  watchCb({ coords: { latitude: 37.3901, longitude: 126.9502, accuracy: 5 } });  // 경로 복귀
+  watchCb({ coords: { latitude: 37.3955, longitude: 126.9500, accuracy: 5 } });
+  watchCb({ coords: { latitude: 37.3901, longitude: 126.9502, accuracy: 5 } });
+  const afterCnt = spoken.filter((s) => /경로를 벗어나셨어요/.test(s)).length;
+  assert.equal(afterCnt, beforeCnt, "간헐 이탈에 재탐색이 발화됨");
 });
 
 // ── 결과 ──

@@ -124,4 +124,14 @@ def inject_nav_defaults(fname: str, fargs: dict, nav: dict, user_location: dict)
             else:
                 fargs.pop("lat", None)
                 fargs.pop("lng", None)
+    elif fname == "report_accessibility_issue":
+        # 제보 좌표·안내 세션은 모델이 아니라 세션이 아는 사실로만 채운다 (v1.35.0)
+        if user_location and user_location.get("lat") is not None:
+            fargs["lat"] = user_location["lat"]
+            fargs["lng"] = user_location["lng"]
+        else:
+            fargs.pop("lat", None)
+            fargs.pop("lng", None)
+        if nav and nav.get("route_id"):
+            fargs["route_id"] = nav["route_id"]
     return fargs
