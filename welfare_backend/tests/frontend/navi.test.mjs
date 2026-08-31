@@ -231,6 +231,19 @@ check("게이트: 기본 선택 = 지체장애", () => {
   assert.equal(on.length, 1);
   assert.equal(on[0].getAttribute("data-dis"), "지체장애");
 });
+check("장애 유형 칩 4개와 '관광지 보기' 버튼이 같은 한 줄에 있다", () => {
+  const row = $("naviFilters");
+  assert.ok(row.classList.contains("typerow"), "한 줄 레이아웃 클래스(typerow)가 없음");
+  assert.equal(row.querySelectorAll("button.chip").length, 4, "유형 칩이 4개가 아님");
+  assert.ok(row.querySelector("#naviTypeGo"), "'관광지 보기' 버튼이 같은 줄에 없음");
+  assert.equal(row.children.length, 5, "한 줄에 5개가 아님");
+});
+check("라벨을 두 줄로 접어도 읽히는 이름은 원래 문구 그대로", () => {
+  const row = $("naviFilters");
+  const labels = [...row.querySelectorAll("button.chip")].map((b) => b.getAttribute("aria-label"));
+  assert.deepEqual(labels, ["지체장애", "시각장애", "청각장애", "영유아 동반"]);
+  assert.equal(row.querySelector("#naviTypeGo").getAttribute("aria-label"), "이 유형으로 관광지 보기");
+});
 $("naviTypeGo").dispatchEvent(new window.Event("click"));
 await sleep(60);
 check("유형 확인 후 목록 로드 + 지역 밖 안내가 목록 패널에도 표시", () => {
@@ -239,6 +252,7 @@ check("유형 확인 후 목록 로드 + 지역 밖 안내가 목록 패널에�
 });
 check("목록 화면에도 유형 칩 유지 (변경 가능)", () => {
   assert.equal(window.document.querySelectorAll("#naviFilters .chip").length, 4);
+  assert.ok($("naviFilters").classList.contains("typerow"), "목록 화면 칩이 한 줄 레이아웃이 아님");
 });
 
 // 1-c) 범위 밖 안내 — 문장만이 아니라 다음에 할 동작을 함께 준다
@@ -1072,6 +1086,48 @@ check("GPS 튐 1~2회는 재탐색을 유발하지 않는다 (연속 3회 조건
   const afterCnt = spoken.filter((s) => /경로를 벗어나셨어요/.test(s)).length;
   assert.equal(afterCnt, beforeCnt, "간헐 이탈에 재탐색이 발화됨");
 });
+
+// ── 종료 버튼: 상태 갱신 인터벌이 돈 뒤에도 활성이 유지되어야 한다 ──
+// (구 #251 코드가 600ms 마다 disabled 를 되돌려 놓아 홈으로 갈 수 없었다)
+window.show("view-navi");
+window.NAVI.openNavi();
+await sleep(60);
+// 안내를 먼저 끝내 '평시' 상태로 만든 뒤에 틱을 지나게 한다 —
+// 구 코드는 이 조건(guiding=false)에서 버튼을 다시 잠갔다.
+if ($("naviEndBtn").textContent === "안내 종료") {
+  $("naviEndBtn").dispatchEvent(new window.Event("click"));
+  await sleep(20);
+}
+await sleep(700);   // 상태 갱신 틱을 최소 한 번 지나게 한다
+check("평시에도 종료 버튼은 상태 갱신 틱이 돌아도 잠기지 않는다", () => {
+  const eb = $("naviEndBtn");
+  assert.equal(eb.disabled, false, "600ms 틱이 종료 버튼을 다시 잠갔음");
+  assert.ok(["종료", "안내 종료"].includes(eb.textContent), "라벨이 두 상태 중 하나가 아님");
+});
+
+// ── 신고: '기타 문제' 프롬프트를 취소하면 아무것도 보내지 않는다 ──
+$("naviReportBtn").dispatchEvent(new window.Event("click"));
+await sleep(10);
+const repBefore = navPosts.filter((x) => x.url.includes("/nav/report")).length;
+const origPrompt = window.prompt;
+window.prompt = () => null;                     // 사용자가 '취소'를 누른 상황
+$("reportSheet").querySelector('button[data-reason="etc"]').dispatchEvent(new window.Event("click"));
+await sleep(40);
+check("'기타 문제' 프롬프트 취소 -> 전송하지 않고 시트도 그대로", () => {
+  const after = navPosts.filter((x) => x.url.includes("/nav/report")).length;
+  assert.equal(after, repBefore, "취소했는데 신고가 전송됨");
+  assert.equal($("reportSheet").hidden, false, "취소했는데 시트가 닫힘");
+});
+window.prompt = () => "보도에 자전거가 세워져 있어요";   // 이번엔 '확인'
+$("reportSheet").querySelector('button[data-reason="etc"]').dispatchEvent(new window.Event("click"));
+await sleep(40);
+check("'기타 문제' 프롬프트 확인 -> detail 과 함께 전송", () => {
+  const posts = navPosts.filter((x) => x.url.includes("/nav/report"));
+  assert.equal(posts.length, repBefore + 1, "확인했는데 전송되지 않음");
+  assert.equal(posts[posts.length - 1].body.reason, "etc");
+  assert.equal(posts[posts.length - 1].body.detail, "보도에 자전거가 세워져 있어요");
+});
+window.prompt = origPrompt;
 
 // ── 결과 ──
 let failed = 0;
