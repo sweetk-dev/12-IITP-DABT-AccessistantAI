@@ -253,6 +253,11 @@ async def review_access_report(report_id: int, payload: dict) -> dict:
     return await _call("PATCH", "/report/accessibility/%d" % int(report_id), json=payload)
 
 
+async def delete_access_report(report_id: int) -> dict:
+    """제보 삭제 패스스루 (v1.37.0) — 파생 오버라이드까지 함께 정리된다."""
+    return await _call("DELETE", "/report/accessibility/%d" % int(report_id))
+
+
 async def get_report_photo(report_id: int):
     """제보 사진 바이트 (bytes, mime) — 없으면 (None, None)."""
     if not BASE_URL:

@@ -1004,11 +1004,14 @@ async function loadNavReports(){
         <option value="tactile_paving:false">점자블록 없음</option>
         <option value="passable:false">통행 불가(차단)</option>
         <option value="width:">보도폭 입력…</option></select>`;
+      // 삭제는 검토와 다른 축이다 — 기각은 '봤고 사실이 아님'을 남기고,
+      // 삭제는 오검·중복·시험 제보를 기록째 지운다. 상태와 무관하게 항상 노출한다.
+      const delBtn = `<button class="danger" onclick="nrDelete(${r.report_id})" title="제보와 파생 경고를 완전히 삭제">삭제</button>`;
       const acts = (r.status==="new"||r.status==="confirmed")
         ? `<button onclick="nrAct(${r.report_id},'confirm')">확인</button>
            <button onclick="nrAct(${r.report_id},'reject')">기각</button>
-           ${attrSel}<button onclick="nrApply(${r.report_id})">속성 반영</button>`
-        : `<span class="muted">${escapeHtml(r.review_note||"")}</span>`;
+           ${attrSel}<button onclick="nrApply(${r.report_id})">속성 반영</button>${delBtn}`
+        : `<span class="muted">${escapeHtml(r.review_note||"")}</span>${delBtn}`;
       html+=`<tr><td>${r.report_id}</td>
         <td>${escapeHtml(String(r.created_at||"").replace("T"," ").slice(0,16))}</td>
         <td>${escapeHtml(NR_REASONS[r.reason]||r.reason)}</td>
@@ -1035,6 +1038,14 @@ async function nrApply(id){
   }
   if(!window.confirm("경로 계산에 실제 반영됩니다. 진행할까요? ("+attr+"="+value+")")) return;
   await nrPost(id,{action:"apply",attr:attr,value:value,note:"콘솔 승인 반영"});
+}
+async function nrDelete(id){
+  if(!window.confirm("제보 #"+id+" 를 삭제할까요?\n\n제보 기록과 여기서 생성된 경고가 함께 사라지며 되돌릴 수 없습니다.\n사실이 아닐 뿐이라면 '기각'을 쓰세요 — 검토 이력이 남습니다.")) return;
+  try{
+    const r=await (await fetch(NRAPI+"/"+id,{method:"DELETE"})).json();
+    if(r.status==="error"){ alert(r.message||"삭제 실패"); }
+  }catch(e){ alert("삭제 실패"); }
+  loadNavReports();
 }
 async function nrPost(id, body){
   try{
