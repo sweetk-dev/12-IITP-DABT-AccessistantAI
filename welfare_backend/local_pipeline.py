@@ -34,6 +34,9 @@ import numpy as np
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
+from nav_context import (update_nav_state, current_guidance_result,
+                         note_new_route, inject_nav_defaults)
+
 logger = logging.getLogger(__name__)
 
 TARGET_TTS_RATE = 24000   # 클라이언트가 기대하는 출력 PCM 레이트 (기존 프로토콜과 동일)
@@ -198,13 +201,78 @@ def _ollama_tools() -> list:
            {"policy_id": S}, ["policy_id"]),
         fn("find_operating_agencies", "지역·기관 관련 질문에서 운영기관·연락처 청크를 벡터 검색.",
            {"query": S, "limit": I}, ["query"]),
+    ] + _ollama_route_tools()
+
+
+def _ollama_route_tools() -> list:
+    """이동경로·관광 도구 — Live 선언(live_bridge._route_tool_declarations)과 1:1.
+
+    폴백에서도 경로 안내가 되어야 한다. 경로 서비스가 꺼져 있으면 Live 와 동일하게
+    선언 자체를 하지 않는다(없는 기능을 모델이 약속하지 못하게).
+    좌표·route_id 는 선언에 넣지 않는다 — 세션이 아는 값을 서버가 주입한다.
+    """
+    import route_client
+    if not route_client.enabled():
+        return []
+
+    def fn(name, desc, props, required=None):
+        p = {"type": "object", "properties": props}
+        if required:
+            p["required"] = required
+        return {"type": "function", "function": {"name": name, "description": desc, "parameters": p}}
+
+    S = {"type": "string"}
+    I = {"type": "integer"}
+    return [
+        fn("find_bf_tour_spots",
+           "장애 유형에 맞는 무장애 관광지를 추천한다. '갈 만한 곳', '휠체어로 갈 수 있는 곳' 질문에 사용.",
+           {"disabilities": {"type": "array", "items": S,
+                             "description": "지체장애/휠체어/시각장애/청각장애/영유아동반 중 해당하는 것"},
+            "sigungu": {"type": "string", "description": "지역명, 기본 '안양'"},
+            "topk": I}),
+        fn("plan_accessible_route",
+           "출발지에서 목적지까지 무장애 보행 경로를 만든다. 경로 안내가 가능한 지역은 안양시뿐이다. "
+           "출발지는 현재 위치가 자동 주입된다. 목적지 poi_id 를 모르면 사용자가 말한 이름을 "
+           "destination_place 에 담는다 — 지어낸 poi_id 를 넣지 않는다.",
+           {"destination_poi_id": S, "destination_place": S, "destination_type": S,
+            "profile": {"type": "string",
+                        "description": "wheelchair_manual(기본)/wheelchair_electric/crutch/visual/walk"},
+            "origin_place": {"type": "string", "description": "사용자가 말로 밝힌 출발지 이름"},
+            "mode": {"type": "string",
+                     "description": "walk / walk_bus / walk_bus_subway. 사용자가 방식을 말했을 때만 채운다"}}),
+        fn("explain_route_segment",
+           "직전에 안내한 경로의 특정 구간이 왜 그렇게(우회·경사·계단) 안내되었는지 설명한다. "
+           "안내가 진행 중이면 route_id·step_idx 는 서버가 채우므로 생략한다.",
+           {"route_id": S, "step_idx": I}),
+        fn("get_current_guidance",
+           "진행 중인 길안내의 현재 상태(지금 할 안내·다음 안내·남은 거리·목적지)를 조회한다. "
+           "이동 중 \"지금 어디로 가야 해\", \"얼마나 남았어\" 질문에는 반드시 이 도구를 먼저 호출한다.",
+           {}),
+        fn("find_nearby_transit",
+           "주변의 버스 정류장·지하철역을 찾는다. 기준 위치는 현재 위치가 자동 주입된다. "
+           "결과의 accessible 이 null 이면 '이용 불가'가 아니라 미판정이다 — "
+           "accessible_status(yes/no/unknown) 로만 판단해 안내한다.",
+           {"place": {"type": "string", "description": "사용자가 말한 기준 장소 이름"},
+            "radius_m": I}),
+        fn("open_navi_screen",
+           "화면을 이동·관광(지도) 탭으로 전환한다. 사용자가 화면 이동 자체를 명시적으로 요청할 때만 사용한다.",
+           {}),
+        fn("report_accessibility_issue",
+           "현재 위치의 접근성 문제를 제보로 접수한다. \"여기 턱이 있어\", \"보도가 끊겼어\", "
+           "\"신고해줘\" 처럼 현장의 통행 문제를 말하면 사용한다. 위치는 자동 주입되므로 좌표를 만들지 않는다.",
+           {"reason": {"type": "string",
+                       "description": "curb / no_sidewalk / no_crossing / steep / blocked / etc"},
+            "detail": {"type": "string", "description": "사용자가 말한 문제 내용을 한 문장으로"}},
+           ["reason"]),
     ]
 
 
 # ─────────────────────────────────────────────────────────────
 # LLM 턴 처리 — ollama gemma4 chat + 도구호출 루프
 # ─────────────────────────────────────────────────────────────
-async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources) -> str:
+async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
+                        nav_state: dict = None, user_location: dict = None,
+                        on_ui_action=None) -> str:
     """messages(대화 누적)에 사용자 발화가 추가된 상태로 호출.
     도구호출을 최대 4회까지 처리하고 최종 한국어 답변 텍스트를 반환.
     messages 는 in-place 로 갱신(assistant/tool 메시지 append)되어 맥락 유지."""
@@ -240,7 +308,22 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources) -
                     except Exception:
                         fargs = {}
                 logger.info("🛠 [로컬] 도구 호출: %s(%s)", fname, fargs)
-                if fname not in dispatcher:
+                # 좌표·현재 구간은 모델이 아니라 세션이 아는 값으로 채운다 (live_bridge 와 동일 규칙)
+                _nav = nav_state if nav_state is not None else {}
+                _loc = user_location if user_location is not None else {}
+                if fname == "plan_accessible_route":
+                    if _loc.get("lat") is not None:
+                        fargs["origin_lat"] = _loc["lat"]
+                        fargs["origin_lng"] = _loc["lng"]
+                    else:
+                        fargs.pop("origin_lat", None)
+                        fargs.pop("origin_lng", None)
+                fargs = inject_nav_defaults(fname, fargs, _nav, _loc)
+
+                if fname == "get_current_guidance":
+                    # 세션 상태만 읽는 도구 — 디스패처를 거치지 않는다
+                    result = current_guidance_result(_nav)
+                elif fname not in dispatcher:
                     result = {"error": f"unknown tool: {fname}"}
                 else:
                     try:
@@ -248,6 +331,9 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources) -
                     except Exception as e:
                         logger.exception("[로컬] 도구 실행 실패 %s: %s", fname, e)
                         result = {"error": str(e)}
+                if (fname == "plan_accessible_route" and isinstance(result, dict)
+                        and result.get("status") == "success"):
+                    note_new_route(_nav, result.get("route_id"))
                 if tracker is not None:
                     try:
                         tracker.on_tool_call(fname, fargs, result)
@@ -255,6 +341,10 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources) -
                         pass
                 if fname == "get_policy_details" and on_sources:
                     await on_sources(result)
+                if isinstance(result, dict) and result.get("ui_action"):
+                    _ui = result.pop("ui_action")
+                    if on_ui_action:
+                        await on_ui_action(_ui)
                 messages.append({"role": "tool", "content": json.dumps(result, ensure_ascii=False)})
 
         # 도구 루프 상한 초과(모델이 계속 도구만 호출) — 도구 없이 최종 답변을 강제 생성.
@@ -295,6 +385,10 @@ class LocalVoiceSession:
                 self.messages.append({"role": "assistant" if role == "model" else "user",
                                       "content": text.strip()})
         self.audio_buf = bytearray()
+        # 길안내 세션 상태 — 프런트가 보내는 location·nav_state 를 그대로 보관한다.
+        # 경로 도구가 좌표를 지어내지 못하게 하는 근거값(live_bridge 와 동일 계약).
+        self.user_location = {}
+        self.nav_state = {}
         self.silence_ms = int(os.environ.get("LOCAL_VAD_SILENCE_MS", "1200"))
         self._turn_lock = asyncio.Lock()
         self._closed = False
@@ -310,6 +404,10 @@ class LocalVoiceSession:
         items = self.extract_sources(result)
         if items:
             await self._send({"type": "sources", "items": items})
+
+    async def _send_ui_action(self, ui):
+        await self._send({"type": "ui_action",
+                          "action": (ui or {}).get("action"), "payload": ui})
 
     async def _speak(self, text: str):
         """텍스트를 화면 전사 + TTS 오디오로 전송."""
@@ -366,7 +464,9 @@ class LocalVoiceSession:
                     pass
             self.messages.append({"role": "user", "content": user_text})
             try:
-                answer = await _run_llm_turn(self.messages, self.dispatcher, tracker, self._send_sources)
+                answer = await _run_llm_turn(self.messages, self.dispatcher, tracker, self._send_sources,
+                                             self.nav_state, self.user_location,
+                                             self._send_ui_action)
             except Exception as e:
                 logger.exception("[로컬] LLM 처리 실패: %s", e)
                 answer = "죄송합니다. 지금은 정확히 안내드리기 어렵습니다. 보건복지부 129로 문의해 주세요."
@@ -421,6 +521,19 @@ class LocalVoiceSession:
                                 speech_active = False
                                 asyncio.create_task(self._process_turn())
 
+                elif mtype == "location":
+                    try:
+                        self.user_location["lat"] = float(msg["lat"])
+                        self.user_location["lng"] = float(msg["lng"])
+                    except (KeyError, TypeError, ValueError):
+                        logger.warning("[로컬] 잘못된 location 메시지 무시")
+
+                elif mtype == "nav_state":
+                    try:
+                        update_nav_state(self.nav_state, msg)
+                    except Exception:
+                        logger.warning("[로컬] 잘못된 nav_state 메시지 무시")
+
                 elif mtype == "text":
                     content = msg.get("content", "")
                     if content.strip():
@@ -433,7 +546,9 @@ class LocalVoiceSession:
                                 pass
                         self.messages.append({"role": "user", "content": content})
                         try:
-                            answer = await _run_llm_turn(self.messages, self.dispatcher, tracker, self._send_sources)
+                            answer = await _run_llm_turn(self.messages, self.dispatcher, tracker, self._send_sources,
+                                             self.nav_state, self.user_location,
+                                             self._send_ui_action)
                         except Exception as e:
                             logger.exception("[로컬] LLM(text) 실패: %s", e)
                             answer = "죄송합니다. 지금은 정확히 안내드리기 어렵습니다. 보건복지부 129로 문의해 주세요."

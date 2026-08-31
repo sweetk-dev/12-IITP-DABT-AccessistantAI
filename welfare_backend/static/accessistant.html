@@ -209,6 +209,17 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
   color:#111;font-size:1em;padding:12px;cursor:pointer;}
 /* 장애 유형 칩도 이 앱이 스스로 정한 최소 터치 영역(48px)을 지킨다 */
 .sheet .chip{min-height:var(--tap-min);}
+/* 장애 유형 선택 줄 — 칩 4개 + '관광지 보기'까지 한 줄에 (라벨은 두 줄로 접어 폭을 줄인다).
+   아주 좁은 화면에서는 칩 4개만 한 줄을 유지하고 버튼이 아래로 내려간다. */
+.typerow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:10px;}
+.typerow--4{grid-template-columns:repeat(4,minmax(0,1fr));}
+.typerow>button{margin:0;padding:7px 2px;font-size:.82rem;line-height:1.22;white-space:pre-line;
+  text-align:center;min-height:var(--tap-min);display:flex;align-items:center;justify-content:center;}
+.typerow #naviTypeGo{width:auto;}
+@media (max-width:360px){
+  .typerow{grid-template-columns:repeat(4,minmax(0,1fr));}
+  .typerow #naviTypeGo{grid-column:1 / -1;}
+}
 .modebar button{flex:1;border:none;background:#F1F5F9;border-radius:12px;padding:10px;font-weight:700;color:var(--c-text-muted);cursor:pointer;}
 .modebar button[aria-current="true"]{background:var(--c-primary);color:#fff;}
 /* ===== 구조화 답변 카드 ===== */
@@ -1431,7 +1442,10 @@ window.NAVI = (function(){
     if(!p){ status("현재 위치를 알 수 없어 신고를 보낼 수 없습니다. 위치 권한을 확인해 주세요."); closeReportSheet(); return; }
     var detail=null;
     if(reason==="etc"){
-      detail = window.prompt("어떤 문제인지 짧게 적어주세요. (취소해도 위치·사진은 전송됩니다)") || null;
+      // 취소는 '보내지 않겠다'는 뜻이다 — 아무것도 전송하지 않고 신고 시트를 그대로 둔다.
+      var d = window.prompt("어떤 문제인지 짧게 적어주세요.");
+      if(d === null){ return; }
+      detail = d.trim() || null;
     }
     var body={lat:p.lat, lng:p.lng, reason:reason, detail:detail,
               route_id:(route && route.route_id) || null};
@@ -1974,18 +1988,22 @@ window.NAVI = (function(){
      유형 칩은 정적 HTML이 아니라 여기서 상태(selTypes) 기반으로 렌더한다 —
      renderSpotsPanel 이 시트 본문을 재구성하면서 칩이 사라지던 결함(#202)의 근본 수정.
      첫 진입 시에는 선택 게이트 화면을 먼저 보여주고, 확인 후 목록을 로드한다. */
-  var DIS_TYPES=[["지체장애","지체장애"],["시각장애","시각장애"],["청각장애","청각장애"],["영유아동반","영유아 동반"]];
+  var DIS_TYPES=[["지체장애","지체장애","지체\n장애"],["시각장애","시각장애","시각\n장애"],["청각장애","청각장애","청각\n장애"],["영유아동반","영유아 동반","영유아\n동반"]];
   var selTypes=["지체장애"];
   var typeConfirmed=false;
 
-  function makeChips(reloadOnToggle){
-    var wrap=document.createElement("div"); wrap.className="chips"; wrap.id="naviFilters";
+  function makeChips(reloadOnToggle, compact){
+    var wrap=document.createElement("div");
+    wrap.className = compact ? "typerow" : "chips";
+    wrap.id="naviFilters";
     wrap.setAttribute("role","group"); wrap.setAttribute("aria-label","장애 유형 선택");
     DIS_TYPES.forEach(function(t){
       var b=document.createElement("button"); b.type="button"; b.className="chip";
       b.setAttribute("data-dis", t[0]);
       b.setAttribute("aria-pressed", String(selTypes.indexOf(t[0])>=0));
-      b.textContent=t[1];
+      // 좁은 화면에서 한 줄을 유지하려고 라벨만 두 줄로 접는다. 읽히는 이름은 원래 문구 그대로.
+      b.textContent = compact ? (t[2] || t[1]) : t[1];
+      if(compact) b.setAttribute("aria-label", t[1]);
       b.addEventListener("click", function(){
         var i=selTypes.indexOf(t[0]);
         if(i>=0) selTypes.splice(i,1); else selTypes.push(t[0]);
@@ -2006,15 +2024,18 @@ window.NAVI = (function(){
     var p=document.createElement("p"); p.className="c-note";
     p.textContent="함께하는 장애 유형을 모두 선택한 뒤 '관광지 보기'를 눌러 주세요. 선택한 유형에 필요한 편의시설을 갖춘 곳만 보여 드립니다.";
     body.appendChild(p);
-    body.appendChild(makeChips(false));
+    var row=makeChips(false, true);
     var go=document.createElement("button"); go.type="button"; go.id="naviTypeGo";
-    go.className="spot-choice__btn spot-choice__btn--dest"; go.textContent="이 유형으로 관광지 보기";
+    go.className="spot-choice__btn spot-choice__btn--dest";
+    go.textContent="이 유형의\n관광지 보기";
+    go.setAttribute("aria-label","이 유형으로 관광지 보기");
     go.addEventListener("click", function(){
       typeConfirmed=true;
       sendActivity("navi_ui");
       loadSpots();
     });
-    body.appendChild(go);
+    row.appendChild(go);   // 칩 4개와 같은 줄에 둔다
+    body.appendChild(row);
   }
 
   // 서비스 범위 밖 안내 — 문장만 두면 사용자가 무엇을 눌러야 할지 알 수 없다.
@@ -2050,7 +2071,8 @@ window.NAVI = (function(){
     var body=$("naviSheetBody");
     body.textContent="";
     var h=document.createElement("h2"); h.textContent="무장애 관광지"; body.appendChild(h);
-    body.appendChild(makeChips(true));   // 목록 화면에서도 유형 변경 가능 (즉시 재조회)
+    var frow=makeChips(true, true); frow.classList.add("typerow--4");
+    body.appendChild(frow);   // 목록 화면에서도 유형 변경 가능 (즉시 재조회)
 
     if(originOverride){
       var oi=document.createElement("p"); oi.className="c-note";
@@ -2523,8 +2545,9 @@ window.NAVI = (function(){
       if(el.textContent !== txt){ el.textContent = txt; }
       el.classList.toggle("on", cls==="on");
       el.classList.toggle("tts", cls==="tts");
-      var eb2=$("naviEndBtn");
-      if(eb2){ eb2.disabled = !(guiding || simActive); }   // 안내 중일 때만 활성 (#251)
+      // 종료 버튼은 항시 활성(v1.35.0). 여기서는 라벨만 상태에 맞춰 동기화한다.
+      // (구 #251 코드가 매 틱 disabled 를 되돌려 버튼이 계속 잠기던 문제 수정)
+      setEndBtn((guiding || simActive) ? "guide" : "home");
     }, 600);
 
     ["barChat","barChatC"].forEach(function(id){ var e=$(id); if(e) e.addEventListener("click", openChat); });

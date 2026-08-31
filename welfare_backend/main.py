@@ -130,6 +130,20 @@ def _start_ops_scheduler():
 # ─────────────────────────────────────────────────────────────
 # Meta
 # ─────────────────────────────────────────────────────────────
+def _declared_tool_count() -> Optional[int]:
+    """Live 세션에 선언되는 함수 도구 개수(웹검색 도구는 제외).
+
+    live_bridge 는 google-genai 를 끌어오므로 지연 임포트한다.
+    세지 못하면 거짓 숫자를 주는 대신 null 을 반환한다.
+    """
+    try:
+        from live_bridge import build_tool_declarations
+        return sum(len(getattr(t, "function_declarations", None) or [])
+                   for t in build_tool_declarations() if t is not None)
+    except Exception:
+        return None
+
+
 @app.get("/health", tags=["meta"])
 async def health_check():
     """헬스체크 + DB 연결 + Gemini 클라이언트 상태."""
@@ -145,7 +159,9 @@ async def health_check():
         "status": "ok" if db_ok else "degraded",
         "db": db_msg,
         "gemini_client": "ready" if ai_client else "missing GEMINI_API_KEY",
-        "tools_available": 8 if route_client.enabled() else 5,
+        # 모델에 실제로 선언되는 도구 수 — 하드코딩하면 도구가 늘어도 숫자가 안 따라온다.
+        # 선언 빌더를 그대로 세어 항상 현행값을 보고한다.
+        "tools_declared": _declared_tool_count(),
         "route_api": "ready" if route_client.enabled() else "disabled",
     }
 
