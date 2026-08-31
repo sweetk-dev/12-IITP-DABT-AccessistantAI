@@ -30,14 +30,6 @@
       "enforcement_date": "20251111",
       "mapping_status": "matched",
       "mapping_confidence": "exact"
-    },
-    {
-      "name": "문화예술진흥법 (영문 — KLRI)",
-      "article": "제15조의3, 제15조의4",
-      "url": "https://elaw.klri.re.kr/kor_service/lawView.do?hseq=66979&lang=KOR",
-      "law_ref_type": "none",
-      "mapping_status": "not_applicable",
-      "mapping_confidence": ""
     }
   ],
   "operating_agencies": [

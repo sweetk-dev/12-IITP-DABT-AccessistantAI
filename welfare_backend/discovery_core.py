@@ -55,11 +55,21 @@ def _cosine(a, b):
     return s / (na * nb) if na and nb else 0.0
 
 
+# 정책 발굴 대상이 아닌 폴백 사유 — 서비스 범위·이용 안내 이슈라 정책 공백이 아니다.
+# 커버리지 지표로는 테이블에 남기되 군집·분류에서는 제외한다.
+_NON_DISCOVERY_REASONS = ("needs_input", "out_of_service_area")
+
+
 def _load_unresolved(limit=500):
     con = _db(); cur = con.cursor()
+    # deleted_at: 운영자가 콘솔에서 걷어낸 질의는 발굴에서도 빠져야 한다
+    #             (admin_router 의 소프트 삭제 주석과 동작을 일치시킴)
     cur.execute("SELECT id, user_query, embedding FROM unresolved_queries "
                 "WHERE embedding IS NOT NULL AND discovery_processed_at IS NULL "
-                "ORDER BY created_at DESC LIMIT %s", (limit,))
+                "AND deleted_at IS NULL "
+                "AND fallback_reason::text <> ALL(%s) "
+                "ORDER BY created_at DESC LIMIT %s",
+                (list(_NON_DISCOVERY_REASONS), limit))
     rows = cur.fetchall(); con.close()
     out = []
     for rid, q, emb in rows:

@@ -54,6 +54,48 @@ const ROUTE = {
   },
 };
 
+const MMROUTE = {
+  status: "success",
+  route_id: "r_mm",
+  mode_used: "walk_bus",
+  mode_label: "도보+버스",
+  ui_action: {
+    action: "show_route",
+    route: {
+      route_id: "r_mm",
+      destination: { resolved_by: "accessible_entrance", note: null },
+      fallback: { used: false },
+      routes: [{
+        summary: { total_distance_m: 2400, duration_sec: 1500, walk_distance_m: 300,
+                   max_slope_deg: 2.0, stairs_cnt: 0, crossing_cnt: 1,
+                   eta_note: "소요시간은 정거장 수 기반 추정이며 차량 대기 시간은 포함되지 않습니다",
+                   warnings: [] },
+        geometry: [[37.3900, 126.9500], [37.3905, 126.9505], [37.3909, 126.9511]],
+        steps: [
+          { idx: 0, maneuver: "depart", instruction: "정류장까지 100m 이동합니다.",
+            distance_m: 100, coord: [37.3900, 126.9500], link_type: "sidewalk", warnings: [] },
+          { idx: 1, maneuver: "bus_board", instruction: "소방서 정류장에서 마을버스 2번 버스에 승차합니다 — 신성중 방면, 8개 정거장 이동",
+            distance_m: 2000, coord: [37.3903, 126.9503], link_type: "bus", warnings: [] },
+          { idx: 2, maneuver: "bus_alight", instruction: "아르테자이정문 정류장에서 하차합니다",
+            distance_m: 0, coord: [37.3907, 126.9509], link_type: "bus", warnings: [] },
+          { idx: 3, maneuver: "arrive", instruction: "목적지에 도착했습니다.",
+            distance_m: 0, coord: [37.3909, 126.9511], link_type: null, warnings: [] },
+        ],
+        legs: [
+          { kind: "walk", to_label: "소방서 정류장",
+            summary: { total_distance_m: 100, duration_sec: 90 }, geometry: [] },
+          { kind: "bus", route: { route_id: "241253001", name: "2", type: "마을버스", end_station: "신성중" },
+            board: { name: "소방서", mobile_no: "09156", station_seq: 21 },
+            alight: { name: "아르테자이정문", mobile_no: "09328", station_seq: 41 },
+            stop_cnt: 8, warnings: ["저상버스 정차 여부는 보장되지 않습니다"], geometry: [] },
+          { kind: "walk", to_label: "목적지",
+            summary: { total_distance_m: 200, duration_sec: 180 }, geometry: [] },
+        ],
+      }],
+    },
+  },
+};
+
 const CONFIG = {
   kakao_js_key: "test-key",
   features: { route: true, tour: true },
@@ -122,7 +164,8 @@ window.fetch = async (url) => {
   if (u.includes("plan_accessible_route")) lastPlanQuery = u;
   const body = u.includes("/api/v1/config") ? CONFIG
     : u.includes("find_bf_tour_spots") ? SPOTS
-    : u.includes("plan_accessible_route") ? ROUTE
+    : u.includes("plan_accessible_route")
+      ? (u.includes("mode=walk_bus") ? MMROUTE : ROUTE)
     : {};
   return { ok: true, json: async () => body };
 };
@@ -188,6 +231,19 @@ check("게이트: 기본 선택 = 지체장애", () => {
   assert.equal(on.length, 1);
   assert.equal(on[0].getAttribute("data-dis"), "지체장애");
 });
+check("장애 유형 칩 4개와 '관광지 보기' 버튼이 같은 한 줄에 있다", () => {
+  const row = $("naviFilters");
+  assert.ok(row.classList.contains("typerow"), "한 줄 레이아웃 클래스(typerow)가 없음");
+  assert.equal(row.querySelectorAll("button.chip").length, 4, "유형 칩이 4개가 아님");
+  assert.ok(row.querySelector("#naviTypeGo"), "'관광지 보기' 버튼이 같은 줄에 없음");
+  assert.equal(row.children.length, 5, "한 줄에 5개가 아님");
+});
+check("라벨을 두 줄로 접어도 읽히는 이름은 원래 문구 그대로", () => {
+  const row = $("naviFilters");
+  const labels = [...row.querySelectorAll("button.chip")].map((b) => b.getAttribute("aria-label"));
+  assert.deepEqual(labels, ["지체장애", "시각장애", "청각장애", "영유아 동반"]);
+  assert.equal(row.querySelector("#naviTypeGo").getAttribute("aria-label"), "이 유형으로 관광지 보기");
+});
 $("naviTypeGo").dispatchEvent(new window.Event("click"));
 await sleep(60);
 check("유형 확인 후 목록 로드 + 지역 밖 안내가 목록 패널에도 표시", () => {
@@ -196,6 +252,7 @@ check("유형 확인 후 목록 로드 + 지역 밖 안내가 목록 패널에�
 });
 check("목록 화면에도 유형 칩 유지 (변경 가능)", () => {
   assert.equal(window.document.querySelectorAll("#naviFilters .chip").length, 4);
+  assert.ok($("naviFilters").classList.contains("typerow"), "목록 화면 칩이 한 줄 레이아웃이 아님");
 });
 
 // 1-c) 범위 밖 안내 — 문장만이 아니라 다음에 할 동작을 함께 준다
@@ -304,9 +361,54 @@ check("지정한 출발지가 경로 요청에 사용됨", () => {
   assert.match(q, /origin_lng=126\.9568/);
 });
 
+// 3-b) 이동 방식 카드 + 멀티모달 렌더 (#251)
+check("이동 방식 카드 4개 — 기본 '추천' 선택", () => {
+  const cards = [...window.document.querySelectorAll(".mode-cards button")];
+  assert.equal(cards.length, 4);
+  assert.equal(cards[0].getAttribute("aria-pressed"), "true");
+  assert.match(cards[0].textContent, /추천/);
+});
+const busCard = [...window.document.querySelectorAll(".mode-cards button")]
+  .find((b) => b.getAttribute("data-mode") === "walk_bus");
+busCard.dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("'도보+버스' 카드 선택 → mode 파라미터로 재요청", () => {
+  assert.match(lastPlanQuery || "", /mode=walk_bus/);
+});
+check("멀티모달 legs 렌더 — 버스 승차 카드·방면·저상 고지", () => {
+  const card = window.document.querySelector(".leg-card");
+  assert.ok(card, "버스 leg 카드 없음");
+  assert.match(card.textContent, /마을버스 2번/);
+  assert.match(card.textContent, /신성중 방면/);
+  assert.match(card.textContent, /8개 정거장/);
+  assert.match(card.textContent, /저상버스 정차는 보장되지 않습니다/);
+});
+check("멀티모달 요약 — 추정 표기 + 도보 거리 분리", () => {
+  const t = $("naviSheetBody").textContent;
+  assert.match(t, /예상 시간\(추정\)/);
+  assert.match(t, /추정이며 차량 대기 시간은 포함되지 않습니다/);
+});
+// 이후 시나리오는 도보 경로 기준 — '추천' 카드로 복귀(도보 응답 재수신)
+[...window.document.querySelectorAll(".mode-cards button")]
+  .find((b) => b.getAttribute("data-mode") === "auto")
+  .dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("'추천' 복귀 시 mode 파라미터 없이 재요청", () => {
+  assert.doesNotMatch(lastPlanQuery || "", /mode=walk_bus/);
+});
+
 // 4) 안내 시작 -> 스텝 + 음성
 const startBtn = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "안내 시작");
 check("'안내 시작' 버튼 존재", () => assert.ok(startBtn));
+// ── 이동 중 대화 (#248): 가짜 WS 로 nav_state 송신 관찰 ──
+const wsSent = [];
+const fakeWs = { readyState: 1, send: (s) => wsSent.push(JSON.parse(s)) };
+window.NAVI.attachWs(fakeWs);
+check("세션 연결 시 이동 중 질문바 노출", () => {
+  assert.equal($("naviAskwrap").hidden, false, "질문바가 숨겨져 있음");
+  assert.ok($("naviTextInput"), "질문 입력창 없음");
+  assert.ok($("naviMicState"), "마이크 상태 표시 없음");
+});
 startBtn.dispatchEvent(new window.Event("click"));
 await sleep(30);
 check("첫 턴바이턴 스텝 카드 + 음성 발화", () => {
@@ -324,6 +426,75 @@ check("다음 안내 지점 근접 시 스텝 자동 전환 + 재발화", () => 
   assert.match(card.textContent, /횡단보도를 건너/);
   assert.equal(spoken.at(-1), "횡단보도를 건너 60m 이동합니다.");
   assert.match(window.document.querySelector(".step-now .wr").textContent, /턱낮춤 없음/);
+});
+
+// 5-b) 이동 중 대화 (#248) — nav_state 송신·답변 스트립·안내 복귀
+check("안내 시작·진행이 nav_state 로 세션에 전달", () => {
+  const nav = wsSent.filter((m) => m.type === "nav_state");
+  assert.ok(nav.length >= 2, "nav_state 미송신");
+  const started = nav.find((m) => m.guiding && m.step_idx === 0);
+  assert.ok(started, "안내 시작 nav_state 없음");
+  assert.equal(started.route_id, "r_test");
+  assert.equal(started.total_steps, 3);
+  assert.match(started.current, /중앙로를 따라 120m/);
+  const last = nav.at(-1);
+  assert.equal(last.step_idx, 1, "스텝 전환이 nav_state 에 반영 안 됨");
+  assert.match(last.current, /횡단보도를 건너/);
+  assert.match(String(last.next), /목적지에 도착/);
+});
+check("상담원 답변 텍스트가 지도 화면 스트립에 표시", () => {
+  window.NAVI.onAiText("2번 마을버스는 ");
+  window.NAVI.onAiText("순번으로 방면을 구분해요.");
+  const el = $("naviAnswer");
+  assert.equal(el.hidden, false);
+  assert.match(el.textContent, /순번으로 방면을 구분해요/);
+});
+check("턴 종료 후 다음 답변은 스트립을 새로 시작", () => {
+  window.NAVI.onAiTurnComplete();
+  window.NAVI.onAiText("새 답변입니다.");
+  assert.equal($("naviAnswer").textContent, "새 답변입니다.");
+});
+check("길안내 TTS barge-in: bargeStop 이 발화를 즉시 중단", () => {
+  window.__NAVI_SPEAKING = true;
+  window.NAVI.bargeStop();
+  assert.equal(window.__NAVI_SPEAKING, false, "발화가 멈추지 않음");
+});
+// 답변이 끝나면(턴 종료 + 음성 없음) 직전 안내 문장으로 복귀한다.
+// 스플래시의 1.5초 자동 전환(show("view-mode"))이 이 대기 중에 뒤늦게 발화해
+// navi 뷰를 빼앗으면 복귀가 (의도대로) 억제되므로, 타이머 경과 후 뷰를 되돌린다.
+await sleep(1600);
+window.show("view-navi");
+window.NAVI.onAiTurnComplete();
+await sleep(2400);
+check("답변 종료 후 직전 안내 문장 자동 복귀", () => {
+  assert.match(spoken.at(-1), /^안내를 이어갈게요\. 횡단보도를 건너/);
+});
+check("상단 종료 버튼 — 안내 중엔 '안내 종료', 누르면 안내만 종료·버튼은 계속 활성 (v1.35.0)", () => {
+  const eb = $("naviEndBtn");
+  assert.ok(eb, "종료 버튼 없음");
+  assert.equal(eb.disabled, false, "안내 중인데 비활성");
+  assert.equal(eb.textContent, "안내 종료");
+  eb.dispatchEvent(new window.Event("click"));
+  assert.ok($("naviSpots"), "종료 후 목록 패널로 복귀하지 않음");
+  assert.equal(eb.disabled, false, "종료 후 비활성 — 항시 활성이어야 함");
+  assert.equal(eb.textContent, "종료", "안내 종료 후엔 서비스 종료 모드여야 함");
+});
+check("음성안내 토글은 스텝 카드로 이동 (상단 토글 제거)", () => {
+  assert.equal(window.document.getElementById("naviVoiceBtn"), null);
+  assert.match(HTML, /음성 끄기/);
+});
+check("상담원 답변 스트립은 3줄 제한", () => {
+  assert.match(HTML, /\.navi-answer\{max-height:4\.2em/);
+});
+check("세션 미연결 상태의 텍스트 질문은 안내문으로 거절", () => {
+  $("naviTextInput").value = "지금 어디로 가요?";
+  $("naviSendBtn").dispatchEvent(new window.Event("click"));
+  assert.match($("naviStatus").textContent, /상담 세션이 아직 연결되지 않았습니다/);
+});
+check("마이크 게이트 barge-in 배선 존재 (소스 레벨 가드)", () => {
+  assert.match(HTML, /naviBargeRun/);
+  assert.match(HTML, /NAVI\.bargeStop/);
+  assert.doesNotMatch(HTML, /if \(window\.__NAVI_SPEAKING\) return;   \/\/ 길안내 음성 발화 중에도 동일하게 차단/);
 });
 
 // 6) 상담 세션 ui_action -> 자동 전환 없이 데이터 준비 + 이동 버튼 (#213)
@@ -773,6 +944,216 @@ check("하단 탭바는 세로 공간이 부족해도 줄어들지 않는다(fle
   assert.match(HTML, /\.modebar\{flex:none;/);
   assert.match(HTML, /#view-navi>\.appbar\{flex:none;\}/);
 });
+
+
+/* ===== 수집 장치화 (v1.34.0): 접근성 신고 + 주행 트랙 ===== */
+const navPosts = [];
+window.fetch = async (url, opts) => {
+  const u = String(url);
+  if (u.includes("/api/v1/nav/")) {
+    navPosts.push({ url: u, body: JSON.parse(opts && opts.body || "{}") });
+    return { ok: true, json: async () => ({ report_id: 7, stored_points: 3 }) };
+  }
+  if (u.includes("/api/v1/config")) return { ok: true, json: async () => CONFIG };
+  if (u.includes("plan_accessible_route")) { lastPlanQuery = u; return { ok: true, json: async () => ROUTE }; }
+  if (u.includes("find_bf_tour_spots")) return { ok: true, json: async () => page(0, 10, 25) };
+  return { ok: true, json: async () => ({}) };
+};
+
+watchCb({ coords: { latitude: 37.39, longitude: 126.95, accuracy: 8 } });
+await sleep(20);
+
+check("신고 버튼이 지도 위에 상시 노출, 시트는 접힘", () => {
+  assert.ok($("naviReportBtn"), "신고 버튼 없음");
+  assert.equal($("reportSheet").hidden, true);
+});
+$("naviReportBtn").dispatchEvent(new window.Event("click"));
+check("신고 버튼 -> 사유 시트 열림 (6개 사유 + 사진 첨부 + 닫기)", () => {
+  assert.equal($("reportSheet").hidden, false);
+  assert.equal($("reportSheet").querySelectorAll("button[data-reason]").length, 6);
+  assert.ok($("repPhotoInput"), "사진 입력 없음");
+  assert.ok($("reportCancelBtn"), "닫기 버튼 없음");
+});
+$("reportCancelBtn").dispatchEvent(new window.Event("click"));
+check("닫기 버튼으로 시트가 닫힘", () => assert.equal($("reportSheet").hidden, true));
+$("naviReportBtn").dispatchEvent(new window.Event("click"));
+$("reportSheet").querySelector('button[data-reason="curb"]').dispatchEvent(new window.Event("click"));
+await sleep(40);
+check("사유 원터치 -> 즉시 전송(좌표·사유·route_id) + 접수 안내", () => {
+  const p = navPosts.find((x) => x.url.includes("/nav/report"));
+  assert.ok(p, "신고 POST 없음");
+  assert.equal(p.body.reason, "curb");
+  assert.ok(Math.abs(p.body.lat - 37.39) < 0.02, "좌표 이상: " + p.body.lat);
+  assert.equal($("reportSheet").hidden, true);
+  assert.match($("naviStatus").textContent, /접수되었습니다/);
+});
+
+// 트랙: 새 경로 -> 안내 시작 -> 위치 갱신 -> 안내 종료 -> 업로드
+window.NAVI.openNavi();
+await sleep(60);
+window.document.querySelectorAll("#naviSpots .spot")[0].dispatchEvent(new window.Event("click"));
+await sleep(20);
+const cgo = [...window.document.querySelectorAll(".spot-choice__btn")].find((b) => /여기로 가기/.test(b.textContent));
+cgo.dispatchEvent(new window.Event("click"));
+await sleep(80);
+const sgBtn = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "안내 시작");
+check("트랙 검증용 경로에 '안내 시작' 버튼", () => assert.ok(sgBtn));
+sgBtn.dispatchEvent(new window.Event("click"));
+await sleep(30);
+watchCb({ coords: { latitude: 37.3902, longitude: 126.9502, accuracy: 5 } });
+watchCb({ coords: { latitude: 37.3905, longitude: 126.9506, accuracy: 5 } });
+await sleep(20);
+$("naviEndBtn").dispatchEvent(new window.Event("click"));
+await sleep(40);
+check("안내 종료 -> 주행 트랙 업로드 (points + outcome=canceled + 경로선)", () => {
+  const posts = navPosts.filter((x) => x.url.includes("/nav/track"));
+  assert.ok(posts.length >= 1, "트랙 POST 없음");
+  const p = posts[posts.length - 1];
+  assert.ok(p.body.points.length >= 2, "트랙 점 부족: " + p.body.points.length);
+  assert.equal(p.body.meta.outcome, "canceled");
+  assert.equal(p.body.route_id, "r_test");
+  assert.ok(Array.isArray(p.body.meta.geometry) && p.body.meta.geometry.length >= 2, "경로선 없음");
+  assert.equal(p.body.meta.planned_dist_m, 320);
+  assert.ok(p.body.points[0].ts, "타임스탬프 없음");
+});
+check("트랙 업로드에 참여자 식별 필드가 없다 (route_id 익명)", () => {
+  const p = navPosts.filter((x) => x.url.includes("/nav/track")).pop();
+  const keys = Object.keys(p.body).sort().join(",");
+  assert.equal(keys, "meta,points,route_id");
+});
+
+
+/* ===== v1.35.0: 종료 버튼 서비스 종료 + 신고 버튼 축소 + 경로 이탈 자동 재안내 ===== */
+check("신고 버튼 축소 — 짧은 라벨 + 절반 크기 패딩 (지도 가림 최소화)", () => {
+  assert.equal($("naviReportBtn").textContent, "🚧 신고");
+  assert.match(HTML, /\.reportbtn\{[^}]*padding:9px 10px/);
+});
+
+// 평시(안내 없음) 종료 버튼 = 서비스 종료 -> 홈(모드 선택)
+check("평시 종료 버튼 활성 + '종료' 라벨", () => {
+  const eb = $("naviEndBtn");
+  assert.equal(eb.disabled, false);
+  assert.equal(eb.textContent, "종료");
+});
+// v1.37.0: 홈으로 나가는 것은 세션을 닫는 동작 — 확인 팝업을 한 번 거친다
+$("naviEndBtn").dispatchEvent(new window.Event("click"));
+check("평시 종료 클릭 -> 곧바로 나가지 않고 확인 팝업이 뜬다 (v1.37.0)", () => {
+  const m = $("naviEndModal");
+  assert.ok(m, "종료 확인 팝업이 없음");
+  assert.equal(m.hidden, false, "팝업이 뜨지 않음");
+  assert.ok($("view-navi").classList.contains("active"), "확인 전에 화면을 떠남");
+});
+check("확인 팝업 문구·구조가 '상담 종료' 팝업과 같은 형식", () => {
+  const m = $("naviEndModal");
+  assert.equal(m.getAttribute("class"), "modal-backdrop");
+  const card = m.querySelector(".modal-card");
+  assert.equal(card.getAttribute("role"), "dialog");
+  assert.equal(card.getAttribute("aria-modal"), "true");
+  assert.equal(card.getAttribute("aria-labelledby"), "naviEndTitle");
+  assert.equal($("naviEndCancelBtn").textContent, "취소");
+  assert.equal($("naviEndConfirmBtn").textContent, "확인");
+});
+$("naviEndCancelBtn")?.dispatchEvent(new window.Event("click"));
+check("취소 -> 팝업만 닫히고 안내 화면에 그대로 머문다", () => {
+  assert.equal($("naviEndModal").hidden, true, "팝업이 닫히지 않음");
+  assert.ok($("view-navi").classList.contains("active"), "취소했는데 화면을 떠남");
+  assert.equal($("naviAskwrap").hidden, false, "취소했는데 질문 바가 사라짐");
+});
+$("naviEndBtn").dispatchEvent(new window.Event("click"));
+$("naviEndConfirmBtn")?.dispatchEvent(new window.Event("click"));
+check("확인 -> 상담 화면 경유 없이 바로 홈(모드 선택)으로", () => {
+  assert.equal($("naviEndModal").hidden, true, "팝업이 남아 있음");
+  assert.ok($("view-mode").classList.contains("active"), "홈 화면으로 가지 않음");
+  assert.equal($("naviAskwrap").hidden, true, "질문 바가 남아 있음");
+});
+
+// 경로 이탈 -> 자동 재탐색 -> 안내 자동 재개
+window.show("view-navi");
+window.NAVI.openNavi();
+await sleep(60);
+window.document.querySelectorAll("#naviSpots .spot")[0].dispatchEvent(new window.Event("click"));
+await sleep(20);
+const cgo2 = [...window.document.querySelectorAll(".spot-choice__btn")].find((b) => /여기로 가기/.test(b.textContent));
+cgo2.dispatchEvent(new window.Event("click"));
+await sleep(80);
+const sgBtn2 = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "안내 시작");
+sgBtn2.dispatchEvent(new window.Event("click"));
+await sleep(30);
+check("안내 재시작 -> 버튼이 '안내 종료'로 전환", () => {
+  assert.equal($("naviEndBtn").textContent, "안내 종료");
+});
+const spokenBefore = spoken.length;
+const trackPostsBefore = navPosts.filter((x) => x.url.includes("/nav/track")).length;
+// 경로(37.390x대)에서 ~600m 북쪽 — 서비스 지역 안, 경로선 밖 30m 초과를 3회 연속
+watchCb({ coords: { latitude: 37.3955, longitude: 126.9500, accuracy: 5 } });
+watchCb({ coords: { latitude: 37.3956, longitude: 126.9502, accuracy: 5 } });
+watchCb({ coords: { latitude: 37.3957, longitude: 126.9504, accuracy: 5 } });
+await sleep(120);
+check("이탈 3회 연속 -> 이탈 안내 발화 + 트랙 마감(outcome=rerouted)", () => {
+  const said = spoken.slice(spokenBefore).join(" | ");
+  assert.match(said, /경로를 벗어나셨어요/, "이탈 안내 없음: " + said);
+  const posts = navPosts.filter((x) => x.url.includes("/nav/track"));
+  assert.ok(posts.length > trackPostsBefore, "이탈 트랙 업로드 없음");
+  assert.equal(posts[posts.length - 1].body.meta.outcome, "rerouted");
+});
+check("재탐색 후 안내 자동 재개 — 스텝 카드 + 첫 안내 발화", () => {
+  assert.ok(window.document.querySelector(".step-now"), "스텝 카드 없음 (안내 미재개)");
+  const said = spoken.slice(spokenBefore).join(" | ");
+  assert.match(said, /중앙로를 따라/, "재개 첫 안내 발화 없음: " + said);
+  assert.equal($("naviEndBtn").textContent, "안내 종료", "재개 후 버튼 상태");
+});
+check("GPS 튐 1~2회는 재탐색을 유발하지 않는다 (연속 3회 조건)", () => {
+  // 위에서 정확히 3회 만에 발화 1건 — 추가로 1회 이탈 후 정상 복귀 시 카운터 리셋 확인
+  const beforeCnt = spoken.filter((s) => /경로를 벗어나셨어요/.test(s)).length;
+  watchCb({ coords: { latitude: 37.3955, longitude: 126.9500, accuracy: 5 } });
+  watchCb({ coords: { latitude: 37.3901, longitude: 126.9502, accuracy: 5 } });  // 경로 복귀
+  watchCb({ coords: { latitude: 37.3955, longitude: 126.9500, accuracy: 5 } });
+  watchCb({ coords: { latitude: 37.3901, longitude: 126.9502, accuracy: 5 } });
+  const afterCnt = spoken.filter((s) => /경로를 벗어나셨어요/.test(s)).length;
+  assert.equal(afterCnt, beforeCnt, "간헐 이탈에 재탐색이 발화됨");
+});
+
+// ── 종료 버튼: 상태 갱신 인터벌이 돈 뒤에도 활성이 유지되어야 한다 ──
+// (구 #251 코드가 600ms 마다 disabled 를 되돌려 놓아 홈으로 갈 수 없었다)
+window.show("view-navi");
+window.NAVI.openNavi();
+await sleep(60);
+// 안내를 먼저 끝내 '평시' 상태로 만든 뒤에 틱을 지나게 한다 —
+// 구 코드는 이 조건(guiding=false)에서 버튼을 다시 잠갔다.
+if ($("naviEndBtn").textContent === "안내 종료") {
+  $("naviEndBtn").dispatchEvent(new window.Event("click"));
+  await sleep(20);
+}
+await sleep(700);   // 상태 갱신 틱을 최소 한 번 지나게 한다
+check("평시에도 종료 버튼은 상태 갱신 틱이 돌아도 잠기지 않는다", () => {
+  const eb = $("naviEndBtn");
+  assert.equal(eb.disabled, false, "600ms 틱이 종료 버튼을 다시 잠갔음");
+  assert.ok(["종료", "안내 종료"].includes(eb.textContent), "라벨이 두 상태 중 하나가 아님");
+});
+
+// ── 신고: '기타 문제' 프롬프트를 취소하면 아무것도 보내지 않는다 ──
+$("naviReportBtn").dispatchEvent(new window.Event("click"));
+await sleep(10);
+const repBefore = navPosts.filter((x) => x.url.includes("/nav/report")).length;
+const origPrompt = window.prompt;
+window.prompt = () => null;                     // 사용자가 '취소'를 누른 상황
+$("reportSheet").querySelector('button[data-reason="etc"]').dispatchEvent(new window.Event("click"));
+await sleep(40);
+check("'기타 문제' 프롬프트 취소 -> 전송하지 않고 시트도 그대로", () => {
+  const after = navPosts.filter((x) => x.url.includes("/nav/report")).length;
+  assert.equal(after, repBefore, "취소했는데 신고가 전송됨");
+  assert.equal($("reportSheet").hidden, false, "취소했는데 시트가 닫힘");
+});
+window.prompt = () => "보도에 자전거가 세워져 있어요";   // 이번엔 '확인'
+$("reportSheet").querySelector('button[data-reason="etc"]').dispatchEvent(new window.Event("click"));
+await sleep(40);
+check("'기타 문제' 프롬프트 확인 -> detail 과 함께 전송", () => {
+  const posts = navPosts.filter((x) => x.url.includes("/nav/report"));
+  assert.equal(posts.length, repBefore + 1, "확인했는데 전송되지 않음");
+  assert.equal(posts[posts.length - 1].body.reason, "etc");
+  assert.equal(posts[posts.length - 1].body.detail, "보도에 자전거가 세워져 있어요");
+});
+window.prompt = origPrompt;
 
 // ── 결과 ──
 let failed = 0;

@@ -133,7 +133,7 @@ class _Spy(object):
     async def tour_spots(self, sigungu="안양", limit=60):
         return _TOUR
 
-    async def plan_route(self, origin, destination, profile="wheelchair_manual", alternatives=1):
+    async def plan_route(self, origin, destination, profile="wheelchair_manual", alternatives=1, mode=""):
         self.plan_called += 1
         self.last = (origin, destination)
         return {"route_id": "r_x", "routes": [{"summary": {"total_distance_m": 100,

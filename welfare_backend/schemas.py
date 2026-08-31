@@ -25,6 +25,12 @@ class ToolStep(BaseModel):
     top_sim: Optional[float] = None     # 벡터 검색 시 최고 유사도 (없으면 None)
     result_count: int = 0
     error: Optional[str] = None         # 도구 예외 발생 시 메시지
+    # 도구가 스스로 밝힌 결과 상태(success/guiding/idle/arrived/need_location/
+    # out_of_service_area/error …). 정책 도구 5종은 status 를 반환하지 않아 None.
+    status: Optional[str] = None
+    # 응답에 결과 배열 키(results/items/…)가 실제로 있었는지.
+    # status 가 success 여도 배열이 비어 있으면 "빈 결과"로 판정하기 위한 근거.
+    has_result_key: bool = False
 
 
 class ToolChain(BaseModel):

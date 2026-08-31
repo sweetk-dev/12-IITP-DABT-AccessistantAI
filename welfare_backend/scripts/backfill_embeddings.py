@@ -87,9 +87,13 @@ def embed_text(text_query: str, *, retries: int = 2) -> list[float]:
 async def backfill_batch(batch_size: int, *, dry_run: bool) -> int:
     """한 배치(batch_size) 처리. 처리된 행 수 반환 (0 이면 더 이상 할 일 없음)."""
     async with AsyncSessionLocal() as ses:
+        # 임베딩은 발굴(군집·분류) 입력을 만들기 위한 것이다. 발굴 대상이 아닌 행
+        # (소프트 삭제분 / 범위 밖·입력 부족)은 임베딩할 이유가 없다 — 유료 API 낭비.
         rows = (await ses.execute(text(
             "SELECT id, user_query FROM unresolved_queries "
-            "WHERE embedding IS NULL ORDER BY id LIMIT :n"
+            "WHERE embedding IS NULL AND deleted_at IS NULL "
+            "AND fallback_reason::text NOT IN ('needs_input', 'out_of_service_area') "
+            "ORDER BY id LIMIT :n"
         ), {"n": batch_size})).all()
         if not rows:
             return 0

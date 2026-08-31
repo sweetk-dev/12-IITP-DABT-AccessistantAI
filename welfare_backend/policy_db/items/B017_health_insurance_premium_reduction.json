@@ -46,12 +46,15 @@
       "mapping_confidence": "exact"
     },
     {
-      "name": "국민건강보험 보험료 경감고시(보건복지부 고시)",
-      "article": "별표2 — 장애인이 있는 세대의 보험료 경감 기준(중증 30%, 경증 20%, 소득·재산 상한)",
-      "url": "https://www.law.go.kr/행정규칙/국민건강보험보험료경감고시",
+      "name": "보험료 경감고시",
+      "article": "제6조제1항제6호 및 별표2 — 등록장애인이 있는 세대의 보험료 경감 기준(중증 30%, 경증 20%, 소득·재산 상한)",
+      "url": "https://www.law.go.kr/행정규칙/보험료%20경감고시",
+      "law_id": "37200",
+      "law_serial_no": "2100000270516",
       "law_ref_type": "admrul",
-      "mapping_status": "not_found",
-      "mapping_confidence": ""
+      "enforcement_date": "20260101",
+      "mapping_status": "matched",
+      "mapping_confidence": "manual"
     },
     {
       "name": "장애인복지법",
