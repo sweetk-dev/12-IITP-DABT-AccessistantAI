@@ -1035,8 +1035,34 @@ check("평시 종료 버튼 활성 + '종료' 라벨", () => {
   assert.equal(eb.disabled, false);
   assert.equal(eb.textContent, "종료");
 });
+// v1.37.0: 홈으로 나가는 것은 세션을 닫는 동작 — 확인 팝업을 한 번 거친다
 $("naviEndBtn").dispatchEvent(new window.Event("click"));
-check("평시 종료 클릭 -> 상담 화면 경유 없이 바로 홈(모드 선택)으로", () => {
+check("평시 종료 클릭 -> 곧바로 나가지 않고 확인 팝업이 뜬다 (v1.37.0)", () => {
+  const m = $("naviEndModal");
+  assert.ok(m, "종료 확인 팝업이 없음");
+  assert.equal(m.hidden, false, "팝업이 뜨지 않음");
+  assert.ok($("view-navi").classList.contains("active"), "확인 전에 화면을 떠남");
+});
+check("확인 팝업 문구·구조가 '상담 종료' 팝업과 같은 형식", () => {
+  const m = $("naviEndModal");
+  assert.equal(m.getAttribute("class"), "modal-backdrop");
+  const card = m.querySelector(".modal-card");
+  assert.equal(card.getAttribute("role"), "dialog");
+  assert.equal(card.getAttribute("aria-modal"), "true");
+  assert.equal(card.getAttribute("aria-labelledby"), "naviEndTitle");
+  assert.equal($("naviEndCancelBtn").textContent, "취소");
+  assert.equal($("naviEndConfirmBtn").textContent, "확인");
+});
+$("naviEndCancelBtn")?.dispatchEvent(new window.Event("click"));
+check("취소 -> 팝업만 닫히고 안내 화면에 그대로 머문다", () => {
+  assert.equal($("naviEndModal").hidden, true, "팝업이 닫히지 않음");
+  assert.ok($("view-navi").classList.contains("active"), "취소했는데 화면을 떠남");
+  assert.equal($("naviAskwrap").hidden, false, "취소했는데 질문 바가 사라짐");
+});
+$("naviEndBtn").dispatchEvent(new window.Event("click"));
+$("naviEndConfirmBtn")?.dispatchEvent(new window.Event("click"));
+check("확인 -> 상담 화면 경유 없이 바로 홈(모드 선택)으로", () => {
+  assert.equal($("naviEndModal").hidden, true, "팝업이 남아 있음");
   assert.ok($("view-mode").classList.contains("active"), "홈 화면으로 가지 않음");
   assert.equal($("naviAskwrap").hidden, true, "질문 바가 남아 있음");
 });

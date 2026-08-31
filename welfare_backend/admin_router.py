@@ -539,6 +539,16 @@ async def nav_reports_photo(report_id: int):
     return _Resp(content=data, media_type=mime)
 
 
+@router.delete("/admin/api/nav-reports/{report_id}")
+async def nav_reports_delete(report_id: int):
+    """제보 삭제 — 기각(reject)과 다르다. 기각은 기록을 남기고, 삭제는 기록째 지운다.
+
+    오검·중복·시험 제보를 콘솔에서 정리하기 위한 것이며, 제보에서 자동 생성된
+    경고 오버라이드도 02 경로 서비스에서 함께 삭제된다.
+    """
+    return await _rc.delete_access_report(report_id)
+
+
 @router.post("/admin/api/nav-reports/{report_id}/review")
 async def nav_reports_review(report_id: int, payload: dict = Body(default={})):
     action = payload.get("action")
