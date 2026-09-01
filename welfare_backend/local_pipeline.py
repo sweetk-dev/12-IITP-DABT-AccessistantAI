@@ -233,7 +233,8 @@ def _ollama_route_tools() -> list:
         fn("plan_accessible_route",
            "출발지에서 목적지까지 무장애 보행 경로를 만든다. 경로 안내가 가능한 지역은 안양시뿐이다. "
            "출발지는 현재 위치가 자동 주입된다. 목적지 poi_id 를 모르면 사용자가 말한 이름을 "
-           "destination_place 에 담는다 — 지어낸 poi_id 를 넣지 않는다.",
+           "destination_place 에 담는다 — 관광지·역뿐 아니라 시청·복지관·도서관 같은 일반 시설도 "
+           "이름으로 찾는다. 지어낸 poi_id 를 넣지 않는다.",
            {"destination_poi_id": S, "destination_place": S, "destination_type": S,
             "profile": {"type": "string",
                         "description": "wheelchair_manual(기본)/wheelchair_electric/crutch/visual/walk"},

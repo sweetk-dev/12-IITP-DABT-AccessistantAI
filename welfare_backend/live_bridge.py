@@ -21,7 +21,8 @@ from fastapi import WebSocket, WebSocketDisconnect
 from google.genai import types
 from starlette.websockets import WebSocketState
 
-from nav_context import (update_nav_state, current_guidance_result,
+from nav_context import (annotate_route_failure,
+                         update_nav_state, current_guidance_result,
                          inject_nav_defaults, note_new_route)
 from tool_handlers import get_tool_dispatcher
 from unresolved_logger import TurnTracker
@@ -245,7 +246,11 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 
 ## 이동경로·무장애 관광 (경로·관광 도구)
 - 사용자가 "어디 갈 만한 곳", "무장애 관광지", "휠체어로 갈 수 있는 곳" 등을 물으면 `find_bf_tour_spots` 를 호출합니다. 결과는 상위 2~3곳만 간단히 말하고, 나머지는 화면 목록으로 넘깁니다.
-- **경로 안내가 가능한 지역은 안양시뿐입니다.** 안양시 밖(예: 서울)의 출발지·목적지는 안내할 수 없습니다. 이때는 "서비스 장애"가 아니라 "아직 안양시 안에서만 안내할 수 있다"고 정확히 말하고, 안양시 안의 장소를 다시 여쭤 보세요. 도구가 `out_of_service_area` / `need_destination` 을 돌려주면 이 규칙대로 답합니다.
+- **경로 안내가 가능한 지역은 안양시뿐입니다.** 다만 안내하지 못하는 사유는 두 가지이고, **절대 섞어 말하지 마세요.**
+  - `out_of_service_area` — 장소는 찾았지만 안양시 밖입니다. "아직 안양시 안에서만 안내할 수 있다"고 정확히 말하고 안양시 안의 장소를 여쭤 보세요.
+  - `place_not_found` — 말씀하신 이름을 찾지 못한 것입니다. **"안양시 밖"이라고 말하면 안 됩니다.** 안양시청·복지관·도서관처럼 안양시 안에 있는 곳도 이름이 조금 다르면 여기에 해당합니다. 더 정확한 이름을 여쭙거나, 이동·관광 화면 지도에서 그 지점을 직접 눌러 목적지로 지정할 수 있다고 안내하세요.
+  두 경우 모두 "서비스 장애"가 아닙니다. `need_destination` / `need_location` 도 같은 태도로 답합니다.
+- **도구 결과에 `active_guidance` 가 있으면** 지금 진행 중인 길안내가 그대로 계속된다는 뜻입니다. 새 목적지를 안내하지 못했다고만 말하고 끝내지 말고, 진행 중인 안내가 계속된다는 사실을 반드시 한 문장으로 덧붙이세요. 안내가 멈췄다고 말하지 마세요.
 - 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 목적지 `poi_id` 를 모르면 사용자가 말한 이름을 `destination_place` 에 담습니다 — poi_id 를 지어내지 마세요. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
 - **이동 방식**: 사용자가 "버스로", "지하철 타고", "대중교통으로" 처럼 방식을 말하면 `plan_accessible_route` 의 `mode` 에 담습니다(walk_bus / walk_bus_subway). 말하지 않으면 비워 두세요 — 자동 추천이 적용되고 결과의 `mode_used`/`mode_label` 이 알려 줍니다. 결과에 `transit` 이 있으면 **노선 번호·유형·방면(end_station)·정거장 수**를 함께 말하고, **저상버스 정차는 보장되지 않으므로 실시간 도착정보 확인이 필요**하다고 알립니다. 대중교통 포함 소요시간은 대기 미포함 추정(`eta_note`)임을 밝힙니다.
 - 경로에 경고가 있거나 권장 경사를 완화해 탐색한 경우(`fallback.used`) 반드시 그 사실을 알립니다.
@@ -307,7 +312,8 @@ def _route_tool_declarations() -> list:
         ),
         types.FunctionDeclaration(
             name="plan_accessible_route",
-            description=("출발지에서 목적지(무장애 관광지·지하철역·버스정류장)까지 무장애 보행 경로를 만든다. "
+            description=("출발지에서 목적지(무장애 관광지·지하철역·버스정류장·시청/복지관 등 일반 시설)까지 "
+                         "무장애 보행 경로를 만든다. "
                          "경로 안내가 가능한 지역은 안양시뿐이다. 출발지는 기본으로 현재 위치가 자동 주입되며, "
                          "사용자가 출발지를 말로 밝히면 origin_place 에 담아 호출한다. "
                          "목적지 poi_id 를 모르면 사용자가 말한 목적지 이름을 destination_place 에 담는다 "
@@ -316,7 +322,7 @@ def _route_tool_declarations() -> list:
                 type=types.Type.OBJECT,
                 properties={
                     "destination_poi_id": types.Schema(type=types.Type.STRING, description="find_bf_tour_spots 결과의 poi_id. 없으면 비워 두고 destination_place 를 채운다"),
-                    "destination_place": types.Schema(type=types.Type.STRING, description="사용자가 말한 목적지 이름(예: '평촌아트홀', '범계역'). poi_id 를 모를 때 채운다"),
+                    "destination_place": types.Schema(type=types.Type.STRING, description="사용자가 말한 목적지 이름(예: '평촌아트홀', '범계역', '안양시청', '안양시노인종합복지관'). poi_id 를 모를 때 채운다. 관광지·지하철역뿐 아니라 시청·구청·복지관·도서관·학교·병원 같은 일반 시설도 이름으로 찾을 수 있다"),
                     "destination_type": types.Schema(type=types.Type.STRING, description="tour(기본) / transit_station / transit_stop"),
                     "profile": types.Schema(type=types.Type.STRING, description="wheelchair_manual(기본)/wheelchair_electric/crutch/visual/walk"),
                     "origin_place": types.Schema(type=types.Type.STRING, description="사용자가 말로 지정한 출발지 이름(예: '안양역', '범계역', '김중업 건축박물관'). 사용자가 '~에서', '~에 있는데' 처럼 출발지를 밝히면 반드시 채운다. 미지정 시 현재 위치 사용"),
@@ -1110,6 +1116,11 @@ async def handle_live_chat(
                                     if (fname == "plan_accessible_route" and isinstance(result, dict)
                                             and result.get("status") == "success"):
                                         note_new_route(nav_state, result.get("route_id"))
+                                    # 경로를 만들지 못했는데 안내가 진행 중이면, 그 안내는 그대로
+                                    # 계속된다. 그 사실을 말하지 않으면 "안내할 수 없다"는 말과
+                                    # 화면·음성으로 진행되는 안내가 어긋나 보인다.
+                                    elif fname == "plan_accessible_route":
+                                        annotate_route_failure(result, nav_state)
                                     # Phase 5 Track A — 도구 호출 시퀀스 추적
                                     tracker.on_tool_call(fname, fargs, result)
                                     # #208: 정책 도구 결과가 오는 '지금'이 카드를 만들 최적 시점 —
