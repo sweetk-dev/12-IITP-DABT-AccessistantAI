@@ -1,4 +1,4 @@
-# AccessistantAI welfare_backend — ServerA(Docker compose) 배포 이미지
+# AccessistantAI welfare_backend — 컨테이너(Docker compose) 배포 이미지
 # 베이스: slim + lxml/trafilatura 소스 빌드 폴백용 최소 빌드 의존성
 FROM python:3.12-slim
 
