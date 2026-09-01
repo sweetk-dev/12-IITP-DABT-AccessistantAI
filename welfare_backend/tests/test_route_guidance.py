@@ -327,6 +327,21 @@ def t_wide_search_reports_out_of_area_not_missing():
     _with_spy(body)
 
 
+def t_out_of_area_message_uses_spoken_name():
+    """범위 밖 안내는 이용자가 말한 이름으로 한다.
+
+    넓힌 재검색은 전국 대상이라 느슨하게 매칭된 상호명이 잡힐 수 있고, 그 이름을
+    되읽으면 이용자는 자기가 말한 곳 이야기가 아니라고 느낀다.
+    """
+    def body(spy):
+        r = _run(tool_handlers.tool_plan_accessible_route(
+            destination_place="관악장애인종합복지관", origin_place="안양역"))
+        assert r["status"] == "out_of_service_area", r
+        assert "관악장애인종합복지관" in r["message"], r["message"]
+        assert r["place"] == "관악장애인종합복지관", r
+    _with_spy(body)
+
+
 def t_place_not_found_may_mention_area_when_user_said_it():
     """발화 자체로 다른 시·도가 분명하면 그 사실은 말해도 된다 — 단정은 금지."""
     def body(spy):
