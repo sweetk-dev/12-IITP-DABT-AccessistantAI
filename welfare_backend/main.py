@@ -307,6 +307,8 @@ async def plan_accessible_route(
     origin_lng: float = Query(...),
     destination_poi_id: str = Query(""),
     destination_place: str = Query(""),
+    destination_lat: float = Query(None, description="지도에서 직접 지정한 목적지 위도"),
+    destination_lng: float = Query(None, description="지도에서 직접 지정한 목적지 경도"),
     destination_type: str = Query("tour"),
     profile: str = Query("wheelchair_manual"),
     mode: str = Query("", description="walk | walk_bus | walk_bus_subway | ''(자동 추천)"),
@@ -314,12 +316,33 @@ async def plan_accessible_route(
     return await tool_handlers.tool_plan_accessible_route(
         destination_poi_id=destination_poi_id,
         destination_place=destination_place,
+        destination_lat=destination_lat,
+        destination_lng=destination_lng,
         destination_type=destination_type,
         profile=profile,
         origin_lat=origin_lat,
         origin_lng=origin_lng,
         mode=mode,
     )
+
+
+@app.get("/api/v1/tools/search_places", tags=["tools"],
+         summary="[7-2] 이름으로 장소 찾기 (목적지·출발지 지정용)")
+async def search_places(
+    q: str = Query(..., min_length=1, description="장소 이름. 예: '안양시청', '노인종합복지관'"),
+    limit: int = Query(8, ge=1, le=20),
+):
+    """관광지·지하철역·건물(시청·복지관·도서관 등)을 이름으로 찾아 좌표를 돌려준다.
+
+    화면의 장소 검색과 음성 도구가 같은 출처를 쓰도록 02 `/poi/search` 를 그대로 미러한다.
+    """
+    data = await route_client.poi_search(q, sigungu="안양", limit=limit)
+    if data.get("status") == "error":
+        return {"status": "error", "query": q, "count": 0, "items": [],
+                "message": data.get("message")}
+    return {"status": "success", "query": q,
+            "count": data.get("count", 0), "items": data.get("items", []),
+            "region": data.get("region")}
 
 
 @app.get("/api/v1/tools/transit_access_points", tags=["tools"],

@@ -1155,6 +1155,171 @@ check("'기타 문제' 프롬프트 확인 -> detail 과 함께 전송", () => {
 });
 window.prompt = origPrompt;
 
+// ══════════════════════════════════════════════════════════════════
+// 목적지 지정 경로 확장 + 안내 실패 시 화면·말 일치 (v1.38.0)
+//
+// 종전에는 (1) 관광지 태그·목록에 없는 곳은 도착지로 지정할 방법이 아예 없었고,
+// (2) 경로를 만들지 못해도 이전 경로가 지도·시트에 그대로 남아 "안내할 수 없다"는
+// 말과 화면이 어긋났다.
+// ══════════════════════════════════════════════════════════════════
+const NAV = window.NAVI._internals();
+const SEARCH_HITS = {
+  status: "success", query: "안양시청", count: 1,
+  items: [{ type: "building", poi_id: null, name: "안양시청",
+            addr: null, lat: 37.39429, lng: 126.95687 }],
+};
+let planResponse = ROUTE;
+let searchResponse = SEARCH_HITS;
+const origFetch = window.fetch;
+window.fetch = async (url, opt) => {
+  const u = String(url);
+  if (u.includes("search_places")) return { ok: true, json: async () => searchResponse };
+  if (u.includes("plan_accessible_route")) {
+    lastPlanQuery = u;
+    return { ok: true, json: async () => planResponse };
+  }
+  return origFetch(url, opt);
+};
+
+// 깨끗한 상태에서 시작 — 안양 안 현위치 + 목록 화면
+window.NAVI.openNavi();
+watchCb({ coords: { latitude: 37.3900, longitude: 126.9500 } });
+await sleep(30);
+NAV.resetTrip();
+NAV.renderSpotsPanel();
+await sleep(20);
+
+check("목록 화면에 장소 이름 검색과 '지도에서 도착지 지정'이 있다", () => {
+  assert.ok($("placeQ"), "장소 검색 입력창 없음");
+  assert.ok($("naviDestPick"), "'지도에서 도착지 지정' 버튼 없음");
+});
+
+$("placeQ").value = "안양시청";
+$("placeQ").parentElement.querySelector("button").dispatchEvent(new window.Event("click"));
+await sleep(40);
+check("이름으로 찾은 장소가 결과 목록에 뜬다 (관광지가 아니어도)", () => {
+  const hits = $("placeResults").querySelectorAll("button.spot");
+  assert.equal(hits.length, 1, "검색 결과가 렌더되지 않음");
+  assert.match(hits[0].textContent, /안양시청/);
+  assert.match(hits[0].textContent, /건물/, "장소 종류 표기 없음");
+});
+
+planResponse = ROUTE;
+$("placeResults").querySelector("button.spot").dispatchEvent(new window.Event("click"));
+await sleep(20);
+window.document.querySelector(".spot-choice__btn--dest").dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("검색 결과를 도착지로 고르면 좌표+building 타입으로 경로를 요청한다", () => {
+  assert.match(lastPlanQuery, /destination_lat=37\.39429/);
+  assert.match(lastPlanQuery, /destination_lng=126\.95687/);
+  assert.match(lastPlanQuery, /destination_type=building/,
+    "건물은 출입구 접근점 해석을 거쳐야 하므로 building 이어야 한다");
+  assert.ok(!/destination_poi_id=\w/.test(lastPlanQuery), "없는 poi_id 를 보냄");
+});
+
+// ── 지도에서 도착지 지정 ──
+NAV.resetTrip();
+NAV.renderSpotsPanel();
+await sleep(20);
+$("naviDestPick").dispatchEvent(new window.Event("click"));
+await sleep(20);
+check("'지도에서 도착지 지정' -> 지도를 넓히고 무엇을 할지 안내", () => {
+  assert.ok($("naviSheet").classList.contains("collapsed"), "지도를 넓히지 않음");
+  assert.match($("naviStatus").textContent, /도착지로 정합니다/);
+});
+lastPlanQuery = null;
+mapClickHandlers[0]({ latLng: { getLat: () => 37.3960, getLng: () => 126.9577 } });
+await sleep(60);
+check("도착지 지정 모드에서 지도를 누르면 그 지점으로 경로를 요청한다", () => {
+  assert.ok(lastPlanQuery, "경로 요청이 나가지 않음");
+  assert.match(lastPlanQuery, /destination_lat=37\.396/);
+  assert.match(lastPlanQuery, /destination_type=coord/,
+    "지도에서 콕 집은 점은 좌표 그대로 써야 한다");
+});
+NAV.resetTrip();
+check("도착지 지정은 1회성 — 다음 지도 클릭은 다시 출발지다", () => {
+  mapClickHandlers[0]({ latLng: { getLat: () => 37.3901, getLng: () => 126.9502 } });
+  assert.match($("naviStatus").textContent, /출발지를 지정했습니다/);
+});
+
+await sleep(80);   // 앞선 출발지 지정이 부른 목록 재조회가 시트를 덮어쓰지 않도록
+
+// ── 안내 실패: 말과 화면이 어긋나지 않는다 ──
+NAV.resetTrip();
+planResponse = ROUTE;
+NAV.requestRoute({ poi_id: "TBF-1", name: "테스트 무장애 공원" });
+await sleep(60);
+check("(사전) 경로가 화면에 표시된 상태", () => {
+  assert.match($("naviSheetBody").textContent, /테스트 무장애 공원 까지/);
+});
+
+planResponse = {
+  status: "place_not_found", tool_name: "plan_accessible_route",
+  message: "목적지 '○○복지관'의 위치를 찾지 못했습니다",
+};
+NAV.requestRoute({ poi_id: "", name: "○○복지관", lat: 37.3905, lng: 126.9505, kind: "coord" });
+await sleep(60);
+check("안내 중이 아닐 때 경로 실패 -> 이전 경로 요약이 화면에서 사라진다", () => {
+  assert.ok(!/테스트 무장애 공원 까지/.test($("naviSheetBody").textContent),
+    "이전 경로 요약이 화면에 그대로 남아 있다 (말과 화면 불일치)");
+  assert.match($("naviSheetBody").textContent, /경로를 안내하지 못했습니다/);
+  assert.match($("naviStatus").textContent, /위치를 찾지 못했습니다/);
+});
+check("실패 안내는 '지역 밖'이라고 말하지 않는다", () => {
+  assert.ok(!/안양시 밖/.test($("naviStatus").textContent),
+    "이름을 못 찾은 것을 '지역 밖'으로 안내함");
+  assert.match($("naviStatus").textContent, /지도에서 가려는 지점/);
+});
+check("실패 화면에서도 이름 검색·지도 지정으로 이어갈 수 있다", () => {
+  assert.ok($("placeQ") && $("naviDestPick"));
+});
+check("실패한 목적지를 기억하지 않는다 (출발지를 바꿔도 같은 실패를 되풀이하지 않음)", () => {
+  lastPlanQuery = null;
+  mapClickHandlers[0]({ latLng: { getLat: () => 37.3902, getLng: () => 126.9503 } });
+  assert.equal(lastPlanQuery, null, "실패한 도착지로 자동 재요청함");
+});
+
+await sleep(80);   // 앞선 출발지 지정이 부른 목록 재조회가 시트를 덮어쓰지 않도록
+
+// ── 안내 중 실패: 진행 중 안내는 유지하되 그 사실을 말한다 ──
+NAV.resetTrip();
+planResponse = ROUTE;
+NAV.requestRoute({ poi_id: "TBF-1", name: "테스트 무장애 공원" });
+await sleep(60);
+NAV.startGuidance();
+await sleep(30);
+planResponse = {
+  status: "out_of_service_area", tool_name: "plan_accessible_route",
+  message: "목적지 '서울시청'는 경로 안내가 가능한 지역(안양시) 밖입니다",
+};
+NAV.requestRoute({ poi_id: "", name: "서울시청", lat: 37.5665, lng: 126.9780, kind: "building" });
+await sleep(60);
+check("안내 중 새 목적지 실패 -> 진행 중 안내는 유지되고, 계속된다고 말한다", () => {
+  assert.match($("naviStatus").textContent, /안내는 그대로 계속됩니다/);
+  assert.match($("naviSheetBody").textContent, /안내 1 \/ 3/, "진행 중 스텝 카드가 사라짐");
+});
+
+// ── 대화(ui_action)로 온 실패도 화면에 반영된다 ──
+window.NAVI.onUiAction({ action: "route_unavailable",
+  payload: { reason: "place_not_found", kind: "목적지", place: "○○복지관" } });
+await sleep(20);
+check("안내 중에는 대화 실패 신호가 와도 안내를 끊지 않는다", () => {
+  assert.match($("naviStatus").textContent, /안내는 그대로 계속됩니다/);
+});
+NAV.clearRouteDisplay();   // 안내 종료 상태로 되돌린다
+NAV.resetTrip();
+planResponse = ROUTE;
+NAV.requestRoute({ poi_id: "TBF-1", name: "테스트 무장애 공원" });
+await sleep(60);
+window.NAVI.onUiAction({ action: "route_unavailable",
+  payload: { reason: "out_of_service_area", kind: "목적지", place: "서울시청" } });
+await sleep(20);
+check("안내 전이면 대화 실패 신호로 이전 경로 표시를 정리한다", () => {
+  assert.ok(!/테스트 무장애 공원 까지/.test($("naviSheetBody").textContent),
+    "대화로 실패했는데 이전 경로가 화면에 남아 있다");
+  assert.match($("naviStatus").textContent, /안양시 밖이라 경로를 안내할 수 없습니다/);
+});
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {

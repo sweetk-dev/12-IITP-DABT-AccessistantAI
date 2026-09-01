@@ -78,14 +78,16 @@ def _ai_for_4xx(detail: str) -> str:
     """4xx 사유별 안내문. 4xx 는 서비스 장애가 아니라 요청 자체의 문제다."""
     d = str(detail or "")
 
-    # 목적지를 찾지 못함 — 서비스 범위 밖이거나 아직 등록되지 않은 장소
+    # 목적지 자체를 찾지 못함 — "지역 밖"과 뒤섞지 않는다.
+    # 안양시 한복판 시설이 "안양시 밖이거나"로 안내되어 이용자가 서비스 범위를
+    # 오해하는 일이 있었다. 좌표를 못 얻은 것과 범위를 벗어난 것은 다른 사유다.
     if ("목적지 POI" in d) or ("poi_id" in d) or ("관광지를 찾을 수 없" in d) or ("출입구 정보" in d):
         return (
-            "요청하신 목적지는 경로 안내가 가능한 지역(%s) 밖이거나 아직 등록되지 않은 장소라 "
-            "길을 안내할 수 없다고 정확히 안내하세요. 현재 경로 안내는 %s 안에서만 가능하다는 점을 "
-            "분명히 밝히고, %s 안의 장소를 말씀해 주시거나 이동·관광 화면에서 목적지를 골라 달라고 "
-            "요청하세요. 서비스 장애나 일시적인 오류라고 말하지 말고, 경로를 추측하지 마세요."
-            % (SERVICE_AREA, SERVICE_AREA, SERVICE_AREA)
+            "말씀하신 목적지를 찾지 못했다고 안내하세요. %s 밖이라고 말하지 마세요 — "
+            "이름을 확인하지 못했을 뿐입니다. 조금 더 정확한 이름(예: '안양시청', "
+            "'안양시노인종합복지관')을 말씀해 주시거나 이동·관광 화면 지도에서 목적지를 "
+            "직접 지정해 달라고 요청하세요. 서비스 장애나 일시적인 오류라고 말하지 말고, "
+            "경로를 추측하지 마세요." % SERVICE_AREA
         )
 
     # 출발지가 보행망에서 너무 멀다 — 대개 현재 위치가 서비스 지역 밖
@@ -198,6 +200,20 @@ async def profiles() -> dict:
 async def meta_network() -> dict:
     """서비스 가능한 공간 범위(bbox) 등 네트워크 메타."""
     return await _call("GET", "/meta/network")
+
+
+# ── 장소 검색 (02 v1.18.0) ──
+async def poi_search(q: str, sigungu: str = "안양", limit: int = 8,
+                     include_outside: bool = False) -> dict:
+    """이름으로 장소를 찾는다 — 관광지·지하철역·건물(시청·복지관·도서관 등).
+
+    이 호출이 없던 동안 12번이 좌표로 바꿀 수 있는 장소는 지하철역 7곳과 무장애
+    관광지뿐이었고, 그 밖의 장소는 전부 "서비스 지역 밖"으로 안내됐다.
+    """
+    params = {"q": q, "sigungu": sigungu, "limit": limit}
+    if include_outside:
+        params["include_outside"] = "true"
+    return await _call("GET", "/poi/search", params=params)
 
 
 # ── 관광 ──
