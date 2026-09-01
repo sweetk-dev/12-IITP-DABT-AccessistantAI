@@ -45,6 +45,46 @@ def note_new_route(nav: dict, route_id: str) -> None:
         nav.update({"route_id": route_id, "guiding": False})
 
 
+# 경로를 만들지 못한 결과의 status — "실패했지만 서비스는 정상"인 사유들이다.
+ROUTE_FAILURE_STATUSES = ("place_not_found", "out_of_service_area",
+                          "need_destination", "need_location", "error")
+
+
+def annotate_route_failure(result, nav: dict):
+    """경로 생성 실패 결과에 '진행 중인 안내는 유지된다'는 사실을 덧붙인다.
+
+    새 목적지 안내에 실패해도 이미 진행 중인 안내는 멈추지 않는다(이동 중에 안내를
+    끊는 것이 더 위험하다). 그런데 그 사실을 말해 주지 않으면, 이용자에게는
+    "안내할 수 없다"는 말과 계속 진행되는 화면·음성 안내가 어긋난 것으로 보인다.
+    """
+    if not isinstance(result, dict):
+        return result
+    if result.get("status") not in ROUTE_FAILURE_STATUSES:
+        return result
+    if not (nav and nav.get("guiding")):
+        return result
+
+    dest = nav.get("dest_name") or "이전 목적지"
+    result["active_guidance"] = {
+        "guiding": True,
+        "destination": nav.get("dest_name"),
+        "route_id": nav.get("route_id"),
+        "step_no": (nav["step_idx"] + 1) if nav.get("step_idx") is not None else None,
+        "total_steps": nav.get("total_steps"),
+    }
+    result["ai_instruction"] = (
+        (result.get("ai_instruction") or "")
+        + " 그리고 지금 %s(으)로 가는 길안내가 진행 중이며 그대로 계속된다는 점을 "
+          "반드시 한 문장으로 덧붙이세요. 안내가 멈췄다고 말하지 마세요. 목적지를 바꾸려면 "
+          "다시 말씀해 달라고 안내하세요." % dest
+    )
+    ui = result.get("ui_action")
+    if isinstance(ui, dict):
+        ui["guiding_kept"] = True
+        ui["active_destination"] = nav.get("dest_name")
+    return result
+
+
 def _arrived(nav: dict) -> bool:
     """마지막 구간까지 간 뒤 안내가 끝났으면 도착으로 본다."""
     si, ts = nav.get("step_idx"), nav.get("total_steps")

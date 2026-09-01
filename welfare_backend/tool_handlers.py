@@ -478,36 +478,113 @@ _ANYANG_STATIONS = {
 }
 
 
-async def _resolve_place(place: str) -> Optional[dict]:
-    """말로 지정한 장소 이름을 좌표로 해석 — ① 안양 지하철역 ② 무장애 관광 POI.
+_SERVICE_BBOX = {"value": None, "checked": False}
 
-    "안양역에 있는데", "범계역에서 출발" 처럼 사용자가 장소를 말로 밝히는 경우
-    실제 GPS 위치(서비스 지역 밖일 수 있음) 대신 그 지점을 쓴다.
-    출발지·목적지 모두 같은 규칙으로 해석한다 — 목적지만 해석 수단이 없으면
-    서비스 범위 밖 장소가 그대로 경로 API 로 넘어가 404 가 되고,
-    그 404 가 "서비스 장애"로 잘못 안내된다.
+
+async def _service_bbox() -> Optional[dict]:
+    """경로 서비스의 실제 공간 범위(보행망 bbox). 한 번만 조회해 캐시한다.
+
+    "지역 밖"이라는 안내는 이 범위로만 판정한다 — 이름을 못 찾은 것과 범위를
+    벗어난 것은 다른 사유이고, 이용자에게 다르게 들려야 한다.
+    """
+    if _SERVICE_BBOX["checked"]:
+        return _SERVICE_BBOX["value"]
+    _SERVICE_BBOX["checked"] = True
+    try:
+        meta = await route_client.meta_network()
+        bb = (meta or {}).get("bbox") or {}
+        if bb.get("min_lat") is not None:
+            _SERVICE_BBOX["value"] = bb
+    except Exception:
+        logger.exception("서비스 범위 조회 실패 — 범위 판정을 생략한다")
+    return _SERVICE_BBOX["value"]
+
+
+async def _outside_place(hit: dict) -> bool:
+    """해석된 장소가 서비스 범위 밖인지 — 검색이 알려준 판정을 우선한다."""
+    if hit.get("in_service_area") is False:
+        return True
+    return await _outside_service_area(hit["lat"], hit["lng"])
+
+
+async def _outside_service_area(lat: float, lng: float) -> bool:
+    """좌표가 서비스 범위 밖인지. 범위를 모르면 '밖'이라고 단정하지 않는다."""
+    bb = await _service_bbox()
+    if not bb:
+        return False
+    return not (bb["min_lat"] <= lat <= bb["max_lat"]
+                and bb["min_lng"] <= lng <= bb["max_lng"])
+
+
+def _search_hit(found: dict, q: str) -> Optional[dict]:
+    """`/poi/search` 응답의 첫 유효 항목을 해석 결과로 바꾼다.
+
+    ``in_service_area`` 는 그대로 실어 보낸다 — 호출부가 "찾지 못함"과 "범위 밖"을
+    구분해 답하는 근거다.
+    """
+    for it in ((found or {}).get("items") or []):
+        if it.get("lat") is None or it.get("lng") is None:
+            continue
+        kind = it.get("type") or "building"
+        out = {"lat": float(it["lat"]), "lng": float(it["lng"]),
+               "label": it.get("name") or q,
+               "kind": "tour" if kind == "tour" else (
+                   "station" if kind == "transit_station" else "building"),
+               "in_service_area": it.get("in_service_area", True)}
+        if kind == "tour" and it.get("poi_id"):
+            out["poi_id"] = str(it["poi_id"])
+        return out
+    return None
+
+
+async def _resolve_place(place: str) -> Optional[dict]:
+    """말로 지정한 장소 이름을 좌표로 해석한다.
+
+    (1) 안양 지하철역 정적 매핑 (2) 02 `/poi/search`(관광지·역·건물) (3) 무장애 관광지 이름
+
+    (2)가 없던 동안 해석 가능한 장소는 지하철역 7곳과 무장애 관광지뿐이었다. 그래서
+    안양시청·복지관·도서관처럼 서비스 지역 한복판에 있는 시설조차 좌표를 얻지 못해
+    "지역 밖"으로 잘못 안내됐다. 02 v1.18.0 의 건물 이름 인덱스가 그 공백을 메운다.
+
+    반환: {"lat","lng","label","kind"(station|tour|building), "poi_id"?}
     """
     q = (place or "").strip()
     if not q:
         return None
-    # ① 지하철역 — 역명은 '역' 접미사를 떼고 비교.
-    #    역 접근성 테이블(poi_station_access_status)은 이동편의 DB(iitp_db) 소속이라
-    #    이 백엔드의 정책 DB 세션으로는 조회할 수 없어, 변동 없는 안양 소재 7역을
-    #    정적 매핑으로 둔다 (좌표 출처: iitp_db poi_station_access_status, 2026-07-14).
+    # (1) 지하철역 — 역명은 '역' 접미사를 떼고 비교.
+    #     역 접근성 테이블(poi_station_access_status)은 이동편의 DB(iitp_db) 소속이라
+    #     이 백엔드의 정책 DB 세션으로는 조회할 수 없어, 변동 없는 안양 소재 7역을
+    #     정적 매핑으로 둔다 (좌표 출처: iitp_db poi_station_access_status, 2026-07-14).
     stn = re.sub(r"\s+", "", q)
     stn = re.sub(r"(지하철)?역$", "", stn) or stn
     hit = _ANYANG_STATIONS.get(stn)
     if hit:
-        return {"lat": hit[1], "lng": hit[2], "label": "%s역(%s)" % (stn, hit[0])}
+        return {"lat": hit[1], "lng": hit[2], "kind": "station",
+                "label": "%s역(%s)" % (stn, hit[0])}
 
-    # ② 무장애 관광 POI 이름 매칭
+    # (2) 장소 이름 검색 — 관광지·역·건물을 한 번에 본다
+    try:
+        found = await route_client.poi_search(q, sigungu="안양", limit=5)
+        hit = _search_hit(found, q)
+        if hit is not None:
+            return hit
+        # 범위 안에서 못 찾았다 — 범위를 넓혀 한 번 더 본다. 찾히면 "밖이라서 안 된다"고
+        # 정확히 말할 수 있고, 그래도 없으면 "이름을 못 찾았다"가 사실 그대로가 된다.
+        wide = await route_client.poi_search(q, sigungu="", limit=5, include_outside=True)
+        hit = _search_hit(wide, q)
+        if hit is not None:
+            return hit
+    except Exception:
+        logger.exception("장소 검색 실패: %s", q)
+
+    # (3) 폴백 — 02 가 구버전이라 /poi/search 가 없을 때도 기존 동작은 유지한다
     try:
         data = await route_client.tour_spots(sigungu="안양", limit=60)
         for it in (data.get("items") or []):
             nm = (it.get("name") or "").strip()
             if nm and (q in nm or nm in q) and it.get("lat") is not None:
                 return {"lat": float(it["lat"]), "lng": float(it["lng"]),
-                        "label": nm, "poi_id": it.get("poi_id")}
+                        "label": nm, "kind": "tour", "poi_id": it.get("poi_id")}
     except Exception:
         logger.exception("장소 POI 해석 실패: %s", q)
     return None
@@ -517,20 +594,56 @@ async def _resolve_place(place: str) -> Optional[dict]:
 _resolve_origin_place = _resolve_place
 
 
+def _route_unavailable_ui(reason: str, kind: str, place: str) -> dict:
+    """화면에도 같은 사실을 알린다.
+
+    실패는 말로만 전해지고 화면은 그대로였다 — 이전 경로가 지도와 시트에 남아 있는
+    채로 "안내할 수 없다"고 말하니, 이용자에게는 말과 화면이 어긋나 보였다.
+    """
+    return {"action": "route_unavailable", "reason": reason,
+            "kind": kind, "place": place, "service_area": SERVICE_AREA}
+
+
+def _place_not_found(kind: str, place: str) -> dict:
+    """이름으로 장소를 찾지 못함 — 서비스 범위와는 무관한 사유다."""
+    return {
+        "status": "place_not_found",
+        "tool_name": "plan_accessible_route",
+        "service_area": SERVICE_AREA,
+        "kind": kind,
+        "place": place,
+        "message": "%s '%s'의 위치를 찾지 못했습니다" % (kind, place),
+        "ui_action": _route_unavailable_ui("place_not_found", kind, place),
+        "ai_instruction": (
+            "말씀하신 %s '%s'의 위치를 찾지 못했다고 안내하세요. %s 밖이라고 말하지 "
+            "마세요 — 범위 문제가 아니라 그 이름을 찾지 못한 것입니다. 조금 더 정확한 "
+            "이름(예: '안양시청', '안양시노인종합복지관')을 말씀해 주시거나, 이동·관광 "
+            "화면 지도에서 그 지점을 직접 눌러 지정해 달라고 요청하세요. 다만 이용자가 말한 곳이 "
+            "다른 시·도(예: 서울)임이 발화 자체로 분명하다면, 아직 %s 안에서만 안내할 수 있다는 "
+            "점을 함께 알려도 됩니다 — 도구가 못 찾았다는 이유만으로 범위 밖이라고 단정하지는 "
+            "마세요. 서비스 장애나 일시적인 오류라고 말하지 말고, 좌표나 경로를 추측하지 마세요."
+            % (kind, place, SERVICE_AREA, SERVICE_AREA)
+        ),
+    }
+
+
 def _out_of_service_area(kind: str, place: str) -> dict:
-    """서비스 범위 밖 — 장애가 아니라 기능 범위임을 분명히 하는 결과."""
+    """좌표는 찾았지만 경로를 만들 수 있는 범위 밖 — 기능 범위임을 분명히 한다."""
     return {
         "status": "out_of_service_area",
         "tool_name": "plan_accessible_route",
         "service_area": SERVICE_AREA,
-        "message": "%s '%s'는 경로 안내가 가능한 지역(%s) 밖이거나 등록되지 않은 장소입니다"
+        "kind": kind,
+        "place": place,
+        "message": "%s '%s'는 경로 안내가 가능한 지역(%s) 밖입니다"
                    % (kind, place, SERVICE_AREA),
+        "ui_action": _route_unavailable_ui("out_of_service_area", kind, place),
         "ai_instruction": (
-            "말씀하신 %s는 경로 안내가 가능한 지역(%s) 밖이거나 아직 등록되지 않은 장소라 "
-            "길을 안내할 수 없다고 정확히 안내하세요. 현재 경로 안내는 %s 안에서만 가능하다는 점을 "
-            "분명히 밝히고, %s 안의 지하철역·무장애 관광지 이름을 말씀해 주시거나 이동·관광 화면의 "
-            "지도에서 직접 지정해 달라고 요청하세요. 서비스 장애나 일시적인 오류라고 말하지 말고, "
-            "경로를 추측하지 마세요." % (kind, SERVICE_AREA, SERVICE_AREA, SERVICE_AREA)
+            "말씀하신 %s '%s'는 찾았지만 경로 안내가 가능한 지역(%s) 밖이라 길을 안내할 수 "
+            "없다고 정확히 안내하세요. 현재 경로 안내는 %s 안에서만 가능하다는 점을 분명히 "
+            "밝히고, %s 안의 장소를 말씀해 달라고 요청하세요. 서비스 장애나 일시적인 "
+            "오류라고 말하지 말고, 경로를 추측하지 마세요."
+            % (kind, place, SERVICE_AREA, SERVICE_AREA, SERVICE_AREA)
         ),
     }
 
@@ -550,31 +663,51 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      origin_lng: float = None,
                                      origin_place: str = "",
                                      destination_place: str = "",
+                                     destination_lat: float = None,
+                                     destination_lng: float = None,
                                      mode: str = "") -> dict:
     """현재 위치(또는 말로 지정한 출발지)에서 목적지까지 무장애 경로.
 
     origin_lat/lng 은 프런트가 보낸 현위치가 주입되고,
     사용자가 출발지를 말로 밝히면 origin_place 가 우선한다.
-    목적지도 poi_id 가 없으면 destination_place 이름으로 해석하고,
-    해석되지 않으면 경로 API 를 부르지 않고 "서비스 범위 밖"으로 즉시 답한다.
+    목적지는 poi_id > 지도에서 찍은 좌표(destination_lat/lng) > 이름(destination_place)
+    순으로 정한다. 이름을 좌표로 바꾸지 못하면 경로 API 를 부르지 않고 즉시 답하되,
+    "이름을 못 찾음"과 "서비스 범위 밖"을 구분해서 답한다 — 두 사유를 한 문장으로
+    묶으면 안양시 한복판 시설도 "안양시 밖"으로 안내되어 범위를 오해하게 된다.
     """
     dest_label = None
     dest_coord = None
-    if not destination_poi_id and destination_place:
+    if not destination_poi_id and destination_lat is not None and destination_lng is not None:
+        # 지도에서 직접 지정한 지점 — 이용자가 콕 집은 좌표이므로 그대로 쓴다
+        dest_coord = {"lat": float(destination_lat), "lng": float(destination_lng)}
+        if (destination_type or "").strip() != "building":
+            destination_type = "coord"
+        dest_label = (destination_place or "").strip() or "지도에서 지정한 지점"
+        if await _outside_service_area(dest_coord["lat"], dest_coord["lng"]):
+            return _out_of_service_area("목적지", dest_label)
+    elif not destination_poi_id and destination_place:
         dhit = await _resolve_place(destination_place)
         if dhit is None:
-            return _out_of_service_area("목적지", destination_place)
+            return _place_not_found("목적지", destination_place)
         dest_label = dhit["label"]
+        if await _outside_place(dhit):
+            # 범위 밖 안내에는 이용자가 말한 이름을 그대로 쓴다. 넓힌 재검색은 전국을
+            # 대상으로 하므로 느슨하게 매칭된 상호명("○○ 서울시청점")이 잡힐 수 있고,
+            # 그 이름을 되읽으면 이용자는 자기가 말한 곳 이야기가 아니라고 느낀다.
+            return _out_of_service_area("목적지", destination_place.strip() or dest_label)
         if dhit.get("poi_id"):
             destination_poi_id, destination_type = dhit["poi_id"], "tour"
         else:
-            destination_poi_id, destination_type = "", "coord"
+            # 건물·역은 시설 대표점이다 — 02 가 출입구 접근점을 다시 잡도록 building 으로 넘긴다
+            destination_poi_id = ""
+            destination_type = "building"
             dest_coord = {"lat": dhit["lat"], "lng": dhit["lng"]}
     if not destination_poi_id and dest_coord is None:
         return {
             "status": "need_destination",
             "tool_name": "plan_accessible_route",
             "service_area": SERVICE_AREA,
+            "ui_action": _route_unavailable_ui("need_destination", "목적지", ""),
             "ai_instruction": (
                 "어디로 가시는지 목적지를 알 수 없다고 짧게 되묻고, 경로 안내는 %s 안에서만 "
                 "가능하다는 점을 함께 알리세요. 경로를 추측하지 마세요." % SERVICE_AREA
@@ -585,7 +718,9 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     if origin_place:
         hit = await _resolve_place(origin_place)
         if hit is None:
-            return _out_of_service_area("출발지", origin_place)
+            return _place_not_found("출발지", origin_place)
+        if await _outside_place(hit):
+            return _out_of_service_area("출발지", origin_place.strip() or hit["label"])
         origin_lat, origin_lng = hit["lat"], hit["lng"]
         origin_label = hit["label"]
 
@@ -593,6 +728,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         return {
             "status": "need_location",
             "tool_name": "plan_accessible_route",
+            "ui_action": _route_unavailable_ui("need_location", "출발지", ""),
             "ai_instruction": (
                 "현재 위치를 알 수 없다고 안내하고, 화면의 위치 권한을 허용하거나 "
                 "출발지 이름(예: 안양역)을 말씀해 주시거나, 이동·관광 화면 지도에서 출발지를 "
@@ -600,7 +736,8 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
             ),
         }
 
-    dest = ({"type": "coord", "lat": dest_coord["lat"], "lng": dest_coord["lng"]}
+    dest = ({"type": destination_type or "coord",
+             "lat": dest_coord["lat"], "lng": dest_coord["lng"]}
             if dest_coord is not None
             else {"type": destination_type, "poi_id": destination_poi_id})
 
