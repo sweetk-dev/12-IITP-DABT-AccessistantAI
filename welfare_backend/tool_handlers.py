@@ -691,7 +691,10 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
             return _place_not_found("목적지", destination_place)
         dest_label = dhit["label"]
         if await _outside_place(dhit):
-            return _out_of_service_area("목적지", dest_label)
+            # 범위 밖 안내에는 이용자가 말한 이름을 그대로 쓴다. 넓힌 재검색은 전국을
+            # 대상으로 하므로 느슨하게 매칭된 상호명("○○ 서울시청점")이 잡힐 수 있고,
+            # 그 이름을 되읽으면 이용자는 자기가 말한 곳 이야기가 아니라고 느낀다.
+            return _out_of_service_area("목적지", destination_place.strip() or dest_label)
         if dhit.get("poi_id"):
             destination_poi_id, destination_type = dhit["poi_id"], "tour"
         else:
@@ -717,7 +720,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         if hit is None:
             return _place_not_found("출발지", origin_place)
         if await _outside_place(hit):
-            return _out_of_service_area("출발지", hit["label"])
+            return _out_of_service_area("출발지", origin_place.strip() or hit["label"])
         origin_lat, origin_lng = hit["lat"], hit["lng"]
         origin_label = hit["label"]
 
