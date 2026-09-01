@@ -541,8 +541,8 @@ def resolve_voice(requested: str | None) -> str:
 # 정책 템플릿 카드가 절대 만들어지지 않는다. 대신 턴이 끝난 뒤 전사를 비-라이브
 # 모델로 화면 전용 마크다운으로 재구성해 answer_card 로 별도 전송한다.
 # 음성·전사 표시는 기존 그대로이며, 실패해도 답변 자체에는 영향이 없다(best-effort).
-# 기본값은 자동 갱신 별칭 — 고정 버전명은 키에 따라 404 가 난다 (2026-07-21 ServerA 실측)
-# lite 채택 이유(2026-07-21 ServerA 실측): flash-latest 는 내부 추론(thinking) 때문에
+# 기본값은 자동 갱신 별칭 — 고정 버전명은 키에 따라 404 가 난다 (2026-07-21 검증 서버 실측)
+# lite 채택 이유(2026-07-21 검증 서버 실측): flash-latest 는 내부 추론(thinking) 때문에
 # 5.4s — 카드가 전사 중간에 늦게 뜬다. lite 는 0.8s 로 음성 시작 전후에 도착한다.
 # 재구성(요약·재배치) 작업이라 lite 품질로 충분하다.
 CARD_MODEL = os.environ.get("GEMINI_CARD_MODEL", "gemini-flash-lite-latest")
