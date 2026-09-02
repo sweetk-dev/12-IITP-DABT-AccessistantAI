@@ -90,15 +90,33 @@ async def _get(path: str, params: dict) -> list:
         return []
 
 
-def _tag(items: list, bbox: Optional[dict]) -> list:
+def _squash(s: str) -> str:
+    return "".join((s or "").split()).lower()
+
+
+def _tag(items: list, bbox: Optional[dict], q: str = "") -> list:
+    """서비스 지역 판정을 붙이고 정렬한다: 지역 안 → 이름이 질의와 같음 → 질의로 시작 →
+    이름이 짧은 순(거리순은 그 안에서 유지).
+
+    거리순 그대로 두면 "국민건강보험공단 안양지사"에 "무인민원발급창구 국민건강보험공단
+    안양지사"(같은 건물의 부속 시설)가 먼저 나온다(실측). 이용자가 말한 이름 그대로인
+    항목을 앞세운다.
+    """
+    qs = _squash(q)
     out = []
     for it in items:
         if not it:
             continue
         it["in_service_area"] = _in_bbox(it["lat"], it["lng"], bbox)
         out.append(it)
-    # 지역 안 결과가 앞에 오도록 — 거리순은 그대로 유지된다(안정 정렬)
-    out.sort(key=lambda x: 0 if x["in_service_area"] else 1)
+
+    def key(x):
+        nm = _squash(x.get("name"))
+        return (0 if x["in_service_area"] else 1,
+                0 if qs and nm == qs else 1,
+                0 if qs and nm.startswith(qs) else 1,
+                len(nm))
+    out.sort(key=key)
     return out
 
 
@@ -110,8 +128,8 @@ async def search(q: str, bbox: Optional[dict] = None, limit: int = 5,
         return []
     docs = await _get("/keyword.json", {"query": q, "size": 10, "y": center[0], "x": center[1],
                                          "radius": 20000, "sort": "distance"})
-    out = _tag([_norm_keyword(d) for d in docs], bbox)
+    out = _tag([_norm_keyword(d) for d in docs], bbox, q)
     if not out:
         docs = await _get("/address.json", {"query": q, "size": 10})
-        out = _tag([_norm_address(d) for d in docs], bbox)
+        out = _tag([_norm_address(d) for d in docs], bbox, q)
     return out[:limit]

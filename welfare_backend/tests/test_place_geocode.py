@@ -15,6 +15,7 @@
   4) 카카오 키가 없으면(search 가 []) 기존 동작 그대로 place_not_found
   5) 카카오 호출 예외는 삼키고 다음 단계로 간다
   6) kakao_local 정규화: 키워드/주소 응답 → name·addr·lat·lng·in_service_area, 지역 안 우선 정렬
+  7) 같은 건물의 부속 시설("무인민원발급창구 …")보다 질의와 이름이 같은 항목이 앞선다
 """
 import asyncio
 import os
@@ -229,8 +230,11 @@ def t_kakao_local_normalizes_and_orders():
             return [
                 {"place_name": "국민건강보험공단 강남지사", "road_address_name": "서울 강남구 테헤란로 1",
                  "category_group_name": "공공기관", "x": "127.0280", "y": "37.4980"},
-                {"place_name": "국민건강보험공단 안양지사", "road_address_name": "경기 안양시 동안구 시민대로 235",
-                 "category_group_name": "공공기관", "x": "126.9520", "y": "37.3910"},
+                {"place_name": "무인민원발급창구 국민건강보험공단 안양지사",
+                 "road_address_name": "경기 안양시 동안구 관평로 182",
+                 "category_group_name": "", "x": "126.9641", "y": "37.3986"},
+                {"place_name": "국민건강보험공단 안양지사", "road_address_name": "경기 안양시 동안구 관평로 182",
+                 "category_group_name": "공공기관", "x": "126.9640", "y": "37.3985"},
                 {"place_name": "좌표없음", "x": "", "y": ""},
             ]
         return []
@@ -238,10 +242,11 @@ def t_kakao_local_normalizes_and_orders():
     kakao_local.REST_KEY = "k"
     kakao_local._get = fake_get
     try:
-        out = _run(kakao_local.search("국민건강보험공단", bbox=_BBOX))
-        assert [o["name"] for o in out] == ["국민건강보험공단 안양지사", "국민건강보험공단 강남지사"], out
-        assert out[0]["in_service_area"] is True and out[1]["in_service_area"] is False
-        assert out[0]["addr"] == "경기 안양시 동안구 시민대로 235" and out[0]["source"] == "kakao_keyword"
+        out = _run(kakao_local.search("국민건강보험공단 안양지사", bbox=_BBOX))
+        assert [o["name"] for o in out] == ["국민건강보험공단 안양지사", "무인민원발급창구 국민건강보험공단 안양지사",
+                                            "국민건강보험공단 강남지사"], out
+        assert out[0]["in_service_area"] is True and out[2]["in_service_area"] is False
+        assert out[0]["addr"] == "경기 안양시 동안구 관평로 182" and out[0]["source"] == "kakao_keyword"
         assert calls[0][1]["sort"] == "distance" and calls[0][1]["radius"] == 20000
         assert len(calls) == 1, "키워드로 찾았는데 주소 검색까지 함"
     finally:
