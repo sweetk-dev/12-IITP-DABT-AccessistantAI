@@ -183,6 +183,27 @@ def t_transit_brief_with_realtime_low_floor():
     assert s["alight_facilities"] is None
 
 
+def t_mode_label_follows_actual_legs():
+    """walk_bus_subway 로 요청해도 플래너가 버스 직결만 고르면 라벨은 도보+버스여야 한다."""
+    resp = _transit_resp()
+    resp["routes"][0]["legs"] = [l for l in resp["routes"][0]["legs"] if l["kind"] != "subway"]
+    rec = _Recorder([resp])
+    r = _plan("walk_bus_subway", rec)
+    assert rec.calls == ["walk_bus_subway"]
+    assert r["mode_used"] == "walk_bus" and r["mode_label"] == "도보+버스"
+    assert r["mode_requested"] == "walk_bus_subway"
+    assert "지하철을 언급하지 마세요" in r["ai_instruction"]
+    # 지하철 구간이 실제로 있으면 그대로
+    rec = _Recorder([_transit_resp()])
+    r = _plan("walk_bus_subway", rec)
+    assert r["mode_used"] == "walk_bus_subway" and "언급하지 마세요" not in r["ai_instruction"]
+    # 자동 추천 승격 경로도 같다
+    resp2 = _transit_resp(); resp2["routes"][0]["legs"] = resp2["routes"][0]["legs"][:2]
+    rec = _Recorder([_walk_resp(2000), resp2])
+    r = _plan("", rec)
+    assert r["mode_used"] == "walk_bus" and r["auto_mode"] is True
+
+
 def t_transit_brief_realtime_no_low_floor():
     resp = _transit_resp()
     bus = resp["routes"][0]["legs"][1]

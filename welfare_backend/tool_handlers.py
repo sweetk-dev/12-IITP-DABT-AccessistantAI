@@ -656,6 +656,21 @@ def _mode_label(mode: str) -> str:
             "walk_bus_subway": "도보+버스+지하철"}.get(mode, mode)
 
 
+def _mode_from_legs(legs: list, requested: str) -> str:
+    """실제로 만들어진 구간으로 이동 방식을 정한다 — 요청한 방식이 아니라.
+
+    walk_bus_subway 로 요청해도 플래너는 지하철 없이 버스 직결만 고를 수 있다. 그때
+    요청 방식을 그대로 말하면 "버스+지하철"이라고 안내하고 모델은 있지도 않은 환승을
+    말한다(2026-09-02 안양시청→안양문화원). 라벨은 legs 가 진실이다.
+    """
+    kinds = {l.get("kind") for l in (legs or []) if isinstance(l, dict)}
+    if "subway" in kinds:
+        return "walk_bus_subway"
+    if "bus" in kinds:
+        return "walk_bus"
+    return "walk" if legs else (requested or "walk")
+
+
 async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      destination_type: str = "tour",
                                      profile: str = "wheelchair_manual",
@@ -779,6 +794,8 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     primary = routes[0]
     summary = primary.get("summary", {})
     legs = primary.get("legs") or []
+    mode_requested = mode_used
+    mode_used = _mode_from_legs(legs, mode_used)
     transit_brief = []
     low_floor_note = None
     for leg in legs:
@@ -819,6 +836,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         "status": "success",
         "tool_name": "plan_accessible_route",
         "mode_used": mode_used,
+        "mode_requested": mode_requested,
         "mode_label": _mode_label(mode_used),
         "auto_mode": auto,
         "transit": transit_brief,
@@ -845,6 +863,8 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
             + ("목적지는 %s 입니다. " % dest_label if dest_label else "")
             + ("이동 방식은 %s 입니다%s. " % (_mode_label(mode_used),
                " (자동 추천)" if auto else "") if mode_used else "")
+            + ("지하철 구간은 없으니 환승·지하철을 언급하지 마세요. "
+               if mode_used != "walk_bus_subway" and "subway" in (mode_requested or "") else "")
             + ("대중교통 구간이 있으면 transit 의 노선 번호·유형·방면(end_station)·"
                "정거장 수를 함께 말하세요. "
                + ("저상버스 실시간 확인 결과(low_floor_note)를 그대로 한 문장으로 전하고, "

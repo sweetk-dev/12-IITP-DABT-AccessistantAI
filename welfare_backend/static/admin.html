@@ -155,6 +155,13 @@
           <option value="30">최근 30일</option><option value="90">최근 90일</option>
         </select>
       </label>
+      <label>구분
+        <select id="uTier" onchange="loadUnresolved(true)">
+          <option value="unanswered">미답변(실패)</option>
+          <option value="candidate">발굴 후보(도구 미사용·외부검색)</option>
+          <option value="">전체</option>
+        </select>
+      </label>
       <label>폴백사유
         <select id="uReason" onchange="loadUnresolved(true)"><option value="">전체</option></select>
       </label>
@@ -672,10 +679,14 @@ async function loadUnresolved(reset){
   document.querySelector("#utable tbody").innerHTML='<tr><td colspan="7"><div class="empty">불러오는 중…</div></td></tr>';
   if(!uReasonsLoaded){ try{ const sm=await (await fetch(UAPI+"/summary")).json();
     const sel=document.getElementById("uReason"); (sm.reasons||[]).forEach(r=>{ const o=document.createElement("option"); o.value=r; o.textContent=r+(sm.by_reason&&sm.by_reason[r]?` (${sm.by_reason[r]})`:""); sel.appendChild(o); });
-    if(sm.by_reflected) uReflectedCounts=sm.by_reflected; uReasonsLoaded=true; }catch(e){} }
+    if(sm.by_reflected) uReflectedCounts=sm.by_reflected;
+    if(sm.by_tier){ const ts=document.getElementById("uTier"); [...ts.options].forEach(o=>{ if(o.value && sm.by_tier[o.value]!=null) o.textContent=o.textContent.replace(/ \(\d+\)$/,"")+` (${sm.by_tier[o.value]})`; }); }
+    uReasonsLoaded=true; }catch(e){} }
   const days=document.getElementById("uDays").value, reason=document.getElementById("uReason").value;
+  const tier=document.getElementById("uTier").value;
   const showDel=document.getElementById("uShowDeleted").checked;
   const qs=new URLSearchParams({limit:UPAGE, offset:uPage*UPAGE}); if(days) qs.set("days",days); if(reason) qs.set("fallback_reason",reason);
+  if(tier && !reason) qs.set("tier",tier);   // 사유를 직접 고르면 구분보다 사유가 우선
   if(showDel) qs.set("include_deleted","true");
   try{ const d=await (await fetch(UAPI+"?"+qs)).json();
     uTotal=d.total||0;

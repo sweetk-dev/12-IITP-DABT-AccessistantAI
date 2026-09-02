@@ -1352,6 +1352,18 @@ window.fetch = async (url, opt) => {
 NAV.clearRouteDisplay(); NAV.resetTrip();
 NAV.requestRoute({ poi_id: "TBF-1", name: "테스트 무장애 공원" });
 await sleep(60);
+check("이동 방식 라벨은 요청 방식이 아니라 실제 구간(legs) 기준 (v1.41.0)", () => {
+  // LIVE_ROUTE 는 mode 를 안 실었으므로 여기서 요청 방식만 지하철 포함으로 표시했다고 가정
+  const NAVi = window.NAVI._internals();
+  const noSub = JSON.parse(JSON.stringify(LIVE_ROUTE)); noSub.mode = "walk_bus_subway";
+  noSub.routes[0].legs = noSub.routes[0].legs.filter((l) => l.kind !== "subway");
+  NAVi.showRoute(noSub, "테스트 무장애 공원");
+  const autoBtn = [...window.document.querySelectorAll(".mode-cards button")].find((b) => b.getAttribute("data-mode") === "auto");
+  assert.match(autoBtn.textContent, /도보\+버스/);
+  assert.doesNotMatch(autoBtn.textContent, /지하철/);
+  NAV.requestRoute({ poi_id: "TBF-1", name: "테스트 무장애 공원" });
+});
+await sleep(60);
 check("버스 카드: 실시간 저상 확인 결과가 고정 경고를 대체한다", () => {
   const cards = [...window.document.querySelectorAll(".leg-card")];
   const bus = cards.find((c) => /마을버스 2번/.test(c.textContent));
