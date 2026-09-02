@@ -183,6 +183,14 @@ _FALLBACK_REASONS = ["low_similarity", "empty_result", "category_mismatch",
                      "explicit_no_info", "no_tool_call", "google_search",
                      "tool_error", "needs_input", "out_of_service_area",
                      "unknown"]
+# 미답변 탭의 두 층(v1.41.0). 적재 자체는 그대로 두고 화면에서만 나눈다.
+#   unanswered = 상담원이 답을 주지 못했거나 도구가 실패한 턴
+#   candidate  = 답은 했지만 정책 DB 도구 없이(자기 지식·외부 검색) 답한 턴 — 발굴 후보
+_TIER_REASONS = {
+    "unanswered": ["low_similarity", "empty_result", "category_mismatch", "explicit_no_info",
+                   "tool_error", "needs_input", "out_of_service_area", "unknown"],
+    "candidate": ["no_tool_call", "google_search"],
+}
 
 
 def _reflect_status(user_query, processed_at, cand_idx, excluded=False):
@@ -253,13 +261,16 @@ async def unresolved_summary():
     for uq, dpa, exc in qrows:
         st, _ = _reflect_status(uq, dpa, cand_idx, bool(exc))
         by_reflected[st] = by_reflected.get(st, 0) + 1
+    by_tier = {t: sum(by.get(r, 0) for r in rs) for t, rs in _TIER_REASONS.items()}
     return {"total": total, "deleted": deleted, "by_reason": by,
-            "reasons": _FALLBACK_REASONS, "by_reflected": by_reflected}
+            "reasons": _FALLBACK_REASONS, "by_reflected": by_reflected,
+            "tiers": _TIER_REASONS, "by_tier": by_tier}
 
 
 @router.get("/admin/api/unresolved")
 async def unresolved_list(limit: int = 50, offset: int = 0,
                           fallback_reason: Optional[str] = None,
+                          tier: Optional[str] = None,
                           days: Optional[int] = None,
                           include_deleted: bool = False):
     lim = min(max(limit, 1), 200)
@@ -267,6 +278,11 @@ async def unresolved_list(limit: int = 50, offset: int = 0,
     conds = []
     if not include_deleted:
         conds.append(models.UnresolvedQuery.deleted_at.is_(None))
+    if tier:
+        if tier not in _TIER_REASONS:
+            raise HTTPException(status_code=400, detail=f"잘못된 tier: {tier}")
+        conds.append(models.UnresolvedQuery.fallback_reason.in_(
+            [models.FallbackReason(r) for r in _TIER_REASONS[tier]]))
     if fallback_reason:
         try:
             conds.append(models.UnresolvedQuery.fallback_reason == models.FallbackReason(fallback_reason))

@@ -351,3 +351,27 @@ def test_scrub_structure_reaches_nested_strings():
 def test_scrub_structure_preserves_non_strings():
     out = scrub_structure({"count": 3, "ok": True, "score": 0.82, "none": None})
     assert out == {"count": 3, "ok": True, "score": 0.82, "none": None}
+
+
+# ── v1.41.0: 장소 해석 실패·역 없음·실시간 장애의 판정 ─────────
+@pytest.mark.parametrize("name,result", [
+    ("plan_accessible_route", {"status": "place_not_found", "tool_name": "plan_accessible_route"}),
+    ("get_station_facilities", {"status": "station_not_found", "tool_name": "get_station_facilities"}),
+    ("get_station_facilities", {"status": "need_station", "tool_name": "get_station_facilities"}),
+    ("get_bus_arrivals", {"status": "no_stop_nearby", "tool_name": "get_bus_arrivals"}),
+])
+def test_place_resolution_failures_are_needs_input(name, result):
+    """이름을 못 찾은 것은 정책 공백이 아니라 입력·해석 문제다 — unknown 으로 새면 사유가 안 보인다."""
+    assert classify_fallback(
+        has_grounding=False, tool_steps=[_tracked(name, result)],
+        user_text="국민건강보험공단 안양지사로 안내해 줘", ai_text="그 이름으로는 위치를 찾을 수 없었어요.",
+    ) is FallbackReason.NEEDS_INPUT
+
+
+def test_realtime_unavailable_is_tool_error():
+    assert classify_fallback(
+        has_grounding=False,
+        tool_steps=[_tracked("get_bus_arrivals", {"status": "unavailable", "reason": "HTTP 403",
+                                                  "items": [], "next_low_floor": None})],
+        user_text="저상버스 언제 와", ai_text="지금은 도착정보를 받아오지 못했어요.",
+    ) is FallbackReason.TOOL_ERROR

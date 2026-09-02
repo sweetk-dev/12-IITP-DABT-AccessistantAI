@@ -2119,6 +2119,11 @@ window.NAVI = (function(){
     }catch(e){ autoResumeGuide = false; status("경로 서비스에 연결하지 못했습니다."); }
   }
 
+  function modeLabelFromLegs(legs, fallbackMode){
+    var kinds = {}; (legs||[]).forEach(function(l){ if(l && l.kind) kinds[l.kind] = true; });
+    var mode = kinds.subway ? "walk_bus_subway" : (kinds.bus ? "walk_bus" : ((legs||[]).length ? "walk" : (fallbackMode||"walk")));
+    return {mode: mode, label: ({walk:"도보", walk_bus:"도보+버스", walk_bus_subway:"버스+지하철"})[mode] || mode};
+  }
   function showRoute(routeData, destName){
     if(guiding) trackUpload("canceled");   // 안내 중 재탐색 — 이전 세션 트랙 마감 (v1.34.0)
     route = routeData;
@@ -2128,11 +2133,12 @@ window.NAVI = (function(){
     if(rd.poi_id && (!tripDest || String(tripDest.poi_id) !== String(rd.poi_id))){
       tripDest = {poi_id: String(rd.poi_id), name: destName || (tripDest && tripDest.name) || "안내 목적지"};
     }
-    // 음성으로 방식을 지정해 만든 경로면 카드 표시를 실제 방식과 맞춘다(리뷰 #5b)
+    // 카드 표시는 요청한 방식이 아니라 **실제 구간(legs)** 기준으로 맞춘다 (v1.41.0) —
+    // 버스+지하철로 요청해도 플래너가 버스 직결만 고르면 "버스+지하철"이라 적으면 안 된다
     if(routeData.mode){
-      lastModeUsed = routeData.mode;
-      lastModeLabel = ({walk:"도보", walk_bus:"도보+버스",
-                        walk_bus_subway:"버스+지하철"})[routeData.mode] || routeData.mode;
+      var actual = modeLabelFromLegs(((routeData.routes||[])[0]||{}).legs, routeData.mode);
+      lastModeUsed = actual.mode;
+      lastModeLabel = actual.label;
       routeMode = "auto";
     }
     var primary = (route.routes||[])[0];
