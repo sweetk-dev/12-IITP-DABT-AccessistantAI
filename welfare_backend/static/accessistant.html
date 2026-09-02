@@ -286,6 +286,10 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .leg-card .lg-t{font-weight:800;font-size:.92rem;color:#0F172A;}
 .leg-card .lg-d{font-size:.84rem;color:#334155;margin-top:2px;}
 .leg-card .lg-w{font-size:.8rem;color:#B45309;margin-top:3px;}
+.leg-card .lg-live{font-size:.84rem;font-weight:700;color:#166534;margin-top:3px;}
+.leg-card .lg-fac{font-size:.8rem;color:#1E40AF;margin-top:3px;}
+.step-now .live{margin-top:6px;padding:6px 8px;border-radius:8px;background:#ECFDF5;color:#166534;font-size:.9rem;font-weight:700;}
+.step-now .live.off{background:#FEF3C7;color:#92400E;font-weight:600;}
 </style>
 <link rel="manifest" href="/static/manifest.webmanifest">
 <meta name="theme-color" content="#2563EB">
@@ -403,6 +407,65 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   // AI 응답이 chunk 단위로 도착할 때 같은 말풍선에 누적
   let activeAiBubble = null;
   let activeAiText = "";
+  /* ── 답변 텍스트 정규화 (v1.40.0) — 한글로 풀어 적힌 숫자를 아라비아 숫자로 ──
+     상담원 텍스트는 음성 전사라 "일오칠칠에 천번", "관평로 백팔십이"처럼 적힌다.
+     백엔드 text_normalize.py 와 같은 규칙(전화번호 낱자 3자 이상 + 전화 맥락 / 십·백·천·만 단위 수 + 단위·도로명).
+     구형 브라우저 호환을 위해 lookbehind 를 쓰지 않는다. */
+  const KN_DIGIT = {"공":"0","영":"0","일":"1","이":"2","삼":"3","사":"4","오":"5","육":"6","륙":"6","칠":"7","팔":"8","구":"9"};
+  const KN_UNITS = ["번길","번지","호선","번","호","층","동","원","명","개","세","분","시간","시","미터","킬로미터","킬로","미리","센티","센치","년","월","일","회","곳","가지","장","매","대","권","건","건물","차","단계","등급","급","인","명분","퍼센트","프로","배"].sort((a,b)=>b.length-a.length).join("|");
+  const KN_AFTER = "(?:[^가-힣]|$|입니|이에|이고|이며|이라|이야|에|에서|으로|로|을|를|이|가|은|는|의|와|과|도|만|까지|부터|씩|정도|이상|이하|째|간|짜리|쯤|당|마다|밖에|이면|이었|였)";
+  const KN_SINO = "((?:[일이삼사오육륙칠팔구]?만)?(?:[일이삼사오육륙칠팔구]?천)?(?:[일이삼사오육륙칠팔구]?백)?(?:[일이삼사오육륙칠팔구]?십)?[일이삼사오육륙칠팔구]?)";
+  const KN_SINO_UNIT = new RegExp("(^|[^가-힣0-9])" + KN_SINO + "(?=\\s?(?:" + KN_UNITS + ")" + KN_AFTER + ")", "g");
+  const KN_ROAD = new RegExp("([가-힣]+(?:로|길|동|가))\\s?" + KN_SINO + "(?=[^가-힣]|$|에|에서|의|이|가|은|는|으로|로|입니|이에|번지|호)", "g");
+  const KN_PHONE_CTX = /(전화|번호|연락처|콜센터|팩스|국번|상담|문의|다이얼|대표)/;
+  function knSinoToInt(s){
+    if(!s || !/[십백천만]/.test(s)) return null;
+    let total=0, cur=0;
+    for(const ch of s){
+      if(KN_DIGIT[ch] !== undefined) cur = parseInt(KN_DIGIT[ch],10);
+      else if(ch==="십"){ total += (cur||1)*10; cur=0; }
+      else if(ch==="백"){ total += (cur||1)*100; cur=0; }
+      else if(ch==="천"){ total += (cur||1)*1000; cur=0; }
+      else if(ch==="만"){ total = (total + (cur || (total===0?1:0))) * 10000; cur=0; }
+      else return null;
+    }
+    return total+cur;
+  }
+  function knPhoneRuns(sent){
+    const hasCtx = KN_PHONE_CTX.test(sent);
+    return sent.replace(/(^|[^가-힣])([공영일이삼사오육륙칠팔구]{3,})/g, function(m, pre, run, off){
+      const rest = sent.slice(off + m.length); const tail = rest.slice(0,1);
+      const afterOk = ["번","에","-","의",""].indexOf(tail) >= 0 || /\s/.test(tail) || /^(입니|이에|이고|이며|이라|로|으로|까지|이나)/.test(rest);
+      if(run.length >= 3 && ((hasCtx && afterOk) || (run.length >= 4 && ["번","에","-"].indexOf(tail) >= 0)))
+        return pre + run.split("").map(c => KN_DIGIT[c]).join("");
+      return m;
+    });
+  }
+  function knSinoUnits(sent){
+    let out = sent.replace(KN_SINO_UNIT, function(m, pre, num){ if(!num) return m; const v = knSinoToInt(num); return v === null ? m : pre + v; });
+    out = out.replace(KN_ROAD, function(m, road, num){ if(!num) return m; const v = knSinoToInt(num); return v === null ? m : road + " " + v; });
+    return out;
+  }
+  function knJoinPhone(out){
+    out = out.replace(/(^|[^0-9])(\d{2,4})\s?(?:에|의)\s?(\d{3,4})(?=번|[^0-9]|$)/g, "$1$2-$3");
+    out = out.replace(/(^|[^0-9])(\d{2,4})-(\d{3,4})\s?(?:에|의|\s)\s?(\d{4})(?=번|[^0-9]|$)/g, "$1$2-$3-$4");
+    out = out.replace(/(^|[^0-9-])(\d{2,4}) (\d{3,4}) (\d{4})(?=번|[^0-9]|$)/g, "$1$2-$3-$4");
+    out = out.replace(/(^|[^0-9-])(\d{4}) (\d{4})(?=번)/g, "$1$2-$3");
+    out = out.replace(/(\d{3,4}-\d{3,4})\s번/g, "$1번");
+    return out;
+  }
+  function normalizeKoreanNumbers(text){
+    if(!text || !/[공영일이삼사오육륙칠팔구십백천만]/.test(text)) return text || "";
+    const parts = []; let buf = "";
+    for(const ch of text){ buf += ch; if(".!?다요\n".indexOf(ch) >= 0){ parts.push(buf); buf = ""; } }
+    if(buf) parts.push(buf);
+    return parts.map(p => knJoinPhone(knSinoUnits(knPhoneRuns(p)))).join("");
+  }
+  function looksLikeEcho(text, aiTail){
+    const t = String(text||"").replace(/[\s.,!?~…'"]/g, ""), a = String(aiTail||"").replace(/[\s.,!?~…'"]/g, "");
+    return t.length > 0 && t.length <= 4 && a.length >= t.length && a.endsWith(t);
+  }
+
   const appendAiTranscript = (text) => {
     if (!activeAiBubble) {
       activeAiBubble = document.createElement("div");
@@ -424,7 +487,9 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       activeAiText = "";
     }
     activeAiText += text;
-    activeAiBubble._textNode.textContent = activeAiText;
+    // 음성 전사의 한글 숫자("일오칠칠에 천번", "백팔십이")를 숫자로 — 누적 텍스트 전체에 적용해
+    // 조각 경계에서 갈라진 숫자도 합쳐진다 (v1.40.0)
+    activeAiBubble._textNode.textContent = normalizeKoreanNumbers(activeAiText);
     // 카드가 있는 턴: 최초 1회만 카드(말풍선 상단)로 포커스를 잡고, 이후에는
     // 스크롤을 건드리지 않는다 — 사용자가 전사를 읽으러 내려가도 방해하지 않기 위함.
     if (activeAiBubble._hasCard) {
@@ -444,7 +509,9 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
      (sticky 고정이 아니라 일반 배치 — 사용자가 스크롤하면 함께 이동한다) */
   let lastAiBubble = null;       // 턴 종료 후 늦게 도착한 카드(전사 폴백)를 붙일 곳
   let pendingAnswerCard = null;  // 말풍선이 생기기 전에 카드가 먼저 도착한 경우
+  window.__TEXT_NORM = { normalizeKoreanNumbers, looksLikeEcho };   // jsdom 검증용
   const finalizeAiBubble = () => {
+    if (activeAiText) lastAiText = activeAiText;
     // 확정된 답변 텍스트를 카드(제목·단락·체크항목·유의사항)로 다시 렌더한다.
     if (activeAiBubble && activeAiText && window.renderAnswerCard) {
       try { window.renderAnswerCard(activeAiBubble._textNode, activeAiText); } catch (e) {}
@@ -617,7 +684,12 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   // 상담 음성(서버 합성)과 길안내 TTS(브라우저) 의 체감 볼륨 정합용 게인.
   // 브라우저 TTS 는 volume 1.0 이 상한이라 키울 수 없어, 더 크게 들리는 서버 음성을 낮춰 맞춘다.
   const AI_VOICE_GAIN = 0.8;
-  const aiAudioActive = () => (activeSources.size > 0) || (Date.now() - lastAiAudioEnd < 400);
+  // 상담원 음성이 끝난 뒤에도 스피커 잔향·AEC 수렴 지연으로 끝말이 마이크에 남는다 —
+  // 재생 종료 후 이 시간 동안은 마이크 프레임을 재생 중과 같이 다룬다 (v1.40.0, 기존 400ms)
+  const AI_ECHO_TAIL_MS = 800;
+  const aiAudioActive = () => (activeSources.size > 0) || (Date.now() - lastAiAudioEnd < AI_ECHO_TAIL_MS);
+  const echoTailActive = () => aiAudioActive() || (Date.now() - lastAiAudioEnd < 2500);
+  let lastAiText = "";   // 직전 상담원 발화 텍스트 — 에코 끝말 판정 근거
   let selectedVoice = null;  // 'male' | 'female'
   let textOnly = false;  // [GRAFT] text-only mode: skip mic
 
@@ -664,7 +736,10 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     ws.onmessage = async (ev) => {
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
       switch (msg.type) {
-        case "user_transcript": if (!sttActive) appendUserTranscript(msg.content); break;  // #105 STT 활성 시 중복 억제
+        case "user_transcript":
+          // 상담원 끝말 에코("요")는 사용자 발화로 그리지 않는다 (v1.40.0)
+          if (!sttActive && !(echoTailActive() && looksLikeEcho(msg.content, lastAiText))) appendUserTranscript(msg.content);
+          break;  // #105 STT 활성 시 중복 억제
         case "ui_action":       { const _act = window.NAVI ? window.NAVI.onUiAction(msg) : null; if (_act && _act.label) addNaviJumpBubble(_act.label); } break;   // 지도 이동은 사용자가 버튼으로 선택 (#213)
         case "ai_transcript":   appendAiTranscript(msg.content); if (window.NAVI && window.NAVI.onAiText) window.NAVI.onAiText(msg.content); if (pendingSources.length) { clearTimeout(srcFlushTimer); srcFlushTimer = setTimeout(flushSources, 800); } break;
         case "text":            appendAiTranscript(msg.content); break;
@@ -790,11 +865,12 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
         return;   // 재생 중 프레임은 에코일 수 있어 버리고, 멈춘 다음 프레임부터 통과
       }
       naviBargeRun = 0;
-      if (aiAudioActive() && document.getElementById("view-navi").classList.contains("active")) {
-        // 이동·관광 화면에서도 상담원 음성 중 말을 걸 수 있다 (#248) — 다만 에코 오탐을
-        // 줄이기 위해 지속 발화가 감지된 뒤부터 프레임을 통과시킨다 (상담 화면은 항상 통과).
-        // 한 번 성립하면 그 재생이 끝날 때까지 열어 둔다 — 문장 사이 숨 고르기에
-        // 게이트가 다시 닫혀 질문 중간이 잘리는 것을 막는다.
+      if (aiAudioActive()) {
+        // 상담원 음성 중·직후에는 지속 발화(barge-in)가 감지된 뒤부터 프레임을 통과시킨다.
+        // 원래 이동·관광 화면에만 두던 게이트를 상담 화면에도 적용한다(v1.40.0) — 상담 화면은
+        // 항상 통과시켰더니 스피커로 나간 상담원 끝말("…드릴게요"의 "요")이 마이크로 되돌아와
+        // 사용자 발화로 전사·응답되는 일이 잦았다. 한 번 성립하면 그 재생이 끝날 때까지
+        // 열어 둔다 — 문장 사이 숨 고르기에 게이트가 다시 닫혀 질문 중간이 잘리는 것을 막는다.
         if (!naviAiOpen) {
           if (m.type === "pcm" && (m.rms || 0) >= LOCAL_TTS_BARGE_RMS) {
             if (++naviAiRun >= LOCAL_TTS_BARGE_RUN) { naviAiOpen = true; naviAiRun = 0; }
@@ -858,8 +934,11 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
         let interim = "";
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const r = e.results[i];
-          if (r.isFinal) { sttFinal += r[0].transcript; renderUserLive(""); }
-          else { interim += r[0].transcript; }
+          const tr = r[0].transcript;
+          // 재생 직후 잔향 구간에 상담원 끝말과 같은 짧은 결과가 오면 에코다 (v1.40.0)
+          if (echoTailActive() && looksLikeEcho(tr, lastAiText)) continue;
+          if (r.isFinal) { sttFinal += tr; renderUserLive(""); }
+          else { interim += tr; }
         }
         if (interim) renderUserLive(interim);
       };
@@ -1500,9 +1579,18 @@ window.NAVI = (function(){
     if(nx && nx.coord && pos) rem = Math.round(distM(pos, {lat:nx.coord[0], lng:nx.coord[1]}));
     try{
       var lk = (st && (st.link_type === "bus" || st.link_type === "subway")) ? st.link_type : "walk";
+      // 현재 버스 구간(승차·하차 스텝) 또는 다음에 탈 버스의 승차 정류장 — "저상버스 언제 와" 의 기준 (v1.39.0)
+      var bref = null;
+      for(var bi = stepIdx; bi < steps.length; bi++){
+        var bs = steps[bi] || {};
+        if(bs.leg_ref && bs.leg_ref.kind === "bus"){ bref = bs.leg_ref; break; }
+      }
       wsRef.send(JSON.stringify({type:"nav_state",
         route_id: (route && route.route_id) || null,
         leg_kind: lk,
+        board_station_id: bref ? bref.board_station_id : null,
+        board_route_id: bref ? bref.route_id : null,
+        board_stop_name: bref ? (bref.board_name || null) : null,
         guiding: !!guiding,
         step_idx: stepIdx,
         total_steps: steps.length,
@@ -2031,6 +2119,11 @@ window.NAVI = (function(){
     }catch(e){ autoResumeGuide = false; status("경로 서비스에 연결하지 못했습니다."); }
   }
 
+  function modeLabelFromLegs(legs, fallbackMode){
+    var kinds = {}; (legs||[]).forEach(function(l){ if(l && l.kind) kinds[l.kind] = true; });
+    var mode = kinds.subway ? "walk_bus_subway" : (kinds.bus ? "walk_bus" : ((legs||[]).length ? "walk" : (fallbackMode||"walk")));
+    return {mode: mode, label: ({walk:"도보", walk_bus:"도보+버스", walk_bus_subway:"버스+지하철"})[mode] || mode};
+  }
   function showRoute(routeData, destName){
     if(guiding) trackUpload("canceled");   // 안내 중 재탐색 — 이전 세션 트랙 마감 (v1.34.0)
     route = routeData;
@@ -2040,18 +2133,19 @@ window.NAVI = (function(){
     if(rd.poi_id && (!tripDest || String(tripDest.poi_id) !== String(rd.poi_id))){
       tripDest = {poi_id: String(rd.poi_id), name: destName || (tripDest && tripDest.name) || "안내 목적지"};
     }
-    // 음성으로 방식을 지정해 만든 경로면 카드 표시를 실제 방식과 맞춘다(리뷰 #5b)
+    // 카드 표시는 요청한 방식이 아니라 **실제 구간(legs)** 기준으로 맞춘다 (v1.41.0) —
+    // 버스+지하철로 요청해도 플래너가 버스 직결만 고르면 "버스+지하철"이라 적으면 안 된다
     if(routeData.mode){
-      lastModeUsed = routeData.mode;
-      lastModeLabel = ({walk:"도보", walk_bus:"도보+버스",
-                        walk_bus_subway:"버스+지하철"})[routeData.mode] || routeData.mode;
+      var actual = modeLabelFromLegs(((routeData.routes||[])[0]||{}).legs, routeData.mode);
+      lastModeUsed = actual.mode;
+      lastModeLabel = actual.label;
       routeMode = "auto";
     }
     var primary = (route.routes||[])[0];
     if(!primary){ status("경로를 찾지 못했습니다."); return; }
     steps = primary.steps || [];
     stepIdx = 0; guiding = false;
-    stopSimulation();
+    stopSimulation(); stopArrivalPolling();
     routeGeom = primary.geometry || [];
     cumDist = [0];
     for(var gi=1; gi<routeGeom.length; gi++){
@@ -2133,7 +2227,12 @@ window.NAVI = (function(){
             " 하차 · " + (leg.stop_cnt||0) + "개 정거장";
           var w=document.createElement("div"); w.className="lg-w";
           w.textContent = "※ 저상버스 정차는 보장되지 않습니다 — 실시간 도착정보를 확인하세요";
-          c.appendChild(t); c.appendChild(d); c.appendChild(w); ll.appendChild(c);
+          c.appendChild(t); c.appendChild(d);
+          // 실시간 도착정보(02 v1.19.0) — 확인된 사실이 있으면 고정 경고 대신 그것을 보여준다
+          var lv = liveArrivalText(leg.realtime, r.name);
+          if(lv){ var l=document.createElement("div"); l.className="lg-live"+(lv.ok?"":" off"); l.textContent=lv.text; c.appendChild(l); }
+          else c.appendChild(w);
+          ll.appendChild(c);
         } else if(leg.kind==="subway"){
           var c2=document.createElement("div"); c2.className="leg-card";
           var t2=document.createElement("div"); t2.className="lg-t";
@@ -2142,6 +2241,11 @@ window.NAVI = (function(){
           d2.textContent = (leg.board?leg.board.name:"") + "역 승차 → " +
             (leg.alight?leg.alight.name:"") + "역 하차 · " + (leg.station_cnt||0) + "개 역";
           c2.appendChild(t2); c2.appendChild(d2);
+          // 역 설비 요약(02 v1.19.0): 승차역 승강기 출입구 1줄 + 장애인화장실 3상태
+          [["승차", leg.board], ["하차", leg.alight]].forEach(function(pair){
+            var ft = stationFacilityText(pair[1]);
+            if(ft){ var f=document.createElement("div"); f.className="lg-fac"; f.textContent = pair[0]+" "+ft; c2.appendChild(f); }
+          });
           (leg.warnings||[]).forEach(function(wm){
             var w2=document.createElement("div"); w2.className="lg-w"; w2.textContent="※ "+wm; c2.appendChild(w2);
           });
@@ -2310,6 +2414,63 @@ window.NAVI = (function(){
     speak(steps[0].instruction);
     followCamera();
   }
+  /* ── 실시간 저상버스 (v1.39.0, 02 v1.19.0 /transit/bus/arrivals) ── */
+  function liveArrivalText(rt, routeName){
+    // 반환 {text, ok} 또는 null(실시간 없음 -> 고정 경고 유지)
+    if(!rt || typeof rt !== "object") return null;
+    if(rt.status !== "success"){ return {ok:false, text:"실시간 도착정보를 받지 못했습니다 — 정류장 안내판을 확인하세요"}; }
+    var n = rt.next_low_floor;
+    if(n && n.predict_min != null){
+      return {ok:true, text:"🚌 저상 " + (n.route_name||routeName||"") + "번 약 " + n.predict_min + "분 후 도착" +
+        (n.stops_away != null ? " (" + n.stops_away + " 정거장 전)" : "")};
+    }
+    if((rt.items||[]).length) return {ok:false, text:"지금 오는 " + (routeName||"") + "번 차량은 저상이 아닙니다 — 안내 중 자동 갱신"};
+    return {ok:false, text:"지금 도착 예정 차량이 없습니다 — 안내 중 자동 갱신"};
+  }
+  function stationFacilityText(st){
+    var f = st && st.facilities;
+    if(!f || typeof f !== "object") return null;
+    var parts = [];
+    if(f.elevators && f.elevators.length){
+      var e = f.elevators[0];
+      var head = (e.exit_no && e.exit_no !== "내부") ? (e.exit_no + "번 출입구") : "역사 내부";
+      parts.push("🛗 " + (st.name||"") + "역 승강기: " + head + (e.detail_loc ? " — " + e.detail_loc : "") +
+        (f.elevators.length > 1 ? " 외 " + (f.elevators.length-1) + "곳" : ""));
+    } else if(f.lifts && f.lifts.length){
+      parts.push("⚠ " + (st.name||"") + "역은 휠체어리프트만 있어 도움이 필요할 수 있습니다");
+    }
+    if(f.dis_toilet === "yes") parts.push("♿ 장애인화장실 있음");
+    return parts.length ? parts.join(" · ") : null;
+  }
+  var arrTimer = null, arrSpoken = null;
+  function stopArrivalPolling(){ if(arrTimer){ clearInterval(arrTimer); arrTimer = null; } }
+  function startArrivalPolling(ref){
+    refreshArrivals(ref);
+    arrTimer = setInterval(function(){
+      if(!guiding && !simActive){ stopArrivalPolling(); return; }
+      refreshArrivals(ref);
+    }, 20000);
+  }
+  async function refreshArrivals(ref){
+    var el = $("stepLive");
+    if(!el) { stopArrivalPolling(); return; }
+    try{
+      var qs = new URLSearchParams({station_id: ref.board_station_id, route_id: ref.route_id || ""});
+      var r = await fetch("/api/v1/tools/bus_arrivals?" + qs.toString());
+      var d = await r.json();
+      var lv = liveArrivalText(d, ref.route_name);
+      if(!lv){ el.textContent = "실시간 도착정보 없음"; el.classList.add("off"); return; }
+      el.textContent = lv.text; el.classList.toggle("off", !lv.ok);
+      // 승차 스텝마다 저상 차량 확인 음성은 1회만 — 갱신 때마다 말하면 안내를 덮는다
+      var key = stepIdx + ":" + (lv.ok ? "ok" : "no");
+      if(lv.ok && arrSpoken !== key && (guiding || simActive)){
+        arrSpoken = key;
+        var n = d.next_low_floor;
+        speak("저상버스 " + (n.route_name||ref.route_name||"") + "번이 약 " + n.predict_min + "분 뒤 도착 예정입니다");
+      }
+    }catch(e){ el.textContent = "실시간 도착정보를 받지 못했습니다"; el.classList.add("off"); }
+  }
+
   function renderStep(){
     var st = steps[stepIdx];
     if(!st) return;
@@ -2322,7 +2483,17 @@ window.NAVI = (function(){
     var ins=document.createElement("div"); ins.className="ins"; ins.textContent=st.instruction;
     card.appendChild(mv); card.appendChild(ins);
     (st.warnings||[]).forEach(function(w){ var e=document.createElement("div"); e.className="wr"; e.textContent="⚠ "+w; card.appendChild(e); });
+    // 승차 스텝이면 실시간 저상버스 도착정보를 붙이고 20초마다 갱신한다 (v1.39.0)
+    stopArrivalPolling();
+    var liveRef = null;
+    if(st.maneuver === "bus_board" && st.leg_ref && st.leg_ref.board_station_id){
+      var lvEl=document.createElement("div"); lvEl.className="live"; lvEl.id="stepLive";
+      lvEl.textContent = "🚌 저상버스 도착정보 확인 중…";
+      card.appendChild(lvEl);
+      liveRef = st.leg_ref;
+    }
     body.appendChild(card);
+    if(liveRef) startArrivalPolling(liveRef);   // 카드가 DOM 에 붙은 뒤에 조회해야 표시 요소를 찾는다
 
     var nxt = steps[stepIdx+1];
     if(nxt){ var n=document.createElement("div"); n.className="step-next"; n.textContent="다음: "+nxt.instruction; body.appendChild(n); }
@@ -2409,7 +2580,7 @@ window.NAVI = (function(){
       stepIdx += 1;
       renderStep();
       speak(steps[stepIdx].instruction);
-      if(steps[stepIdx].maneuver === "arrive"){ guiding = false; trackUpload("arrived"); setEndBtn("home"); }
+      if(steps[stepIdx].maneuver === "arrive"){ guiding = false; trackUpload("arrived"); setEndBtn("home"); stopArrivalPolling(); }
       sendNavState();   // 구간 전환·도착을 세션에 알린다 (#248)
     }
   }
@@ -2871,6 +3042,8 @@ window.NAVI = (function(){
                                      startGuidance:startGuidance, setHere:function(h){here=h;}, advanceStep:advanceStep,
                                      requestRoute:requestRoute, renderSpotsPanel:renderSpotsPanel,
                                      clearRouteDisplay:clearRouteDisplay,
+                                     refreshArrivals:refreshArrivals,
+                                     arrivalPollingActive:function(){return !!arrTimer;},
                                      guiding:function(){return guiding;}}; }
   };
 })();

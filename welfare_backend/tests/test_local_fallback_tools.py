@@ -7,7 +7,7 @@
 경로·관광 도구가 통째로 빠져 있었다(누락). 폴백에서도 길안내가 되어야 한다.
 
 지키는 계약:
-  1) 폴백 선언 = Live 선언과 같은 도구 집합 (정책 5 + 경로 7)
+  1) 폴백 선언 = Live 선언과 같은 도구 집합 (정책 5 + 경로 9)
   2) 경로 서비스가 꺼져 있으면 Live 와 동일하게 경로 도구를 선언하지 않는다
   3) 좌표·route_id 는 선언에 넣지 않는다 — 세션이 주입할 값이므로 모델이 만들면 안 된다
   4) get_current_guidance 를 뺀 나머지는 전부 디스패처에 구현이 있어야 한다
@@ -44,7 +44,8 @@ POLICY = {"search_policies_by_metadata", "search_by_keyword", "get_policy_detail
           "check_eligibility_criteria", "find_operating_agencies"}
 ROUTE = {"find_bf_tour_spots", "plan_accessible_route", "explain_route_segment",
          "get_current_guidance", "find_nearby_transit", "open_navi_screen",
-         "report_accessibility_issue"}
+         "report_accessibility_issue",
+         "get_bus_arrivals", "get_station_facilities"}   # v1.39.0 실시간 버스·역 설비
 
 results = []
 
@@ -94,9 +95,10 @@ def t_route_off_hides_route_tools():
 
 def t_no_coordinate_params():
     tools = lp._ollama_tools()
-    for fname in ("plan_accessible_route", "find_nearby_transit", "report_accessibility_issue"):
+    for fname in ("plan_accessible_route", "find_nearby_transit", "report_accessibility_issue",
+                  "get_bus_arrivals"):
         p = props(tools, fname)
-        leaked = p & {"lat", "lng", "origin_lat", "origin_lng", "route_id"}
+        leaked = p & {"lat", "lng", "origin_lat", "origin_lng", "route_id", "station_id"}
         assert not leaked, "%s 선언에 세션이 주입할 값이 노출됨: %s" % (fname, sorted(leaked))
 
 

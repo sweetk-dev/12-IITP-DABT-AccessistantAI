@@ -24,6 +24,7 @@ from starlette.websockets import WebSocketState
 from nav_context import (annotate_route_failure,
                          update_nav_state, current_guidance_result,
                          inject_nav_defaults, note_new_route)
+from text_normalize import looks_like_echo, normalize_numbers
 from tool_handlers import get_tool_dispatcher
 from unresolved_logger import TurnTracker
 from database import AsyncSessionLocal
@@ -252,7 +253,7 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
   두 경우 모두 "서비스 장애"가 아닙니다. `need_destination` / `need_location` 도 같은 태도로 답합니다.
 - **도구 결과에 `active_guidance` 가 있으면** 지금 진행 중인 길안내가 그대로 계속된다는 뜻입니다. 새 목적지를 안내하지 못했다고만 말하고 끝내지 말고, 진행 중인 안내가 계속된다는 사실을 반드시 한 문장으로 덧붙이세요. 안내가 멈췄다고 말하지 마세요.
 - 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 목적지 `poi_id` 를 모르면 사용자가 말한 이름을 `destination_place` 에 담습니다 — poi_id 를 지어내지 마세요. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
-- **이동 방식**: 사용자가 "버스로", "지하철 타고", "대중교통으로" 처럼 방식을 말하면 `plan_accessible_route` 의 `mode` 에 담습니다(walk_bus / walk_bus_subway). 말하지 않으면 비워 두세요 — 자동 추천이 적용되고 결과의 `mode_used`/`mode_label` 이 알려 줍니다. 결과에 `transit` 이 있으면 **노선 번호·유형·방면(end_station)·정거장 수**를 함께 말하고, **저상버스 정차는 보장되지 않으므로 실시간 도착정보 확인이 필요**하다고 알립니다. 대중교통 포함 소요시간은 대기 미포함 추정(`eta_note`)임을 밝힙니다.
+- **이동 방식**: 사용자가 "버스로", "지하철 타고", "대중교통으로" 처럼 방식을 말하면 `plan_accessible_route` 의 `mode` 에 담습니다(walk_bus / walk_bus_subway). 말하지 않으면 비워 두세요 — 자동 추천이 적용되고 결과의 `mode_used`/`mode_label` 이 알려 줍니다. 결과에 `transit` 이 있으면 **노선 번호·유형·방면(end_station)·정거장 수**를 함께 말합니다. `low_floor_note` 가 있으면 그 문장(저상버스 실시간 확인 결과)을 그대로 전하고, 없으면 **저상버스 정차는 보장되지 않으므로 실시간 도착정보 확인이 필요**하다고 알립니다. 대중교통 포함 소요시간은 대기 미포함 추정(`eta_note`)임을 밝힙니다.
 - 경로에 경고가 있거나 권장 경사를 완화해 탐색한 경우(`fallback.used`) 반드시 그 사실을 알립니다.
 - "왜 이렇게 돌아가", "이 구간 뭐야" 같은 질문에는 `explain_route_segment` 로 사유(경사·계단·턱낮춤)를 설명합니다.
 - 사용자가 "지도로 이동해줘", "지도 화면 보여줘", "무장애 관광지 보기 화면으로 가줘" 처럼 **화면 이동 자체를 요청**하면 `open_navi_screen` 을 호출하고 "지도 화면으로 이동했어요" 정도로 짧게만 답합니다. 관광지·경로 결과를 안내할 때는 화면이 자동으로 바뀌지 않고 화면에 이동 버튼이 표시되므로, 필요하면 "화면의 버튼을 누르시면 지도로 이동해요"라고 안내하세요.
@@ -264,6 +265,8 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - "왜 이렇게 가", "왜 돌아가", "이 구간 뭐야" → `explain_route_segment` 를 호출합니다. 안내가 진행 중이면 서버가 현재 구간을 자동으로 채워 주므로 route_id·step_idx 를 지어내지 말고 생략하세요.
 - 안전 질의("여기 건너도 돼요?", "이 길이 맞아요?")가 최우선입니다 — 다른 말 없이 즉시 답하세요. 확신할 수 없으면 모른다고 말하고 주변 확인을 권하세요.
 - 이동 중에 긴 정책 질문이 오면 핵심 한 문장만 답하고 "도착하신 뒤에 자세히 안내해 드릴까요?" 라고 제안하세요.
+- "저상버스 언제 와", "다음 버스 저상이야", "51번 몇 분 남았어" → `get_bus_arrivals` 를 호출합니다. 안내 중이면 승차 정류장·노선이 자동으로 들어갑니다. 결과의 `next_low_floor` 를 먼저 말하고, 없으면 "지금 오는 차량은 저상이 아니다"라고 하세요 — "저상버스가 없다"고 단정하지 않습니다. 실시간이라 변동될 수 있다고 한 마디 덧붙입니다.
+- "○○역 엘리베이터 어디 있어", "장애인 화장실 있어", "휠체어로 탈 수 있어" → `get_station_facilities` 를 호출합니다. 출입구별 위치를 2~3개만 읽고, 상태가 unknown 이면 "자료가 없다"고 말합니다(없다고 하지 않습니다).
 - "근처 정류장", "여기서 뭐 타", "버스 어디서 타" → `find_nearby_transit` 을 호출합니다. 결과의 `accessible` 이 null(unknown)이면 "이용 불가"가 아니라 "저상버스 정차 여부는 실시간 도착정보로 확인이 필요하다"고 안내하세요. 버스 방면은 종점명(end_station)으로 안내하되, 양방향 종점명이 같은 순환 노선은 경유 순번(station_seq)이 다르다는 점을 함께 알립니다. 같은 번호라도 노선 유형(마을버스/일반형시내버스)이 다르면 다른 노선입니다.
 
 ## 시스템 신호(`[SYSTEM]`) 처리 규칙
@@ -362,6 +365,35 @@ def _route_tool_declarations() -> list:
                 properties={
                     "place": types.Schema(type=types.Type.STRING, description="사용자가 말한 기준 장소 이름(예: '안양역'). 미지정 시 현재 위치 사용"),
                     "radius_m": types.Schema(type=types.Type.INTEGER, description="검색 반경(m), 기본 500, 최대 2000"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="get_bus_arrivals",
+            description=("정류장의 실시간 버스 도착정보와 저상버스 여부를 확인한다. \"저상버스 언제 와\", "
+                         "\"다음 버스 저상이야\", \"몇 번 버스 몇 분 남았어\" 질문에 사용. 안내 중이면 "
+                         "승차 정류장·노선이 자동 주입되므로 station_id 를 지어내지 않는다. 사용자가 "
+                         "장소를 말하면 place 에 담는다. 저상 차량이 안 잡힌 것은 '없다'가 아니라 "
+                         "'지금 오는 차 중엔 없다'이다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "place": types.Schema(type=types.Type.STRING, description="사용자가 말한 정류장·장소 이름(예: '안양역 앞'). 미지정 시 안내 중인 승차 정류장 또는 현재 위치"),
+                    "route_name": types.Schema(type=types.Type.STRING, description="사용자가 특정 버스 번호를 물었을 때 그 번호(예: '51'). 참고용"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="get_station_facilities",
+            description=("지하철역의 교통약자 편의시설을 알려 준다 — 엘리베이터·휠체어리프트가 어느 출입구에 "
+                         "있는지, 장애인화장실이 게이트 안/밖 어디인지, 승강장 안전발판·열차 틈. "
+                         "\"범계역 엘리베이터 어디 있어\", \"안양역 장애인 화장실 있어\" 질문에 사용. "
+                         "안내 가능한 역은 안양시 소재 지하철역이다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                required=["station"],
+                properties={
+                    "station": types.Schema(type=types.Type.STRING, description="역 이름(예: '범계역', '안양')"),
                 },
             ),
         ),
@@ -840,6 +872,11 @@ async def handle_live_chat(
     # sent: 실제 전송됐는지. 도구 기반이 실패하면 턴 종료 폴백이 전사 기반으로 커버.
     card_state = {"scheduled": False, "sent": False}
     _user_buf = ""                      # 현재 사용자 턴 입력 누적
+    # 스피커 에코 판정 근거 (v1.40.0) — 직전 상담원 발화 텍스트와 마지막 음성 송출 시각.
+    # 상담원 음성의 끝말("…드릴게요"의 "요")이 마이크로 되돌아와 사용자 발화로 전사되는 일이
+    # 잦았다. 짧은 전사가 직전 발화 끝말과 같고 음성 송출 직후면 에코로 보고 버린다.
+    ECHO_WINDOW_SEC = 3.0
+    echo_ref = {"ai_text": "", "audio_ts": 0.0}
     # 프런트가 보낸 현재 위치 — 경로 도구의 출발지로 서버에서 주입한다(모델이 좌표를 지어내지 못하게).
     user_location = {"lat": None, "lng": None}
     # 프런트가 보내는 길안내 진행 상태(#248) — get_current_guidance 와
@@ -1006,6 +1043,7 @@ async def handle_live_chat(
                                         await _safe_send_json(websocket,{"type": "text", "content": part.text})
                                     if getattr(part, "inline_data", None):
                                         audio_b64 = base64.b64encode(part.inline_data.data).decode()
+                                        echo_ref["audio_ts"] = asyncio.get_event_loop().time()
                                         await _safe_send_json(websocket,{
                                             "type": "audio",
                                             "mime_type": part.inline_data.mime_type,
@@ -1016,7 +1054,9 @@ async def handle_live_chat(
                                 if _user_buf.strip():
                                     convo_history.append(("user", _user_buf.strip()))
                                 if _ai_buf.strip():
-                                    convo_history.append(("model", _ai_buf.strip()))
+                                    # 대화 이력은 사람이 읽는 표기(숫자)로 남긴다 (v1.40.0)
+                                    convo_history.append(("model", normalize_numbers(_ai_buf.strip())))
+                                    echo_ref["ai_text"] = _ai_buf
                                 # 정책 카드 폴백 (#205→#208): 도구 기반 선표시 카드를 이번 턴에
                                 # 시도하지 않았을 때만 전사 기반으로 생성(도구 없이 답한 정책 설명 커버)
                                 _card_src = _ai_buf.strip()
@@ -1062,6 +1102,13 @@ async def handle_live_chat(
                             if sc and getattr(sc, "input_transcription", None):
                                 it = sc.input_transcription
                                 text = getattr(it, "text", None)
+                                if text and not _user_buf.strip() and looks_like_echo(
+                                        text, _ai_buf or echo_ref["ai_text"]) and (
+                                        asyncio.get_event_loop().time() - echo_ref["audio_ts"]
+                                        < ECHO_WINDOW_SEC):
+                                    # 상담원 끝말 에코 — 사용자 발화로 표시·집계하지 않는다 (v1.40.0)
+                                    logger.info("🔇 에코 전사 무시: %r (직전 발화 끝말과 일치)", text)
+                                    text = None
                                 if text:
                                     _user_buf += text
                                     logger.info("🎤 사용자 음성→텍스트: %s", text)

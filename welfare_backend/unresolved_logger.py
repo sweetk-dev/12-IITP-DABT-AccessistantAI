@@ -194,7 +194,7 @@ def _step_verdict(step: ToolStep) -> str:
       ③ 도구가 밝힌 status.
       ④ status 가 없는 도구(정책 5종)는 기존 개수 추정으로 폴백.
     """
-    if step.error or step.status == "error":
+    if step.error or step.status == "error" or step.status in _TRANSIENT_STATUSES:
         return "error"
     if step.has_result_key and step.result_count == 0:
         return "empty"
@@ -267,8 +267,13 @@ def classify_fallback(
 
 # 도구가 status 로 스스로 밝히는 결과 상태 — _step_verdict 가 참조.
 _OK_STATUSES = frozenset({"success", "guiding", "idle", "arrived"})
-_NEEDS_INPUT_STATUSES = frozenset({"need_location", "need_destination"})
+# 입력·해석 부족 — 장소 이름을 못 찾은 것(place_not_found, v1.38.0)·역 이름 없음·주변 정류장 없음도
+# 정책 공백이 아니라 입력 문제다. 판정표에 없으면 unknown 으로 떨어져 사유가 보이지 않는다(v1.41.0).
+_NEEDS_INPUT_STATUSES = frozenset({"need_location", "need_destination", "place_not_found",
+                                   "need_station", "station_not_found", "no_stop_nearby"})
 _OUT_OF_SCOPE_STATUSES = frozenset({"out_of_service_area"})
+# 외부 실시간 소스 장애(GBIS 도착정보 등) — 도구 오류로 관측한다
+_TRANSIENT_STATUSES = frozenset({"unavailable"})
 
 # 결과 개수를 셀 때 살펴보는 배열 키.
 _RESULT_KEYS = ("results", "items", "policies", "agencies", "matches", "data")

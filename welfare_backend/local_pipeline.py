@@ -255,6 +255,16 @@ def _ollama_route_tools() -> list:
            "accessible_status(yes/no/unknown) 로만 판단해 안내한다.",
            {"place": {"type": "string", "description": "사용자가 말한 기준 장소 이름"},
             "radius_m": I}),
+        fn("get_bus_arrivals",
+           "정류장의 실시간 버스 도착정보와 저상버스 여부를 확인한다. '저상버스 언제 와', '다음 버스 저상이야' "
+           "질문에 사용. 안내 중이면 승차 정류장·노선이 자동 주입된다 — station_id 를 지어내지 않는다.",
+           {"place": {"type": "string", "description": "사용자가 말한 정류장·장소 이름"},
+            "route_name": {"type": "string", "description": "사용자가 물은 버스 번호(참고용)"}}),
+        fn("get_station_facilities",
+           "지하철역의 교통약자 편의시설(엘리베이터·리프트 출입구, 장애인화장실 위치, 승강장 안전발판·틈)을 "
+           "알려 준다. '○○역 엘리베이터 어디 있어' 질문에 사용.",
+           {"station": {"type": "string", "description": "역 이름"}},
+           ["station"]),
         fn("open_navi_screen",
            "화면을 이동·관광(지도) 탭으로 전환한다. 사용자가 화면 이동 자체를 명시적으로 요청할 때만 사용한다.",
            {}),
