@@ -395,6 +395,7 @@ async def tool_find_operating_agencies(query: str, limit: int = 3, *, embed_fn) 
 # 실패해도 정책 상담이 멈추지 않도록 오류를 값으로 돌려준다.
 # ─────────────────────────────────────────────────────────────
 import route_client
+import kakao_local  # 기관명·주소 폴백 (v1.42.0)
 
 
 def _fac_labels(facilities: dict) -> list:
@@ -537,16 +538,30 @@ def _search_hit(found: dict, q: str) -> Optional[dict]:
     return None
 
 
+def _kakao_hit(it: dict) -> dict:
+    """카카오 로컬 항목 → 해석 결과. 주소 검색 결과는 건물명이 없으면 주소가 이름이 된다."""
+    return {"lat": float(it["lat"]), "lng": float(it["lng"]),
+            "label": it.get("name") or it.get("addr") or "",
+            "kind": "building", "addr": it.get("addr") or "",
+            "in_service_area": bool(it.get("in_service_area", True)),
+            "source": it.get("source")}
+
+
 async def _resolve_place(place: str) -> Optional[dict]:
     """말로 지정한 장소 이름을 좌표로 해석한다.
 
-    (1) 안양 지하철역 정적 매핑 (2) 02 `/poi/search`(관광지·역·건물) (3) 무장애 관광지 이름
+    (1) 안양 지하철역 정적 매핑 (2) 02 `/poi/search`(관광지·역·건물) (2') 카카오 로컬
+    (기관명·상호·도로명주소) (3) 무장애 관광지 이름
 
     (2)가 없던 동안 해석 가능한 장소는 지하철역 7곳과 무장애 관광지뿐이었다. 그래서
     안양시청·복지관·도서관처럼 서비스 지역 한복판에 있는 시설조차 좌표를 얻지 못해
-    "지역 밖"으로 잘못 안내됐다. 02 v1.18.0 의 건물 이름 인덱스가 그 공백을 메운다.
+    "지역 밖"으로 잘못 안내됐다. 02 v1.18.0 의 건물 이름 인덱스가 그 공백을 메웠지만,
+    그 인덱스는 OSM 건물 이름이라 "국민건강보험공단 안양지사" 같은 기관명·상호나
+    "관평로 182" 같은 도로명주소는 여전히 못 찾았다(2026-09-02 미답변 로그 7건). 화면의
+    장소 검색창에는 v1.38.0 부터 카카오 장소검색(JS SDK)이 폴백으로 붙어 있었으므로,
+    같은 출처(카카오 로컬 REST)를 음성 도구 경로에도 붙인다 — 키가 없으면 건너뛴다.
 
-    반환: {"lat","lng","label","kind"(station|tour|building), "poi_id"?}
+    반환: {"lat","lng","label","kind"(station|tour|building), "poi_id"?, "addr"?}
     """
     q = (place or "").strip()
     if not q:
@@ -568,6 +583,22 @@ async def _resolve_place(place: str) -> Optional[dict]:
         hit = _search_hit(found, q)
         if hit is not None:
             return hit
+    except Exception:
+        logger.exception("장소 검색 실패: %s", q)
+
+    # (2') 카카오 로컬 — 기관명·상호·도로명주소. 서비스 지역 안의 결과만 여기서 쓴다.
+    kakao_outside = None
+    try:
+        khits = await kakao_local.search(q, bbox=await _service_bbox(), limit=5)
+        for it in khits:
+            if it.get("in_service_area"):
+                return _kakao_hit(it)
+        if khits:
+            kakao_outside = khits[0]
+    except Exception:
+        logger.exception("카카오 로컬 검색 실패: %s", q)
+
+    try:
         # 범위 안에서 못 찾았다 — 범위를 넓혀 한 번 더 본다. 찾히면 "밖이라서 안 된다"고
         # 정확히 말할 수 있고, 그래도 없으면 "이름을 못 찾았다"가 사실 그대로가 된다.
         wide = await route_client.poi_search(q, sigungu="", limit=5, include_outside=True)
@@ -576,6 +607,9 @@ async def _resolve_place(place: str) -> Optional[dict]:
             return hit
     except Exception:
         logger.exception("장소 검색 실패: %s", q)
+    if kakao_outside is not None:
+        # 카카오는 찾았지만 서비스 지역 밖 — "범위 밖" 안내의 근거로 돌려준다
+        return _kakao_hit(kakao_outside)
 
     # (3) 폴백 — 02 가 구버전이라 /poi/search 가 없을 때도 기존 동작은 유지한다
     try:
