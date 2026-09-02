@@ -24,6 +24,7 @@ from starlette.websockets import WebSocketState
 from nav_context import (annotate_route_failure,
                          update_nav_state, current_guidance_result,
                          inject_nav_defaults, note_new_route)
+from text_normalize import looks_like_echo, normalize_numbers
 from tool_handlers import get_tool_dispatcher
 from unresolved_logger import TurnTracker
 from database import AsyncSessionLocal
@@ -871,6 +872,11 @@ async def handle_live_chat(
     # sent: 실제 전송됐는지. 도구 기반이 실패하면 턴 종료 폴백이 전사 기반으로 커버.
     card_state = {"scheduled": False, "sent": False}
     _user_buf = ""                      # 현재 사용자 턴 입력 누적
+    # 스피커 에코 판정 근거 (v1.40.0) — 직전 상담원 발화 텍스트와 마지막 음성 송출 시각.
+    # 상담원 음성의 끝말("…드릴게요"의 "요")이 마이크로 되돌아와 사용자 발화로 전사되는 일이
+    # 잦았다. 짧은 전사가 직전 발화 끝말과 같고 음성 송출 직후면 에코로 보고 버린다.
+    ECHO_WINDOW_SEC = 3.0
+    echo_ref = {"ai_text": "", "audio_ts": 0.0}
     # 프런트가 보낸 현재 위치 — 경로 도구의 출발지로 서버에서 주입한다(모델이 좌표를 지어내지 못하게).
     user_location = {"lat": None, "lng": None}
     # 프런트가 보내는 길안내 진행 상태(#248) — get_current_guidance 와
@@ -1037,6 +1043,7 @@ async def handle_live_chat(
                                         await _safe_send_json(websocket,{"type": "text", "content": part.text})
                                     if getattr(part, "inline_data", None):
                                         audio_b64 = base64.b64encode(part.inline_data.data).decode()
+                                        echo_ref["audio_ts"] = asyncio.get_event_loop().time()
                                         await _safe_send_json(websocket,{
                                             "type": "audio",
                                             "mime_type": part.inline_data.mime_type,
@@ -1047,7 +1054,9 @@ async def handle_live_chat(
                                 if _user_buf.strip():
                                     convo_history.append(("user", _user_buf.strip()))
                                 if _ai_buf.strip():
-                                    convo_history.append(("model", _ai_buf.strip()))
+                                    # 대화 이력은 사람이 읽는 표기(숫자)로 남긴다 (v1.40.0)
+                                    convo_history.append(("model", normalize_numbers(_ai_buf.strip())))
+                                    echo_ref["ai_text"] = _ai_buf
                                 # 정책 카드 폴백 (#205→#208): 도구 기반 선표시 카드를 이번 턴에
                                 # 시도하지 않았을 때만 전사 기반으로 생성(도구 없이 답한 정책 설명 커버)
                                 _card_src = _ai_buf.strip()
@@ -1093,6 +1102,13 @@ async def handle_live_chat(
                             if sc and getattr(sc, "input_transcription", None):
                                 it = sc.input_transcription
                                 text = getattr(it, "text", None)
+                                if text and not _user_buf.strip() and looks_like_echo(
+                                        text, _ai_buf or echo_ref["ai_text"]) and (
+                                        asyncio.get_event_loop().time() - echo_ref["audio_ts"]
+                                        < ECHO_WINDOW_SEC):
+                                    # 상담원 끝말 에코 — 사용자 발화로 표시·집계하지 않는다 (v1.40.0)
+                                    logger.info("🔇 에코 전사 무시: %r (직전 발화 끝말과 일치)", text)
+                                    text = None
                                 if text:
                                     _user_buf += text
                                     logger.info("🎤 사용자 음성→텍스트: %s", text)
