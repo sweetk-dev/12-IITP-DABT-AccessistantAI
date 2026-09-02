@@ -1411,6 +1411,37 @@ check("하차 스텝으로 넘어가면 실시간 표시가 사라지고 폴링�
 });
 window.fetch = prevFetch2;
 
+
+// ── 상담 답변 숫자 표기 정규화·에코 판정 (v1.40.0) ──
+const TN = window.__TEXT_NORM;
+check("숫자 표기 정규화: 전화번호·주소·단위 수를 아라비아 숫자로", () => {
+  assert.ok(TN, "__TEXT_NORM 노출 없음");
+  assert.equal(TN.normalizeKoreanNumbers("대표전화는 일오칠칠에 천번입니다."), "대표전화는 1577-1000번입니다.");
+  assert.equal(TN.normalizeKoreanNumbers("연락처는 공삼일 삼팔구 일이삼사입니다."), "연락처는 031-389-1234입니다.");
+  assert.equal(TN.normalizeKoreanNumbers("안양지사는 관평로 백팔십이에 있습니다."), "안양지사는 관평로 182에 있습니다.");
+  assert.equal(TN.normalizeKoreanNumbers("십오층입니다. 만원입니다."), "15층입니다. 10000원입니다.");
+});
+check("숫자 표기 정규화: 낱말·한 글자 수·이미 숫자인 문장은 그대로", () => {
+  for (const t of ["구사일생으로 살아났다는 이야기입니다.", "이 층에 있어요. 삼층으로 가세요.", "그렇게 하십시오. 원래 그렇습니다.",
+                   "관평로 182에 있고 대표전화는 1577-1000번입니다.", ""]) {
+    assert.equal(TN.normalizeKoreanNumbers(t), t);
+  }
+});
+check("에코 판정: 직전 상담원 발화 끝말과 같은 짧은 전사만 에코", () => {
+  assert.equal(TN.looksLikeEcho("요", "지원 정책을 안내해 드릴게요"), true);
+  assert.equal(TN.looksLikeEcho("게요.", "안내해 드릴게요."), true);
+  assert.equal(TN.looksLikeEcho("네", "안내해 드릴게요"), false);
+  assert.equal(TN.looksLikeEcho("아니요", "안내해 드릴게요"), false);
+  assert.equal(TN.looksLikeEcho("", "안내해 드릴게요"), false);
+});
+check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화만 통과 (소스 레벨 가드)", () => {
+  assert.match(HTML, /if \(aiAudioActive\(\)\) \{[\s\S]*?LOCAL_TTS_BARGE_RMS/, "상담 화면에도 barge-in 게이트가 적용돼야 한다");
+  assert.doesNotMatch(HTML, /aiAudioActive\(\) && document\.getElementById\("view-navi"\)/, "navi 화면 한정 게이트가 남아 있다");
+  assert.match(HTML, /AI_ECHO_TAIL_MS = 800/);
+  assert.match(HTML, /echoTailActive\(\) && looksLikeEcho\(msg\.content, lastAiText\)/, "user_transcript 에코 억제 없음");
+  assert.match(HTML, /echoTailActive\(\) && looksLikeEcho\(tr, lastAiText\)/, "STT 에코 억제 없음");
+});
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {
