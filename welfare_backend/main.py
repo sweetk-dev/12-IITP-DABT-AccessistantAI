@@ -363,6 +363,24 @@ async def transit_access_points(
 from fastapi import Body as _Body  # noqa: E402
 
 
+@app.get("/api/v1/tools/bus_arrivals", tags=["tools"],
+         summary="[7-3] 정류장 실시간 도착정보·저상버스 (안내 화면 폴링용)")
+async def bus_arrivals(
+    station_id: str = Query(..., description="GBIS 정류소 ID (경로 스텝 leg_ref.board_station_id)"),
+    route_id: str = Query("", description="지정 시 그 노선만"),
+):
+    """화면의 버스 구간 카드가 20초 간격으로 부른다. 음성 도구 get_bus_arrivals 와 같은 출처(02)를 쓴다."""
+    return await tool_handlers.tool_get_bus_arrivals(station_id=station_id, route_id=route_id)
+
+
+@app.get("/api/v1/tools/station_facilities", tags=["tools"],
+         summary="[7-4] 역 편의시설 — 승강기·리프트 출입구, 화장실, 승강장")
+async def station_facilities(
+    station: str = Query(..., min_length=1, description="역 이름(예: '범계역')"),
+):
+    return await tool_handlers.tool_get_station_facilities(station=station)
+
+
 @app.post("/api/v1/nav/track", tags=["collect"],
           summary="[10] 주행 GPS 트랙 업로드 (안내 종료 시 1회)")
 async def nav_track(payload: dict = _Body(...)):

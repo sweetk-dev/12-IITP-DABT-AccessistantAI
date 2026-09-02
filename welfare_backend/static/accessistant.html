@@ -286,6 +286,10 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .leg-card .lg-t{font-weight:800;font-size:.92rem;color:#0F172A;}
 .leg-card .lg-d{font-size:.84rem;color:#334155;margin-top:2px;}
 .leg-card .lg-w{font-size:.8rem;color:#B45309;margin-top:3px;}
+.leg-card .lg-live{font-size:.84rem;font-weight:700;color:#166534;margin-top:3px;}
+.leg-card .lg-fac{font-size:.8rem;color:#1E40AF;margin-top:3px;}
+.step-now .live{margin-top:6px;padding:6px 8px;border-radius:8px;background:#ECFDF5;color:#166534;font-size:.9rem;font-weight:700;}
+.step-now .live.off{background:#FEF3C7;color:#92400E;font-weight:600;}
 </style>
 <link rel="manifest" href="/static/manifest.webmanifest">
 <meta name="theme-color" content="#2563EB">
@@ -1500,9 +1504,18 @@ window.NAVI = (function(){
     if(nx && nx.coord && pos) rem = Math.round(distM(pos, {lat:nx.coord[0], lng:nx.coord[1]}));
     try{
       var lk = (st && (st.link_type === "bus" || st.link_type === "subway")) ? st.link_type : "walk";
+      // 현재 버스 구간(승차·하차 스텝) 또는 다음에 탈 버스의 승차 정류장 — "저상버스 언제 와" 의 기준 (v1.39.0)
+      var bref = null;
+      for(var bi = stepIdx; bi < steps.length; bi++){
+        var bs = steps[bi] || {};
+        if(bs.leg_ref && bs.leg_ref.kind === "bus"){ bref = bs.leg_ref; break; }
+      }
       wsRef.send(JSON.stringify({type:"nav_state",
         route_id: (route && route.route_id) || null,
         leg_kind: lk,
+        board_station_id: bref ? bref.board_station_id : null,
+        board_route_id: bref ? bref.route_id : null,
+        board_stop_name: bref ? (bref.board_name || null) : null,
         guiding: !!guiding,
         step_idx: stepIdx,
         total_steps: steps.length,
@@ -2051,7 +2064,7 @@ window.NAVI = (function(){
     if(!primary){ status("경로를 찾지 못했습니다."); return; }
     steps = primary.steps || [];
     stepIdx = 0; guiding = false;
-    stopSimulation();
+    stopSimulation(); stopArrivalPolling();
     routeGeom = primary.geometry || [];
     cumDist = [0];
     for(var gi=1; gi<routeGeom.length; gi++){
@@ -2133,7 +2146,12 @@ window.NAVI = (function(){
             " 하차 · " + (leg.stop_cnt||0) + "개 정거장";
           var w=document.createElement("div"); w.className="lg-w";
           w.textContent = "※ 저상버스 정차는 보장되지 않습니다 — 실시간 도착정보를 확인하세요";
-          c.appendChild(t); c.appendChild(d); c.appendChild(w); ll.appendChild(c);
+          c.appendChild(t); c.appendChild(d);
+          // 실시간 도착정보(02 v1.19.0) — 확인된 사실이 있으면 고정 경고 대신 그것을 보여준다
+          var lv = liveArrivalText(leg.realtime, r.name);
+          if(lv){ var l=document.createElement("div"); l.className="lg-live"+(lv.ok?"":" off"); l.textContent=lv.text; c.appendChild(l); }
+          else c.appendChild(w);
+          ll.appendChild(c);
         } else if(leg.kind==="subway"){
           var c2=document.createElement("div"); c2.className="leg-card";
           var t2=document.createElement("div"); t2.className="lg-t";
@@ -2142,6 +2160,11 @@ window.NAVI = (function(){
           d2.textContent = (leg.board?leg.board.name:"") + "역 승차 → " +
             (leg.alight?leg.alight.name:"") + "역 하차 · " + (leg.station_cnt||0) + "개 역";
           c2.appendChild(t2); c2.appendChild(d2);
+          // 역 설비 요약(02 v1.19.0): 승차역 승강기 출입구 1줄 + 장애인화장실 3상태
+          [["승차", leg.board], ["하차", leg.alight]].forEach(function(pair){
+            var ft = stationFacilityText(pair[1]);
+            if(ft){ var f=document.createElement("div"); f.className="lg-fac"; f.textContent = pair[0]+" "+ft; c2.appendChild(f); }
+          });
           (leg.warnings||[]).forEach(function(wm){
             var w2=document.createElement("div"); w2.className="lg-w"; w2.textContent="※ "+wm; c2.appendChild(w2);
           });
@@ -2310,6 +2333,63 @@ window.NAVI = (function(){
     speak(steps[0].instruction);
     followCamera();
   }
+  /* ── 실시간 저상버스 (v1.39.0, 02 v1.19.0 /transit/bus/arrivals) ── */
+  function liveArrivalText(rt, routeName){
+    // 반환 {text, ok} 또는 null(실시간 없음 -> 고정 경고 유지)
+    if(!rt || typeof rt !== "object") return null;
+    if(rt.status !== "success"){ return {ok:false, text:"실시간 도착정보를 받지 못했습니다 — 정류장 안내판을 확인하세요"}; }
+    var n = rt.next_low_floor;
+    if(n && n.predict_min != null){
+      return {ok:true, text:"🚌 저상 " + (n.route_name||routeName||"") + "번 약 " + n.predict_min + "분 후 도착" +
+        (n.stops_away != null ? " (" + n.stops_away + " 정거장 전)" : "")};
+    }
+    if((rt.items||[]).length) return {ok:false, text:"지금 오는 " + (routeName||"") + "번 차량은 저상이 아닙니다 — 안내 중 자동 갱신"};
+    return {ok:false, text:"지금 도착 예정 차량이 없습니다 — 안내 중 자동 갱신"};
+  }
+  function stationFacilityText(st){
+    var f = st && st.facilities;
+    if(!f || typeof f !== "object") return null;
+    var parts = [];
+    if(f.elevators && f.elevators.length){
+      var e = f.elevators[0];
+      var head = (e.exit_no && e.exit_no !== "내부") ? (e.exit_no + "번 출입구") : "역사 내부";
+      parts.push("🛗 " + (st.name||"") + "역 승강기: " + head + (e.detail_loc ? " — " + e.detail_loc : "") +
+        (f.elevators.length > 1 ? " 외 " + (f.elevators.length-1) + "곳" : ""));
+    } else if(f.lifts && f.lifts.length){
+      parts.push("⚠ " + (st.name||"") + "역은 휠체어리프트만 있어 도움이 필요할 수 있습니다");
+    }
+    if(f.dis_toilet === "yes") parts.push("♿ 장애인화장실 있음");
+    return parts.length ? parts.join(" · ") : null;
+  }
+  var arrTimer = null, arrSpoken = null;
+  function stopArrivalPolling(){ if(arrTimer){ clearInterval(arrTimer); arrTimer = null; } }
+  function startArrivalPolling(ref){
+    refreshArrivals(ref);
+    arrTimer = setInterval(function(){
+      if(!guiding && !simActive){ stopArrivalPolling(); return; }
+      refreshArrivals(ref);
+    }, 20000);
+  }
+  async function refreshArrivals(ref){
+    var el = $("stepLive");
+    if(!el) { stopArrivalPolling(); return; }
+    try{
+      var qs = new URLSearchParams({station_id: ref.board_station_id, route_id: ref.route_id || ""});
+      var r = await fetch("/api/v1/tools/bus_arrivals?" + qs.toString());
+      var d = await r.json();
+      var lv = liveArrivalText(d, ref.route_name);
+      if(!lv){ el.textContent = "실시간 도착정보 없음"; el.classList.add("off"); return; }
+      el.textContent = lv.text; el.classList.toggle("off", !lv.ok);
+      // 승차 스텝마다 저상 차량 확인 음성은 1회만 — 갱신 때마다 말하면 안내를 덮는다
+      var key = stepIdx + ":" + (lv.ok ? "ok" : "no");
+      if(lv.ok && arrSpoken !== key && (guiding || simActive)){
+        arrSpoken = key;
+        var n = d.next_low_floor;
+        speak("저상버스 " + (n.route_name||ref.route_name||"") + "번이 약 " + n.predict_min + "분 뒤 도착 예정입니다");
+      }
+    }catch(e){ el.textContent = "실시간 도착정보를 받지 못했습니다"; el.classList.add("off"); }
+  }
+
   function renderStep(){
     var st = steps[stepIdx];
     if(!st) return;
@@ -2322,7 +2402,17 @@ window.NAVI = (function(){
     var ins=document.createElement("div"); ins.className="ins"; ins.textContent=st.instruction;
     card.appendChild(mv); card.appendChild(ins);
     (st.warnings||[]).forEach(function(w){ var e=document.createElement("div"); e.className="wr"; e.textContent="⚠ "+w; card.appendChild(e); });
+    // 승차 스텝이면 실시간 저상버스 도착정보를 붙이고 20초마다 갱신한다 (v1.39.0)
+    stopArrivalPolling();
+    var liveRef = null;
+    if(st.maneuver === "bus_board" && st.leg_ref && st.leg_ref.board_station_id){
+      var lvEl=document.createElement("div"); lvEl.className="live"; lvEl.id="stepLive";
+      lvEl.textContent = "🚌 저상버스 도착정보 확인 중…";
+      card.appendChild(lvEl);
+      liveRef = st.leg_ref;
+    }
     body.appendChild(card);
+    if(liveRef) startArrivalPolling(liveRef);   // 카드가 DOM 에 붙은 뒤에 조회해야 표시 요소를 찾는다
 
     var nxt = steps[stepIdx+1];
     if(nxt){ var n=document.createElement("div"); n.className="step-next"; n.textContent="다음: "+nxt.instruction; body.appendChild(n); }
@@ -2409,7 +2499,7 @@ window.NAVI = (function(){
       stepIdx += 1;
       renderStep();
       speak(steps[stepIdx].instruction);
-      if(steps[stepIdx].maneuver === "arrive"){ guiding = false; trackUpload("arrived"); setEndBtn("home"); }
+      if(steps[stepIdx].maneuver === "arrive"){ guiding = false; trackUpload("arrived"); setEndBtn("home"); stopArrivalPolling(); }
       sendNavState();   // 구간 전환·도착을 세션에 알린다 (#248)
     }
   }
@@ -2871,6 +2961,8 @@ window.NAVI = (function(){
                                      startGuidance:startGuidance, setHere:function(h){here=h;}, advanceStep:advanceStep,
                                      requestRoute:requestRoute, renderSpotsPanel:renderSpotsPanel,
                                      clearRouteDisplay:clearRouteDisplay,
+                                     refreshArrivals:refreshArrivals,
+                                     arrivalPollingActive:function(){return !!arrTimer;},
                                      guiding:function(){return guiding;}}; }
   };
 })();

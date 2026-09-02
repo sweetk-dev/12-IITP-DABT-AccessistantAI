@@ -171,12 +171,16 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
 
 # ── 경로 ──
 async def plan_route(origin: dict, destination: dict, profile: str = "wheelchair_manual",
-                     alternatives: int = 1, mode: str = "") -> dict:
+                     alternatives: int = 1, mode: str = "", realtime: bool = False) -> dict:
     body = {"origin": origin, "destination": destination,
             "profile": profile, "alternatives": alternatives}
     # 02 v1.12.0 멀티모달(#36) — walk 은 기존 계약이므로 생략해 하위 서버와도 호환 유지
     if mode in ("walk_bus", "walk_bus_subway"):
         body["mode"] = mode
+        if realtime:
+            # 02 v1.19.0 — 버스 leg 승차 정류장의 실시간 도착정보(저상 여부)를 함께 받는다.
+            # 구버전 02 는 모르는 필드를 무시하므로 호환된다.
+            body["realtime"] = True
     return await _call("POST", "/route/plan", json=body)
 
 
@@ -245,6 +249,30 @@ async def transit_access(lat: float, lng: float, radius_m: float = 800,
         "GET", "/transit/access-points",
         params={"lat": lat, "lng": lng, "radius_m": radius_m, "profile": profile},
     )
+
+
+# ── 실시간 버스·역 설비 (02 v1.19.0) ──
+async def bus_arrivals(station_id: str, route_id: str = "") -> dict:
+    """정류장 실시간 도착정보 — 노선별 1·2번째 차량의 도착 예정·저상 여부."""
+    params = {"station_id": str(station_id)}
+    if route_id:
+        params["route_id"] = str(route_id)
+    return await _call("GET", "/transit/bus/arrivals", params=params)
+
+
+async def bus_locations(route_id: str) -> dict:
+    """노선 실시간 차량 위치(정류장 순번·좌표·저상 여부)."""
+    return await _call("GET", "/transit/bus/locations", params={"route_id": str(route_id)})
+
+
+async def station_facilities(stn_cd: str = "", name: str = "") -> dict:
+    """역 편의시설 — 승강기·리프트 출입구, 화장실 위치, 승강장 안전발판·이격거리(3상태)."""
+    params = {}
+    if stn_cd:
+        params["stn_cd"] = str(stn_cd)
+    if name:
+        params["name"] = name
+    return await _call("GET", "/transit/station/facilities", params=params)
 
 
 # ── 수집 장치화 (02 v1.16.0 — 트랙·접근성 제보) ──

@@ -82,10 +82,12 @@ class _Recorder:
     def __init__(self, responses):
         self.responses = responses
         self.calls = []
+        self.realtime = []
 
     async def __call__(self, origin, destination, profile="wheelchair_manual",
-                       alternatives=1, mode=""):
+                       alternatives=1, mode="", realtime=False):
         self.calls.append(mode)
+        self.realtime.append(realtime)
         r = self.responses[len(self.calls) - 1]
         return r() if callable(r) else r
 
@@ -111,6 +113,7 @@ def t_auto_long_upgrades():
     rec = _Recorder([_walk_resp(2000), _transit_resp()])
     r = _plan("", rec)
     assert rec.calls == ["walk", "walk_bus_subway"]
+    assert rec.realtime == [False, True], "대중교통 조합 요청에만 실시간을 붙인다"
     assert r["mode_used"] == "walk_bus_subway"
     assert r["mode_label"] == "도보+버스+지하철"
 
@@ -150,7 +153,55 @@ def t_transit_brief_from_legs():
     assert bus["board_seq"] == 2
     assert r["eta_note"] and "추정" in r["eta_note"]
     assert "저상버스" in r["ai_instruction"]
+    assert r["low_floor_note"] is None, "실시간 응답이 없으면 확인 문구를 만들지 않는다"
+    assert bus["board_station_id"] is None and bus["realtime_status"] is None
     assert r["summary"]["walk_distance_m"] == 300
+
+
+def t_transit_brief_with_realtime_low_floor():
+    resp = _transit_resp()
+    bus = resp["routes"][0]["legs"][1]
+    bus["board"]["poi_id"] = "208000069"
+    bus["realtime"] = {"status": "success", "items": [{"route_id": "241253001"}],
+                       "next_low_floor": {"route_id": "241253001", "route_name": "2",
+                                          "route_type": "마을버스", "end_station": "신성중",
+                                          "predict_min": 4, "stops_away": 2, "plate_no": "경기71바0001"}}
+    sub = resp["routes"][0]["legs"][2]
+    sub["board"]["facilities"] = {"elevators": [{"exit_no": "2", "detail_loc": "(2F) 1번출구 맞이방 서쪽"}],
+                                  "lifts": [], "dis_toilet": "yes", "safety_plate": "unknown",
+                                  "elevator_cnt": 4, "wheelchair_lift_cnt": 0}
+    rec = _Recorder([resp])
+    r = _plan("walk_bus_subway", rec)
+    b = r["transit"][0]
+    assert b["realtime_status"] == "success" and b["board_station_id"] == "208000069"
+    assert b["next_low_floor"]["predict_min"] == 4 and b["next_low_floor"]["route_name"] == "2"
+    assert "저상버스 2번이 약 4분" in r["low_floor_note"]
+    assert "low_floor_note" in r["ai_instruction"]
+    s = r["transit"][1]
+    assert s["board_facilities"]["elevators"] == ["2번 출입구 — (2F) 1번출구 맞이방 서쪽"]
+    assert s["board_facilities"]["dis_toilet"] == "yes"
+    assert s["alight_facilities"] is None
+
+
+def t_transit_brief_realtime_no_low_floor():
+    resp = _transit_resp()
+    bus = resp["routes"][0]["legs"][1]
+    bus["realtime"] = {"status": "success", "items": [{"route_id": "241253001"}], "next_low_floor": None}
+    rec = _Recorder([resp])
+    r = _plan("walk_bus", rec)
+    assert r["transit"][0]["next_low_floor"] is None
+    assert "저상버스가 아닙니다" in r["low_floor_note"]
+
+
+def t_transit_brief_realtime_unavailable_keeps_old_wording():
+    resp = _transit_resp()
+    resp["routes"][0]["legs"][1]["realtime"] = {"status": "unavailable", "reason": "HTTP 403",
+                                                "items": [], "next_low_floor": None}
+    rec = _Recorder([resp])
+    r = _plan("walk_bus", rec)
+    assert r["low_floor_note"] is None
+    assert r["transit"][0]["realtime_status"] == "unavailable"
+    assert "실시간 도착정보 확인이 필요" in r["ai_instruction"]
 
 
 if __name__ == "__main__":
