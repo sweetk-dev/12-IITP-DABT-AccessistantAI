@@ -57,6 +57,7 @@ def _embed(text_query: str) -> list[float]:
 
 
 import route_client
+import kakao_local
 import tool_handlers
 from tool_handlers import expand_query
 
@@ -335,14 +336,29 @@ async def search_places(
     """관광지·지하철역·건물(시청·복지관·도서관 등)을 이름으로 찾아 좌표를 돌려준다.
 
     화면의 장소 검색과 음성 도구가 같은 출처를 쓰도록 02 `/poi/search` 를 그대로 미러한다.
+    02 에 없으면 카카오 로컬(기관명·상호·도로명주소)로 서비스 지역 안을 한 번 더 본다
+    (v1.42.0, `KAKAO_REST_API_KEY` 가 있을 때만) — 음성 도구의 장소 해석과 같은 순서다.
     """
     data = await route_client.poi_search(q, sigungu="안양", limit=limit)
     if data.get("status") == "error":
         return {"status": "error", "query": q, "count": 0, "items": [],
                 "message": data.get("message")}
+    items = list(data.get("items") or [])
+    source = "route"
+    if not items:
+        try:
+            khits = await kakao_local.search(q, bbox=await tool_handlers._service_bbox(), limit=limit)
+        except Exception:
+            khits = []
+        items = [{"poi_id": None, "name": k.get("name"), "addr": k.get("addr"),
+                  "lat": k["lat"], "lng": k["lng"], "type": "building",
+                  "category": k.get("category"), "in_service_area": True}
+                 for k in khits if k.get("in_service_area")]
+        if items:
+            source = "kakao"
     return {"status": "success", "query": q,
-            "count": data.get("count", 0), "items": data.get("items", []),
-            "region": data.get("region")}
+            "count": len(items), "items": items,
+            "region": data.get("region"), "source": source}
 
 
 @app.get("/api/v1/tools/transit_access_points", tags=["tools"],
