@@ -421,9 +421,17 @@ check("첫 턴바이턴 스텝 카드 + 음성 발화", () => {
 // 5) 다음 지점 근접 -> 스텝 자동 전환
 watchCb({ coords: { latitude: 37.39051, longitude: 126.95051 } });
 await sleep(30);
-check("다음 안내 지점 근접 시 스텝 자동 전환 + 재발화", () => {
+check("다음 안내 지점 근접 시 스텝 자동 전환 — 앞 안내는 끊지 않고 큐에 이어진다 (v1.43.0)", () => {
   const card = window.document.querySelector(".step-now .ins");
   assert.match(card.textContent, /횡단보도를 건너/);
+  assert.equal(spoken.at(-1), "중앙로를 따라 120m 앞으로 이동합니다.", "앞 안내가 잘렸다");
+  assert.equal(window.NAVI._internals().speakBusy(), true, "다음 안내가 대기 중이어야 한다");
+});
+// 앞 안내의 최소 보장 시간(추정 길이의 60%)이 지나면 대기하던 스텝 안내가 이어진다
+for (let i = 0; i < 60 && spoken.at(-1) !== "횡단보도를 건너 60m 이동합니다."; i++) await sleep(50);
+window.show("view-navi");   // 이 대기 중 스플래시 1.5초 자동 전환이 뷰를 빼앗을 수 있다 — 되돌린다
+check("앞 안내가 끝난 뒤 다음 스텝 안내 재발화", () => {
+  const card = window.document.querySelector(".step-now .ins");
   assert.equal(spoken.at(-1), "횡단보도를 건너 60m 이동합니다.");
   assert.match(window.document.querySelector(".step-now .wr").textContent, /턱낮춤 없음/);
 });
@@ -1453,6 +1461,74 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
   assert.match(HTML, /echoTailActive\(\) && looksLikeEcho\(msg\.content, lastAiText\)/, "user_transcript 에코 억제 없음");
   assert.match(HTML, /echoTailActive\(\) && looksLikeEcho\(tr, lastAiText\)/, "STT 에코 억제 없음");
 });
+
+// ── v1.43.0 안내 발화 큐 · 횡단보도 병합 발화 · 진행거리 기준 전환 ──
+{
+  const NV = window.NAVI._internals();
+  NV.resetTrip();
+  // 스텝 좌표를 geometry 위에 둔다: 출발 → (105m) 횡단보도 노드 → 같은 좌표에서 횡단보도 링크(14m) → (14m) 좌회전 → (60m) 도착
+  const P0 = [37.3900, 126.9500], P1 = [37.39094, 126.9500], P2 = [37.39107, 126.9500], P3 = [37.39161, 126.9500];
+  NV.showRoute({ status: "success", route_id: "r_cw", destination: { poi_id: "TBF-CW" }, routes: [{
+    summary: { total_distance_m: 193, duration_sec: 240, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 1, warnings: [] },
+    geometry: [P0, P1, P2, P3],
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "105m 앞으로 이동합니다.", distance_m: 105, coord: P0, warnings: [] },
+      { idx: 1, maneuver: "crossing_point", instruction: "횡단보도가 있습니다. 횡단보도를 건너세요. (턱낮춤 미상)", distance_m: 0, coord: P1, warnings: ["턱낮춤 미상"] },
+      { idx: 2, maneuver: "crossing", link_type: "crossing", instruction: "횡단보도를 건너 14m 이동합니다.", distance_m: 14, coord: P1, warnings: [] },
+      { idx: 3, maneuver: "left", instruction: "좌회전 후 60m 이동합니다.", distance_m: 60, coord: P2, warnings: [] },
+      { idx: 4, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: P3, warnings: [] },
+    ] }] }, "횡단보도 테스트");
+  check("횡단보도 노드 스텝은 다음 링크 스텝과 한 문장으로 발화 (v1.43.0)", () => {
+    assert.equal(NV.stepUtterance(1), "횡단보도가 있습니다. 횡단보도를 건너 14m 이동합니다. (턱낮춤 미상)");
+    assert.equal(NV.stepUtterance(0), "105m 앞으로 이동합니다.");
+    assert.equal(NV.stepUtterance(3), "좌회전 후 60m 이동합니다.");
+  });
+  // 가상 시계로 실보행 재현 — 1초마다 1m 씩 북쪽으로
+  const realNow = window.Date.now; let vnow = realNow(); window.Date.now = () => vnow;   // 페이지 쪽 시계를 가상으로
+  spoken.length = 0;
+  NV.startGuidance();
+  await sleep(5);
+  const before = spoken.length;
+  for (let t = 1; t <= 200; t++) {
+    vnow += 1000;
+    NV.setHere({ lat: P0[0] + 0.000009 * t, lng: P0[1] });
+    NV.advanceStep();
+    NV.drainSpeak();
+    await sleep(0);   // 서버 합성 fetch 스텁(비동기) → 폴백 발화가 기록되도록 마이크로태스크를 비운다
+  }
+  vnow += 20000; NV.drainSpeak(); await sleep(5);
+  const busyAfter = NV.speakBusy();
+  window.Date.now = realNow;
+  check("실보행: 노드 스텝→링크 스텝이 한 번만, 끊기지 않고 발화되고 다음 안내로 이어진다 (v1.43.0)", () => {
+    const stepSpeaks = spoken.slice(before).filter((t) => !/다음 안내까지/.test(t));
+    assert.deepEqual(stepSpeaks, [
+      "횡단보도가 있습니다. 횡단보도를 건너 14m 이동합니다. (턱낮춤 미상)",
+      "좌회전 후 60m 이동합니다.",
+      "목적지에 도착했습니다.",
+    ], JSON.stringify(spoken.slice(before)));
+    assert.equal(busyAfter, false);
+  });
+  check("스텝 안내가 대기 중이면 중간 거리 안내는 버린다 / 즉시 발화는 대기열을 비운다 (v1.43.0)", () => {
+    NV.speak("첫 스텝 안내입니다 첫 스텝 안내입니다", { queue: true, kind: "step" });   // 재생 중(최소 보장 시간 안)
+    NV.speak("두 번째 스텝 안내입니다", { queue: true, kind: "step" });
+    NV.speak("다음 안내까지 약 300미터입니다", { queue: true, kind: "interim" });
+    assert.equal(NV.speakBusy(), true);
+    NV.speak("경로를 벗어나셨어요.");   // 즉시 발화 — 대기열 폐기
+    assert.equal(NV.speakBusy(), true, "즉시 발화도 재생 중으로 잡혀야 한다");
+  });
+  await sleep(5);
+  check("즉시 발화가 대기열을 비우고 마지막에 재생된다 (v1.43.0)", () => {
+    assert.equal(spoken.at(-1), "경로를 벗어나셨어요.");
+    assert.equal(spoken.includes("두 번째 스텝 안내입니다"), false, "폐기됐어야 할 대기 안내가 재생됐다");
+    assert.equal(spoken.includes("다음 안내까지 약 300미터입니다"), false, "폐기됐어야 할 중간 안내가 재생됐다");
+  });
+  check("모의 주행은 안내 음성이 재생 중이면 가상 이동을 멈춘다 (소스 레벨 가드)", () => {
+    assert.match(HTML, /_drainSpeak\(\);\s*if\(speakBusy\(\)\) return;\s*\/\/ 안내 음성이 끝날 때까지 가상 이동 일시정지/);
+    assert.match(HTML, /if\(_reachedStep\(simPos, stepIdx\+1\)\)/);
+    assert.match(HTML, /if\(_reachedStep\(here, stepIdx\+1\)\)/);
+  });
+  NV.resetTrip();
+}
 
 // ── 결과 ──
 let failed = 0;

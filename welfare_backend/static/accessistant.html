@@ -1161,7 +1161,7 @@ window.NAVI = (function(){
   // 수집 장치화 (v1.34.0) — 주행 트랙 버퍼·접근성 신고. 식별자 없이 route_id 로만 묶인다.
   var trackBuf=[], trackSeq=0, trackStartTs=null, repPhoto=null;
   // 모의 주행(시뮬레이션) 상태 — 경로 geometry 를 따라 가상 이동
-  var routeGeom=[], cumDist=[], simActive=false, simTimer=null, simPos=null, simDist=0, simMarker=null;
+  var routeGeom=[], cumDist=[], stepAlong=[], simActive=false, simTimer=null, simPos=null, simDist=0, simMarker=null;
   var SIM_SPEED_MPS=1.0, SIM_FACTOR=5;   // 도보 1.0m/s × 배속
   var here=null, voiceOn=true, watchId=null;
   // 이동 중 대화 (#248) — 안내 복귀 폴링·답변 스트립 상태
@@ -1228,23 +1228,64 @@ window.NAVI = (function(){
      speakSeq: 발화 요청 세대 토큰. 합성 응답이 늦게 도착해도 그 사이 새 발화가
      요청됐으면 폐기한다 — 안내가 밀리거나(순서 꼬임) 폴백 목소리와 섞이는 것 방지. */
   var ttsAudio=null, ttsCache={}, ttsCacheKeys=[], speakSeq=0;
-  function stopSpeak(){
+  /* v1.43.0 발화 큐 — 스텝 안내는 앞 안내를 끊지 않고 이어서 말한다.
+     실보행 시뮬레이션(2026-09-02, 경로 8건×10회)에서 스텝 안내의 25% 가 다음 안내에 잘렸고,
+     횡단보도 노드 스텝(거리 0, 다음 스텝과 같은 좌표) 뒤에서는 87% 가 1초 만에 끊겼다.
+     - speakStep: 큐에 넣고 순서대로 재생. 대기 상한 3개(넘치면 오래된 중간 안내부터 버림)
+     - speakInterim("다음 안내까지 300m"): 스텝 안내가 대기 중이면 버린다
+     - speak(text): 종전대로 즉시 발화(재생 중이면 끊음) — 이탈·출발지 지정 등 상태 안내용
+     재생 종료는 onended 로 알지만, 재생 시간의 60% 는 최소 보장(스텁·0초 종료 대비)하고
+     onended 가 오지 않아도 추정 길이×1.3+1초가 지나면 끝난 것으로 본다. */
+  var speakQueue=[], speakPlaying=null, speakDrainTimer=null;
+  function _estSpeakSec(text){ var n=(String(text||"").match(/[가-힣]/g)||[]).length; return 0.4 + n*0.17; }
+  function speakBusy(){
+    if(speakQueue.length) return true;
+    if(!speakPlaying) return false;
+    var now = Date.now();
+    if(now < speakPlaying.minEnd) return true;
+    return !speakPlaying.ended && now < speakPlaying.maxEnd;
+  }
+  function _stopCurrent(){
     speakSeq++;
     try{ if(ttsAudio){ ttsAudio.onended=null; ttsAudio.onerror=null; ttsAudio.pause(); ttsAudio=null; } }catch(e){}
     try{ window.speechSynthesis && window.speechSynthesis.cancel(); }catch(e){}
     window.__NAVI_SPEAKING = false;
+    speakPlaying = null;
   }
+  function stopSpeak(){                            // 전부 멈춤 — 대기열도 비운다
+    speakQueue.length = 0;
+    if(speakDrainTimer){ clearTimeout(speakDrainTimer); speakDrainTimer=null; }
+    _stopCurrent();
+  }
+  function _speakEnded(){
+    if(speakPlaying) speakPlaying.ended = true;
+    window.__NAVI_SPEAKING = false;
+    _drainSpeak();
+  }
+  function _drainSpeak(){
+    if(speakDrainTimer){ clearTimeout(speakDrainTimer); speakDrainTimer=null; }
+    if(!speakQueue.length) return;
+    if(speakBusy() && (speakPlaying && (Date.now() < speakPlaying.minEnd || (!speakPlaying.ended && Date.now() < speakPlaying.maxEnd)))){
+      var wait = Math.max(50, (speakPlaying.ended ? speakPlaying.minEnd : speakPlaying.maxEnd) - Date.now());
+      speakDrainTimer = setTimeout(_drainSpeak, Math.min(wait, 1500));
+      return;
+    }
+    var item = speakQueue.shift();
+    _speakNow(item.text);
+  }
+  function speakStep(text){ speak(text, {queue:true, kind:"step"}); }
+  function speakInterim(text){ speak(text, {queue:true, kind:"interim"}); }
   function speakFallback(text, seq){
     if(seq !== speakSeq) return;                   // 이미 다른 발화로 대체됨
-    if(!("speechSynthesis" in window)) return;
+    if(!("speechSynthesis" in window)){ _speakEnded(); return; }
     try{
       var u = new SpeechSynthesisUtterance(text);
       u.lang="ko-KR"; u.rate=1.0; u.volume=1.0;
       window.__NAVI_SPEAKING = true;
-      u.onend = function(){ window.__NAVI_SPEAKING = false; };
-      u.onerror = function(){ window.__NAVI_SPEAKING = false; };
+      u.onend = function(){ _speakEnded(); };
+      u.onerror = function(){ _speakEnded(); };
       window.speechSynthesis.speak(u);
-    }catch(e){ window.__NAVI_SPEAKING = false; }
+    }catch(e){ _speakEnded(); }
   }
   function _ttsFetch(v, text){
     var key = v + "|" + text;
@@ -1262,11 +1303,30 @@ window.NAVI = (function(){
         return url;
       });
   }
-  function speak(text){
+  function speak(text, opts){
     if(!voiceOn || !text) return;
+    opts = opts || {};
     cancelResume();               // 새 발화가 시작되면 예약된 안내 복귀는 폐기 (#248)
-    stopSpeak();
+    if(opts.queue){
+      if(opts.kind === "interim"){
+        // 중간 거리 안내는 스텝 안내가 대기 중이면 의미가 없다
+        if(speakQueue.some(function(q){ return q.kind !== "interim"; })) return;
+      } else {
+        speakQueue = speakQueue.filter(function(q){ return q.kind !== "interim"; });
+      }
+      speakQueue.push({text:text, kind:opts.kind || "step"});
+      while(speakQueue.length > 3) speakQueue.shift();
+      _drainSpeak();
+      return;
+    }
+    stopSpeak();                  // 즉시 발화 — 재생 중인 것과 대기열을 모두 버린다
+    _speakNow(text);
+  }
+  function _speakNow(text){
+    _stopCurrent();
     var seq = speakSeq;
+    var est = _estSpeakSec(text) * 1000, now = Date.now();
+    speakPlaying = {text:text, ended:false, minEnd: now + est*0.6, maxEnd: now + est*1.3 + 1000};
     var v = window.__sessionVoice || "female";
     _ttsFetch(v, text).then(function(url){
       if(seq !== speakSeq) return;                 // 늦게 도착 — 폐기
@@ -1274,17 +1334,41 @@ window.NAVI = (function(){
         ttsAudio = new Audio(url);
         ttsAudio.volume = 0.8;                     // 상담 음성 게인(0.8)과 동일하게 정합
         window.__NAVI_SPEAKING = true;             // 발화 중 마이크 입력 차단(에코 방지)
-        ttsAudio.onended = function(){ window.__NAVI_SPEAKING = false; };
-        ttsAudio.onerror = function(){ window.__NAVI_SPEAKING = false; };
+        ttsAudio.onended = function(){ _speakEnded(); };
+        ttsAudio.onerror = function(){ _speakEnded(); };
         ttsAudio.play().catch(function(){ window.__NAVI_SPEAKING = false; speakFallback(text, seq); });
       }catch(e){ window.__NAVI_SPEAKING = false; speakFallback(text, seq); }
     }).catch(function(){ speakFallback(text, seq); });
+  }
+  /* 스텝 발화 문장 (v1.43.0) — 횡단보도 노드 스텝("횡단보도가 있습니다. 횡단보도를 건너세요.")은
+     거리 0 이고 다음 링크 스텝("횡단보도를 건너 12m 이동합니다.")과 좌표가 같아 따로 말하면
+     둘 중 하나가 반드시 잘린다. 한 문장으로 합쳐 말하고 다음 스텝 전환은 무음으로 넘긴다. */
+  var _spokenAhead = {};
+  function _isMergedCrossing(i){
+    var st = steps[i], nx = steps[i+1];
+    if(!st || !nx || st.maneuver !== "crossing_point" || nx.maneuver === "arrive") return false;
+    if(!st.coord || !nx.coord) return false;
+    return distM({lat:st.coord[0], lng:st.coord[1]}, {lat:nx.coord[0], lng:nx.coord[1]}) <= 8;
+  }
+  function stepUtterance(i){
+    var st = steps[i]; if(!st) return "";
+    if(!_isMergedCrossing(i)) return st.instruction || "";
+    var head = String(st.instruction || "");
+    var warn = "";
+    var m = head.match(/\s*\(([^)]*)\)\s*$/);
+    if(m){ warn = " (" + m[1] + ")"; head = head.slice(0, m.index); }
+    head = head.replace(/횡단보도를 건너세요\.?/, "").trim();
+    var nx = String(steps[i+1].instruction || "").trim();
+    var body = /^횡단보도를 건너/.test(nx) ? nx : ("횡단보도를 건넌 뒤 " + nx);
+    _spokenAhead[i+1] = true;
+    return (head + " " + body).replace(/\s+/g, " ").trim() + warn;
   }
   // 안내 시작 시 전체 안내 문장을 미리 합성해 캐시에 올려둔다(첫 재생 지연·폴백 혼재 방지)
   function prefetchTts(){
     if(!voiceOn || !steps.length) return;
     var v = window.__sessionVoice || "female";
-    var texts = steps.map(function(st){ return st.instruction; }).filter(Boolean);
+    var texts = steps.map(function(st, i){ return _isMergedCrossing(i) ? stepUtterance(i) : st.instruction; }).filter(Boolean);
+    _spokenAhead = {};
     texts.push("다음 안내까지 약 300미터입니다", "다음 안내까지 약 150미터입니다");
     var chain = Promise.resolve();
     texts.forEach(function(t){
@@ -2152,6 +2236,13 @@ window.NAVI = (function(){
       cumDist.push(cumDist[gi-1] + distM({lat:routeGeom[gi-1][0], lng:routeGeom[gi-1][1]},
                                          {lat:routeGeom[gi][0],   lng:routeGeom[gi][1]}));
     }
+    // 각 스텝의 경로 진행거리 (v1.43.0 — 전환 판정용, 단조 증가 보정)
+    stepAlong = [];
+    for(var si=0; si<steps.length; si++){
+      var sa = steps[si].coord ? distAlongNearest(steps[si].coord) : (stepAlong[si-1]||0);
+      if(si>0 && sa < stepAlong[si-1]) sa = stepAlong[si-1];
+      stepAlong.push(sa);
+    }
 
     if(map && primary.geometry && primary.geometry.length){
       var path = primary.geometry.map(function(c){ return new kakao.maps.LatLng(c[0], c[1]); });
@@ -2411,7 +2502,8 @@ window.NAVI = (function(){
     sheetMini(true); sheetSetCollapsed(false);   // 안내 중엔 시트를 낮춰 지도를 넓게
     renderStep();
     sendNavState();   // 안내 시작을 세션에 알린다 (#248)
-    speak(steps[0].instruction);
+    stopSpeak(); _spokenAhead = {};
+    _announceStep(0);
     followCamera();
   }
   /* ── 실시간 저상버스 (v1.39.0, 02 v1.19.0 /transit/bus/arrivals) ── */
@@ -2557,11 +2649,26 @@ window.NAVI = (function(){
       if(d <= t && d > t - 90 && !_interimDone[k]){
         _interimDone[k] = true;
         var man = (nxt.maneuver || "");
-        if(man === "bus_alight") speak("하차 정류장까지 약 " + t + "미터입니다. 하차 준비해 주세요");
-        else if(man === "subway_alight") speak("하차 역까지 약 " + t + "미터입니다");
-        else speak("다음 안내까지 약 " + t + "미터입니다");
+        if(man === "bus_alight") speakInterim("하차 정류장까지 약 " + t + "미터입니다. 하차 준비해 주세요");
+        else if(man === "subway_alight") speakInterim("하차 역까지 약 " + t + "미터입니다");
+        else speakInterim("다음 안내까지 약 " + t + "미터입니다");
       }
     });
+  }
+  /* 전환 판정 (v1.43.0) — 반경 25m 안이면서, 경로 진행거리가 그 스텝 지점의 (앞 스텝 길이의 절반,
+     5~25m) 전에 도달했을 때. 반경만으로 판정하면 짧은 스텝이 연달아 있을 때 한 지점에서
+     여러 스텝이 한꺼번에 조건을 만족해 연쇄 전환됐다. */
+  function _reachedStep(pos, j){
+    var st = steps[j]; if(!st || !st.coord) return false;
+    if(distM(pos, {lat:st.coord[0], lng:st.coord[1]}) > 25) return false;
+    if(!stepAlong.length || stepAlong[j] === undefined) return true;
+    var prevLen = j > 0 ? (stepAlong[j] - stepAlong[j-1]) : 0;
+    var lead = Math.min(25, Math.max(5, prevLen * 0.5));
+    return distAlongNearest([pos.lat, pos.lng]) >= stepAlong[j] - lead;
+  }
+  function _announceStep(i){
+    if(_spokenAhead[i]){ delete _spokenAhead[i]; return; }   // 앞 스텝에서 합쳐 말했다
+    speakStep(stepUtterance(i));
   }
   var _lastAdvanceTs = 0;
   function advanceStep(){
@@ -2574,12 +2681,12 @@ window.NAVI = (function(){
     var nxt = steps[stepIdx+1];
     if(!nxt || !nxt.coord) return;
     _interimAnnounce(here);
-    var d = distM(here, {lat:nxt.coord[0], lng:nxt.coord[1]});
-    if(d <= 25){                       // 다음 안내 지점 25m 이내 진입 -> 스텝 전환
+    _drainSpeak();
+    if(_reachedStep(here, stepIdx+1)){   // 다음 안내 지점 도달 -> 스텝 전환
       _lastAdvanceTs = Date.now();
       stepIdx += 1;
       renderStep();
-      speak(steps[stepIdx].instruction);
+      _announceStep(stepIdx);
       if(steps[stepIdx].maneuver === "arrive"){ guiding = false; trackUpload("arrived"); setEndBtn("home"); stopArrivalPolling(); }
       sendNavState();   // 구간 전환·도착을 세션에 알린다 (#248)
     }
@@ -2595,7 +2702,8 @@ window.NAVI = (function(){
       if(st && st.coord){ simDist = distAlongNearest(st.coord); simPos = posAtDist(simDist); drawSim(); }
     }
     renderStep();
-    speak(steps[i].instruction);
+    _spokenAhead = {};
+    speak(steps[i].instruction);   // 수동 이동은 그 스텝 문장을 바로(끊고) 말한다
     followCamera();
     sendNavState();   // 수동 이동한 구간도 세션과 동기화 (#248)
   }
@@ -2649,10 +2757,13 @@ window.NAVI = (function(){
     sheetMini(true); sheetSetCollapsed(false);   // 모의 주행 중에도 지도를 넓게
     drawSim();
     renderStep();
-    speak(steps[0].instruction);
+    stopSpeak(); _spokenAhead = {};
+    _announceStep(0);
     status("모의 주행을 시작합니다.");
     var TICK=200;
     simTimer=setInterval(function(){
+      _drainSpeak();
+      if(speakBusy()) return;          // 안내 음성이 끝날 때까지 가상 이동 일시정지 (v1.43.0)
       simDist += SIM_SPEED_MPS*SIM_FACTOR*(TICK/1000);
       simPos=posAtDist(simDist);
       drawSim();
@@ -2667,11 +2778,10 @@ window.NAVI = (function(){
     var nxt=steps[stepIdx+1];
     if(!nxt || !nxt.coord) return;
     _interimAnnounce(simPos);
-    var d=distM(simPos, {lat:nxt.coord[0], lng:nxt.coord[1]});
-    if(d<=25){
+    if(_reachedStep(simPos, stepIdx+1)){
       stepIdx+=1;
       renderStep();
-      speak(steps[stepIdx].instruction);
+      _announceStep(stepIdx);
       if(steps[stepIdx].maneuver==="arrive"){ finishSimulation(); }
     }
   }
@@ -3038,6 +3148,7 @@ window.NAVI = (function(){
     openNavi: function(){ openNavi(); if(typeConfirmed) loadSpots(); else renderTypeSelectPanel(); },
     // 테스트용 노출
     _internals: function(){ return {steps:steps, stepIdx:stepIdx, spots:spots, speak:speak, showRoute:showRoute,
+                                     speakBusy:speakBusy, stepUtterance:stepUtterance, drainSpeak:_drainSpeak,
                                      resetTrip:resetTrip, tripDest:function(){return tripDest;},
                                      startGuidance:startGuidance, setHere:function(h){here=h;}, advanceStep:advanceStep,
                                      requestRoute:requestRoute, renderSpotsPanel:renderSpotsPanel,
