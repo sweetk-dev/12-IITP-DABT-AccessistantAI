@@ -1320,6 +1320,97 @@ check("안내 전이면 대화 실패 신호로 이전 경로 표시를 정리�
   assert.match($("naviStatus").textContent, /안양시 밖이라 경로를 안내할 수 없습니다/);
 });
 
+
+// ── 실시간 저상버스·역 설비 (v1.39.0, 02 v1.19.0) ──
+const LIVE_ROUTE = JSON.parse(JSON.stringify(MMROUTE.ui_action.route));
+LIVE_ROUTE.route_id = "r_live";
+LIVE_ROUTE.routes[0].legs[1].realtime = {
+  status: "success", items: [{ route_id: "241253001" }],
+  next_low_floor: { route_id: "241253001", route_name: "2", predict_min: 4, stops_away: 2 },
+};
+LIVE_ROUTE.routes[0].legs[1].board.poi_id = "208000156";
+LIVE_ROUTE.routes[0].legs.push({ kind: "subway", line: "1호선", station_cnt: 1, warnings: [], geometry: [],
+  board: { name: "안양", poi_id: "3900039",
+           facilities: { elevators: [{ exit_no: "2", detail_loc: "(2F) 1번출구 맞이방 서쪽" }, { exit_no: "내부", detail_loc: "x" }],
+                         lifts: [], dis_toilet: "yes", safety_plate: "yes" } },
+  alight: { name: "명학", poi_id: "KRNA_1_MHK", facilities: { elevators: [], lifts: [{ exit_no: "1", detail_loc: "계단 옆" }], dis_toilet: "unknown" } } });
+LIVE_ROUTE.routes[0].steps[1].leg_ref = { kind: "bus", route_id: "241253001", route_name: "2",
+  board_station_id: "208000156", board_name: "소방서", alight_station_id: "208000328" };
+LIVE_ROUTE.routes[0].steps[2].leg_ref = LIVE_ROUTE.routes[0].steps[1].leg_ref;
+const LIVE_PLAN = { status: "success", route_id: "r_live", mode_used: "walk_bus", mode_label: "도보+버스",
+  ui_action: { action: "show_route", route: LIVE_ROUTE } };
+let arrivalsResp = { status: "success", station_id: "208000156", items: [{ route_name: "2" }],
+  next_low_floor: { route_name: "2", predict_min: 3, stops_away: 1 } };
+const arrivalCalls = [];
+const prevFetch2 = window.fetch;
+window.fetch = async (url, opt) => {
+  const u = String(url);
+  if (u.includes("bus_arrivals")) { arrivalCalls.push(u); return { ok: true, json: async () => arrivalsResp }; }
+  if (u.includes("plan_accessible_route")) { lastPlanQuery = u; return { ok: true, json: async () => LIVE_PLAN }; }
+  return prevFetch2(url, opt);
+};
+NAV.clearRouteDisplay(); NAV.resetTrip();
+NAV.requestRoute({ poi_id: "TBF-1", name: "테스트 무장애 공원" });
+await sleep(60);
+check("버스 카드: 실시간 저상 확인 결과가 고정 경고를 대체한다", () => {
+  const cards = [...window.document.querySelectorAll(".leg-card")];
+  const bus = cards.find((c) => /마을버스 2번/.test(c.textContent));
+  assert.ok(bus, "버스 카드 없음");
+  assert.match(bus.textContent, /저상 2번 약 4분 후 도착 \(2 정거장 전\)/);
+  assert.doesNotMatch(bus.textContent, /보장되지 않습니다/);
+});
+check("지하철 카드: 승차역 승강기 출입구·장애인화장실, 하차역 리프트 경고", () => {
+  const sub = [...window.document.querySelectorAll(".leg-card")].find((c) => /1호선/.test(c.textContent));
+  assert.ok(sub, "지하철 카드 없음");
+  assert.match(sub.textContent, /승차 🛗 안양역 승강기: 2번 출입구 — \(2F\) 1번출구 맞이방 서쪽 외 1곳 · ♿ 장애인화장실 있음/);
+  assert.match(sub.textContent, /하차 ⚠ 명학역은 휠체어리프트만 있어/);
+});
+const startBtn2 = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "안내 시작");
+window.NAVI.attachWs(fakeWs);
+startBtn2.dispatchEvent(new window.Event("click"));
+await sleep(30);
+check("안내 시작 시 nav_state 에 다음 승차 정류장·노선이 실린다", () => {
+  const nav = wsSent.filter((m) => m.type === "nav_state" && m.route_id === "r_live");
+  assert.ok(nav.length, "nav_state 없음");
+  const last = nav.at(-1);
+  assert.equal(last.board_station_id, "208000156");
+  assert.equal(last.board_route_id, "241253001");
+  assert.equal(last.board_stop_name, "소방서");
+});
+const nextBtn2 = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "다음 ▶");
+nextBtn2.dispatchEvent(new window.Event("click"));
+await sleep(60);
+check("승차 스텝: 실시간 도착정보를 조회해 카드에 표시하고 1회 음성 안내", () => {
+  assert.ok(arrivalCalls.length >= 1, "bus_arrivals 미호출");
+  assert.match(arrivalCalls[0], /station_id=208000156/);
+  assert.match(arrivalCalls[0], /route_id=241253001/);
+  const live = $("stepLive");
+  assert.ok(live, "스텝 카드 실시간 표시 없음");
+  assert.match(live.textContent, /저상 2번 약 3분 후 도착/);
+  assert.ok(spoken.some((t) => /저상버스 2번이 약 3분 뒤 도착 예정/.test(t)), "저상 도착 음성 없음");
+});
+const spokenBeforeLive = spoken.length;
+arrivalsResp = { status: "success", station_id: "208000156", items: [{ route_name: "2" }], next_low_floor: null };
+await NAV.refreshArrivals({ board_station_id: "208000156", route_id: "241253001", route_name: "2" });
+check("갱신 결과에 저상이 없으면 '저상이 아니다'로 표시하고 추가 음성은 없다", () => {
+  assert.match($("stepLive").textContent, /지금 오는 2번 차량은 저상이 아닙니다/);
+  assert.ok($("stepLive").classList.contains("off"));
+  assert.equal(spoken.length, spokenBeforeLive);
+});
+arrivalsResp = { status: "unavailable", reason: "HTTP 403", items: [], next_low_floor: null };
+await NAV.refreshArrivals({ board_station_id: "208000156", route_id: "241253001", route_name: "2" });
+check("실시간 실패는 안내판 확인 문구로 — 안내는 계속", () => {
+  assert.match($("stepLive").textContent, /실시간 도착정보를 받지 못했습니다/);
+  assert.match($("naviSheetBody").textContent, /안내 2 \/ 4/);
+});
+nextBtn2.dispatchEvent(new window.Event("click"));
+await sleep(30);
+check("하차 스텝으로 넘어가면 실시간 표시가 사라지고 폴링이 멈춘다", () => {
+  assert.equal($("stepLive"), null);
+  assert.equal(NAV.arrivalPollingActive(), false);
+});
+window.fetch = prevFetch2;
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {

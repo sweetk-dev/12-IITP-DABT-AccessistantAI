@@ -9,7 +9,9 @@
 # 프런트 nav_state 메시지에서 받아들이는 필드 — 이 외의 키는 버린다.
 _NAV_FIELDS = ("route_id", "guiding", "step_idx", "total_steps",
                "current", "next", "remaining_m", "dest_name", "profile",
-               "leg_kind")   # walk | bus | subway — 현재 진행 구간의 이동 수단 (#251)
+               "leg_kind",   # walk | bus | subway — 현재 진행 구간의 이동 수단 (#251)
+               # 현재(또는 다음) 버스 구간의 승차 정류장·노선 — 실시간 도착정보 조회 키 (v1.39.0)
+               "board_station_id", "board_route_id", "board_stop_name")
 
 
 def update_nav_state(nav: dict, msg: dict) -> None:
@@ -148,6 +150,8 @@ def inject_nav_defaults(fname: str, fargs: dict, nav: dict, user_location: dict)
       '경고 구간 자동 선택'이 아니라 **현재 진행 구간**으로 준다.
       모델이 값을 명시했으면 그대로 둔다(과거 구간 질문 허용).
     - find_nearby_transit: 기준 장소(place)를 말하지 않았으면 현재 위치를 쓴다.
+    - get_bus_arrivals: 정류장을 말하지 않았으면 안내 중인 버스 구간의 승차 정류장·노선을,
+      그것도 없으면 현재 위치(가장 가까운 정류장 탐색)를 쓴다.
     """
     if fname == "explain_route_segment" and nav:
         if not fargs.get("route_id") and nav.get("route_id"):
@@ -159,6 +163,20 @@ def inject_nav_defaults(fname: str, fargs: dict, nav: dict, user_location: dict)
     elif fname == "find_nearby_transit":
         if not fargs.get("place"):
             if user_location and user_location.get("lat") is not None:
+                fargs["lat"] = user_location["lat"]
+                fargs["lng"] = user_location["lng"]
+            else:
+                fargs.pop("lat", None)
+                fargs.pop("lng", None)
+    elif fname == "get_bus_arrivals":
+        if not fargs.get("station_id") and not fargs.get("place"):
+            if nav and nav.get("board_station_id"):
+                fargs["station_id"] = str(nav["board_station_id"])
+                if not fargs.get("route_id") and nav.get("board_route_id"):
+                    fargs["route_id"] = str(nav["board_route_id"])
+                if nav.get("board_stop_name"):
+                    fargs["station_name"] = nav["board_stop_name"]
+            elif user_location and user_location.get("lat") is not None:
                 fargs["lat"] = user_location["lat"]
                 fargs["lng"] = user_location["lng"]
             else:

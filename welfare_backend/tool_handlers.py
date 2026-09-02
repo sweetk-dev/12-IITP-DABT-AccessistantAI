@@ -762,11 +762,12 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
             "total_distance_m") or 0
         if walk_dist >= AUTO_TRANSIT_MIN_M:
             upgraded = await route_client.plan_route(
-                origin_pt, dest, profile=profile, mode="walk_bus_subway")
+                origin_pt, dest, profile=profile, mode="walk_bus_subway", realtime=True)
             if upgraded.get("status") != "error" and (upgraded.get("routes") or []):
                 data, mode_used = upgraded, "walk_bus_subway"
     else:
-        data = await route_client.plan_route(origin_pt, dest, profile=profile, mode=req_mode)
+        data = await route_client.plan_route(origin_pt, dest, profile=profile, mode=req_mode,
+                                             realtime=True)
         if data.get("status") == "error":
             return data
         mode_used = req_mode
@@ -779,23 +780,40 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     summary = primary.get("summary", {})
     legs = primary.get("legs") or []
     transit_brief = []
+    low_floor_note = None
     for leg in legs:
         if leg.get("kind") == "bus":
             r = leg.get("route") or {}
-            transit_brief.append({
+            live = leg.get("realtime") or {}
+            nlf = live.get("next_low_floor") if isinstance(live, dict) else None
+            item = {
                 "kind": "bus", "route_name": r.get("name"), "route_type": r.get("type"),
                 "end_station": r.get("end_station"),
                 "board": (leg.get("board") or {}).get("name"),
                 "board_seq": (leg.get("board") or {}).get("station_seq"),
+                "board_station_id": (leg.get("board") or {}).get("poi_id"),
+                "route_id": r.get("route_id"),
                 "alight": (leg.get("alight") or {}).get("name"),
                 "stop_cnt": leg.get("stop_cnt"),
-            })
+                # 실시간(02 v1.19.0): success 면 확인된 사실, unavailable 이면 미확인
+                "realtime_status": live.get("status") if isinstance(live, dict) else None,
+                "next_low_floor": _brief_low_floor(nlf) if nlf else None,
+            }
+            if item["realtime_status"] == "success" and low_floor_note is None:
+                low_floor_note = ("승차 정류장에 저상버스 %s번이 약 %d분 뒤 도착 예정"
+                                  % (nlf.get("route_name") or r.get("name"), nlf["predict_min"])
+                                  if nlf else
+                                  "지금 승차 정류장에 오는 차량은 저상버스가 아닙니다")
+            transit_brief.append(item)
         elif leg.get("kind") == "subway":
             transit_brief.append({
                 "kind": "subway", "line": leg.get("line"),
                 "board": (leg.get("board") or {}).get("name"),
                 "alight": (leg.get("alight") or {}).get("name"),
                 "station_cnt": leg.get("station_cnt"),
+                # 역 설비 요약(02 v1.19.0): 승차 역 승강기 출입구·장애인화장실 3상태
+                "board_facilities": _brief_station((leg.get("board") or {}).get("facilities")),
+                "alight_facilities": _brief_station((leg.get("alight") or {}).get("facilities")),
             })
     return {
         "status": "success",
@@ -804,6 +822,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         "mode_label": _mode_label(mode_used),
         "auto_mode": auto,
         "transit": transit_brief,
+        "low_floor_note": low_floor_note,
         "eta_note": summary.get("eta_note"),
         "origin_label": origin_label,
         "destination_label": dest_label,
@@ -827,8 +846,15 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
             + ("이동 방식은 %s 입니다%s. " % (_mode_label(mode_used),
                " (자동 추천)" if auto else "") if mode_used else "")
             + ("대중교통 구간이 있으면 transit 의 노선 번호·유형·방면(end_station)·"
-               "정거장 수를 함께 말하고, 저상버스 정차는 보장되지 않으니 실시간 도착정보 "
-               "확인이 필요하다고 알리세요. 소요시간은 대기 미포함 추정임을 밝히세요. "
+               "정거장 수를 함께 말하세요. "
+               + ("저상버스 실시간 확인 결과(low_floor_note)를 그대로 한 문장으로 전하고, "
+                  "실시간 정보라 변동될 수 있다고 덧붙이세요. "
+                  if low_floor_note else
+                  "저상버스 정차는 보장되지 않으니 실시간 도착정보 확인이 필요하다고 알리고, "
+                  "'저상버스 언제 와' 라고 물으면 확인해 드릴 수 있다고 안내하세요. ")
+               + "지하철 구간이 있고 board_facilities.elevators 가 있으면 승차 역 승강기 "
+                 "출입구를 한 마디로 알리세요(예: '안양역은 1번 출구 옆 엘리베이터'). "
+                 "소요시간은 대기 미포함 추정임을 밝히세요. "
                if transit_brief else "")
             + "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로 요약하고, 첫 안내 한 문장을 덧붙이세요. "
             "경고(warnings)나 제약 완화(fallback.used=true)가 있으면 반드시 함께 알리세요. "
@@ -931,9 +957,10 @@ async def tool_find_nearby_transit(lat: float = None, lng: float = None,
                 })
             else:
                 routes.append({"name": r})
-        out.append({
+        item = {
             "type": it.get("type"),
             "name": it.get("name"),
+            "poi_id": it.get("poi_id"),
             "dist_m": it.get("dist_m"),
             "mobile_no": it.get("mobile_no"),
             "center_yn": it.get("center_yn"),
@@ -943,7 +970,17 @@ async def tool_find_nearby_transit(lat: float = None, lng: float = None,
                                      else ("yes" if it.get("accessible") else "no")),
             "warnings": it.get("warnings") or [],
             "routes": routes,
-        })
+        }
+        if it.get("type") == "transit_station":
+            # 02 가 주는 역 설비 요약을 버리지 않는다 — 개수·리프트·장애인화장실(3상태)
+            item.update({
+                "line": it.get("line"),
+                "elevator_cnt": it.get("elevator_cnt"),
+                "wheelchair_lift_cnt": it.get("wheelchair_lift_cnt"),
+                "dis_toilet_status": it.get("dis_toilet_status")
+                                     or ("yes" if it.get("dis_toilet_yn") else "unknown"),
+            })
+        out.append(item)
 
     return {
         "status": "success",
@@ -960,7 +997,224 @@ async def tool_find_nearby_transit(lat: float = None, lng: float = None,
             "버스 방면은 end_station(종점명)으로 안내하되, 양방향 종점명이 같은 순환 "
             "노선은 station_seq(경유 순번) 차이로 구분됨을 알리고 정류장 이름·위치로 "
             "확인을 권하세요. 같은 번호라도 유형(마을버스/일반형시내버스)이 다르면 "
-            "다른 노선이므로 유형을 함께 말하세요. warnings 가 있으면 반드시 알리세요."
+            "다른 노선이므로 유형을 함께 말하세요. warnings 가 있으면 반드시 알리세요. "
+            "지하철역은 elevator_cnt(승강기 수)와 dis_toilet_status 를 짧게 덧붙이되, "
+            "dis_toilet_status 가 unknown 이면 '자료 없음'이지 '없음'이 아닙니다. "
+            "정류장의 실시간 도착·저상 여부는 get_bus_arrivals 로 확인할 수 있다고 안내하세요."
+        ),
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# 도구 #12 — 정류장 실시간 도착·저상버스 (v1.39.0, 02 v1.19.0 /transit/bus/arrivals)
+# ─────────────────────────────────────────────────────────────
+def _brief_low_floor(nlf: dict) -> dict:
+    return {"route_name": nlf.get("route_name"), "route_type": nlf.get("route_type"),
+            "end_station": nlf.get("end_station"), "predict_min": nlf.get("predict_min"),
+            "stops_away": nlf.get("stops_away"), "plate_no": nlf.get("plate_no")}
+
+
+def _brief_station(fac) -> Optional[dict]:
+    """02 지하철 leg 의 역 설비 요약을 모델이 읽기 좋게 줄인다."""
+    if not isinstance(fac, dict) or not fac:
+        return None
+    return {
+        "elevators": [_loc_text(e) for e in (fac.get("elevators") or [])[:3]],
+        "lifts": [_loc_text(l) for l in (fac.get("lifts") or [])[:2]],
+        "dis_toilet": fac.get("dis_toilet") or "unknown",
+        "safety_plate": fac.get("safety_plate") or "unknown",
+        "elevator_cnt": fac.get("elevator_cnt"),
+        "wheelchair_lift_cnt": fac.get("wheelchair_lift_cnt"),
+    }
+
+
+def _loc_text(u: dict) -> str:
+    ex = (u.get("exit_no") or "").strip()
+    loc = (u.get("detail_loc") or "").strip()
+    if ex and ex != "내부":
+        head = "%s번 출입구" % ex if ex.replace("~", "").replace(" ", "").isdigit() else "출입구 " + ex
+    else:
+        head = "역사 내부"
+    return ("%s — %s" % (head, loc)) if loc else head
+
+
+async def _nearest_stop(lat: float, lng: float, profile: str) -> Optional[dict]:
+    data = await route_client.transit_access(lat, lng, radius_m=400, profile=profile)
+    if isinstance(data, dict) and data.get("status") == "error":
+        return None
+    items = (data.get("items") if isinstance(data, dict) else data) or []
+    for it in items:
+        if isinstance(it, dict) and it.get("type") == "transit_stop" and it.get("poi_id"):
+            return it
+    return None
+
+
+def _arrival_line(it: dict) -> dict:
+    vs = it.get("vehicles") or []
+    return {
+        "route_name": it.get("route_name"), "route_type": it.get("route_type"),
+        "end_station": it.get("end_station"),
+        "vehicles": [{"predict_min": v.get("predict_min"), "stops_away": v.get("stops_away"),
+                      "low_floor": v.get("low_floor")} for v in vs[:2]],
+        "low_floor_soon": any(v.get("low_floor") for v in vs),
+    }
+
+
+async def tool_get_bus_arrivals(station_id: str = "", route_id: str = "", place: str = "",
+                                station_name: str = "", lat: float = None, lng: float = None,
+                                profile: str = "wheelchair_manual") -> dict:
+    """정류장의 실시간 도착정보 — "저상버스 언제 와", "다음 버스 저상이야?".
+
+    정류장은 (1) station_id (2) 안내 중 버스 구간의 승차 정류장(세션 주입)
+    (3) place 로 말한 장소 근처 (4) 현재 위치 근처 순으로 정한다.
+    저상버스가 잡히지 않은 것은 "없다"가 아니라 "도착정보의 두 대 안에 없다"이다 —
+    그 구분을 ai_instruction 에 그대로 싣는다.
+    """
+    base_label = station_name or None
+    if not station_id:
+        if place:
+            hit = await _resolve_place(place)
+            if hit is None:
+                return _place_not_found("기준 위치", place)
+            lat, lng = hit["lat"], hit["lng"]
+            base_label = hit["label"]
+        if lat is None or lng is None:
+            return {
+                "status": "need_location",
+                "tool_name": "get_bus_arrivals",
+                "ai_instruction": (
+                    "어느 정류장인지 알 수 없다고 짧게 안내하고, 위치 권한을 허용하거나 "
+                    "정류장·장소 이름을 말씀해 달라고 요청하세요."
+                ),
+            }
+        stop = await _nearest_stop(lat, lng, profile)
+        if stop is None:
+            return {
+                "status": "no_stop_nearby",
+                "tool_name": "get_bus_arrivals",
+                "base_label": base_label,
+                "ai_instruction": "주변 400m 안에 버스 정류장을 찾지 못했다고 짧게 안내하세요.",
+            }
+        station_id = str(stop["poi_id"])
+        base_label = "%s 정류장%s" % (stop.get("name"),
+                                   "(%s)" % stop["mobile_no"] if stop.get("mobile_no") else "")
+
+    data = await route_client.bus_arrivals(station_id, route_id=route_id or "")
+    if isinstance(data, dict) and data.get("status") == "error":
+        return data
+    if data.get("status") != "success":
+        return {
+            "status": "unavailable",
+            "tool_name": "get_bus_arrivals",
+            "station_id": station_id,
+            "base_label": base_label,
+            "reason": data.get("reason"),
+            "ai_instruction": (
+                "지금은 실시간 도착정보를 받아오지 못했다고 짧게 알리고, 정류장 안내판이나 "
+                "잠시 뒤 다시 물어봐 달라고 안내하세요. 저상 여부를 추측하지 마세요."
+            ),
+        }
+    items = [_arrival_line(it) for it in (data.get("items") or [])]
+    nlf = data.get("next_low_floor")
+    return {
+        "status": "success",
+        "tool_name": "get_bus_arrivals",
+        "station_id": station_id,
+        "route_id": route_id or None,
+        "base_label": base_label,
+        "count": len(items),
+        "items": items[:6],
+        "next_low_floor": _brief_low_floor(nlf) if nlf else None,
+        "ai_instruction": (
+            ("%s 기준입니다. " % base_label if base_label else "")
+            + ("가장 빨리 오는 저상버스를 먼저 말하세요: next_low_floor 의 노선 번호·유형·"
+               "방면(end_station)·도착 예정(분)·몇 정거장 전. "
+               if nlf else
+               "지금 도착정보에 잡힌 차량(노선당 최대 2대) 중에는 저상버스가 없다고 말하되, "
+               "'저상버스가 없다'가 아니라 '지금 오는 차량은 저상이 아니다'로 표현하고 "
+               "잠시 뒤 다시 확인해 드릴 수 있다고 안내하세요. ")
+            + ("특정 노선(route_id)만 조회한 결과입니다. " if route_id else
+               "다른 노선은 필요할 때만 1~2개 덧붙이세요. ")
+            + "실시간 정보라 변동될 수 있음을 한 마디로 알리고, 2~3문장 안에서 끝내세요."
+        ),
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# 도구 #13 — 역 편의시설 (v1.39.0, 02 v1.19.0 /transit/station/facilities)
+# ─────────────────────────────────────────────────────────────
+def _station_query_name(text: str) -> str:
+    q = re.sub(r"\s+", "", (text or "").strip())
+    q = re.sub(r"(지하철)?역$", "", q) or q
+    return q
+
+
+async def tool_get_station_facilities(station: str = "") -> dict:
+    """역의 교통약자 편의시설 — "범계역 엘리베이터 어디 있어", "안양역 장애인 화장실 있어?".
+
+    승강기·리프트는 출입구별 위치를, 화장실은 게이트 안/밖·출구를, 승강장은 안전발판·
+    열차 이격거리를 답한다. 유무는 3상태다 — unknown 을 "없음"으로 말하면 틀린다.
+    실시간 가동 여부는 제공기관 자료가 없어 답하지 않는다.
+    """
+    name = _station_query_name(station)
+    if not name:
+        return {
+            "status": "need_station",
+            "tool_name": "get_station_facilities",
+            "ai_instruction": "어느 역인지 되물어 주세요. 안내 가능한 역은 %s 소재 지하철역입니다." % SERVICE_AREA,
+        }
+    data = await route_client.station_facilities(name=name)
+    if isinstance(data, dict) and data.get("status") == "error":
+        if "찾을 수 없" in (data.get("message") or ""):
+            return {
+                "status": "station_not_found",
+                "tool_name": "get_station_facilities",
+                "station": station,
+                "ai_instruction": ("'%s' 역의 편의시설 자료를 찾지 못했다고 짧게 알리고, 안내 가능한 역은 "
+                                   "%s 소재 지하철역(석수·관악·안양·명학·인덕원·평촌·범계)이라고 "
+                                   "덧붙이세요." % (station, SERVICE_AREA)),
+            }
+        return data
+    counts = data.get("counts") or {}
+    status = data.get("status") if isinstance(data.get("status"), dict) else {}
+    elevators = [_loc_text(e) for e in (data.get("elevators") or [])]
+    lifts = [_loc_text(l) for l in (data.get("lifts") or [])]
+    # 남·여 칸이 같은 위치로 두 줄 오므로 위치 문장 기준으로 합친다
+    dis_toilets = list(dict.fromkeys(
+        _loc_text({"exit_no": t.get("exit_no"),
+                   "detail_loc": "%s%s" % ("게이트 %s " % ("안" if t.get("gate_inout") == "내" else "밖")
+                                           if t.get("gate_inout") else "",
+                                           t.get("detail_loc") or "")})
+        for t in (data.get("toilets") or []) if t.get("disabled")))
+    platforms = [{"platform_no": p.get("platform_no"), "updown": p.get("updown"),
+                  "safety_plate": p.get("safety_plate"), "screen_door": p.get("screen_door"),
+                  "gap_min_cm": p.get("gap_min_cm"), "gap_max_cm": p.get("gap_max_cm")}
+                 for p in (data.get("platforms") or [])]
+    gaps = [p["gap_max_cm"] for p in platforms if p.get("gap_max_cm") is not None]
+    return {
+        "status": "success",
+        "tool_name": "get_station_facilities",
+        "station": data.get("name"),
+        "line": data.get("line"),
+        "elevator_cnt": counts.get("elevator"),
+        "escalator_cnt": counts.get("escalator"),
+        "wheelchair_lift_cnt": counts.get("wheelchair_lift"),
+        "elevators": elevators,
+        "lifts": lifts,
+        "dis_toilet_status": status.get("dis_toilet", "unknown"),
+        "dis_toilets": dis_toilets,
+        "dis_slope_status": status.get("dis_slope", "unknown"),
+        "safety_plate_status": status.get("safety_plate", "unknown"),
+        "platform_gap_max_cm": max(gaps) if gaps else None,
+        "platforms": platforms,
+        "base_dt": data.get("base_dt"),
+        "ai_instruction": (
+            "역 이름과 노선을 말한 뒤, 사용자가 물은 항목만 답하세요. 엘리베이터를 물으면 "
+            "elevators 의 출입구·위치를 2~3개까지 읽어 주고, 화장실을 물으면 dis_toilets 의 "
+            "게이트 안/밖·출구를 말하세요. 리프트만 있는 역은 도움이 필요할 수 있다고 알리세요. "
+            "상태 값이 unknown 이면 '없다'가 아니라 '자료가 없다'고 말하세요. "
+            "승강장 이격거리(platform_gap_max_cm)는 휠체어 승차를 물었을 때만 '최대 약 n cm 틈, "
+            "안전발판 유무' 로 덧붙이세요. 실시간 고장·운행 여부는 알 수 없다고 하세요."
         ),
     }
 
@@ -1038,6 +1292,8 @@ def get_tool_dispatcher(embed_fn):
         "plan_accessible_route": tool_plan_accessible_route,
         "explain_route_segment": tool_explain_route_segment,
         "find_nearby_transit": tool_find_nearby_transit,
+        "get_bus_arrivals": tool_get_bus_arrivals,
+        "get_station_facilities": tool_get_station_facilities,
         "open_navi_screen": tool_open_navi_screen,
         "report_accessibility_issue": tool_report_accessibility,
     }
