@@ -240,6 +240,52 @@ import struct as _struct
 GEMINI_TTS_MODEL = os.environ.get("GEMINI_TTS_MODEL", "gemini-3.1-flash-tts-preview")
 _TTS_CACHE: "_OrderedDict[tuple, bytes]" = _OrderedDict()
 _TTS_CACHE_MAX = 300
+# v1.43.2 — 합성 결과를 디스크에도 둔다(재시작·재빌드에도 보존). Gemini TTS 는 무료 등급 일일 100회 한도가
+# 있어(2026-09-03 실측 429 generate_requests_per_model_per_day=100) 같은 문장을 다시 합성하지 않는 것이 핵심.
+# 한도 소진(429 per_day) 응답을 받으면 쿨다운 동안 즉시 503 을 돌려 화면이 지체 없이 기기 내장 TTS 로 넘어가게 한다.
+import hashlib as _hashlib
+import time as _time
+_TTS_CACHE_DIR = os.environ.get("TTS_CACHE_DIR", "/data/tts_cache")
+_TTS_QUOTA_BLOCK_UNTIL = 0.0
+_TTS_SEM = asyncio.Semaphore(2)
+
+
+def _tts_disk_path(vname: str, text: str) -> str:
+    h = _hashlib.sha1(("%s|%s" % (vname, text)).encode("utf-8")).hexdigest()
+    return os.path.join(_TTS_CACHE_DIR, vname, h[:2], h + ".wav")
+
+
+def _tts_disk_get(vname: str, text: str):
+    try:
+        p = _tts_disk_path(vname, text)
+        if os.path.isfile(p):
+            with open(p, "rb") as f:
+                return f.read()
+    except Exception:
+        return None
+    return None
+
+
+def _tts_disk_put(vname: str, text: str, wav: bytes) -> None:
+    try:
+        p = _tts_disk_path(vname, text)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        tmp = p + ".tmp"
+        with open(tmp, "wb") as f:
+            f.write(wav)
+        os.replace(tmp, p)
+    except Exception as e:
+        logging.getLogger(__name__).warning("TTS 디스크 캐시 저장 실패: %s", e)
+
+
+def _tts_quota_delay_sec(err: str):
+    """429 본문에서 일일 한도 소진 여부와 재시도 대기 시간을 읽는다. 아니면 None."""
+    if "429" not in err and "RESOURCE_EXHAUSTED" not in err:
+        return None
+    if "per_day" in err or "PerDay" in err:
+        m = _re.search(r"retryDelay': '(\d+)s", err)
+        return int(m.group(1)) if m else 3600
+    return 0  # 분당 한도 등 일시적 — 재시도 대상
 
 
 def _pcm_to_wav(pcm: bytes, rate: int = 24000, channels: int = 1, width: int = 2) -> bytes:
@@ -269,6 +315,18 @@ async def synthesize_tts(
         _TTS_CACHE.move_to_end(key)
         return Response(content=cached, media_type="audio/wav",
                         headers={"X-TTS-Cache": "hit", "Cache-Control": "max-age=86400"})
+    disk = _tts_disk_get(vname, text)                       # v1.43.2
+    if disk is not None:
+        _TTS_CACHE[key] = disk
+        while len(_TTS_CACHE) > _TTS_CACHE_MAX:
+            _TTS_CACHE.popitem(last=False)
+        return Response(content=disk, media_type="audio/wav",
+                        headers={"X-TTS-Cache": "disk", "Cache-Control": "max-age=86400"})
+    global _TTS_QUOTA_BLOCK_UNTIL
+    if _time.time() < _TTS_QUOTA_BLOCK_UNTIL:
+        raise HTTPException(status_code=503, detail="음성 합성 일일 한도 소진",
+                            headers={"X-TTS-Quota": "exhausted",
+                                     "Retry-After": str(int(_TTS_QUOTA_BLOCK_UNTIL - _time.time()))})
 
     def _gen():
         return ai_client.models.generate_content(
@@ -282,18 +340,35 @@ async def synthesize_tts(
             ),
         )
 
-    try:
-        resp = await asyncio.to_thread(_gen)
-        part = resp.candidates[0].content.parts[0]
-        pcm = part.inline_data.data
-        mime = part.inline_data.mime_type or ""
-        m = _re.search(r"rate=(\d+)", mime)
-        rate = int(m.group(1)) if m else 24000
-    except Exception as e:
-        logging.getLogger(__name__).warning("TTS 합성 실패(%s): %s", vname, e)
+    last_err = None
+    async with _TTS_SEM:                                    # 동시 합성 2개 (v1.43.2)
+        for attempt in range(2):
+            try:
+                resp = await asyncio.to_thread(_gen)
+                part = resp.candidates[0].content.parts[0]
+                pcm = part.inline_data.data
+                mime = part.inline_data.mime_type or ""
+                m = _re.search(r"rate=(\d+)", mime)
+                rate = int(m.group(1)) if m else 24000
+                last_err = None
+                break
+            except Exception as e:
+                last_err = e
+                delay = _tts_quota_delay_sec(str(e))
+                if delay:                                    # 일일 한도 소진 — 쿨다운 후 즉시 폴백
+                    _TTS_QUOTA_BLOCK_UNTIL = _time.time() + min(delay, 6 * 3600)
+                    logging.getLogger(__name__).warning(
+                        "TTS 일일 한도 소진(%s) — %d초 동안 합성 요청을 바로 거절한다", vname, min(delay, 6 * 3600))
+                    raise HTTPException(status_code=503, detail="음성 합성 일일 한도 소진",
+                                        headers={"X-TTS-Quota": "exhausted"})
+                if attempt == 0:
+                    await asyncio.sleep(1.5)                 # 일시 오류(분당 한도·5xx) 1회 재시도
+    if last_err is not None:
+        logging.getLogger(__name__).warning("TTS 합성 실패(%s): %s", vname, last_err)
         raise HTTPException(status_code=502, detail="음성 합성에 실패했습니다")
 
     wav = _pcm_to_wav(pcm, rate)
+    _tts_disk_put(vname, text, wav)                          # v1.43.2
     _TTS_CACHE[key] = wav
     while len(_TTS_CACHE) > _TTS_CACHE_MAX:
         _TTS_CACHE.popitem(last=False)
