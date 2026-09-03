@@ -500,7 +500,7 @@ check("세션 미연결 상태의 텍스트 질문은 안내문으로 거절", (
   assert.match($("naviStatus").textContent, /상담 세션이 아직 연결되지 않았습니다/);
 });
 check("마이크 게이트 barge-in 배선 존재 (소스 레벨 가드)", () => {
-  assert.match(HTML, /naviBargeRun/);
+  assert.match(HTML, /naviBargeHit\(m\.rms \|\| 0\)/);   // v1.45.0 창 판정
   assert.match(HTML, /NAVI\.bargeStop/);
   assert.doesNotMatch(HTML, /if \(window\.__NAVI_SPEAKING\) return;   \/\/ 길안내 음성 발화 중에도 동일하게 차단/);
 });
@@ -1629,9 +1629,10 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
 // ── v1.43.2 실기기 확인 라운드 2 — 모의주행 barge-in 없음·실안내 barge 임계 상향·프리페치 한도 중단 (소스 레벨 가드) ──
 check("모의 주행 중에는 barge-in 으로 안내를 끊지 않고, 실안내 barge-in 은 0.035/0.8초 임계 (v1.43.2)", () => {
   assert.match(HTML, /function bargeStop\(\)\{\s*if\(simActive\) return;/);
-  assert.match(HTML, /const NAVI_BARGE_RMS = 0\.035;/);
-  assert.match(HTML, /const NAVI_BARGE_RUN = 6;/);
-  assert.match(HTML, /\(m\.rms \|\| 0\) >= NAVI_BARGE_RMS\) \{\s*if \(\+\+naviBargeRun >= NAVI_BARGE_RUN\)/);
+  // v1.45.0: 연속 6청크 조건은 실기기에서 질문을 전부 놓쳤다 → 창 판정(8청크 중 4, 0.028) + 프리롤
+  assert.match(HTML, /const NAVI_BARGE_RMS = 0\.028;/);
+  assert.match(HTML, /const NAVI_BARGE_WIN = 8;/);
+  assert.match(HTML, /const NAVI_BARGE_NEED = 4;/);
   assert.match(HTML, /sendActivity\("navi_barge"\)/);
 });
 check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 실패는 2초 뒤 계속한다 (v1.43.2)", () => {
@@ -1755,6 +1756,67 @@ check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 
     assert.match(HTML, /\.gripzone\{position:sticky;top:0;z-index:2;/);
     assert.match(HTML, /function sheetTop\(\)/);
   });
+}
+
+// ── v1.45.0 안내 중 음성 입력 불통 — 마이크 게이트 창 판정 · 재생 종료 안전장치 · Cloud TTS ──
+{
+  const G = window.__NAVI_GATE;
+  check("마이크 게이트 함수 노출 (v1.45.0)", () => { assert.ok(G && typeof G.hit === "function"); assert.equal(G.RMS, 0.028); assert.equal(G.WIN, 8); assert.equal(G.NEED, 4); });
+  const feed = (seq) => { G.reset(); let hitAt = -1; seq.forEach((r, i) => { if (hitAt < 0 && G.hit(r)) hitAt = i; }); return hitAt; };
+  // 보통 크기의 말 — 음절 사이 숨(0.01)이 청크마다 끼어든다. 종전 '연속 6청크 ≥0.035' 로는 절대 성립하지 않던 패턴
+  const speech = [0.04, 0.012, 0.035, 0.05, 0.009, 0.045, 0.03, 0.011, 0.05, 0.04];
+  check("음절 사이 끊김이 있는 보통 발화는 1초 안에 barge-in 성립 (v1.45.0)", () => {
+    const at = feed(speech); assert.ok(at >= 0 && at <= 7, "성립 안 됨 또는 너무 늦음: " + at);
+    let run = 0, oldHit = false; speech.forEach((r) => { run = r >= 0.035 ? run + 1 : 0; if (run >= 6) oldHit = true; });
+    assert.equal(oldHit, false, "종전 조건이면 성립하지 않았어야 하는 패턴이다(테스트 전제)");
+  });
+  check("스피커 에코 잔여(0.015~0.025 수준)·짧은 충격음은 barge-in 이 아니다", () => {
+    assert.equal(feed([0.02, 0.025, 0.018, 0.024, 0.02, 0.026, 0.022, 0.019, 0.025, 0.02]), -1, "잔여 에코에 성립");
+    assert.equal(feed([0.06, 0.07, 0.005, 0.004, 0.003, 0.004, 0.003, 0.002, 0.003, 0.004]), -1, "충격음 2청크에 성립");
+    assert.equal(feed([0.03, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.03, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.03]), -1, "드문드문 한 청크씩은 성립 안 함");
+  });
+  check("프리롤·게이트 배선 (소스 가드)", () => {
+    assert.match(HTML, /naviPreRoll\.push\(btoa\(binp\)\)/);
+    assert.match(HTML, /const pre = naviPreRoll\.splice\(0\);/);
+    assert.match(HTML, /for \(const b of pre\) ws\.send\(JSON\.stringify\(\{ type: "audio_chunk", data: b \}\)\);/);
+    assert.match(HTML, /window\.NAVI\.noteUserSpeech\(\);\s*\}\s*\}\s*return;/);
+  });
+  // 재생 종료 안전장치 — onend 가 오지 않아도 추정 길이×1.3+1초 뒤 __NAVI_SPEAKING 해제
+  const NV = window.NAVI._internals();
+  const realSpeak = window.speechSynthesis.speak;
+  window.speechSynthesis.speak = (u) => { spoken.push(u.text); };   // onend 를 부르지 않는다(Android 누락 재현)
+  const realNow5 = window.Date.now; let vnow5 = realNow5() + 300000; window.Date.now = () => vnow5;
+  const prevFetch5 = window.fetch;
+  window.fetch = async (url, opt) => { if (String(url).includes("/api/v1/tts")) return { ok: false, status: 503 }; return prevFetch5(url, opt); };
+  NV.speak("안내 종료 안전장치 검증 문장입니다");
+  await sleep(30);
+  check("내장 TTS onend 누락 시에도 재생 중 상태로 잡힌다(직후)", () => { assert.equal(window.__NAVI_SPEAKING, true); assert.equal(NV.speakBusy(), true); });
+  vnow5 += 60000;                       // 추정 길이(≈5초)×1.3+1초를 훌쩍 넘긴다 — 실제 타이머는 실시간이라 아래에서 기다린다
+  window.Date.now = realNow5;
+  await sleep(50);
+  check("종료 안전장치 소스 가드 (v1.45.0)", () => {
+    assert.match(HTML, /speakEndTimer = setTimeout\(function\(\)\{[\s\S]*?_speakEnded\(\);[\s\S]*?\}, Math\.max\(50, speakPlaying\.maxEnd - now\)\);/);
+    assert.match(HTML, /if\(speakEndTimer\)\{ clearTimeout\(speakEndTimer\); speakEndTimer=null; \}\s*window\.__NAVI_SPEAKING = false;/);
+  });
+  NV.speak("정리"); window.speechSynthesis.speak = realSpeak; window.fetch = prevFetch5;
+}
+{
+  // 종료 안전장치 — 실제 타이머로 짧은 문장(추정 0.8초 → 상한 ≈2초) 검증
+  const NV = window.NAVI._internals();
+  const realSpeak = window.speechSynthesis.speak;
+  window.speechSynthesis.speak = (u) => { spoken.push(u.text); };
+  const prevFetch6 = window.fetch;
+  window.fetch = async (url, opt) => { if (String(url).includes("/api/v1/tts")) return { ok: false, status: 503 }; return prevFetch6(url, opt); };
+  NV.speak("가");
+  await sleep(30);
+  const speakingRightAfter = window.__NAVI_SPEAKING;
+  for (let i = 0; i < 60 && window.__NAVI_SPEAKING; i++) await sleep(50);
+  check("onend 가 오지 않아도 상한 시각에 __NAVI_SPEAKING 이 풀린다 (v1.45.0)", () => {
+    assert.equal(speakingRightAfter, true, "재생 직후엔 참이어야 한다");
+    assert.equal(window.__NAVI_SPEAKING, false, "상한이 지나도 게이트가 닫혀 있다");
+    assert.equal(NV.speakBusy(), false);
+  });
+  window.speechSynthesis.speak = realSpeak; window.fetch = prevFetch6;
 }
 
 // ── 결과 ──

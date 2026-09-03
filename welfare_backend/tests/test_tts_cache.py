@@ -58,3 +58,49 @@ def test_endpoint_uses_disk_cache_and_cooldown():
     assert "_time.time() < _TTS_QUOTA_BLOCK_UNTIL" in SRC
     assert "async with _TTS_SEM:" in SRC
     assert "_tts_disk_put(vname, text, wav)" in SRC
+
+
+# ── v1.45.0 Cloud TTS(Neural2) provider ──
+def _load_gcloud_helpers():
+    tree = ast.parse(SRC)
+    wanted = {"_tts_provider_order", "_gcloud_voice_for", "_gcloud_tts_payload"}
+    nodes = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in wanted]
+    assert {n.name for n in nodes} == wanted
+    ns = {"GCLOUD_TTS_VOICE_FEMALE": "ko-KR-Neural2-A", "GCLOUD_TTS_VOICE_MALE": "ko-KR-Neural2-C",
+          "GCLOUD_TTS_RATE": 24000}
+    exec(compile(ast.Module(body=nodes, type_ignores=[]), "main.py", "exec"), ns)
+    return ns
+
+
+def test_provider_order():
+    f = _load_gcloud_helpers()["_tts_provider_order"]
+    assert f("gcloud", "key", True) == ["gcloud", "gemini"]
+    assert f("gcloud", "key", False) == ["gcloud"]
+    assert f("gcloud", "", True) == ["gemini"]          # 키 없으면 종전 그대로
+    assert f("gemini", "key", True) == ["gemini", "gcloud"]
+    assert f("gemini", "", False) == []
+
+
+def test_gcloud_voice_mapping_and_payload():
+    ns = _load_gcloud_helpers()
+    v = ns["_gcloud_voice_for"]
+    assert v("female", "Zephyr", "Algieba") == "ko-KR-Neural2-A"
+    assert v("male", "Algieba", "Algieba") == "ko-KR-Neural2-C"
+    assert v("Algieba", "Algieba", "Algieba") == "ko-KR-Neural2-C"   # 남성 기본 보이스명으로 요청해도 남성
+    assert v("Zephyr", "Zephyr", "Algieba") == "ko-KR-Neural2-A"
+    assert v("ko-KR-Neural2-B", "Zephyr", "Algieba") == "ko-KR-Neural2-B"
+    assert v("", "Zephyr", "Algieba") == "ko-KR-Neural2-A"
+    body = ns["_gcloud_tts_payload"]("횡단보도를 건너세요.", "ko-KR-Neural2-A")
+    assert body == {"input": {"text": "횡단보도를 건너세요."},
+                    "voice": {"languageCode": "ko-KR", "name": "ko-KR-Neural2-A"},
+                    "audioConfig": {"audioEncoding": "LINEAR16", "sampleRateHertz": 24000}}
+
+
+def test_endpoint_gcloud_first_then_gemini():
+    assert 'if order[0] == "gcloud":' in SRC
+    assert "wav = await _gcloud_synthesize(text, gc_vname[3:])" in SRC
+    assert '"X-TTS-Provider": "gcloud"' in SRC
+    assert 'wav[:4] != b"RIFF"' in SRC                    # LINEAR16 = WAV 헤더 포함
+    assert "Cloud TTS 합성 실패" in SRC                    # 실패 시 gemini 로
+    # 캐시 디렉터리는 provider 별 보이스명(gc-…)으로 분리된다
+    assert 'gc_vname = "gc-" + _gcloud_voice_for(' in SRC
