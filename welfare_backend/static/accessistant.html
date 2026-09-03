@@ -815,6 +815,23 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   };
 
   // ────── 마이크 (AudioWorklet) ──────
+  // v1.45.0 — 실기기(2026-09-03 오후)에서 안내 중 질문이 전혀 인식되지 않았다. 0.035 를 6청크 **연속**으로 요구하면
+  // 음절 사이 숨(청크 1개만 내려가도 0 부터)마다 리셋돼 보통 크기의 말은 거의 통과하지 못했고(당일 barge-in 0건),
+  // 게이트가 닫힌 동안 프레임을 버리므로 질문의 앞부분도 사라졌다. 최근 8청크(≈1초) 중 4청크가 0.028 이상이면
+  // 발화로 보고, 판정 전 프레임은 프리롤로 보관했다가 성립 시 함께 보낸다.
+  const NAVI_BARGE_RMS = 0.028;
+  const NAVI_BARGE_WIN = 8;           // 최근 8청크(128ms × 8 ≈ 1초)
+  const NAVI_BARGE_NEED = 4;          // 그중 4청크 이상
+  const naviBargeWin = [];
+  const naviPreRoll = [];             // 게이트가 닫힌 동안의 최근 프레임(base64) — barge 성립 시 먼저 보낸다
+  const naviBargeHit = (rms) => {
+    naviBargeWin.push(rms || 0);
+    if (naviBargeWin.length > NAVI_BARGE_WIN) naviBargeWin.shift();
+    return naviBargeWin.filter((r) => r >= NAVI_BARGE_RMS).length >= NAVI_BARGE_NEED;
+  };
+  const naviBargeReset = () => { naviBargeWin.length = 0; naviPreRoll.length = 0; };
+  window.__NAVI_GATE = { hit: naviBargeHit, reset: naviBargeReset, RMS: NAVI_BARGE_RMS, WIN: NAVI_BARGE_WIN, NEED: NAVI_BARGE_NEED };
+
   const startMic = async () => {
     micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -847,10 +864,8 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     const LOCAL_TTS_BARGE_RUN = 3;      // 128ms 청크 × 3 ≈ 0.4초 지속
     // 길안내 안내 음성 중 barge-in 은 더 엄격하게 — 실기기(2026-09-03)에서 스피커로 나간 안내가 마이크로
     // 되돌아와(AEC 잔여 에코·AGC 증폭) 0.4초 임계를 넘겨 안내가 "다음…" 에서 끊기고 8초 뒤 복귀했다 (v1.43.2)
-    const NAVI_BARGE_RMS = 0.035;
-    const NAVI_BARGE_RUN = 6;           // ≈ 0.8초 지속
     let localBargeRun = 0;
-    let naviBargeRun = 0;               // 길안내 TTS 재생 중 barge-in 판정 (#248)
+    naviBargeReset();
     let naviAiRun = 0;                  // navi 화면 상담원 음성 중 barge-in 판정 (#248)
     let naviAiOpen = false;             // barge 성립 후에는 발화 휴지에도 게이트를 계속 연다
 
@@ -868,16 +883,24 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       }
       localBargeRun = 0;
       if (window.__NAVI_SPEAKING) {
-        // 길안내 음성 재생 중 — 지속 발화가 감지되면 안내를 멈추고 질문을 받는다 (barge-in, #248)
-        if (m.type === "pcm" && (m.rms || 0) >= NAVI_BARGE_RMS) {
-          if (++naviBargeRun >= NAVI_BARGE_RUN) {
-            naviBargeRun = 0;
+        // 길안내 음성 재생 중 — 발화가 감지되면 안내를 멈추고, 보관해 둔 프리롤부터 보낸다 (barge-in, #248 / v1.45.0)
+        if (m.type === "pcm") {
+          const u8p = new Uint8Array(m.data);
+          let binp = "";
+          for (let i = 0; i < u8p.byteLength; i++) binp += String.fromCharCode(u8p[i]);
+          naviPreRoll.push(btoa(binp));
+          if (naviPreRoll.length > NAVI_BARGE_WIN) naviPreRoll.shift();
+          if (naviBargeHit(m.rms || 0)) {
+            const pre = naviPreRoll.splice(0);
+            naviBargeReset();
             if (window.NAVI && window.NAVI.bargeStop) window.NAVI.bargeStop();
+            for (const b of pre) ws.send(JSON.stringify({ type: "audio_chunk", data: b }));
+            if (window.NAVI && window.NAVI.noteUserSpeech) window.NAVI.noteUserSpeech();
           }
-        } else naviBargeRun = 0;
-        return;   // 재생 중 프레임은 에코일 수 있어 버리고, 멈춘 다음 프레임부터 통과
+        }
+        return;   // 재생 중 프레임은 에코일 수 있어 보관만 하고, 멈춘 다음 프레임부터 통과
       }
-      naviBargeRun = 0;
+      naviBargeReset();
       if (aiAudioActive()) {
         // 상담원 음성 중·직후에는 지속 발화(barge-in)가 감지된 뒤부터 프레임을 통과시킨다.
         // 원래 이동·관광 화면에만 두던 게이트를 상담 화면에도 적용한다(v1.40.0) — 상담 화면은
@@ -1258,7 +1281,7 @@ window.NAVI = (function(){
      - speakPlaying.phase: "loading"(합성 대기, busy) → "playing"(실제 재생 시작 시각 + Audio.duration 기준) → 끝
      - 합성이 SPEAK_LOAD_MAX_MS 를 넘기면 기기 내장 TTS 로 대신 말한다(안내를 놓치지 않는 쪽을 택함)
      - 같은 문장의 in-flight fetch 는 공유하고, 프리페치는 경로 표시 시점부터 2개 병렬로 돌린다 */
-  var speakQueue=[], speakPlaying=null, speakDrainTimer=null, speakLoadTimer=null, ttsPending={};
+  var speakQueue=[], speakPlaying=null, speakDrainTimer=null, speakLoadTimer=null, speakEndTimer=null, ttsPending={};
   var SPEAK_LOAD_MAX_MS = 12000;
   function _estSpeakSec(text){ var n=(String(text||"").match(/[가-힣]/g)||[]).length; return 0.5 + n*0.30; }   // 실측 계수(v1.43.1)
   function speakBusy(){
@@ -1278,10 +1301,23 @@ window.NAVI = (function(){
     speakPlaying.minEnd = now + durMs*0.6;
     speakPlaying.maxEnd = now + durMs*1.3 + 1000;
     if(speakLoadTimer){ clearTimeout(speakLoadTimer); speakLoadTimer=null; }
+    // 종료 안전장치 (v1.45.0) — Android 내장 TTS 는 onend 가 누락되는 일이 있어 __NAVI_SPEAKING 이 참으로 남고
+    // 마이크 게이트가 닫힌 채 굳었다(실기기 2026-09-03: 안내 중 질문 무시). 추정 길이×1.3+1초 뒤엔 끝난 것으로 본다.
+    if(speakEndTimer){ clearTimeout(speakEndTimer); speakEndTimer=null; }
+    var sp = speakPlaying;
+    speakEndTimer = setTimeout(function(){
+      speakEndTimer=null;
+      if(speakPlaying === sp && !sp.ended){
+        try{ if(ttsAudio){ ttsAudio.onended=null; ttsAudio.pause(); } }catch(e){}
+        try{ window.speechSynthesis && window.speechSynthesis.cancel(); }catch(e){}
+        _speakEnded();
+      }
+    }, Math.max(50, speakPlaying.maxEnd - now));
   }
   function _stopCurrent(){
     speakSeq++;
     if(speakLoadTimer){ clearTimeout(speakLoadTimer); speakLoadTimer=null; }
+    if(speakEndTimer){ clearTimeout(speakEndTimer); speakEndTimer=null; }
     try{ if(ttsAudio){ ttsAudio.onended=null; ttsAudio.onerror=null; ttsAudio.pause(); ttsAudio=null; } }catch(e){}
     try{ window.speechSynthesis && window.speechSynthesis.cancel(); }catch(e){}
     window.__NAVI_SPEAKING = false;
@@ -1294,6 +1330,7 @@ window.NAVI = (function(){
   }
   function _speakEnded(){
     if(speakPlaying) speakPlaying.ended = true;
+    if(speakEndTimer){ clearTimeout(speakEndTimer); speakEndTimer=null; }
     window.__NAVI_SPEAKING = false;
     _drainSpeak();
   }

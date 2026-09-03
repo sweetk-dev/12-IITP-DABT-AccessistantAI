@@ -228,7 +228,7 @@ async def find_bf_tour_spots(
 
 
 # ─────────────────────────────────────────────────────────────
-# 길안내 TTS — 상담 음성과 동일한 Gemini 보이스로 안내 문장을 합성
+# 길안내 TTS — v1.45.0 부터 Google Cloud Text-to-Speech(Neural2) 우선, Gemini 보이스는 폴백
 # ─────────────────────────────────────────────────────────────
 # 브라우저 내장 TTS 와 상담 음성의 톤 차이를 없애기 위해 같은 prebuilt 보이스를 사용.
 # 안내 문장은 반복성이 높아 서버 캐시(LRU)로 비용·지연을 줄인다. 실패 시 프런트가
@@ -248,6 +248,62 @@ import time as _time
 _TTS_CACHE_DIR = os.environ.get("TTS_CACHE_DIR", "/data/tts_cache")
 _TTS_QUOTA_BLOCK_UNTIL = 0.0
 _TTS_SEM = asyncio.Semaphore(2)
+# v1.45.0 — 길안내 음성을 Google Cloud Text-to-Speech(Neural2)로 합성한다.
+# Gemini TTS 프리뷰 모델은 프로젝트 등급과 무관하게 일일 100회 한도라 실증 두세 번이면 소진됐다(2026-09-03).
+# Cloud TTS 는 REST 한 번(text:synthesize, API 키)으로 WAV 헤더가 붙은 LINEAR16 을 돌려준다.
+# 순서: gcloud → gemini → (프런트) 기기 내장 TTS. 상담 목소리(Zephyr)와 길안내 목소리가 달라지는 것은 감수한다.
+GCLOUD_TTS_API_KEY = os.environ.get("GCLOUD_TTS_API_KEY", "")
+TTS_PROVIDER = os.environ.get("TTS_PROVIDER", "gcloud" if GCLOUD_TTS_API_KEY else "gemini")
+GCLOUD_TTS_ENDPOINT = os.environ.get("GCLOUD_TTS_ENDPOINT", "https://texttospeech.googleapis.com/v1/text:synthesize")
+GCLOUD_TTS_VOICE_FEMALE = os.environ.get("GCLOUD_TTS_VOICE_FEMALE", "ko-KR-Neural2-A")
+GCLOUD_TTS_VOICE_MALE = os.environ.get("GCLOUD_TTS_VOICE_MALE", "ko-KR-Neural2-C")
+GCLOUD_TTS_RATE = int(os.environ.get("GCLOUD_TTS_RATE", "24000"))
+GCLOUD_TTS_TIMEOUT_SEC = float(os.environ.get("GCLOUD_TTS_TIMEOUT_SEC", "8"))
+
+
+def _tts_provider_order(provider: str, gcloud_key: str, gemini_ready: bool) -> list:
+    """시도 순서. gcloud 가 켜져 있고 키가 있으면 gcloud 먼저, 그 다음 gemini. 둘 다 없으면 빈 목록."""
+    order = []
+    if provider == "gcloud" and gcloud_key:
+        order.append("gcloud")
+    if gemini_ready:
+        order.append("gemini")
+    if provider == "gemini" and gcloud_key and "gcloud" not in order:
+        order.append("gcloud")                 # gemini 우선 설정이어도 키가 있으면 폴백으로 둔다
+    return order
+
+
+def _gcloud_voice_for(requested: str, gemini_vname: str, male_vname: str) -> str:
+    """요청 voice(male/female/제미나이 보이스명) → Cloud TTS 보이스명. 남성 카테고리·남성 기본 보이스만 남성."""
+    req = (requested or "").strip().lower()
+    if req == "male" or (gemini_vname and gemini_vname == male_vname):
+        return GCLOUD_TTS_VOICE_MALE
+    if req.startswith("ko-kr-"):                 # 명시 지정(ko-KR-Neural2-B 등)
+        return requested.strip()
+    return GCLOUD_TTS_VOICE_FEMALE
+
+
+def _gcloud_tts_payload(text: str, voice_name: str, rate: int = None) -> dict:
+    return {
+        "input": {"text": text},
+        "voice": {"languageCode": "ko-KR", "name": voice_name},
+        "audioConfig": {"audioEncoding": "LINEAR16", "sampleRateHertz": int(rate or GCLOUD_TTS_RATE)},
+    }
+
+
+async def _gcloud_synthesize(text: str, voice_name: str) -> bytes:
+    """Cloud TTS 호출 → WAV bytes. 실패는 예외로 올린다(호출 쪽이 다음 provider 로 넘어간다)."""
+    import base64 as _b64
+    import httpx as _httpx
+    async with _httpx.AsyncClient(timeout=GCLOUD_TTS_TIMEOUT_SEC) as cli:
+        r = await cli.post(GCLOUD_TTS_ENDPOINT, params={"key": GCLOUD_TTS_API_KEY},
+                           json=_gcloud_tts_payload(text, voice_name))
+    if r.status_code != 200:
+        raise RuntimeError("gcloud tts %s: %s" % (r.status_code, r.text[:200]))
+    wav = _b64.b64decode((r.json() or {}).get("audioContent") or "")
+    if len(wav) < 100 or wav[:4] != b"RIFF":     # LINEAR16 은 WAV 헤더를 포함해 온다
+        raise RuntimeError("gcloud tts: 오디오가 비었거나 WAV 가 아니다 (%d bytes)" % len(wav))
+    return wav
 
 
 def _tts_disk_path(vname: str, text: str) -> str:
@@ -303,26 +359,55 @@ async def synthesize_tts(
     text: str = Query(..., min_length=1, max_length=300),
     voice: str = Query("female", description="male/female 또는 prebuilt voice 이름"),
 ):
-    if ai_client is None:
-        raise HTTPException(status_code=503, detail="GEMINI_API_KEY 미설정")
-    from live_bridge import resolve_voice
+    from live_bridge import resolve_voice, DEFAULT_VOICE_MALE
     from google.genai import types as _t
 
-    vname = resolve_voice(voice)
+    gem_vname = resolve_voice(voice)
+    order = _tts_provider_order(TTS_PROVIDER, GCLOUD_TTS_API_KEY, ai_client is not None)
+    if not order:
+        raise HTTPException(status_code=503, detail="TTS 키 미설정 (GCLOUD_TTS_API_KEY / GEMINI_API_KEY)")
+    # 캐시 키·디렉터리는 실제로 소리를 내는 보이스 기준 — provider 마다 다르다 (v1.45.0)
+    gc_vname = "gc-" + _gcloud_voice_for(voice, gem_vname, os.environ.get("GEMINI_LIVE_VOICE_MALE", DEFAULT_VOICE_MALE))
+    vname = gc_vname if order[0] == "gcloud" else gem_vname
     key = (vname, text)
     cached = _TTS_CACHE.get(key)
     if cached is not None:
         _TTS_CACHE.move_to_end(key)
         return Response(content=cached, media_type="audio/wav",
-                        headers={"X-TTS-Cache": "hit", "Cache-Control": "max-age=86400"})
+                        headers={"X-TTS-Cache": "hit", "X-TTS-Provider": order[0], "Cache-Control": "max-age=86400"})
     disk = _tts_disk_get(vname, text)                       # v1.43.2
     if disk is not None:
         _TTS_CACHE[key] = disk
         while len(_TTS_CACHE) > _TTS_CACHE_MAX:
             _TTS_CACHE.popitem(last=False)
         return Response(content=disk, media_type="audio/wav",
-                        headers={"X-TTS-Cache": "disk", "Cache-Control": "max-age=86400"})
+                        headers={"X-TTS-Cache": "disk", "X-TTS-Provider": order[0], "Cache-Control": "max-age=86400"})
     global _TTS_QUOTA_BLOCK_UNTIL
+    # ── gcloud (v1.45.0) ──
+    if order[0] == "gcloud":
+        try:
+            async with _TTS_SEM:
+                wav = await _gcloud_synthesize(text, gc_vname[3:])
+            _tts_disk_put(gc_vname, text, wav)
+            _TTS_CACHE[(gc_vname, text)] = wav
+            while len(_TTS_CACHE) > _TTS_CACHE_MAX:
+                _TTS_CACHE.popitem(last=False)
+            return Response(content=wav, media_type="audio/wav",
+                            headers={"X-TTS-Cache": "miss", "X-TTS-Provider": "gcloud",
+                                     "Cache-Control": "max-age=86400"})
+        except Exception as e:
+            logging.getLogger(__name__).warning("Cloud TTS 합성 실패(%s) — 다음 provider 로: %s", gc_vname, e)
+            if "gemini" not in order:
+                raise HTTPException(status_code=502, detail="음성 합성에 실패했습니다")
+            vname = gem_vname
+            key = (vname, text)
+            disk = _tts_disk_get(vname, text)
+            if disk is not None:
+                return Response(content=disk, media_type="audio/wav",
+                                headers={"X-TTS-Cache": "disk", "X-TTS-Provider": "gemini",
+                                         "Cache-Control": "max-age=86400"})
+    if ai_client is None:
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY 미설정")
     if _time.time() < _TTS_QUOTA_BLOCK_UNTIL:
         raise HTTPException(status_code=503, detail="음성 합성 일일 한도 소진",
                             headers={"X-TTS-Quota": "exhausted",
@@ -373,7 +458,7 @@ async def synthesize_tts(
     while len(_TTS_CACHE) > _TTS_CACHE_MAX:
         _TTS_CACHE.popitem(last=False)
     return Response(content=wav, media_type="audio/wav",
-                    headers={"X-TTS-Cache": "miss", "Cache-Control": "max-age=86400"})
+                    headers={"X-TTS-Cache": "miss", "X-TTS-Provider": "gemini", "Cache-Control": "max-age=86400"})
 
 
 @app.get("/api/v1/tools/plan_accessible_route", tags=["tools"],
