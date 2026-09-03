@@ -817,6 +817,15 @@ check("맥락 팝업에서 출발지 선택 -> 도착지 재선택 없이 자동
 //       태그로 바꿀 때와 동일하게 같은 도착지로 자동 재안내되어야 한다
 lastPlanQuery = null;
 mapClickHandlers[0]({ latLng: { getLat: () => 37.3950, getLng: () => 126.9550 } });
+await sleep(20);
+check("경로가 떠 있을 때 지도 탭 -> 바로 옮기지 않고 출발지 변경 확인 팝업 (v1.44.0)", () => {
+  assert.equal(lastPlanQuery, null, "확인 전에 재안내가 나갔다");
+  const dlg = window.document.querySelector(".spot-choice");
+  assert.ok(dlg, "확인 팝업 없음");
+  assert.match(dlg.textContent, /출발지를 변경할까요/);
+  assert.match(dlg.textContent, /까지 다시 안내합니다/);
+});
+[...window.document.querySelectorAll(".spot-choice__btn")].find((b) => /이 지점을 출발지로/.test(b.textContent)).dispatchEvent(new window.Event("click"));
 await sleep(60);
 check("지도 클릭 출발지 변경 -> 같은 도착지로 자동 재안내 (#210)", () => {
   assert.ok(lastPlanQuery, "재안내 안 감");
@@ -830,6 +839,13 @@ check("재안내 음성/상태 안내", () => {
 window.NAVI._internals().resetTrip();
 lastPlanQuery = null;
 mapClickHandlers[0]({ latLng: { getLat: () => 37.3960, getLng: () => 126.9560 } });
+await sleep(20);
+check("초기화 뒤에도 경로선이 남아 있으면 확인 팝업 — 도착지 없음 문구 (v1.44.0)", () => {
+  const dlg = window.document.querySelector(".spot-choice");
+  assert.ok(dlg, "확인 팝업 없음");
+  assert.match(dlg.textContent, /새 출발지로 합니다/);
+});
+[...window.document.querySelectorAll(".spot-choice__btn")].find((b) => /이 지점을 출발지로/.test(b.textContent)).dispatchEvent(new window.Event("click"));
 await sleep(60);
 check("초기화 후 지도 클릭 -> 재안내 없이 목록 화면 (#210)", () => {
   assert.equal(lastPlanQuery, null, "초기화 후에도 재안내됨");
@@ -1092,12 +1108,25 @@ check("안내 재시작 -> 버튼이 '안내 종료'로 전환", () => {
 });
 const spokenBefore = spoken.length;
 const trackPostsBefore = navPosts.filter((x) => x.url.includes("/nav/track")).length;
-// 경로(37.390x대)에서 ~600m 북쪽 — 서비스 지역 안, 경로선 밖 30m 초과를 3회 연속
+// 경로(37.390x대)에서 ~600m 북쪽 — 서비스 지역 안, 경로선 밖 45m 초과를 4회 연속·12초 이상 (v1.44.0)
+const realNowOff = window.Date.now; let vnowOff = realNowOff(); window.Date.now = () => vnowOff;
 watchCb({ coords: { latitude: 37.3955, longitude: 126.9500, accuracy: 5 } });
 watchCb({ coords: { latitude: 37.3956, longitude: 126.9502, accuracy: 5 } });
 watchCb({ coords: { latitude: 37.3957, longitude: 126.9504, accuracy: 5 } });
+vnowOff += 2000;
+watchCb({ coords: { latitude: 37.3957, longitude: 126.9504, accuracy: 5 } });
+check("이탈 4회라도 12초가 안 지났으면 재탐색하지 않는다 (v1.44.0)", () => {
+  assert.equal(spoken.slice(spokenBefore).filter((s) => /경로를 벗어나셨어요/.test(s)).length, 0);
+});
+vnowOff += 11000;
+watchCb({ coords: { latitude: 37.3957, longitude: 126.9504, accuracy: 80 } });   // 정확도 80m — 세지 않는다
+check("정확도가 나쁜 점(80m)은 이탈로 세지 않는다 (v1.44.0)", () => {
+  assert.equal(spoken.slice(spokenBefore).filter((s) => /경로를 벗어나셨어요/.test(s)).length, 0);
+});
+watchCb({ coords: { latitude: 37.3957, longitude: 126.9504, accuracy: 5 } });
+window.Date.now = realNowOff;
 await sleep(120);
-check("이탈 3회 연속 -> 이탈 안내 발화 + 트랙 마감(outcome=rerouted)", () => {
+check("이탈 4회 연속·12초 이상 -> 이탈 안내 발화 + 트랙 마감(outcome=rerouted)", () => {
   const said = spoken.slice(spokenBefore).join(" | ");
   assert.match(said, /경로를 벗어나셨어요/, "이탈 안내 없음: " + said);
   const posts = navPosts.filter((x) => x.url.includes("/nav/track"));
@@ -1110,8 +1139,8 @@ check("재탐색 후 안내 자동 재개 — 스텝 카드 + 첫 안내 발화"
   assert.match(said, /중앙로를 따라/, "재개 첫 안내 발화 없음: " + said);
   assert.equal($("naviEndBtn").textContent, "안내 종료", "재개 후 버튼 상태");
 });
-check("GPS 튐 1~2회는 재탐색을 유발하지 않는다 (연속 3회 조건)", () => {
-  // 위에서 정확히 3회 만에 발화 1건 — 추가로 1회 이탈 후 정상 복귀 시 카운터 리셋 확인
+check("GPS 튐 1~2회는 재탐색을 유발하지 않는다 (연속 4회 조건)", () => {
+  // 위에서 발화 1건 — 추가로 1회 이탈 후 정상 복귀 시 카운터 리셋 확인
   const beforeCnt = spoken.filter((s) => /경로를 벗어나셨어요/.test(s)).length;
   watchCb({ coords: { latitude: 37.3955, longitude: 126.9500, accuracy: 5 } });
   watchCb({ coords: { latitude: 37.3901, longitude: 126.9502, accuracy: 5 } });  // 경로 복귀
@@ -1245,8 +1274,11 @@ check("도착지 지정 모드에서 지도를 누르면 그 지점으로 경로
     "지도에서 콕 집은 점은 좌표 그대로 써야 한다");
 });
 NAV.resetTrip();
-check("도착지 지정은 1회성 — 다음 지도 클릭은 다시 출발지다", () => {
+check("도착지 지정은 1회성 — 다음 지도 클릭은 다시 출발지다 (경로가 있으니 확인 뒤)", () => {
   mapClickHandlers[0]({ latLng: { getLat: () => 37.3901, getLng: () => 126.9502 } });
+  const dlg = window.document.querySelector(".spot-choice");
+  assert.ok(dlg && /출발지를 변경할까요/.test(dlg.textContent), "출발지 확인 팝업 없음");
+  [...dlg.querySelectorAll(".spot-choice__btn")].find((b) => /이 지점을 출발지로/.test(b.textContent)).dispatchEvent(new window.Event("click"));
   assert.match($("naviStatus").textContent, /출발지를 지정했습니다/);
 });
 
@@ -1505,9 +1537,11 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
       "횡단보도가 있습니다. 횡단보도를 건너 14m 이동합니다. (턱낮춤 미상)",
       "좌회전 후 60m 이동합니다.",
       "목적지에 도착했습니다.",
+      "안내를 종료합니다.",   // 도착 뒤 자동 종료 안내 (v1.44.0)
     ], JSON.stringify(spoken.slice(before)));
     assert.equal(busyAfter, false);
   });
+  NV.cancelArrivalReset();   // 이 블록은 발화만 본다 — 첫 화면 복귀는 v1.44.0 블록에서 따로 검증
   check("스텝 안내가 대기 중이면 중간 거리 안내는 버린다 / 즉시 발화는 대기열을 비운다 (v1.43.0)", () => {
     NV.speak("첫 스텝 안내입니다 첫 스텝 안내입니다", { queue: true, kind: "step" });   // 재생 중(최소 보장 시간 안)
     NV.speak("두 번째 스텝 안내입니다", { queue: true, kind: "step" });
@@ -1605,6 +1639,123 @@ check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 
   assert.match(HTML, /if\(err && err\.quota\)\{ queue\.length = 0; return; \}/);
   assert.match(HTML, /setTimeout\(r, 2000\)/);
 });
+
+// ── v1.44.0 실증 라운드 3 (2026-09-03) — 도착 자동 종료 · 현재 위치 버튼 · 지도 재시도 · 구간별 경로선 · 레이아웃 ──
+{
+  const NV = window.NAVI._internals();
+  NV.resetTrip();
+  window.show("view-navi");
+  const P0 = [37.3900, 126.9500], P1 = [37.39050, 126.9500];
+  const mmLegs = [
+    { kind: "walk", geometry: [P0, P1] },
+    { kind: "bus", geometry: [P1, [37.3920, 126.9500]], route: { name: "10-1" } },
+    { kind: "walk", geometry: [[37.3920, 126.9500], [37.3925, 126.9500]] },
+  ];
+  NV.showRoute({ status: "success", route_id: "r_v144", destination: { poi_id: "TBF-144" }, routes: [{
+    summary: { total_distance_m: 280, duration_sec: 300, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+    geometry: [P0, P1, [37.3920, 126.9500], [37.3925, 126.9500]],
+    legs: mmLegs,
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "55m 앞으로 이동합니다.", distance_m: 55, coord: P0, warnings: [] },
+      { idx: 1, maneuver: "bus_board", instruction: "정류장에서 10-1번 버스에 승차합니다", distance_m: 0, coord: P1, warnings: [] },
+      { idx: 2, maneuver: "bus_alight", instruction: "하차합니다", distance_m: 0, coord: [37.3920, 126.9500], warnings: [] },
+      { idx: 3, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: [37.3925, 126.9500], warnings: [] },
+    ] }] }, "v144 테스트");
+  check("구간(legs)이 있으면 경로선을 구간별로 나눠 그린다 — 도보 실선·버스 점선 (v1.44.0)", () => {
+    assert.equal(NV.routeLines().length, 3, "구간 수만큼 폴리라인이 아님");
+    assert.match(HTML, /strokeStyle:"shortdash"/, "대중교통 구간 점선 스타일 없음");
+  });
+  check("현재 위치 버튼이 신고 버튼 줄(지도 위)에 있고 기본은 추적 중", () => {
+    const lb = $("naviLocBtn");
+    assert.ok(lb, "현재 위치 버튼 없음");
+    assert.equal(lb.parentElement, $("naviReportBtn").parentElement, "신고 버튼과 같은 컨테이너가 아님");
+    assert.match(HTML, /\.locbtn\{position:absolute;right:12px;bottom:12px/);
+    assert.equal(lb.getAttribute("aria-pressed"), "true");
+  });
+  // 안내 시작 → 지도를 끌면 추적 해제, 버튼으로 복귀
+  const realNow4 = window.Date.now; let vnow4 = realNow4() + 120000; window.Date.now = () => vnow4;
+  spoken.length = 0;
+  NV.startGuidance();
+  await sleep(5);
+  const mapEl = $("naviMap");
+  const pd = new window.Event("pointerdown"); pd.clientX = 100; pd.clientY = 100; mapEl.dispatchEvent(pd);
+  const pm = new window.Event("pointermove"); pm.clientX = 160; pm.clientY = 100; mapEl.dispatchEvent(pm);
+  const pu = new window.Event("pointerup"); mapEl.dispatchEvent(pu);
+  check("안내 중 지도를 끌면 현재 위치 추적이 풀린다 (v1.44.0)", () => {
+    assert.equal(NV.followMe(), false);
+    assert.equal($("naviLocBtn").getAttribute("aria-pressed"), "false");
+    assert.ok($("naviLocBtn").classList.contains("off"));
+  });
+  const centersBefore = mapCalls.filter((c) => c[0] === "setCenter").length;
+  NV.setHere({ lat: 37.39010, lng: 126.9500 }); NV.advanceStep();
+  window.NAVI._internals();   // followCamera 는 watchPosition 콜백에서 불린다 — 직접 흉내
+  check("추적이 풀린 동안은 위치 갱신에도 카메라를 옮기지 않는다 (소스 가드)", () => {
+    assert.match(HTML, /if\(!map \|\| !guiding \|\| !followMe\) return;/);
+  });
+  $("naviLocBtn").dispatchEvent(new window.Event("click"));
+  check("현재 위치 버튼 -> 추적 재개 + 지도 중심 이동", () => {
+    assert.equal(NV.followMe(), true);
+    assert.equal($("naviLocBtn").getAttribute("aria-pressed"), "true");
+    assert.ok(mapCalls.filter((c) => c[0] === "setCenter").length > centersBefore, "setCenter 호출 없음");
+  });
+  // 승차 구간에서는 경로선(정류장을 이은 직선)에서 멀어져도 이탈이 아니다
+  const offBefore = spoken.filter((s) => /벗어나/.test(s)).length;
+  NV.setHere({ lat: 37.39050, lng: 126.9500 }); NV.advanceStep(); NV.drainSpeak();   // bus_board 도달
+  check("승차 스텝으로 전환", () => assert.match(window.document.querySelector(".step-now .ins").textContent, /승차/));
+  for (let i = 0; i < 6; i++) {
+    vnow4 += 5000;
+    watchCb({ coords: { latitude: 37.3910, longitude: 126.9520, accuracy: 5 } });   // 경로선에서 170m 밖
+  }
+  check("버스 승차 구간에서는 경로선을 벗어나도 이탈 안내를 하지 않는다 (v1.44.0)", () => {
+    assert.equal(spoken.filter((s) => /벗어나/.test(s)).length, offBefore);
+    assert.match(HTML, /if\(\/_board\$\/\.test\(String\(cur\.maneuver\|\|""\)\)\)\{ offRouteCnt = 0; offRouteSince = 0; return; \}/);
+  });
+  // 도착 → "안내를 종료합니다" → 첫 화면(관광지 목록) 복귀
+  NV.setHere({ lat: 37.3920, lng: 126.9500 }); NV.advanceStep(); NV.drainSpeak();   // 하차
+  vnow4 += 5000;
+  NV.setHere({ lat: 37.3925, lng: 126.9500 }); NV.advanceStep(); NV.drainSpeak();   // 도착
+  for (let i = 0; i < 8; i++) { vnow4 += 15000; NV.drainSpeak(); await sleep(5); }   // 대기열(하차·도착·종료)이 순서대로 재생되도록
+  check("도착 스텝에서 '안내를 종료합니다' 가 이어서 발화된다 (v1.44.0)", () => {
+    const i = spoken.indexOf("목적지에 도착했습니다.");
+    assert.ok(i >= 0, "도착 안내 없음: " + JSON.stringify(spoken));
+    assert.equal(spoken[i + 1], "안내를 종료합니다.", JSON.stringify(spoken.slice(i)));
+    assert.equal(NV.guiding(), false);
+  });
+  for (let i = 0; i < 40 && !$("naviSpots"); i++) { vnow4 += 5000; await sleep(50); }   // 발화가 끝난 뒤 500ms 틱에 첫 화면으로
+  window.Date.now = realNow4;
+  check("도착 안내가 끝나면 이동·관광 첫 화면(관광지 목록)으로 자동 복귀 + 경로 정리 (v1.44.0)", () => {
+    assert.ok($("naviSpots"), "관광지 목록 화면이 아님");
+    assert.match($("naviSheetBody").textContent, /무장애 관광지/);
+    assert.equal(window.document.querySelector(".step-now"), null, "스텝 카드가 남아 있음");
+    assert.equal(NV.routeLines().length, 0, "경로선이 남아 있음");
+    assert.equal(NV.tripDest(), null, "도착지가 남아 있음");
+    assert.match($("naviStatus").textContent, /도착해 안내를 종료했습니다/);
+    assert.equal($("naviEndBtn").textContent, "종료");
+  });
+  // 지도 재시도 — 실패 상태를 만든 뒤 재시도 → 복원
+  check("지도 로드 실패 시 10초→20초→40초→60초 재시도 + 온라인 복귀 즉시 (소스 가드)", () => {
+    assert.match(HTML, /KAKAO_RETRY_BASE_MS=10000, KAKAO_RETRY_MAX_MS=60000/);
+    assert.match(HTML, /if\(!kakaoReady\)\{ if\(f\) f\.hidden=false; scheduleKakaoRetry\(\); return; \}/);
+    assert.match(HTML, /window\.addEventListener\("online", function\(\)\{[\s\S]*?scheduleKakaoRetry\(500\);/);
+    assert.match($("naviMapFallback").textContent, /자동으로 다시 시도합니다/);
+  });
+  NV.setKakaoReady(false);
+  NV.scheduleKakaoRetry(10);
+  check("재시도 예약됨", () => assert.equal(NV.kakaoRetryPending(), true));
+  await sleep(80);
+  check("재시도 성공 -> 지도 생성·폴백 숨김·관광지 태그 복원 (v1.44.0)", () => {
+    assert.equal(NV.kakaoRetryPending(), false);
+    assert.equal($("naviMapFallback").hidden, true, "폴백 안내가 남아 있음");
+    assert.match($("naviStatus").textContent, /지도를 다시 불러왔습니다/);
+    assert.ok(overlays.filter((o) => o.visible).length >= 1, "관광지 태그 복원 안 됨");
+  });
+  check("레이아웃: 지도 영역 최소 높이 확보·시트가 대신 줄어듦·손잡이 고정 (v1.44.0)", () => {
+    assert.match(HTML, /\.navi-wrap\{flex:1;display:flex;flex-direction:column;min-height:clamp\(200px,36vh,380px\)/);
+    assert.match(HTML, /\.sheet\{flex:0 1 auto;min-height:0;/);
+    assert.match(HTML, /\.gripzone\{position:sticky;top:0;z-index:2;/);
+    assert.match(HTML, /function sheetTop\(\)/);
+  });
+}
 
 // ── 결과 ──
 let failed = 0;
