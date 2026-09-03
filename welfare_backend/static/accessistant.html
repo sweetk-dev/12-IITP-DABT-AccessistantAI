@@ -141,7 +141,10 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .navi-status{position:absolute;top:10px;left:10px;right:10px;background:rgba(255,255,255,.95);border-radius:12px;padding:8px 12px;font-size:.92rem;box-shadow:0 2px 10px rgba(15,23,42,.12);z-index:5;}
 /* 서비스 범위 밖 등 조치가 필요한 상태는 일반 진행 안내와 색으로 구분한다 */
 .navi-status--warn{background:var(--c-warning-soft);border:1.5px solid var(--c-warning);color:#7C3A02;font-weight:700;}
-.sheet{flex:0 1 auto;min-height:0;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -6px 24px rgba(15,23,42,.14);max-height:56%;overflow-y:auto;overscroll-behavior:contain;padding:12px 16px 18px;transition:max-height .25s ease;}
+.sheet{flex:0 1 auto;min-height:0;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -6px 24px rgba(15,23,42,.14);max-height:56%;overflow-y:auto;overscroll-behavior:contain;padding:0 16px 18px;transition:max-height .25s ease;}
+/* v1.45.1 — 시트 위쪽 여백은 손잡이 아래(본문)로 옮긴다. 시트 자체에 padding-top 이 있으면 sticky 손잡이 위에 틈이 남아
+   스크롤한 본문 글자가 그 틈으로 비쳐 보였다(실기기 2026-09-03). */
+#naviSheetBody{padding-top:6px;}
 .sheet.mini{max-height:30%;}
 /* 접힘: 예전에는 max-height 를 38px 로 고정해 본문 첫 줄이 반쯤 잘린 채 남았고,
    글자 크기를 키우면 손잡이까지 잘려 목록을 다시 펼 수 없었다.
@@ -149,7 +152,7 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .sheet.collapsed{max-height:none;overflow:hidden;padding-top:0;padding-bottom:0;}
 .sheet.collapsed #naviSheetBody{display:none;}
 /* 손잡이는 시트가 스크롤돼도 맨 위에 붙어 있다 (v1.44.0) — 스크롤되면 손잡이·제목이 위로 사라졌다 */
-.gripzone{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:var(--tap-min);background:#fff;border:0;padding:6px 0;cursor:pointer;touch-action:none;font-family:var(--font-body);}
+.gripzone{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:var(--tap-min);margin:0;background:#fff;border:0;border-bottom:1px solid #EEF2F7;padding:0;cursor:pointer;touch-action:none;font-family:var(--font-body);}
 .sheet .grip{width:44px;height:5px;border-radius:99px;background:#94A3B8;margin:0;display:block;flex:none;}
 .sheet .griplabel{font-size:.85rem;font-weight:700;color:var(--c-text-muted);}
 .sheet h2{font-size:1.05rem;margin:0 0 10px;color:var(--c-secondary);}
