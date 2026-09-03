@@ -1592,6 +1592,20 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
   window.fetch = prevFetch3; window.Date.now = realNow2;
 }
 
+// ── v1.43.2 실기기 확인 라운드 2 — 모의주행 barge-in 없음·실안내 barge 임계 상향·프리페치 한도 중단 (소스 레벨 가드) ──
+check("모의 주행 중에는 barge-in 으로 안내를 끊지 않고, 실안내 barge-in 은 0.035/0.8초 임계 (v1.43.2)", () => {
+  assert.match(HTML, /function bargeStop\(\)\{\s*if\(simActive\) return;/);
+  assert.match(HTML, /const NAVI_BARGE_RMS = 0\.035;/);
+  assert.match(HTML, /const NAVI_BARGE_RUN = 6;/);
+  assert.match(HTML, /\(m\.rms \|\| 0\) >= NAVI_BARGE_RMS\) \{\s*if \(\+\+naviBargeRun >= NAVI_BARGE_RUN\)/);
+  assert.match(HTML, /sendActivity\("navi_barge"\)/);
+});
+check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 실패는 2초 뒤 계속한다 (v1.43.2)", () => {
+  assert.match(HTML, /e\.quota = \(r\.status === 503\)/);
+  assert.match(HTML, /if\(err && err\.quota\)\{ queue\.length = 0; return; \}/);
+  assert.match(HTML, /setTimeout\(r, 2000\)/);
+});
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {

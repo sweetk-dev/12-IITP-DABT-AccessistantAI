@@ -836,6 +836,10 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     // 내장 안내를 즉시 끊는다. 잔향 오탐을 줄이기 위해 높은 임계+지속 조건을 쓴다.
     const LOCAL_TTS_BARGE_RMS = 0.02;   // 평시 voice 임계(0.012)보다 높게
     const LOCAL_TTS_BARGE_RUN = 3;      // 128ms 청크 × 3 ≈ 0.4초 지속
+    // 길안내 안내 음성 중 barge-in 은 더 엄격하게 — 실기기(2026-09-03)에서 스피커로 나간 안내가 마이크로
+    // 되돌아와(AEC 잔여 에코·AGC 증폭) 0.4초 임계를 넘겨 안내가 "다음…" 에서 끊기고 8초 뒤 복귀했다 (v1.43.2)
+    const NAVI_BARGE_RMS = 0.035;
+    const NAVI_BARGE_RUN = 6;           // ≈ 0.8초 지속
     let localBargeRun = 0;
     let naviBargeRun = 0;               // 길안내 TTS 재생 중 barge-in 판정 (#248)
     let naviAiRun = 0;                  // navi 화면 상담원 음성 중 barge-in 판정 (#248)
@@ -856,8 +860,8 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       localBargeRun = 0;
       if (window.__NAVI_SPEAKING) {
         // 길안내 음성 재생 중 — 지속 발화가 감지되면 안내를 멈추고 질문을 받는다 (barge-in, #248)
-        if (m.type === "pcm" && (m.rms || 0) >= LOCAL_TTS_BARGE_RMS) {
-          if (++naviBargeRun >= LOCAL_TTS_BARGE_RUN) {
+        if (m.type === "pcm" && (m.rms || 0) >= NAVI_BARGE_RMS) {
+          if (++naviBargeRun >= NAVI_BARGE_RUN) {
             naviBargeRun = 0;
             if (window.NAVI && window.NAVI.bargeStop) window.NAVI.bargeStop();
           }
@@ -1325,7 +1329,10 @@ window.NAVI = (function(){
     if(ttsCache[key]) return Promise.resolve(ttsCache[key]);
     if(ttsPending[key]) return ttsPending[key];   // 같은 문장이 합성 중이면 그 응답을 함께 기다린다 (v1.43.1)
     var p = fetch("/api/v1/tts?voice=" + encodeURIComponent(v) + "&text=" + encodeURIComponent(text))
-      .then(function(r){ if(!r.ok) throw new Error("tts " + r.status); return r.blob(); })
+      .then(function(r){
+        if(!r.ok){ var e = new Error("tts " + r.status); e.quota = (r.status === 503); throw e; }   // 503=한도 소진 (v1.43.2)
+        return r.blob();
+      })
       .then(function(b){
         var url = URL.createObjectURL(b);
         ttsCache[key] = url; ttsCacheKeys.push(key);
@@ -1429,7 +1436,10 @@ window.NAVI = (function(){
     function next(){
       var t = queue.shift();
       if(t === undefined) return Promise.resolve();
-      return _ttsFetch(v, t).catch(function(){}).then(next);
+      return _ttsFetch(v, t).then(next, function(err){
+        if(err && err.quota){ queue.length = 0; return; }                    // 일일 한도 소진 — 더 보내지 않는다 (v1.43.2)
+        return new Promise(function(r){ setTimeout(r, 2000); }).then(next);   // 일시 실패 — 2초 뒤 계속
+      });
     }
     next(); next();
   }
@@ -1746,7 +1756,8 @@ window.NAVI = (function(){
   // 안내 TTS 재생 중 사용자 발화 감지(마이크 게이트) 또는 질문 전송 시 —
   // 안내를 멈춰 말할 길을 연다. 대화가 끝나면 scheduleResume 이 안내를 복귀시킨다.
   function bargeStop(){
-    if(window.__NAVI_SPEAKING){ try{ console.info("[navi] barge-in: 사용자 발화 감지로 안내 중단"); }catch(e){} stopSpeak(); }
+    if(simActive) return;             // 모의 주행은 안내를 끝까지 듣는 용도 — 에코 오탐으로 끊지 않는다 (v1.43.2)
+    if(window.__NAVI_SPEAKING){ try{ console.info("[navi] barge-in: 사용자 발화 감지로 안내 중단"); }catch(e){} sendActivity("navi_barge"); stopSpeak(); }
     if(guiding) scheduleResume(8000);   // 질문이 이어지지 않아도 8초 뒤 안내 복귀
   }
   function cancelResume(){ if(resumePoll){ clearInterval(resumePoll); resumePoll=null; } }
