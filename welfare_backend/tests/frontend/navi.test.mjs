@@ -1819,6 +1819,13 @@ check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 
   window.speechSynthesis.speak = realSpeak; window.fetch = prevFetch6;
 }
 
+check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격이 줄었다 (v1.45.1)", () => {
+  assert.match(HTML, /\.sheet\{[^}]*padding:0 16px 18px;/, "시트 padding-top 이 남아 있다");
+  assert.match(HTML, /#naviSheetBody\{padding-top:6px;\}/);
+  assert.match(HTML, /\.gripzone\{position:sticky;top:0;z-index:2;[^}]*min-height:var\(--tap-min\);margin:0;background:#fff;[^}]*padding:0;/);
+  const g = $("naviGrip"); assert.equal(g.parentElement.firstElementChild, g, "손잡이가 시트 첫 자식이 아님");
+});
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {
