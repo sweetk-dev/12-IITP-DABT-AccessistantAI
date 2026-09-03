@@ -1530,6 +1530,68 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
   NV.resetTrip();
 }
 
+// ── v1.43.1 합성 대기 안전 — 서버 TTS 가 5~9초 걸려도 잘리거나 폐기되지 않는다 ──
+{
+  const NV = window.NAVI._internals();
+  const realNow2 = window.Date.now; let vnow2 = realNow2() + 60000; window.Date.now = () => vnow2;   // 앞 블록의 발화가 끝난 뒤
+  const prevFetch3 = window.fetch;
+  let pendingTts = [];                       // 지연 합성: resolve 를 손으로 호출
+  window.fetch = async (url, opt) => {
+    const u = String(url);
+    if (u.includes("/api/v1/tts")) return new Promise((res) => pendingTts.push({ url: u, res }));
+    return prevFetch3(url, opt);
+  };
+  const played = [];
+  window.URL.createObjectURL = () => "blob:x";
+  window.Audio = function(){ const self = this; this.duration = 3.0; this.play = () => { played.push(self); return Promise.resolve(); }; this.pause = () => { self.paused = true; }; };
+  const resolveOne = (i = 0) => { const p = pendingTts.splice(i, 1)[0]; if (p) p.res({ ok: true, blob: async () => ({}) }); };
+
+  NV.speak("첫 안내 문장입니다", { queue: true, kind: "step" });
+  await sleep(2);
+  check("합성 대기 중에는 추정 길이가 지나도 busy 를 유지한다 (v1.43.1)", () => {
+    assert.equal(pendingTts.length, 1, "합성 요청이 하나 나가야 한다");
+    vnow2 += 6000;                          // 종전 창(추정×1.3+1s ≈ 4.9s)을 넘겨도
+    assert.equal(NV.speakBusy(), true);
+  });
+  NV.speak("두 번째 안내 문장입니다", { queue: true, kind: "step" });
+  await sleep(2);
+  check("합성 대기 중 도착한 다음 스텝은 앞 안내를 끊지 않고 대기열에 남는다 (v1.43.1)", () => {
+    assert.equal(pendingTts.length, 1, "대기 중인 문장을 끊고 새로 합성하면 안 된다");
+    assert.equal(played.length, 0);
+  });
+  resolveOne(); await sleep(5);
+  check("합성이 끝나면 실제 재생 시작 시각 + duration 으로 종료를 판정한다 (v1.43.1)", () => {
+    assert.equal(played.length, 1, "첫 문장이 재생돼야 한다");
+    vnow2 += 1500; NV.drainSpeak();
+    assert.equal(played[0].paused, undefined, "재생 1.5초 만에 끊겼다");
+    assert.equal(pendingTts.length, 0, "재생 중엔 다음 합성을 시작하지 않는다");
+  });
+  vnow2 += 3000 * 1.3 + 1100; NV.drainSpeak(); await sleep(5);   // onended 가 없어도 상한이 지나면 다음으로
+  check("상한이 지나면 대기열의 다음 문장을 합성한다 (v1.43.1)", () => {
+    assert.equal(pendingTts.length, 1);
+    assert.match(pendingTts[0].url, /%EB%91%90%20%EB%B2%88%EC%A7%B8|두 번째/);
+  });
+  // 합성이 12초를 넘기면 내장 TTS 로 대신 말하고, 늦게 온 서버 음성은 재생하지 않는다
+  const spokenBefore3 = spoken.length;
+  vnow2 += 12100; await sleep(20);
+  check("합성이 12초를 넘기면 내장 TTS 로 대신 말한다 (v1.43.1)", () => {
+    // 실제 타이머는 실시간이라 안 돌았다 → drainSpeak 의 지각 폴백 경로
+    NV.drainSpeak();
+    assert.equal(spoken.slice(spokenBefore3).filter((t) => t === "두 번째 안내 문장입니다").length, 1);
+  });
+  resolveOne(); await sleep(5);
+  check("늦게 도착한 서버 음성은 재생하지 않는다 — 중복 재생 방지 (v1.43.1)", () => {
+    assert.equal(played.length, 1, "폴백 후 서버 음성이 또 재생됐다");
+  });
+  check("같은 문장의 합성 요청은 한 번만 나간다 / 모바일은 브라우저 STT 를 쓰지 않는다 (소스 레벨 가드)", () => {
+    assert.match(HTML, /if\(ttsPending\[key\]\) return ttsPending\[key\];/);
+    assert.match(HTML, /if \(isMobileUA\(\)\) return false;/);
+    assert.match(HTML, /try\{ prefetchTts\(\); \}catch\(e\)\{\}/, "경로 표시 시점 프리페치 없음");
+  });
+  NV.resetTrip(); NV.speak("정리");   // 대기열·타이머 정리
+  window.fetch = prevFetch3; window.Date.now = realNow2;
+}
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {
