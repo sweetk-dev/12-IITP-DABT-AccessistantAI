@@ -1536,8 +1536,7 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
     assert.deepEqual(stepSpeaks, [
       "횡단보도가 있습니다. 횡단보도를 건너 14m 이동합니다. (턱낮춤 미상)",
       "좌회전 후 60m 이동합니다.",
-      "목적지에 도착했습니다.",
-      "안내를 종료합니다.",   // 도착 뒤 자동 종료 안내 (v1.44.0)
+      "목적지에 도착했습니다.",   // 종료 확인 질문은 확인 창이 뜰 때 말한다 (v1.46.0)
     ], JSON.stringify(spoken.slice(before)));
     assert.equal(busyAfter, false);
   });
@@ -1561,6 +1560,8 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
     assert.match(HTML, /if\(_reachedStep\(simPos, stepIdx\+1\)\)/);
     assert.match(HTML, /if\(_reachedStep\(here, stepIdx\+1\)\)/);
   });
+  NV.cancelArrivalReset();   // 블록 격리 — 도착 확인 창·대기 중 발화가 다음 블록으로 새지 않도록 (v1.46.0)
+  NV.stopSpeak();
   NV.resetTrip();
 }
 
@@ -1580,6 +1581,7 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
   window.Audio = function(){ const self = this; this.duration = 3.0; this.play = () => { played.push(self); return Promise.resolve(); }; this.pause = () => { self.paused = true; }; };
   const resolveOne = (i = 0) => { const p = pendingTts.splice(i, 1)[0]; if (p) p.res({ ok: true, blob: async () => ({}) }); };
 
+  NV.stopSpeak(); pendingTts.length = 0;   // 앞 블록에서 넘어온 대기 발화를 비우고 시작한다 (v1.46.0)
   NV.speak("첫 안내 문장입니다", { queue: true, kind: "step" });
   await sleep(2);
   check("합성 대기 중에는 추정 길이가 지나도 busy 를 유지한다 (v1.43.1)", () => {
@@ -1602,7 +1604,7 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
   });
   vnow2 += 3000 * 1.3 + 1100; NV.drainSpeak(); await sleep(5);   // onended 가 없어도 상한이 지나면 다음으로
   check("상한이 지나면 대기열의 다음 문장을 합성한다 (v1.43.1)", () => {
-    assert.equal(pendingTts.length, 1);
+    assert.equal(pendingTts.length, 1, "대기 중: " + JSON.stringify(pendingTts.map((p) => decodeURIComponent(p.url).slice(-60))));
     assert.match(pendingTts[0].url, /%EB%91%90%20%EB%B2%88%EC%A7%B8|두 번째/);
   });
   // 합성이 12초를 넘기면 내장 TTS 로 대신 말하고, 늦게 온 서버 음성은 재생하지 않는다
@@ -1711,20 +1713,34 @@ check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 
     assert.equal(spoken.filter((s) => /벗어나/.test(s)).length, offBefore);
     assert.match(HTML, /if\(\/_board\$\/\.test\(String\(cur\.maneuver\|\|""\)\)\)\{ offRouteCnt = 0; offRouteSince = 0; return; \}/);
   });
-  // 도착 → "안내를 종료합니다" → 첫 화면(관광지 목록) 복귀
+  // 도착 → 종료 확인 창 → 첫 화면(관광지 목록) 복귀 (v1.46.0)
   NV.setHere({ lat: 37.3920, lng: 126.9500 }); NV.advanceStep(); NV.drainSpeak();   // 하차
   vnow4 += 5000;
   NV.setHere({ lat: 37.3925, lng: 126.9500 }); NV.advanceStep(); NV.drainSpeak();   // 도착
   for (let i = 0; i < 8; i++) { vnow4 += 15000; NV.drainSpeak(); await sleep(5); }   // 대기열(하차·도착·종료)이 순서대로 재생되도록
-  check("도착 스텝에서 '안내를 종료합니다' 가 이어서 발화된다 (v1.44.0)", () => {
+  check("도착 스텝에서 안내가 끝나고 안내 상태가 풀린다 (v1.46.0)", () => {
     const i = spoken.indexOf("목적지에 도착했습니다.");
     assert.ok(i >= 0, "도착 안내 없음: " + JSON.stringify(spoken));
-    assert.equal(spoken[i + 1], "안내를 종료합니다.", JSON.stringify(spoken.slice(i)));
     assert.equal(NV.guiding(), false);
   });
-  for (let i = 0; i < 40 && !$("naviSpots"); i++) { vnow4 += 5000; await sleep(50); }   // 발화가 끝난 뒤 500ms 틱에 첫 화면으로
+  // v1.46.0 — 자동으로 넘기지 않고 확인 창을 띄운다. 경로를 더 보고 싶은 사람은 남을 수 있다.
+  let arrDlg = null;
+  for (let i = 0; i < 40 && !arrDlg; i++) { vnow4 += 5000; await sleep(50); arrDlg = window.document.querySelector(".spot-choice"); }
+  check("도착 안내가 끝나면 종료 확인 창이 뜬다 (v1.46.0)", () => {
+    assert.ok(arrDlg, "도착 확인 창이 뜨지 않음");
+    assert.match(arrDlg.textContent, /목적지에 도착했습니다/);
+    assert.match(arrDlg.textContent, /처음 화면으로/);
+    assert.match(arrDlg.textContent, /경로 더 보기/);
+    assert.ok(spoken.some((t) => /처음 화면으로 돌아갈까요/.test(t)), "확인 창과 함께 음성으로도 물어야 한다");
+    assert.ok($("naviSpots") === null || window.document.querySelector(".step-now"),
+              "확인 전에 화면이 먼저 바뀌면 안 된다");
+  });
+  const homeBtn = Array.from(arrDlg ? arrDlg.querySelectorAll("button") : [])
+    .find((b) => /처음 화면으로/.test(b.textContent));
+  if (homeBtn) homeBtn.click();
+  await sleep(20);
   window.Date.now = realNow4;
-  check("도착 안내가 끝나면 이동·관광 첫 화면(관광지 목록)으로 자동 복귀 + 경로 정리 (v1.44.0)", () => {
+  check("확인을 누르면 이동·관광 첫 화면(관광지 목록)으로 복귀 + 경로 정리 (v1.46.0)", () => {
     assert.ok($("naviSpots"), "관광지 목록 화면이 아님");
     assert.match($("naviSheetBody").textContent, /무장애 관광지/);
     assert.equal(window.document.querySelector(".step-now"), null, "스텝 카드가 남아 있음");
