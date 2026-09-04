@@ -1,7 +1,10 @@
 /* AccessistantAI 서비스워커 — 홈 화면 설치·오프라인 최소 지원.
    API·WebSocket 응답은 캐시하지 않는다(정책·경로 정보는 항상 최신이어야 함). */
-const CACHE = "accessistant-v1";
-const SHELL = ["/static/accessistant.html", "/static/manifest.webmanifest", "/static/logo.svg"];
+const CACHE = "accessistant-v2";
+const SHELL = ["/static/accessistant.html", "/static/manifest.webmanifest", "/static/logo.svg",
+  "/static/icons/icon-192.png", "/static/icons/icon-512.png",
+  "/static/icons/icon-maskable-192.png", "/static/icons/icon-maskable-512.png",
+  "/static/icons/apple-touch-icon-180.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
