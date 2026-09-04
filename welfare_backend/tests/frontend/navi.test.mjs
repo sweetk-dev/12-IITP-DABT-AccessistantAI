@@ -1842,6 +1842,41 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   const g = $("naviGrip"); assert.equal(g.parentElement.firstElementChild, g, "손잡이가 시트 첫 자식이 아님");
 });
 
+// ── v1.46.1 홈 화면 설치 아이콘 — manifest 에 PNG(any·maskable) 가 있어야 한다 ──
+// SVG 만 등록돼 있으면 안드로이드 크롬이 홈 화면 아이콘을 만들지 못하고 글자 아바타로 폴백한다.
+{
+  const MANIFEST = JSON.parse(readFileSync(new URL("../../static/manifest.webmanifest", import.meta.url), "utf8"));
+  const png = MANIFEST.icons.filter((i) => i.type === "image/png");
+  check("manifest 아이콘에 192·512 PNG 와 maskable 이 모두 있다 (v1.46.1)", () => {
+    assert.ok(png.some((i) => i.sizes === "192x192" && i.purpose === "any"), "192 any PNG 없음");
+    assert.ok(png.some((i) => i.sizes === "512x512" && i.purpose === "any"), "512 any PNG 없음");
+    assert.ok(png.some((i) => i.sizes === "192x192" && i.purpose === "maskable"), "192 maskable PNG 없음");
+    assert.ok(png.some((i) => i.sizes === "512x512" && i.purpose === "maskable"), "512 maskable PNG 없음");
+  });
+  check("manifest 가 가리키는 아이콘 파일이 실제로 있고 PNG 시그니처를 갖는다 (v1.46.1)", () => {
+    for (const i of png) {
+      const buf = readFileSync(new URL("../../static" + i.src.replace("/static", ""), import.meta.url));
+      assert.equal(buf.subarray(0, 8).toString("hex"), "89504e470d0a1a0a", i.src + " 가 PNG 가 아님");
+    }
+  });
+  check("head 에 apple-touch-icon·favicon PNG 링크가 있다 (v1.46.1)", () => {
+    assert.match(HTML, /<link rel="apple-touch-icon" sizes="180x180" href="\/static\/icons\/apple-touch-icon-180\.png">/);
+    assert.match(HTML, /<link rel="icon" type="image\/png" sizes="32x32" href="\/static\/icons\/favicon-32\.png">/);
+    assert.match(HTML, /<link rel="icon" type="image\/png" sizes="16x16" href="\/static\/icons\/favicon-16\.png">/);
+  });
+  check("정적 자원이 바뀌었으므로 서비스워커 캐시 이름이 올라가고 셸에 아이콘이 들어간다 (v1.46.1)", () => {
+    const SW = readFileSync(new URL("../../static/sw.js", import.meta.url), "utf8");
+    assert.match(SW, /const CACHE = "accessistant-v2";/);
+    assert.match(SW, /"\/static\/icons\/icon-512\.png"/);
+    assert.match(SW, /"\/static\/icons\/apple-touch-icon-180\.png"/);
+  });
+  check("스플래시 인트로 마크가 홈 화면 아이콘과 같은 원본이다 (v1.46.1)", () => {
+    const m = HTML.match(/<div class="mark"><img src="data:image\/png;base64,([^"]+)"/);
+    assert.ok(m, "스플래시 마크 이미지가 없다");
+    assert.ok(Buffer.from(m[1], "base64").subarray(0, 8).toString("hex") === "89504e470d0a1a0a", "PNG 가 아님");
+  });
+}
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {
