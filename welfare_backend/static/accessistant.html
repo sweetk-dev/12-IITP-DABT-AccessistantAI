@@ -2357,6 +2357,9 @@ window.NAVI = (function(){
     }
   }
   function clearRouteDisplay(){
+    // 경로 표시를 비우면 도착 확인 흐름도 무의미해진다 — 예약과 열린 창을 함께 정리한다 (v1.46.0)
+    if(arrivalTimer){ clearInterval(arrivalTimer); arrivalTimer=null; }
+    closeSpotChoice();
     clearRouteLines();
     stopSimulation();
     route=null; steps=[]; stepIdx=0; routeGeom=[]; cumDist=[0];
@@ -2478,6 +2481,7 @@ window.NAVI = (function(){
     steps = primary.steps || [];
     stepIdx = 0; guiding = false;
     if(arrivalTimer){ clearInterval(arrivalTimer); arrivalTimer=null; }   // 새 경로 — 도착 정리 예약 취소 (v1.44.0)
+    closeSpotChoice();   // 도착 확인 창이 떠 있었다면 닫는다 (v1.46.0)
     stopSimulation(); stopArrivalPolling();
     routeGeom = primary.geometry || [];
     cumDist = [0];
@@ -2936,21 +2940,39 @@ window.NAVI = (function(){
     }
   }
 
-  /* ── 도착 후 자동 종료 (v1.44.0) ──
-     실증(2026-09-03 12:45): 도착 뒤 서비스를 이어 쓰려면 나갔다 들어오는 수밖에 없었다.
-     도착 안내가 끝나면 "안내를 종료합니다"를 말하고 이동·관광 첫 화면(관광지 목록)으로 돌아간다.
-     모의 주행은 종전대로 스텝 복습 화면을 유지한다. */
+  /* ── 도착 후 종료 확인 (v1.46.0) ──
+     v1.44.0 은 실제 주행에서만 도착 뒤 조용히 첫 화면으로 돌아갔고, 모의 주행은 스텝 복습
+     화면을 그대로 뒀다. 실증에서 두 가지가 드러났다.
+       · 모의 주행은 끝나도 화면이 그대로라, 다음 목적지를 고르려면 나갔다 들어와야 했다
+       · 실제 주행은 예고 없이 화면이 바뀌어 무슨 일이 일어난 것인지 알기 어려웠다
+     이제 도착하면 모의·실제 구분 없이 확인 창을 띄우고, 고른 뒤에 이동한다.
+     자동으로 넘기지 않으므로 경로를 더 보고 싶은 사람은 그대로 남을 수 있다. */
   var arrivalTimer=null;
   function scheduleArrivalReset(){
     if(arrivalTimer){ clearInterval(arrivalTimer); arrivalTimer=null; }
-    speakStep("안내를 종료합니다.");
+    // 질문은 확인 창이 실제로 뜰 때 말한다 — 버튼이 없는 동안 물으면 답할 수가 없고,
+    // 그 사이 새 안내가 시작되면 취소된 질문만 대기열에 남는다.
     var started=Date.now();
     arrivalTimer=setInterval(function(){
       if(guiding || simActive){ clearInterval(arrivalTimer); arrivalTimer=null; return; }   // 그 사이 새 안내가 시작됐다
       if(speakBusy() && Date.now()-started < 20000) return;                                  // 도착·종료 안내가 끝날 때까지
       clearInterval(arrivalTimer); arrivalTimer=null;
-      finishArrival();
+      openArrivalChoice();
     }, 500);
+  }
+  function openArrivalChoice(){
+    speakStep("안내를 종료하고 처음 화면으로 돌아갈까요? 처음 화면으로 버튼을 누르시면 이동합니다.");
+    openChoicePanel("목적지에 도착했습니다", "안내를 종료하고 처음 화면으로 돌아갈까요?", [
+      choiceBtn("🏠 처음 화면으로", "spot-choice__btn--dest", function(){
+        closeSpotChoice(); finishArrival();
+      }),
+      choiceBtn("🗺️ 경로 더 보기", "", function(){
+        closeSpotChoice();
+        setEndBtn("home");
+        status("지나온 경로를 계속 볼 수 있습니다. 종료 버튼을 누르면 처음 화면으로 돌아갑니다.");
+        speak("경로를 계속 보실 수 있습니다. 종료 버튼을 누르면 처음 화면으로 돌아갑니다.");
+      }),
+    ]);
   }
   function finishArrival(){
     cancelResume();
@@ -3063,6 +3085,7 @@ window.NAVI = (function(){
       setEndBtn("home");   // (v1.35.0)
       status("모의 주행이 끝났습니다.");
       renderStep();   // 모의 주행 표시 제거 + 이전/다음으로 복습 가능
+      scheduleArrivalReset();   // 실제 주행과 같은 종료 확인 창 (v1.46.0)
     }
   }
   function stopSimulation(){
@@ -3217,6 +3240,7 @@ window.NAVI = (function(){
         // 1단계: 안내만 종료 (화면 유지) — 버튼은 '종료'로 바뀌어 계속 활성
         if(guiding) trackUpload("canceled");   // 중도 종료 트랙도 수집 (v1.34.0)
         if(arrivalTimer){ clearInterval(arrivalTimer); arrivalTimer=null; }
+        closeSpotChoice();   // 도착 확인 창 정리 (v1.46.0)
         stopSimulation(); guiding=false; cancelResume(); stopSpeak();
         renderSpotsPanel(); sendNavState();
         setEndBtn("home");
@@ -3436,7 +3460,8 @@ window.NAVI = (function(){
                                      arrivalPollingActive:function(){return !!arrTimer;},
                                      followMe:function(){return followMe;}, routeLines:function(){return routeLines;},
                                      kakaoRetryPending:function(){return !!kakaoRetryTimer;},
-                                     cancelArrivalReset:function(){ if(arrivalTimer){ clearInterval(arrivalTimer); arrivalTimer=null; } },
+                                     cancelArrivalReset:function(){ if(arrivalTimer){ clearInterval(arrivalTimer); arrivalTimer=null; } closeSpotChoice(); },
+                                     stopSpeak:stopSpeak,
                                      scheduleKakaoRetry:scheduleKakaoRetry, restoreMapState:restoreMapState,
                                      setKakaoReady:function(v){ kakaoReady=!!v; if(!v){ map=null; } },
                                      guiding:function(){return guiding;}}; }
