@@ -473,6 +473,7 @@ async def plan_accessible_route(
     destination_type: str = Query("tour"),
     profile: str = Query("wheelchair_manual"),
     mode: str = Query("", description="walk | walk_bus | walk_bus_subway | ''(자동 추천)"),
+    low_floor: Optional[bool] = Query(None, description="저상버스 우선(#291). 생략하면 휠체어 프로필 on"),
 ):
     return await tool_handlers.tool_plan_accessible_route(
         destination_poi_id=destination_poi_id,
@@ -484,6 +485,7 @@ async def plan_accessible_route(
         origin_lat=origin_lat,
         origin_lng=origin_lng,
         mode=mode,
+        low_floor=low_floor,
     )
 
 

@@ -1866,7 +1866,7 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   });
   check("정적 자원이 바뀌었으므로 서비스워커 캐시 이름이 올라가고 셸에 아이콘이 들어간다 (v1.46.1)", () => {
     const SW = readFileSync(new URL("../../static/sw.js", import.meta.url), "utf8");
-    assert.match(SW, /const CACHE = "accessistant-v2";/);
+    assert.match(SW, /const CACHE = "accessistant-v3";/);   // v1.47.0 저상 스위치로 셸이 바뀜
     assert.match(SW, /"\/static\/icons\/icon-512\.png"/);
     assert.match(SW, /"\/static\/icons\/apple-touch-icon-180\.png"/);
   });
@@ -1875,6 +1875,101 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.ok(m, "스플래시 마크 이미지가 없다");
     assert.ok(Buffer.from(m[1], "base64").subarray(0, 8).toString("hex") === "89504e470d0a1a0a", "PNG 가 아님");
   });
+}
+
+
+// ── 저상버스 우선 스위치 (v1.47.0, #291 · 02 v1.22.0) ──
+{
+  const LF_ROUTE = JSON.parse(JSON.stringify(MMROUTE.ui_action.route));
+  LF_ROUTE.route_id = "r_lf";
+  LF_ROUTE.low_floor = { mode: true, tier: 1, expanded_radius: false, queried_at: Math.floor(Date.now()/1000), valid_for_sec: 120, wait_sec: 420 };
+  LF_ROUTE.routes[0].summary.eta_note = "소요시간은 정거장 수 기반 추정에 저상버스 대기 시간(조회 시점 실시간)을 더한 값입니다";
+  LF_ROUTE.routes[0].legs[1].route = { route_id: "208000013", name: "6", type: "일반형시내버스", end_station: "벌말초교" };
+  LF_ROUTE.routes[0].legs[1].board = { name: "만안평생교육센터", mobile_no: "09167", station_seq: 5, poi_id: "208000053" };
+  LF_ROUTE.routes[0].legs[1].low_floor = { tier: 1, wait_sec: 420, predict_min: 12, stops_away: 8, plate_no: "경기71바0002", route_name: "6", source: "arrivals" };
+  LF_ROUTE.routes[0].legs[1].warnings = ["저상버스 6번이 약 12분 뒤 도착 예정입니다(8 정거장 전) — 실시간 정보라 변동될 수 있습니다"];
+  const lfPlan = () => ({ status: "success", route_id: "r_lf", mode_used: "walk_bus", mode_label: "도보+버스",
+    low_floor: LF_ROUTE.low_floor, ui_action: { action: "show_route", route: JSON.parse(JSON.stringify(LF_ROUTE)) } });
+  const prevFetchLF = window.fetch;
+  const planCalls = [];
+  window.fetch = async (url, opt) => {
+    const u = String(url);
+    if (u.includes("plan_accessible_route")) { lastPlanQuery = u; planCalls.push(u); return { ok: true, json: async () => lfPlan() }; }
+    return prevFetchLF(url, opt);
+  };
+  NAV.clearRouteDisplay(); NAV.resetTrip();
+  NAV.requestRoute({ poi_id: "TBF-1", name: "안양시청" });
+  await sleep(60);
+  check("휠체어 프로필: 경로 요청에 low_floor=true 가 기본으로 실린다", () => {
+    assert.match(lastPlanQuery || "", /low_floor=true/);
+  });
+  check("결과 화면 우측 상단에 '저상버스 우선' 스위치 — 기본 켜짐", () => {
+    const t = $("lowFloorToggle");
+    assert.ok(t, "스위치 없음");
+    assert.equal(t.getAttribute("aria-pressed"), "true");
+    assert.match(t.textContent, /저상버스 우선/);
+    assert.ok(t.parentElement.querySelector("h2"), "제목 줄(rhead)에 있어야 한다");
+  });
+  check("버스 카드: 저상 우선 판정(tier 1)이 도착 문구로 표시된다", () => {
+    const bus = [...window.document.querySelectorAll(".leg-card")].find((c) => /6번/.test(c.textContent));
+    assert.ok(bus, "버스 카드 없음");
+    assert.match(bus.textContent, /만안평생교육센터/);
+    assert.match(bus.textContent, /저상 6번 약 12분 후 도착 \(8 정거장 전\)/);
+    assert.doesNotMatch(bus.textContent, /보장되지 않습니다/);
+    assert.match($("naviSheetBody").textContent, /저상버스 대기 시간\(조회 시점 실시간\)을 더한/);
+  });
+  spoken.length = 0;
+  $("lowFloorToggle").dispatchEvent(new window.Event("click"));
+  check("스위치 off: '경로를 재 탐색 합니다' 안내가 상태줄에 먼저 뜬다", () => {
+    assert.match($("naviStatus").textContent, /경로를 재 탐색 합니다 — 일반 버스 포함/);
+  });
+  await sleep(120);
+  check("off 재요청 파라미터 + 음성 안내", () => {
+    assert.match(lastPlanQuery || "", /low_floor=false/);
+    assert.ok(spoken.some((t) => /경로를 재 탐색 합니다/.test(t)), "음성 안내 없음: " + JSON.stringify(spoken.slice(-3)));
+  });
+  // 서버는 여전히 mode:true 응답을 준다고 가정하면 스위치는 서버 값(true)을 따른다 — 여기서는 off 응답으로 바꿔 준다
+  LF_ROUTE.low_floor = { mode: false };
+  delete LF_ROUTE.routes[0].legs[1].low_floor;
+  NAV.requestRoute({ poi_id: "TBF-1", name: "안양시청" });
+  await sleep(60);
+  check("off 응답이면 스위치가 꺼진 상태로 렌더되고 버스 카드는 종전 고정 경고로 돌아간다", () => {
+    assert.equal($("lowFloorToggle").getAttribute("aria-pressed"), "false");
+    const bus = [...window.document.querySelectorAll(".leg-card")].find((c) => /6번/.test(c.textContent));
+    assert.match(bus.textContent, /저상버스 정차는 보장되지 않습니다/);
+  });
+  $("lowFloorToggle").dispatchEvent(new window.Event("click"));
+  await sleep(60);
+  check("스위치 on: low_floor=true 로 재요청", () => {
+    assert.match(lastPlanQuery || "", /low_floor=true/);
+  });
+  // tier 3 — 저상 없음: 최상단 경고
+  LF_ROUTE.low_floor = { mode: true, tier: 3, queried_at: Math.floor(Date.now()/1000), valid_for_sec: 120 };
+  LF_ROUTE.routes[0].legs[1].low_floor = { tier: 3, route_name: "6" };
+  LF_ROUTE.routes[0].summary.warnings = ["현재 운행 중인 저상버스가 없습니다 — 일반 버스 경로로 안내합니다. 정류장에서 저상 차량을 다시 확인하세요"];
+  NAV.requestRoute({ poi_id: "TBF-1", name: "안양시청" });
+  await sleep(60);
+  check("저상이 없으면(tier 3) 경고가 보이고 버스 카드도 '없음' 으로 표시", () => {
+    const t = $("naviSheetBody").textContent;
+    assert.match(t, /현재 운행 중인 저상버스가 없습니다/);
+    assert.match(t, /지금 운행 중인 저상버스가 없습니다 — 일반 버스 기준 안내/);
+  });
+  // 유효시간 경과 — 안내 시작 시 재탐색
+  LF_ROUTE.low_floor = { mode: true, tier: 1, queried_at: Math.floor(Date.now()/1000) - 400, valid_for_sec: 120 };
+  NAV.requestRoute({ poi_id: "TBF-1", name: "안양시청" });
+  await sleep(60);
+  const before = planCalls.length;
+  const startLF = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "안내 시작");
+  startLF.dispatchEvent(new window.Event("click"));
+  check("저상 정보가 2분 넘게 오래됐으면 안내 시작 전에 다시 탐색한다", () => {
+    assert.match($("naviStatus").textContent, /오래되어 경로를 다시 탐색합니다/);
+  });
+  await sleep(60);
+  check("재탐색 요청이 나갔고, 그래도 오래된 응답이면 되풀이하지 않고 안내를 시작한다", () => {
+    assert.equal(planCalls.length, before + 1);
+    assert.equal(window.NAVI._internals().stepIdx, 0);
+  });
+  window.fetch = prevFetchLF;
 }
 
 // ── 결과 ──

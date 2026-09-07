@@ -85,19 +85,20 @@ class _Recorder:
         self.realtime = []
 
     async def __call__(self, origin, destination, profile="wheelchair_manual",
-                       alternatives=1, mode="", realtime=False):
+                       alternatives=1, mode="", realtime=False, low_floor=None):
         self.calls.append(mode)
         self.realtime.append(realtime)
+        self.low_floor = getattr(self, "low_floor", []) + [low_floor]
         r = self.responses[len(self.calls) - 1]
         return r() if callable(r) else r
 
 
-def _plan(mode="", rec=None):
+def _plan(mode="", rec=None, **extra):
     orig = route_client.plan_route
     route_client.plan_route = rec
     try:
         return _run(tool_handlers.tool_plan_accessible_route(
-            destination_poi_id="TBF-1", origin_lat=37.39, origin_lng=126.95, mode=mode))
+            destination_poi_id="TBF-1", origin_lat=37.39, origin_lng=126.95, mode=mode, **extra))
     finally:
         route_client.plan_route = orig
 
@@ -181,6 +182,41 @@ def t_transit_brief_with_realtime_low_floor():
     assert s["board_facilities"]["elevators"] == ["2번 출입구 — (2F) 1번출구 맞이방 서쪽"]
     assert s["board_facilities"]["dis_toilet"] == "yes"
     assert s["alight_facilities"] is None
+
+
+def t_low_floor_passthrough_and_note():
+    """저상버스 우선(#291, 02 v1.22.0) — 요청값을 그대로 전달하고, 판정 결과를 low_floor·low_floor_note 로 낸다."""
+    resp = _transit_resp()
+    resp["low_floor"] = {"mode": True, "tier": 1, "expanded_radius": False, "queried_at": 1757200000,
+                         "valid_for_sec": 120, "wait_sec": 300}
+    bus = resp["routes"][0]["legs"][1]
+    bus["low_floor"] = {"tier": 1, "wait_sec": 300, "predict_min": 12, "stops_away": 8,
+                        "plate_no": "경기71바0002", "route_name": "2", "source": "arrivals"}
+    bus["warnings"] = ["저상버스 2번이 약 12분 뒤 도착 예정입니다(8 정거장 전) — 실시간 정보라 변동될 수 있습니다"]
+    rec = _Recorder([resp])
+    r = _plan("walk_bus_subway", rec, low_floor=True)
+    assert rec.low_floor == [True], "low_floor 요청값이 경로 서버로 전달되지 않음"
+    assert r["low_floor"]["mode"] is True and r["low_floor"]["tier"] == 1
+    assert r["transit"][0]["low_floor_tier"] == 1
+    assert r["low_floor_note"].startswith("저상버스 2번이 약 12분")
+    assert "저상버스 우선으로 고른 경로" in r["ai_instruction"]
+    assert "저상버스 대기를 더한 추정" in r["ai_instruction"]
+    # off 로 요청하면 False 가 그대로 가고, 구버전 응답(low_floor 키 없음)도 깨지지 않는다
+    rec = _Recorder([_transit_resp()])
+    r = _plan("walk_bus", rec, low_floor=False)
+    assert rec.low_floor == [False]
+    assert r["low_floor"] == {"mode": False} and r["transit"][0]["low_floor_tier"] is None
+    # 자동 추천 승격 경로에도 전달된다
+    rec = _Recorder([_walk_resp(2000), resp])
+    r = _plan("", rec, low_floor=True)
+    assert rec.low_floor == [None, True]
+    # 저상 없음(tier 3) — 문구는 leg 경고 첫 줄
+    resp3 = _transit_resp()
+    resp3["low_floor"] = {"mode": True, "tier": 3}
+    resp3["routes"][0]["legs"][1]["low_floor"] = {"tier": 3, "route_name": "2"}
+    resp3["routes"][0]["legs"][1]["warnings"] = ["현재 운행 중인 저상버스가 없습니다 — 이 구간은 일반 버스 기준 안내입니다"]
+    r = _plan("walk_bus", _Recorder([resp3]))
+    assert r["low_floor_note"].startswith("현재 운행 중인 저상버스가 없습니다")
 
 
 def t_mode_label_follows_actual_legs():

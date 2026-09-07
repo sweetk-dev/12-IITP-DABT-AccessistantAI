@@ -287,6 +287,16 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 @keyframes navimic{50%{opacity:.35;}}
 /* ── 이동 방식 카드 (#251) ── */
 .mode-cards{display:flex;gap:6px;margin:0 0 10px;}
+/* 저상버스 우선 스위치 (#291) — 제목 줄 우측 상단 */
+.rhead{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.rhead h2{margin:0;flex:1;min-width:0;}
+.lf-toggle{flex:none;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1.5px solid var(--c-border);border-radius:999px;background:#fff;font-size:.78rem;font-weight:700;color:#64748B;line-height:1.2;}
+.lf-toggle .knob{width:26px;height:16px;border-radius:999px;background:#CBD5E1;position:relative;flex:none;}
+.lf-toggle .knob::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .15s;}
+.lf-toggle[aria-pressed="true"]{border-color:var(--c-primary);color:var(--c-primary);background:#EFF4FE;}
+.lf-toggle[aria-pressed="true"] .knob{background:var(--c-primary);}
+.lf-toggle[aria-pressed="true"] .knob::after{left:12px;}
+.leg-card .lg-live.est{color:#92400E;}
 .mode-cards button{flex:1;min-width:0;padding:9px 2px;border:1.5px solid var(--c-border);border-radius:10px;background:#fff;font-size:.8rem;font-weight:700;color:#334155;line-height:1.25;}
 .mode-cards button[aria-pressed="true"]{border-color:var(--c-primary);color:var(--c-primary);background:#EFF4FE;}
 .mode-cards button small{display:block;font-size:.68rem;font-weight:600;color:#64748B;}
@@ -1214,6 +1224,9 @@ window.NAVI = (function(){
   // 이동 방식 (#251) — auto=자동 추천. 카드 선택 시 그 방식으로 재요청한다
   var routeMode="auto", lastModeUsed=null, lastModeLabel=null;
   var profile="wheelchair_manual";
+  // 저상버스 우선 (#291, 02 v1.22.0) — null=서버 기본(휠체어 프로필 on). 스위치로 바꾸면 값이 고정된다.
+  var lowFloorPref=null, rerouteNote=null;
+  function lowFloorOn(){ return lowFloorPref===null ? profile.indexOf("wheelchair")===0 : !!lowFloorPref; }
   var originOverride=null;      // 지도에서 직접 지정한 출발지 (서비스 지역 밖일 때 사용)
   var originMarker=null;
   var outOfArea=false;
@@ -2405,11 +2418,15 @@ window.NAVI = (function(){
       return;
     }
     sendActivity("route_request");
-    status(spot.name + " 까지 경로를 찾는 중입니다…");
+    // 재탐색 사유(저상 스위치 전환·정보 만료)가 있으면 그 문구를 앞에 붙인다 (#291)
+    status((rerouteNote ? rerouteNote + " · " : "") + spot.name + " 까지 경로를 찾는 중입니다…");
+    rerouteNote = null;
     var qs = new URLSearchParams({
       origin_lat: o.lat, origin_lng: o.lng, profile: profile,
       mode: routeMode === "auto" ? "" : routeMode   // ""=자동 추천 (#251)
     });
+    // 저상버스 우선 (#291) — 휠체어 프로필에서만 의미가 있다. 시각장애 프로필은 보내지 않는다.
+    if(profile.indexOf("wheelchair")===0) qs.set("low_floor", lowFloorOn() ? "true" : "false");
     if(spot.poi_id){
       qs.set("destination_poi_id", spot.poi_id);
       qs.set("destination_type", spot.kind === "transit_station" ? "transit_station" : "tour");
@@ -2513,7 +2530,32 @@ window.NAVI = (function(){
     var s = primary.summary || {};
     var body = $("naviSheetBody");
     body.textContent = "";
-    var h = document.createElement("h2"); h.textContent = (destName||"목적지") + " 까지"; body.appendChild(h);
+    var hrow = document.createElement("div"); hrow.className="rhead";
+    var h = document.createElement("h2"); h.textContent = (destName||"목적지") + " 까지"; hrow.appendChild(h);
+    // ── 저상버스 우선 스위치 (#291) — 휠체어 프로필에서만. 전환하면 같은 목적지로 재탐색한다 ──
+    if(profile.indexOf("wheelchair")===0){
+      var lfOn = (route && route.low_floor && typeof route.low_floor.mode === "boolean") ? route.low_floor.mode : lowFloorOn();
+      var lt = document.createElement("button"); lt.type="button"; lt.className="lf-toggle"; lt.id="lowFloorToggle";
+      lt.setAttribute("role","switch"); lt.setAttribute("aria-pressed", String(lfOn)); lt.setAttribute("aria-checked", String(lfOn));
+      lt.setAttribute("aria-label", "저상버스 우선 " + (lfOn ? "켜짐" : "꺼짐"));
+      var kn = document.createElement("span"); kn.className="knob"; kn.setAttribute("aria-hidden","true");
+      var ltx = document.createElement("span"); ltx.textContent = "저상버스 우선";
+      lt.appendChild(kn); lt.appendChild(ltx);
+      lt.addEventListener("click", function(){
+        if(!tripDest){
+          status("이 경로의 저상버스 우선 변경은 상담원에게 말로 요청해 주세요 (예: 저상버스로 안내해줘).");
+          return;
+        }
+        lowFloorPref = !lfOn;
+        lt.setAttribute("aria-pressed", String(lowFloorPref)); lt.setAttribute("aria-checked", String(lowFloorPref));
+        rerouteNote = "경로를 재 탐색 합니다" + (lowFloorPref ? " — 저상버스 우선" : " — 일반 버스 포함");
+        speak("경로를 재 탐색 합니다.");
+        sendActivity("low_floor_toggle");
+        requestRoute(tripDest);
+      });
+      hrow.appendChild(lt);
+    }
+    body.appendChild(hrow);
 
     // ── 이동 방식 카드 (#251) — 기본 '추천', 선택 시 그 방식으로 재요청 ──
     var mrow = document.createElement("div"); mrow.className="mode-cards";
@@ -2568,9 +2610,9 @@ window.NAVI = (function(){
           var w=document.createElement("div"); w.className="lg-w";
           w.textContent = "※ 저상버스 정차는 보장되지 않습니다 — 실시간 도착정보를 확인하세요";
           c.appendChild(t); c.appendChild(d);
-          // 실시간 도착정보(02 v1.19.0) — 확인된 사실이 있으면 고정 경고 대신 그것을 보여준다
-          var lv = liveArrivalText(leg.realtime, r.name);
-          if(lv){ var l=document.createElement("div"); l.className="lg-live"+(lv.ok?"":" off"); l.textContent=lv.text; c.appendChild(l); }
+          // 저상 우선 판정(02 v1.22.0, #291)이 있으면 그것이 우선 — 없으면 실시간 도착정보(v1.19.0), 그것도 없으면 고정 경고
+          var lv = lowFloorLegText(leg.low_floor, r.name) || liveArrivalText(leg.realtime, r.name);
+          if(lv){ var l=document.createElement("div"); l.className="lg-live"+(lv.ok?(lv.est?" est":""):" off"); l.textContent=lv.text; c.appendChild(l); }
           else c.appendChild(w);
           ll.appendChild(c);
         } else if(leg.kind==="subway"){
@@ -2741,8 +2783,24 @@ window.NAVI = (function(){
   }
 
   /* ── 턴바이턴 ── */
+  function routeStale(){
+    // 저상 우선 결과는 조회 시점 실시간 기반 — 유효시간(기본 120초)이 지나면 다시 탐색한다 (#291)
+    var lf = route && route.low_floor;
+    if(!lf || !lf.mode || !lf.queried_at) return false;
+    var age = Math.floor(Date.now()/1000) - Number(lf.queried_at);
+    return age > (Number(lf.valid_for_sec) || 120);
+  }
+  var staleRetried = false;   // 오래된 저상 정보로 인한 재탐색은 안내 시작당 한 번만 (되풀이 방지)
   function startGuidance(){
     if(!steps.length) return;
+    if(routeStale() && tripDest && !staleRetried){
+      staleRetried = true;
+      rerouteNote = "저상버스 정보가 오래되어 경로를 다시 탐색합니다"; speak("경로를 다시 탐색합니다.");
+      autoResumeGuide = true;       // 새 경로가 오면 안내를 이어서 시작한다
+      requestRoute(tripDest);
+      return;
+    }
+    staleRetried = false;
     stopSimulation();
     guiding = true; stepIdx = 0; _interimDone = {};
     offRouteCnt = 0; offRouteSince = 0; setFollow(true);
@@ -2758,6 +2816,20 @@ window.NAVI = (function(){
     followCamera();
   }
   /* ── 실시간 저상버스 (v1.39.0, 02 v1.19.0 /transit/bus/arrivals) ── */
+  function lowFloorLegText(lf, routeName){
+    // 02 v1.22.0 저상 우선 판정 → {text, ok, est} 또는 null(판정 없음 → 종전 표시)
+    if(!lf || typeof lf !== "object" || lf.tier == null) return null;
+    var name = lf.route_name || routeName || "";
+    if(lf.tier === 1){
+      return {ok:true, text:"🚌 저상 " + name + "번 약 " + (lf.predict_min != null ? lf.predict_min : Math.round((lf.wait_sec||0)/60)) + "분 후 도착" +
+        (lf.stops_away != null ? " (" + lf.stops_away + " 정거장 전)" : "")};
+    }
+    if(lf.tier === 2){
+      return {ok:true, est:true, text:"🚌 저상 " + name + "번 운행 중 — 약 " + (lf.stops_away != null ? lf.stops_away + " 정거장 전" : "도착 시각 미확인") + " · 정류장에서 다시 확인"};
+    }
+    if(lf.tier === 3) return {ok:false, text:"지금 운행 중인 저상버스가 없습니다 — 일반 버스 기준 안내"};
+    return {ok:false, text:"실시간 저상 정보를 확인하지 못했습니다 — 정류장 안내판을 확인하세요"};
+  }
   function liveArrivalText(rt, routeName){
     // 반환 {text, ok} 또는 null(실시간 없음 -> 고정 경고 유지)
     if(!rt || typeof rt !== "object") return null;
