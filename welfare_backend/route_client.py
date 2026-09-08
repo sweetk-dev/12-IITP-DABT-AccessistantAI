@@ -171,7 +171,8 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
 
 # ── 경로 ──
 async def plan_route(origin: dict, destination: dict, profile: str = "wheelchair_manual",
-                     alternatives: int = 1, mode: str = "", realtime: bool = False) -> dict:
+                     alternatives: int = 1, mode: str = "", realtime: bool = False,
+                     low_floor: Optional[bool] = None) -> dict:
     body = {"origin": origin, "destination": destination,
             "profile": profile, "alternatives": alternatives}
     # 02 v1.12.0 멀티모달(#36) — walk 은 기존 계약이므로 생략해 하위 서버와도 호환 유지
@@ -181,6 +182,9 @@ async def plan_route(origin: dict, destination: dict, profile: str = "wheelchair
             # 02 v1.19.0 — 버스 leg 승차 정류장의 실시간 도착정보(저상 여부)를 함께 받는다.
             # 구버전 02 는 모르는 필드를 무시하므로 호환된다.
             body["realtime"] = True
+        if low_floor is not None:
+            # 02 v1.22.0 — 저상버스 우선 모드(#291). None 이면 서버 기본(휠체어 프로필 on)을 따른다.
+            body["low_floor"] = bool(low_floor)
     return await _call("POST", "/route/plan", json=body)
 
 

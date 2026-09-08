@@ -7,6 +7,6 @@
     "test": "node navi.test.mjs"
   },
   "devDependencies": {
-    "jsdom": "^24.0.0"
+    "jsdom": "^24.1.3"
   }
 }

@@ -714,7 +714,8 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      destination_place: str = "",
                                      destination_lat: float = None,
                                      destination_lng: float = None,
-                                     mode: str = "") -> dict:
+                                     mode: str = "",
+                                     low_floor: Optional[bool] = None) -> dict:
     """현재 위치(또는 말로 지정한 출발지)에서 목적지까지 무장애 경로.
 
     origin_lat/lng 은 프런트가 보낸 현위치가 주입되고,
@@ -811,12 +812,13 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
             "total_distance_m") or 0
         if walk_dist >= AUTO_TRANSIT_MIN_M:
             upgraded = await route_client.plan_route(
-                origin_pt, dest, profile=profile, mode="walk_bus_subway", realtime=True)
+                origin_pt, dest, profile=profile, mode="walk_bus_subway", realtime=True,
+                low_floor=low_floor)
             if upgraded.get("status") != "error" and (upgraded.get("routes") or []):
                 data, mode_used = upgraded, "walk_bus_subway"
     else:
         data = await route_client.plan_route(origin_pt, dest, profile=profile, mode=req_mode,
-                                             realtime=True)
+                                             realtime=True, low_floor=low_floor)
         if data.get("status") == "error":
             return data
         mode_used = req_mode
@@ -832,11 +834,14 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     mode_used = _mode_from_legs(legs, mode_used)
     transit_brief = []
     low_floor_note = None
+    # 02 v1.22.0 저상버스 우선 모드(#291) — 판정 계층·대기·유효시간. 구버전 02 는 이 키가 없다
+    lf = data.get("low_floor") if isinstance(data.get("low_floor"), dict) else {"mode": False}
     for leg in legs:
         if leg.get("kind") == "bus":
             r = leg.get("route") or {}
             live = leg.get("realtime") or {}
             nlf = live.get("next_low_floor") if isinstance(live, dict) else None
+            lj = leg.get("low_floor") if isinstance(leg.get("low_floor"), dict) else None
             item = {
                 "kind": "bus", "route_name": r.get("name"), "route_type": r.get("type"),
                 "end_station": r.get("end_station"),
@@ -849,8 +854,12 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                 # 실시간(02 v1.19.0): success 면 확인된 사실, unavailable 이면 미확인
                 "realtime_status": live.get("status") if isinstance(live, dict) else None,
                 "next_low_floor": _brief_low_floor(nlf) if nlf else None,
+                "low_floor_tier": lj.get("tier") if lj else None,
             }
-            if item["realtime_status"] == "success" and low_floor_note is None:
+            if lj and low_floor_note is None:
+                # 저상 우선 모드가 고른 구간 — 판정 문구(버스 leg 경고 첫 줄)를 그대로 쓴다
+                low_floor_note = (leg.get("warnings") or [None])[0] or _low_floor_tier_note(lj, r.get("name"))
+            elif item["realtime_status"] == "success" and low_floor_note is None:
                 low_floor_note = ("승차 정류장에 저상버스 %s번이 약 %d분 뒤 도착 예정"
                                   % (nlf.get("route_name") or r.get("name"), nlf["predict_min"])
                                   if nlf else
@@ -875,6 +884,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         "auto_mode": auto,
         "transit": transit_brief,
         "low_floor_note": low_floor_note,
+        "low_floor": lf,
         "eta_note": summary.get("eta_note"),
         "origin_label": origin_label,
         "destination_label": dest_label,
@@ -901,14 +911,17 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                if mode_used != "walk_bus_subway" and "subway" in (mode_requested or "") else "")
             + ("대중교통 구간이 있으면 transit 의 노선 번호·유형·방면(end_station)·"
                "정거장 수를 함께 말하세요. "
-               + ("저상버스 실시간 확인 결과(low_floor_note)를 그대로 한 문장으로 전하고, "
+               + (("저상버스 우선으로 고른 경로입니다 — 가장 가까운 정류장이 아니라 저상버스가 오는 "
+                   "정류장·노선을 골랐다는 점을 짧게 밝히고, " if lf.get("mode") else "")
+                  + "저상버스 실시간 확인 결과(low_floor_note)를 그대로 한 문장으로 전하고, "
                   "실시간 정보라 변동될 수 있다고 덧붙이세요. "
                   if low_floor_note else
                   "저상버스 정차는 보장되지 않으니 실시간 도착정보 확인이 필요하다고 알리고, "
                   "'저상버스 언제 와' 라고 물으면 확인해 드릴 수 있다고 안내하세요. ")
                + "지하철 구간이 있고 board_facilities.elevators 가 있으면 승차 역 승강기 "
                  "출입구를 한 마디로 알리세요(예: '안양역은 1번 출구 옆 엘리베이터'). "
-                 "소요시간은 대기 미포함 추정임을 밝히세요. "
+                 + ("소요시간은 저상버스 대기를 더한 추정임을 밝히세요. "
+                    if lf.get("tier") in (1, 2) else "소요시간은 대기 미포함 추정임을 밝히세요. ")
                if transit_brief else "")
             + "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로 요약하고, 첫 안내 한 문장을 덧붙이세요. "
             "경고(warnings)나 제약 완화(fallback.used=true)가 있으면 반드시 함께 알리세요. "
@@ -1062,6 +1075,18 @@ async def tool_find_nearby_transit(lat: float = None, lng: float = None,
 # ─────────────────────────────────────────────────────────────
 # 도구 #12 — 정류장 실시간 도착·저상버스 (v1.39.0, 02 v1.19.0 /transit/bus/arrivals)
 # ─────────────────────────────────────────────────────────────
+def _low_floor_tier_note(lj: dict, route_name) -> str:
+    t = lj.get("tier")
+    name = lj.get("route_name") or route_name or ""
+    if t == 1:
+        return "저상버스 %s번이 약 %d분 뒤 도착 예정" % (name, int(lj.get("predict_min") or 0))
+    if t == 2:
+        return "저상버스 %s번이 운행 중(약 %s 정거장 전)" % (name, lj.get("stops_away"))
+    if t == 3:
+        return "현재 운행 중인 저상버스가 없어 일반 버스 기준으로 안내"
+    return "실시간 저상버스 정보를 확인하지 못함"
+
+
 def _brief_low_floor(nlf: dict) -> dict:
     return {"route_name": nlf.get("route_name"), "route_type": nlf.get("route_type"),
             "end_station": nlf.get("end_station"), "predict_min": nlf.get("predict_min"),

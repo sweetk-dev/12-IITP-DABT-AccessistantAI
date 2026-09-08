@@ -240,7 +240,7 @@ def _ollama_route_tools() -> list:
                         "description": "wheelchair_manual(기본)/wheelchair_electric/crutch/visual/walk"},
             "origin_place": {"type": "string", "description": "사용자가 말로 밝힌 출발지 이름"},
             "mode": {"type": "string",
-                     "description": "walk / walk_bus / walk_bus_subway. 사용자가 방식을 말했을 때만 채운다"}}),
+                     "description": "walk / walk_bus / walk_bus_subway. \'도보로\'·\'걸어서\' 는 walk, \'버스로\'·\'지하철로\' 는 walk_bus/walk_bus_subway. 방식을 말하지 않았을 때만 비운다 (v1.43.2)"}}),
         fn("explain_route_segment",
            "직전에 안내한 경로의 특정 구간이 왜 그렇게(우회·경사·계단) 안내되었는지 설명한다. "
            "안내가 진행 중이면 route_id·step_idx 는 서버가 채우므로 생략한다.",
