@@ -362,9 +362,10 @@ check("지정한 출발지가 경로 요청에 사용됨", () => {
 });
 
 // 3-b) 이동 방식 카드 + 멀티모달 렌더 (#251)
-check("이동 방식 카드 4개 — 기본 '추천' 선택", () => {
+check("이동 방식 카드 5개(도보+지하철 포함, v1.48.0) — 기본 '추천' 선택", () => {
   const cards = [...window.document.querySelectorAll(".mode-cards button")];
-  assert.equal(cards.length, 4);
+  assert.equal(cards.length, 5);
+  assert.deepEqual(cards.map((b) => b.getAttribute("data-mode")), ["auto", "walk", "walk_subway", "walk_bus", "walk_bus_subway"]);
   assert.equal(cards[0].getAttribute("aria-pressed"), "true");
   assert.match(cards[0].textContent, /추천/);
 });
@@ -1866,7 +1867,7 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   });
   check("정적 자원이 바뀌었으므로 서비스워커 캐시 이름이 올라가고 셸에 아이콘이 들어간다 (v1.46.1)", () => {
     const SW = readFileSync(new URL("../../static/sw.js", import.meta.url), "utf8");
-    assert.match(SW, /const CACHE = "accessistant-v3";/);   // v1.47.0 저상 스위치로 셸이 바뀜
+    assert.match(SW, /const CACHE = "accessistant-v4";/);   // v1.48.0 프로필 배지·전환으로 셸이 바뀜
     assert.match(SW, /"\/static\/icons\/icon-512\.png"/);
     assert.match(SW, /"\/static\/icons\/apple-touch-icon-180\.png"/);
   });
@@ -1970,6 +1971,97 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.equal(window.NAVI._internals().stepIdx, 0);
   });
   window.fetch = prevFetchLF;
+}
+
+// ── 전동 휠체어 기본 프로필 · 배지 · 전환 · 도보+지하철 · 계측 사유 (v1.48.0, #294 · 02 v1.25.0) ──
+{
+  const SUB_ROUTE = JSON.parse(JSON.stringify(MMROUTE.ui_action.route));
+  SUB_ROUTE.route_id = "r_sub"; SUB_ROUTE.mode = "walk_subway"; SUB_ROUTE.low_floor = { mode: false };
+  SUB_ROUTE.routes[0].legs = [
+    { kind: "walk", summary: { total_distance_m: 300, duration_sec: 270 }, to_label: "명학역" },
+    { kind: "subway", line: "1호선", board: { name: "명학" }, alight: { name: "관악" }, station_cnt: 2, warnings: [] },
+    { kind: "walk", summary: { total_distance_m: 700, duration_sec: 640 }, to_label: "목적지" },
+  ];
+  SUB_ROUTE.routes[0].steps = ROUTE.ui_action.route.routes[0].steps;
+  const prevFetchPF = window.fetch;
+  const pfCalls = [];
+  window.fetch = async (url, opt) => {
+    const u = String(url);
+    if (u.includes("plan_accessible_route")) {
+      lastPlanQuery = u; pfCalls.push(u);
+      const sub = u.includes("mode=walk_subway");
+      return { ok: true, json: async () => ({ status: "success", route_id: sub ? "r_sub" : "r_test",
+        mode_used: sub ? "walk_subway" : "walk", mode_label: sub ? "도보+지하철" : "도보",
+        ui_action: { action: "show_route", route: JSON.parse(JSON.stringify(sub ? SUB_ROUTE : ROUTE.ui_action.route)) } }) };
+    }
+    return prevFetchPF(url, opt);
+  };
+  check("기본 경로 프로필은 전동 휠체어", () => {
+    assert.equal(NAV.profile(), "wheelchair_electric");
+    assert.equal(NAV.wheelProfile(), "wheelchair_electric");
+  });
+  check("지도 위 배지에 '전동휠체어 기준' 상시 표시", () => {
+    const b = $("profBadge");
+    assert.ok(b, "배지 없음");
+    assert.match(b.textContent, /전동휠체어 기준/);
+    assert.equal(b.hidden, false);
+  });
+  NAV.clearRouteDisplay(); NAV.resetTrip();
+  NAV.requestRoute({ poi_id: "TBF-1", name: "안양문화원" });
+  await sleep(60);
+  check("경로 요청에 profile=wheelchair_electric + reason=first 가 실린다", () => {
+    assert.match(lastPlanQuery || "", /profile=wheelchair_electric/);
+    assert.match(lastPlanQuery || "", /reason=first/);
+  });
+  check("결과 제목 줄에 전동|수동 전환이 있고 전동이 눌려 있다", () => {
+    const seg = $("profSeg");
+    assert.ok(seg, "전환 없음");
+    const btns = [...seg.querySelectorAll("button")];
+    assert.deepEqual(btns.map((b) => b.getAttribute("data-profile")), ["wheelchair_electric", "wheelchair_manual"]);
+    assert.equal(btns[0].getAttribute("aria-pressed"), "true");
+    assert.ok(seg.parentElement.querySelector("h2"), "제목 줄(rhead)에 있어야 한다");
+  });
+  spoken.length = 0;
+  [...$("profSeg").querySelectorAll("button")].find((b) => b.getAttribute("data-profile") === "wheelchair_manual")
+    .dispatchEvent(new window.Event("click"));
+  check("수동으로 전환: 배지·상태줄이 바뀌고 재탐색 문구가 뜬다", () => {
+    assert.equal(NAV.profile(), "wheelchair_manual");
+    assert.match($("profBadge").textContent, /수동휠체어 기준/);
+    assert.match($("naviStatus").textContent, /재 탐색|수동휠체어 기준/);
+  });
+  await sleep(120);
+  check("전환 음성 안내 + 재요청에 profile=wheelchair_manual + reason=profile + 직전 route_id", () => {
+    assert.ok(spoken.some((t) => /수동휠체어 기준으로 바꿨습니다/.test(t)), JSON.stringify(spoken.slice(-3)));
+    assert.match(lastPlanQuery || "", /profile=wheelchair_manual/);
+    assert.match(lastPlanQuery || "", /reason=profile/);
+    assert.match(lastPlanQuery || "", /prev_route_id=r_test/);
+  });
+  check("선택이 단말에 저장된다", () => {
+    assert.equal(window.localStorage.getItem("acc_profile"), "wheelchair_manual");
+  });
+  $("profBadge").dispatchEvent(new window.Event("click"));
+  await sleep(80);
+  check("배지를 누르면 다시 전동으로 돌아간다", () => {
+    assert.equal(NAV.profile(), "wheelchair_electric");
+    assert.match($("profBadge").textContent, /전동휠체어 기준/);
+    assert.match(lastPlanQuery || "", /profile=wheelchair_electric/);
+  });
+  // 도보+지하철 카드
+  [...window.document.querySelectorAll(".mode-cards button")].find((b) => b.getAttribute("data-mode") === "walk_subway")
+    .dispatchEvent(new window.Event("click"));
+  await sleep(80);
+  check("'도보+지하철' 카드 → mode=walk_subway + reason=mode 로 재요청", () => {
+    assert.match(lastPlanQuery || "", /mode=walk_subway/);
+    assert.match(lastPlanQuery || "", /reason=mode/);
+  });
+  check("지하철만 있는 결과의 라벨은 '도보+지하철' (버스+지하철 아님)", () => {
+    const auto = [...window.document.querySelectorAll(".mode-cards button")].find((b) => b.getAttribute("data-mode") === "auto");
+    assert.match(auto.textContent, /도보\+지하철/);
+    assert.doesNotMatch(auto.textContent, /버스\+지하철/);
+    const t = $("naviSheetBody").textContent;
+    assert.match(t, /1호선/);
+  });
+  window.fetch = prevFetchPF;
 }
 
 // ── 결과 ──

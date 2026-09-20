@@ -197,9 +197,11 @@ async def front_config():
             "default_center": {"lat": 37.3943, "lng": 126.9568},
             "default_level": 5,
         },
+        # 기본 프로필은 전동 휠체어(#294, 02 v1.25.0). 프런트는 현재 프로필을 화면에 상시 표시한다
+        "default_profile": tool_handlers.DEFAULT_PROFILE,
         "route_profiles": [
+            {"id": "wheelchair_electric", "label": "전동 휠체어 (기본)"},
             {"id": "wheelchair_manual", "label": "수동 휠체어"},
-            {"id": "wheelchair_electric", "label": "전동 휠체어"},
             {"id": "crutch", "label": "목발·보행보조"},
             {"id": "visual", "label": "시각장애"},
             {"id": "walk", "label": "일반 보행"},
@@ -471,11 +473,14 @@ async def plan_accessible_route(
     destination_lat: float = Query(None, description="지도에서 직접 지정한 목적지 위도"),
     destination_lng: float = Query(None, description="지도에서 직접 지정한 목적지 경도"),
     destination_type: str = Query("tour"),
-    profile: str = Query("wheelchair_manual"),
-    mode: str = Query("", description="walk | walk_bus | walk_bus_subway | ''(자동 추천)"),
+    profile: str = Query(tool_handlers.DEFAULT_PROFILE),
+    mode: str = Query("", description="walk | walk_subway | walk_bus | walk_bus_subway | ''(자동 추천)"),
     low_floor: Optional[bool] = Query(None, description="저상버스 우선(#291). 생략하면 휠체어 프로필 on"),
+    reason: str = Query("", description="계측용 요청 사유(#294): first | new | off_route | stale | low_floor | profile | mode"),
+    prev_route_id: str = Query("", description="계측용 직전 route_id(#294)"),
 ):
     return await tool_handlers.tool_plan_accessible_route(
+        log_ctx={"reason": reason or None, "prev_route_id": prev_route_id or None},
         destination_poi_id=destination_poi_id,
         destination_place=destination_place,
         destination_lat=destination_lat,
@@ -529,7 +534,7 @@ async def transit_access_points(
     lat: float = Query(...),
     lng: float = Query(...),
     radius_m: float = Query(800, ge=50, le=3000),
-    profile: str = Query("wheelchair_manual"),
+    profile: str = Query(tool_handlers.DEFAULT_PROFILE),
 ):
     return await route_client.transit_access(lat, lng, radius_m, profile)
 

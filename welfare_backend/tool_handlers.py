@@ -684,9 +684,14 @@ def _out_of_service_area(kind: str, place: str) -> dict:
 
 AUTO_TRANSIT_MIN_M = 700     # 이 직선거리 미만이면 자동 모드는 도보를 쓴다
 
+# 기본 경로 프로필 (#294, 02 v1.25.0) — 전동 휠체어. 3차년도 실증 기준이며 02 서버 기본값과 같다.
+DEFAULT_PROFILE = "wheelchair_electric"
+# 지원 이동 방식 — walk_subway 는 버스 없이 지하철만 쓴다(02 v1.25.0, #294)
+ROUTE_MODES = ("walk", "walk_subway", "walk_bus", "walk_bus_subway")
+
 
 def _mode_label(mode: str) -> str:
-    return {"walk": "도보", "walk_bus": "도보+버스",
+    return {"walk": "도보", "walk_subway": "도보+지하철", "walk_bus": "도보+버스",
             "walk_bus_subway": "도보+버스+지하철"}.get(mode, mode)
 
 
@@ -699,7 +704,8 @@ def _mode_from_legs(legs: list, requested: str) -> str:
     """
     kinds = {l.get("kind") for l in (legs or []) if isinstance(l, dict)}
     if "subway" in kinds:
-        return "walk_bus_subway"
+        # 버스가 섞이지 않은 지하철 조합은 walk_subway 다(#294) — "버스+지하철"이라 말하면 안 된다
+        return "walk_bus_subway" if "bus" in kinds else "walk_subway"
     if "bus" in kinds:
         return "walk_bus"
     return "walk" if legs else (requested or "walk")
@@ -707,7 +713,7 @@ def _mode_from_legs(legs: list, requested: str) -> str:
 
 async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      destination_type: str = "tour",
-                                     profile: str = "wheelchair_manual",
+                                     profile: str = DEFAULT_PROFILE,
                                      origin_lat: float = None,
                                      origin_lng: float = None,
                                      origin_place: str = "",
@@ -715,8 +721,11 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      destination_lat: float = None,
                                      destination_lng: float = None,
                                      mode: str = "",
-                                     low_floor: Optional[bool] = None) -> dict:
+                                     low_floor: Optional[bool] = None,
+                                     log_ctx: Optional[dict] = None) -> dict:
     """현재 위치(또는 말로 지정한 출발지)에서 목적지까지 무장애 경로.
+
+    log_ctx 는 계측 로그(#294)에만 쓰는 문맥(요청 사유·직전 route_id)이다 — 응답에 영향 없음.
 
     origin_lat/lng 은 프런트가 보낸 현위치가 주입되고,
     사용자가 출발지를 말로 밝히면 origin_place 가 우선한다.
@@ -796,13 +805,16 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     # 대중교통 조합(walk_bus_subway)으로 승격을 시도한다. 조합이 없으면 도보 유지.
     req_mode = (mode or "").strip().lower()
     auto = req_mode in ("", "auto", "recommend")
-    if not auto and req_mode not in ("walk", "walk_bus", "walk_bus_subway"):
+    if not auto and req_mode not in ROUTE_MODES:
         return {"status": "error",
                 "message": "지원하지 않는 이동 방식입니다: %s" % mode,
-                "ai_instruction": "이동 방식은 도보/도보+버스/도보+버스+지하철 중에서만 "
+                "ai_instruction": "이동 방식은 도보/도보+지하철/도보+버스/도보+버스+지하철 중에서만 "
                                   "고를 수 있다고 짧게 안내하세요."}
 
     origin_pt = {"lat": origin_lat, "lng": origin_lng}
+    _set_ctx = getattr(route_client, "set_log_ctx", None)   # 테스트 스텁은 이 함수가 없다
+    if _set_ctx:
+        _set_ctx(log_ctx)
     if auto:
         data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk")
         if data.get("status") == "error":
@@ -976,7 +988,7 @@ async def tool_explain_route_segment(route_id: str, step_idx: int = None) -> dic
 # ─────────────────────────────────────────────────────────────
 async def tool_find_nearby_transit(lat: float = None, lng: float = None,
                                    place: str = "", radius_m: int = 500,
-                                   profile: str = "wheelchair_manual") -> dict:
+                                   profile: str = DEFAULT_PROFILE) -> dict:
     """현재 위치(또는 말한 기준 장소) 주변의 버스 정류장·지하철역.
 
     lat/lng 은 live_bridge 가 프런트의 현재 위치를 주입한다(place 미지정 시).
@@ -1141,7 +1153,7 @@ def _arrival_line(it: dict) -> dict:
 
 async def tool_get_bus_arrivals(station_id: str = "", route_id: str = "", place: str = "",
                                 station_name: str = "", lat: float = None, lng: float = None,
-                                profile: str = "wheelchair_manual") -> dict:
+                                profile: str = DEFAULT_PROFILE) -> dict:
     """정류장의 실시간 도착정보 — "저상버스 언제 와", "다음 버스 저상이야?".
 
     정류장은 (1) station_id (2) 안내 중 버스 구간의 승차 정류장(세션 주입)
