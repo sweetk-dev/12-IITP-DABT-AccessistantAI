@@ -261,6 +261,66 @@ def t_transit_brief_realtime_unavailable_keeps_old_wording():
     assert "실시간 도착정보 확인이 필요" in r["ai_instruction"]
 
 
+def t_walk_subway_mode_passthrough_and_label():
+    """walk_subway(#294, 02 v1.25.0) — 그대로 전달하고, 지하철만 있는 결과의 라벨은 '도보+지하철'이다."""
+    resp = _transit_resp()
+    resp["mode"] = "walk_subway"
+    resp["routes"][0]["legs"] = [l for l in resp["routes"][0]["legs"] if l["kind"] != "bus"]
+    rec = _Recorder([resp])
+    r = _plan("walk_subway", rec)
+    assert rec.calls == ["walk_subway"], rec.calls
+    assert r["status"] == "success"
+    assert r["mode_used"] == "walk_subway" and r["mode_label"] == "도보+지하철"
+    assert [t["kind"] for t in r["transit"]] == ["subway"]
+    # 버스가 섞인 결과는 여전히 버스+지하철
+    rec = _Recorder([_transit_resp()])
+    r = _plan("walk_bus_subway", rec)
+    assert r["mode_used"] == "walk_bus_subway"
+    # 알 수 없는 방식 안내문에 도보+지하철이 들어간다
+    r = _plan("taxi", _Recorder([]))
+    assert "도보+지하철" in r["ai_instruction"]
+
+
+def t_default_profile_is_electric():
+    """기본 프로필은 전동 휠체어(#294) — 도구가 프로필을 받지 못하면 전동으로 부른다."""
+    assert tool_handlers.DEFAULT_PROFILE == "wheelchair_electric"
+    seen = {}
+
+    async def rec(origin, destination, profile="x", alternatives=1, mode="", realtime=False, low_floor=None):
+        seen["profile"] = profile
+        return _walk_resp(500)
+    orig = route_client.plan_route
+    route_client.plan_route = rec
+    try:
+        _run(tool_handlers.tool_plan_accessible_route(
+            destination_poi_id="TBF-1", origin_lat=37.39, origin_lng=126.95))
+    finally:
+        route_client.plan_route = orig
+    assert seen["profile"] == "wheelchair_electric", seen
+
+
+def t_call_log_summary_and_ctx():
+    """계측 로그(#294) — 요청 문맥·응답 요약만 남고, 좌표 본문은 남지 않는다."""
+    body = {"origin": {"lat": 1, "lng": 2}, "destination": {"type": "tour", "poi_id": "TBF-1"},
+            "profile": "wheelchair_electric", "mode": "walk_subway"}
+    resp = _transit_resp()
+    out = route_client._summarize_for_log("/route/plan", body, resp)
+    assert out["profile"] == "wheelchair_electric" and out["mode"] == "walk_subway"
+    assert out["route_id"] == "r_mm" and out["total_m"] == 2400 and out["walk_m"] == 300
+    assert "origin" not in out
+    out = route_client._summarize_for_log("/route/plan", {"profile": "p"}, None)
+    assert out["mode"] == "walk" and "route_id" not in out
+    rec = route_client._summarize_for_log("/tour/recommend",
+                                          {"disabilities": ["지체장애"], "sigungu": "안양", "topk": 5},
+                                          {"total": 2, "items": [{"poi_id": 1, "score": 1.0, "name": "x"}]})
+    assert rec["items"] == [{"poi_id": "1", "score": 1.0}] and rec["total"] == 2
+    route_client.set_log_ctx({"reason": "off_route", "prev_route_id": "r_old", "empty": ""})
+    ctx = route_client._log_ctx()
+    assert ctx == {"reason": "off_route", "prev_route_id": "r_old"}, ctx
+    route_client.set_log_ctx(None)
+    assert route_client._log_ctx() == {}
+
+
 if __name__ == "__main__":
     for nm, fn in sorted((k, v) for k, v in list(globals().items()) if k.startswith("t_")):
         check(nm, fn)

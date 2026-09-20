@@ -72,3 +72,6 @@ package-lock.json
 
 # 콘솔이 런타임에 쓰는 크롤 타겟 오버레이 (영속 볼륨/로컬 실행 산출물)
 crawl_targets.local.json
+
+# 경로 호출 계측 로그(#294)
+welfare_backend/logs/

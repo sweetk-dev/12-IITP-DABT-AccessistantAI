@@ -237,10 +237,10 @@ def _ollama_route_tools() -> list:
            "이름으로 찾는다. 지어낸 poi_id 를 넣지 않는다.",
            {"destination_poi_id": S, "destination_place": S, "destination_type": S,
             "profile": {"type": "string",
-                        "description": "wheelchair_manual(기본)/wheelchair_electric/crutch/visual/walk"},
+                        "description": "wheelchair_electric(기본, 전동 휠체어)/wheelchair_manual(수동)/crutch/visual/walk"},
             "origin_place": {"type": "string", "description": "사용자가 말로 밝힌 출발지 이름"},
             "mode": {"type": "string",
-                     "description": "walk / walk_bus / walk_bus_subway. \'도보로\'·\'걸어서\' 는 walk, \'버스로\'·\'지하철로\' 는 walk_bus/walk_bus_subway. 방식을 말하지 않았을 때만 비운다 (v1.43.2)"}}),
+                     "description": "walk / walk_subway / walk_bus / walk_bus_subway. \'도보로\'·\'걸어서\' 는 walk, \'지하철로\'·\'버스 말고 지하철\' 은 walk_subway, \'버스로\' 는 walk_bus, \'대중교통으로\' 는 walk_bus_subway. 방식을 말하지 않았을 때만 비운다 (v1.48.0)"}}),
         fn("explain_route_segment",
            "직전에 안내한 경로의 특정 구간이 왜 그렇게(우회·경사·계단) 안내되었는지 설명한다. "
            "안내가 진행 중이면 route_id·step_idx 는 서버가 채우므로 생략한다.",
