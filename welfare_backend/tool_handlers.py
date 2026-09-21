@@ -984,6 +984,171 @@ async def tool_explain_route_segment(route_id: str, step_idx: int = None) -> dic
 
 
 # ─────────────────────────────────────────────────────────────
+# 도구 #13·#14 — 긴급대응 지원시설·화장실 (#296, 02 v1.26.0)
+# ─────────────────────────────────────────────────────────────
+SUPPORT_TYPE_LABEL = {"charge": "충전소", "repair": "수리센터", "calltaxi": "장애인콜택시"}
+
+
+def _support_types_from_situation(types: str, situation: str) -> str:
+    """상황 문구로 유형을 고른다 — 배터리·방전·충전 → charge, 고장·바퀴·수리 → repair,
+    택시·못 가겠 → calltaxi. 명시 types 가 있으면 그대로. 아무것도 없으면 전부."""
+    t = (types or "").strip().lower()
+    if t:
+        picked = [x.strip() for x in t.split(",") if x.strip() in SUPPORT_TYPE_LABEL]
+        if picked:
+            return ",".join(picked)
+    st = situation or ""
+    picked = []
+    if any(k in st for k in ("배터리", "방전", "충전", "전기")):
+        picked.append("charge")
+    if any(k in st for k in ("고장", "바퀴", "수리", "고쳐", "펑크", "브레이크", "안 움직")):
+        picked.append("repair")
+    if any(k in st for k in ("택시", "콜택시", "못 가", "데리러", "실어")):
+        picked.append("calltaxi")
+    return ",".join(picked) if picked else "charge,repair,calltaxi"
+
+
+async def _resolve_base(place: str, lat, lng, tool_name: str):
+    """기준 위치 — 말한 장소 > 주입된 현재 위치. (lat, lng, label) 또는 오류 dict."""
+    if place:
+        hit = await _resolve_place(place)
+        if hit is None:
+            return _out_of_service_area("기준 위치", place)
+        return hit["lat"], hit["lng"], hit["label"]
+    if lat is None or lng is None:
+        return {
+            "status": "need_location",
+            "tool_name": tool_name,
+            "ai_instruction": (
+                "현재 위치를 알 수 없다고 안내하고, 화면의 위치 권한을 허용하거나 "
+                "기준 장소 이름(예: 안양역 근처)을 말씀해 달라고 짧게 요청하세요."
+            ),
+        }
+    return lat, lng, None
+
+
+async def tool_find_emergency_support(lat: float = None, lng: float = None, place: str = "",
+                                      types: str = "", situation: str = "",
+                                      radius_m: int = 2000) -> dict:
+    """전동 보장구 충전기·보장구 수리센터·장애인콜택시 근접 조회.
+
+    "배터리가 다 됐어요", "바퀴가 이상해요", "택시 불러줘" 같은 긴급 질의에 답한다.
+    운영시간이 없는 곳은 지어내지 않고 '확인 필요(전화 권장)'로 전한다. 화면에는
+    show_support 액션으로 카드 시트를 띄우고 '여기로 안내' 로 경로 연계가 된다.
+    """
+    base = await _resolve_base(place, lat, lng, "find_emergency_support")
+    if isinstance(base, dict):
+        return base
+    lat, lng, base_label = base
+    tsel = _support_types_from_situation(types, situation)
+    try:
+        radius_m = max(300, min(int(radius_m or 2000), 10000))
+    except (TypeError, ValueError):
+        radius_m = 2000
+    data = await route_client.support_nearby(lat, lng, types=tsel, radius_m=radius_m, limit=3)
+    if isinstance(data, dict) and data.get("status") == "error":
+        return data
+    items = []
+    for it in (data.get("items") or []):
+        if not isinstance(it, dict):
+            continue
+        items.append({
+            "support_type": it.get("support_type"),
+            "type_label": SUPPORT_TYPE_LABEL.get(it.get("support_type"), it.get("type_label")),
+            "name": it.get("name"), "install_desc": it.get("install_desc"),
+            "addr": it.get("addr"), "dist_m": it.get("dist_m"),
+            "tel": it.get("tel"),
+            "open_hours": it.get("open_hours"),
+            "open_hours_status": it.get("open_hours_status") or ("known" if it.get("open_hours") else "unknown"),
+            "source_label": it.get("source_label"), "confidence": it.get("confidence"),
+            "coord_suspect": bool(it.get("coord_suspect")),
+            "lat": it.get("lat"), "lng": it.get("lng"),
+        })
+    by_type = {}
+    for it in items:
+        by_type[it["support_type"]] = by_type.get(it["support_type"], 0) + 1
+    missing = [SUPPORT_TYPE_LABEL[t] for t in tsel.split(",") if t not in by_type]
+    ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
+          + "유형별로 가장 가까운 1~2곳만 이름·거리·전화번호로 말하세요. "
+          "open_hours 가 있으면 그대로 전하고, open_hours_status 가 unknown 이면 운영시간을 "
+          "지어내지 말고 '운영시간은 확인이 필요하니 전화해 보시라'고 하세요. "
+          "coord_suspect 가 true 인 곳은 '위치가 정확하지 않을 수 있다'고 덧붙이세요. "
+          "화면에 카드가 떴고 '여기로 안내' 를 누르면 경로를 안내받을 수 있다고 알리세요. ")
+    if missing:
+        ai += "%s 은(는) 반경 %dm 안에 없다고 분명히 말하세요. " % ("·".join(missing), radius_m)
+    if "charge" in tsel:
+        ai += "배터리 상황이면 이동 가능 거리를 먼저 묻고, 멀면 콜택시를 함께 권하세요. "
+    return {
+        "status": "success",
+        "tool_name": "find_emergency_support",
+        "base_label": base_label,
+        "types": tsel,
+        "radius_m": radius_m,
+        "count": len(items),
+        "count_by_type": by_type,
+        "items": items,
+        "ui_action": {
+            "action": "show_support",
+            "payload": {"items": items, "types": tsel, "base_label": base_label,
+                        "base": {"lat": lat, "lng": lng}, "radius_m": radius_m},
+        },
+        "ai_instruction": ai,
+    }
+
+
+async def tool_find_toilet(lat: float = None, lng: float = None, place: str = "",
+                           radius_m: int = 800) -> dict:
+    """휠체어로 갈 수 있는 화장실 — 장애인 대·소변기 보유 공중화장실(거리순).
+
+    "화장실 어디예요" 질의. 역사 화장실은 get_station_facilities 가 맡는다.
+    """
+    base = await _resolve_base(place, lat, lng, "find_toilet")
+    if isinstance(base, dict):
+        return base
+    lat, lng, base_label = base
+    try:
+        radius_m = max(100, min(int(radius_m or 800), 3000))
+    except (TypeError, ValueError):
+        radius_m = 800
+    data = await route_client.toilet_nearby(lat, lng, radius_m=radius_m, limit=5, accessible_only=True)
+    if isinstance(data, dict) and data.get("status") == "error":
+        return data
+    items = []
+    for it in (data.get("items") or []):
+        if not isinstance(it, dict):
+            continue
+        items.append({
+            "name": it.get("name"), "type": it.get("type"), "addr": it.get("addr"),
+            "dist_m": it.get("dist_m"), "accessible": bool(it.get("accessible")),
+            "dis_male_cnt": it.get("dis_male_cnt"), "dis_female_cnt": it.get("dis_female_cnt"),
+            "unisex": bool(it.get("unisex")),
+            "open_time": it.get("open_time"), "open_time_detail": it.get("open_time_detail"),
+            "emg_bell": bool(it.get("emg_bell")), "tel": it.get("tel"),
+            "lat": it.get("lat"), "lng": it.get("lng"),
+        })
+    ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
+          + ("가까운 순으로 1~2곳만 이름·거리·개방시간으로 말하세요. open_time 이 없으면 "
+             "'개방시간은 확인이 필요하다'고 하세요. 화면 카드의 '여기로 안내' 로 경로를 받을 수 "
+             "있다고 알리세요. " if items else
+             "반경 %dm 안에 장애인 화장실이 등록된 공중화장실이 없다고 분명히 말하고, 가까운 "
+             "지하철역 화장실은 get_station_facilities 로 확인할 수 있다고 안내하세요. " % radius_m))
+    return {
+        "status": "success",
+        "tool_name": "find_toilet",
+        "base_label": base_label,
+        "radius_m": radius_m,
+        "count": len(items),
+        "items": items,
+        "ui_action": {
+            "action": "show_toilets",
+            "payload": {"items": items, "base_label": base_label,
+                        "base": {"lat": lat, "lng": lng}, "radius_m": radius_m},
+        },
+        "ai_instruction": ai,
+    }
+
+
+# ─────────────────────────────────────────────────────────────
 # 도구 #10 — 주변 정류장·역 (#248, 02 v1.11.1 /transit/access-points)
 # ─────────────────────────────────────────────────────────────
 async def tool_find_nearby_transit(lat: float = None, lng: float = None,
@@ -1383,6 +1548,8 @@ def get_tool_dispatcher(embed_fn):
         "plan_accessible_route": tool_plan_accessible_route,
         "explain_route_segment": tool_explain_route_segment,
         "find_nearby_transit": tool_find_nearby_transit,
+        "find_emergency_support": tool_find_emergency_support,
+        "find_toilet": tool_find_toilet,
         "get_bus_arrivals": tool_get_bus_arrivals,
         "get_station_facilities": tool_get_station_facilities,
         "open_navi_screen": tool_open_navi_screen,

@@ -528,6 +528,27 @@ async def search_places(
             "region": data.get("region"), "source": source}
 
 
+@app.get("/api/v1/tools/find_emergency_support", tags=["tools"],
+         summary="[13] 충전소·수리센터·장애인콜택시 근접 조회")
+async def find_emergency_support(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    types: str = Query("", description="charge,repair,calltaxi — 비우면 전부"),
+    radius_m: int = Query(2000, ge=300, le=10000),
+):
+    return await tool_handlers.tool_find_emergency_support(lat=lat, lng=lng, types=types, radius_m=radius_m)
+
+
+@app.get("/api/v1/tools/find_toilet", tags=["tools"],
+         summary="[14] 휠체어 접근 가능 화장실 근접 조회")
+async def find_toilet(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    radius_m: int = Query(800, ge=100, le=3000),
+):
+    return await tool_handlers.tool_find_toilet(lat=lat, lng=lng, radius_m=radius_m)
+
+
 @app.get("/api/v1/tools/transit_access_points", tags=["tools"],
          summary="[7-1] 휠체어 접근 가능한 정류장·역")
 async def transit_access_points(
