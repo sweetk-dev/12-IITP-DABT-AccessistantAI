@@ -75,10 +75,16 @@ def normalize_client_tag(raw) -> Optional[str]:
     return t or None
 
 
-def set_client_tag(raw) -> Optional[str]:
-    t = normalize_client_tag(raw)
-    _CLIENT_TAG.set(t)
-    return t
+def set_client_tag(raw):
+    """출처 태그를 이 문맥에 둔다. 되돌릴 때 쓰는 토큰을 돌려준다(reset_client_tag)."""
+    return _CLIENT_TAG.set(normalize_client_tag(raw))
+
+
+def reset_client_tag(token) -> None:
+    try:
+        _CLIENT_TAG.reset(token)
+    except (ValueError, LookupError):     # 다른 문맥에서 만든 토큰 — 무시(값은 다음 요청에서 다시 정해진다)
+        pass
 
 
 def client_tag() -> Optional[str]:

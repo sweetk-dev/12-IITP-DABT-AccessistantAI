@@ -2227,10 +2227,11 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   });
   egBox().querySelector("button[data-egress='exited']").dispatchEvent(new window.Event("click"));
   await sleep(60);
-  check("'출구로 나왔어요' → 출구 스텝으로 이동", () => {
+  check("'출구로 나왔어요' → 출구 스텝으로 이동, 출구 스텝에서는 다시 묻지 않는다", () => {
     assert.equal(window.NAVI._internals().stepIdx, 3);
     assert.equal(window.NAVI._internals().egressWhere()["관악:2"], "outside");
-    assert.match($("naviSheetBody").textContent, /관악역 2번 출구 앞에서 도보 안내를 시작합니다/);
+    assert.match($("naviSheetBody").textContent, /관악역 2번 출구입니다/);
+    assert.equal(egBox(), null, "출구 스텝에 역 안/밖 질문이 다시 떴다");
   });
   window.NAVI._internals().gotoStep(2);
   await sleep(30);

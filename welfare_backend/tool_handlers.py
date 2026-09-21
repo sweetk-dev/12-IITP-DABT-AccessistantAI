@@ -446,6 +446,8 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
             "facilities": _fac_labels(it.get("facilities")),
             "score": it.get("score"),
             "category": it.get("category_label") or it.get("category"),
+            # 1 = 무장애 충족도 상위 등급(먼저 나열), 2 = 그 밖 — 등급 안에서 거리순 (02 v1.27.0)
+            "tier": it.get("tier"),
         })
     total = data.get("total", len(items))
     return {
@@ -458,7 +460,8 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
         "results": items,
         "ui_action": {"action": "show_tour_spots", "items": items},
         "ai_instruction": (
-            "상위 2~3곳만 이름과 대표 편의시설 위주로 짧게 안내하세요. "
+            "상위 2~3곳만 이름과 대표 편의시설 위주로 짧게 안내하세요. 목록은 무장애 편의시설을 "
+            "많이 갖춘 곳(tier 1)을 먼저, 같은 등급 안에서는 가까운 순으로 정렬돼 있습니다. "
             "화면에 지도와 목록이 함께 표시되므로 전부 나열하지 마세요. "
             "결과가 없으면 데이터가 아직 준비되지 않았다고 솔직히 말하세요."
         ),

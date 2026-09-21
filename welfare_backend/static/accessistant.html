@@ -3105,8 +3105,10 @@ window.NAVI = (function(){
   function egressOutside(eg){
     egressWhere[egressKey(eg)] = "outside";
     sendActivity("egress_outside");
+    var cur = steps[stepIdx] || {};
     var ei = exitStepIdx(stepIdx);
-    if(ei >= 0 && ei !== stepIdx){ gotoStep(ei); }   // 출구 스텝 문장을 말하고 도보 안내로 이어진다
+    if(cur.maneuver === "station_exit" && stepIdx + 1 < steps.length){ gotoStep(stepIdx + 1); }   // 이미 출구 — 도보로
+    else if(ei >= 0 && ei !== stepIdx){ gotoStep(ei); }   // 출구 스텝 문장을 말하고 도보 안내로 이어진다
     else { renderStep(); speak(eg.outside || ""); sendNavState(); }
   }
   function renderEgress(st){
@@ -3171,7 +3173,8 @@ window.NAVI = (function(){
     body.appendChild(card);
     if(liveRef) startArrivalPolling(liveRef);   // 카드가 DOM 에 붙은 뒤에 조회해야 표시 요소를 찾는다
     // 지하철 하차 — 역 안/밖을 묻고 해당 안내를 보인다 (#298, 02 v1.27.0 egress)
-    if(st.egress && (st.maneuver === "subway_alight" || st.maneuver === "station_exit")){
+    // 출구 스텝(station_exit)에는 다시 묻지 않는다 — 이미 출구에 온 뒤라 질문이 반복되면 진행이 막힌다
+    if(st.egress && st.maneuver === "subway_alight"){
       body.appendChild(renderEgress(st));
     }
 

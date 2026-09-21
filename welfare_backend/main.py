@@ -86,8 +86,11 @@ async def _client_tag_ctx(request, call_next):
     경로 서버 호출(X-Client-Tag)과 호출 로그의 client 필드로 전달돼, 실증 참여자 계정의
     요청을 운영진 요청과 가를 수 있다. 외부에서 직접 보낸 헤더는 nginx 가 덮어쓴다.
     """
-    route_client.set_client_tag(request.headers.get("x-remote-user"))
-    return await call_next(request)
+    token = route_client.set_client_tag(request.headers.get("x-remote-user"))
+    try:
+        return await call_next(request)
+    finally:
+        route_client.reset_client_tag(token)
 
 
 app.add_middleware(
