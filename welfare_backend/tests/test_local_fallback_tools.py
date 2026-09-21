@@ -45,7 +45,8 @@ POLICY = {"search_policies_by_metadata", "search_by_keyword", "get_policy_detail
 ROUTE = {"find_bf_tour_spots", "plan_accessible_route", "explain_route_segment",
          "get_current_guidance", "find_nearby_transit", "open_navi_screen",
          "report_accessibility_issue",
-         "get_bus_arrivals", "get_station_facilities"}   # v1.39.0 실시간 버스·역 설비
+         "get_bus_arrivals", "get_station_facilities",   # v1.39.0 실시간 버스·역 설비
+         "find_emergency_support", "find_toilet"}         # v1.49.0 긴급대응·화장실
 
 results = []
 

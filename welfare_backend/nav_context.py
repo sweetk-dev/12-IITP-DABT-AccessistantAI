@@ -11,7 +11,9 @@ _NAV_FIELDS = ("route_id", "guiding", "step_idx", "total_steps",
                "current", "next", "remaining_m", "dest_name", "profile",
                "leg_kind",   # walk | bus | subway — 현재 진행 구간의 이동 수단 (#251)
                # 현재(또는 다음) 버스 구간의 승차 정류장·노선 — 실시간 도착정보 조회 키 (v1.39.0)
-               "board_station_id", "board_route_id", "board_stop_name")
+               "board_station_id", "board_route_id", "board_stop_name",
+               # 지하철 하차역 역 안/밖 안내 (#298) — {station, exit_no, where, inside[], outside}
+               "station_egress")
 
 
 def update_nav_state(nav: dict, msg: dict) -> None:
@@ -23,6 +25,7 @@ def update_nav_state(nav: dict, msg: dict) -> None:
     for k in _NAV_FIELDS:
         nav[k] = msg.get(k)
     nav["guiding"] = bool(nav.get("guiding"))
+    nav["station_egress"] = _clean_egress(nav.get("station_egress"))
     # step_idx/total_steps/remaining_m 은 정수화 실패 시 None 으로 방어
     for k in ("step_idx", "total_steps", "remaining_m"):
         v = nav.get(k)
@@ -32,6 +35,22 @@ def update_nav_state(nav: dict, msg: dict) -> None:
             nav[k] = int(v)
         except (TypeError, ValueError):
             nav[k] = None
+
+
+def _clean_egress(v):
+    """프런트가 보낸 역 안/밖 안내를 허용 필드·길이로 정리한다(모델 입력에 그대로 들어가므로)."""
+    if not isinstance(v, dict):
+        return None
+    where = v.get("where") if v.get("where") in ("inside", "outside") else None
+    inside = [str(x)[:160] for x in (v.get("inside") or []) if x][:4]
+    out = {
+        "station": str(v.get("station") or "")[:20] or None,
+        "exit_no": str(v.get("exit_no") or "")[:6] or None,
+        "where": where,
+        "inside": inside,
+        "outside": str(v.get("outside") or "")[:200] or None,
+    }
+    return out if (out["station"] and (inside or out["outside"])) else None
 
 
 def note_new_route(nav: dict, route_id: str) -> None:
@@ -135,10 +154,14 @@ def current_guidance_result(nav: dict) -> dict:
         "remaining_m_to_next": nav.get("remaining_m"),
         "leg_kind": nav.get("leg_kind") or "walk",
         "profile": nav.get("profile"),
+        "station_egress": nav.get("station_egress"),
         "ai_instruction": (
             "이동 중 답변입니다 — 1~2문장으로 짧게. current_instruction(지금 할 안내)을 "
             "그대로 다시 들려주듯 답하세요. next_instruction 과 remaining_m_to_next 는 "
             "사용자가 물었을 때만 덧붙입니다. 내부 번호(route_id)는 읽지 마세요."
+            + (" 역 승강기·출구를 물으면 station_egress 를 근거로 답하세요 — 역 안이면 inside 를 "
+               "순서대로, 이미 역 밖이면 outside 를 말하고, 어느 쪽인지 모르면 먼저 물으세요."
+               if nav.get("station_egress") else "")
         ),
     }
 
@@ -160,6 +183,14 @@ def inject_nav_defaults(fname: str, fargs: dict, nav: dict, user_location: dict)
                 and nav.get("step_idx") is not None
                 and fargs.get("route_id") == nav.get("route_id")):
             fargs["step_idx"] = nav["step_idx"]
+    elif fname == "find_bf_tour_spots":
+        # 관광지 추천(#298) — 현재 위치가 있으면 같은 충족도 등급 안에서 가까운 순으로 받는다
+        if user_location and user_location.get("lat") is not None:
+            fargs["origin_lat"] = user_location["lat"]
+            fargs["origin_lng"] = user_location["lng"]
+        else:
+            fargs.pop("origin_lat", None)
+            fargs.pop("origin_lng", None)
     elif fname in ("find_nearby_transit", "find_emergency_support", "find_toilet"):
         # 긴급대응·화장실(#296)도 정류장과 같다 — 기준 장소를 말하지 않았으면 현재 위치
         if not fargs.get("place"):

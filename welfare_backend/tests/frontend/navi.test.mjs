@@ -2166,6 +2166,104 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   window.fetch = prevFetchS;
 }
 
+// ── 하차역 역 안/밖 안내 · 관리기관 전화 · 시설 내 화장실 (v1.50.0, #298 · 02 v1.27.0) ──
+{
+  const EG = { station: "관악", exit: { exit_no: "2", lat: 37.4189, lng: 126.9092, has_elevator: true, elevator: "(1F) 2번 출구 옆" },
+    platform: [{ kind: "lift", detail_loc: "1F(석수역 방향 상행승강장 계단 옆)", side: "arrival" }],
+    inside: ["내린 승강장 쪽에는 휠체어리프트만 있습니다 — 1F(석수역 방향 상행승강장 계단 옆). 역무원 호출이 필요할 수 있습니다",
+             "2번 출구 승강기로 나갑니다 — (1F) 2번 출구 옆"],
+    outside: "관악역 2번 출구 앞에서 도보 안내를 시작합니다. 다른 출구로 나오셨다면 경로를 다시 찾아 주세요",
+    question: "지금 역 안(승강장)에 계신가요, 역 밖으로 나오셨나요?" };
+  const EG_ROUTE = JSON.parse(JSON.stringify(MMROUTE.ui_action.route));
+  EG_ROUTE.route_id = "r_eg"; EG_ROUTE.mode = "walk_subway"; EG_ROUTE.low_floor = { mode: false };
+  EG_ROUTE.routes[0].legs = [
+    { kind: "walk", summary: { total_distance_m: 60, duration_sec: 50 }, to_label: "안양역 1번 출구" },
+    { kind: "subway", line: "1호선", board: { name: "안양" }, alight: { name: "관악" }, station_cnt: 1, warnings: [],
+      alight_exit: EG.exit, egress: EG },
+    { kind: "walk", summary: { total_distance_m: 1289, duration_sec: 1170 }, from_label: "관악역 2번 출구", to_label: "목적지" },
+  ];
+  EG_ROUTE.routes[0].steps = [
+    { idx: 0, maneuver: "depart", instruction: "안양역까지 60m 이동합니다.", distance_m: 60, coord: [37.3900, 126.9500], link_type: "sidewalk", warnings: [] },
+    { idx: 1, maneuver: "subway_board", instruction: "안양역에서 1호선에 승차합니다 — 1개 역 이동", distance_m: 2000, coord: [37.3903, 126.9503], link_type: "subway", warnings: [] },
+    { idx: 2, maneuver: "subway_alight", instruction: "관악역에서 하차합니다 — 2번 출구(승강기)로 나갑니다", distance_m: 0, coord: [37.3905, 126.9505], link_type: "subway", warnings: [], egress: EG },
+    { idx: 3, maneuver: "station_exit", instruction: "관악역 2번 출구입니다. 여기서부터 걸어서 이동합니다", distance_m: 0, coord: [37.3906, 126.9507], link_type: "walk", warnings: [], egress: EG },
+    { idx: 4, maneuver: "straight", instruction: "예술공원로를 따라 600m 이동합니다.", distance_m: 600, coord: [37.3907, 126.9509], link_type: "sidewalk", warnings: [] },
+    { idx: 5, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: [37.3909, 126.9511], link_type: null, warnings: [] },
+  ];
+  const NE = window.NAVI._internals();
+  NE.clearRouteDisplay(); NE.resetTrip();
+  NE.showRoute(JSON.parse(JSON.stringify(EG_ROUTE)), "");
+  await sleep(30);
+  check("경로 카드에 하차 출구와 리프트 경고가 보인다", () => {
+    const t = $("naviSheetBody").textContent;
+    assert.match(t, /하차 후 2번 출구\(승강기\)로 나갑니다/);
+    assert.match(t, /휠체어리프트만/);
+  });
+  check("하차 스텝 발화에 역 안/밖 질문이 붙는다", () => {
+    const u = window.NAVI._internals().stepUtterance(2);
+    assert.match(u, /하차합니다 — 2번 출구\(승강기\)로 나갑니다\. 지금 역 안\(승강장\)에 계신가요/);
+    assert.equal(window.NAVI._internals().stepUtterance(4), "예술공원로를 따라 600m 이동합니다.");
+  });
+  NE.startGuidance();
+  await sleep(30);
+  window.NAVI._internals().gotoStep(2);
+  await sleep(30);
+  const egBox = () => $("naviSheetBody").querySelector(".egress");
+  check("하차 스텝에 역 안/밖 선택 버튼", () => {
+    assert.ok(egBox(), "egress 상자 없음");
+    const btns = [...egBox().querySelectorAll("button[data-egress]")].map((b) => b.getAttribute("data-egress"));
+    assert.deepEqual(btns, ["inside", "outside"]);
+  });
+  spoken.length = 0;
+  egBox().querySelector("button[data-egress='inside']").dispatchEvent(new window.Event("click"));
+  await sleep(60);
+  check("'역 안' → 승강장·출구 승강기 순서 목록 + 음성, 응답 기록", () => {
+    const li = [...egBox().querySelectorAll("ol li")].map((x) => x.textContent);
+    assert.equal(li.length, 2);
+    assert.match(li[1], /^2번 출구 승강기로 나갑니다/);
+    assert.ok(egBox().querySelector("ol li.eg-warn"), "리프트 경고 강조 없음");
+    assert.equal(window.NAVI._internals().egressWhere()["관악:2"], "inside");
+    assert.ok(spoken.some((t) => /2번 출구 승강기로 나갑니다/.test(t)), JSON.stringify(spoken.slice(-3)));
+  });
+  egBox().querySelector("button[data-egress='exited']").dispatchEvent(new window.Event("click"));
+  await sleep(60);
+  check("'출구로 나왔어요' → 출구 스텝으로 이동, 출구 스텝에서는 다시 묻지 않는다", () => {
+    assert.equal(window.NAVI._internals().stepIdx, 3);
+    assert.equal(window.NAVI._internals().egressWhere()["관악:2"], "outside");
+    assert.match($("naviSheetBody").textContent, /관악역 2번 출구입니다/);
+    assert.equal(egBox(), null, "출구 스텝에 역 안/밖 질문이 다시 떴다");
+  });
+  window.NAVI._internals().gotoStep(2);
+  await sleep(30);
+  egBox().querySelector("button[data-egress='outside']").dispatchEvent(new window.Event("click"));
+  await sleep(60);
+  check("'역 밖' → 바로 출구 스텝(도보 안내)으로", () => {
+    assert.equal(window.NAVI._internals().stepIdx, 3);
+  });
+  // 관리기관 전화 · 시설 내 화장실 — 상담 결과(ui_action)로 시트에 싣는다
+  NE.onUiAction({ action: "show_support", payload: { types: "charge", items: [
+    { support_type: "charge", name: "만안구청", install_desc: "1층 로비", dist_m: 180, tel: "031-455-1313",
+      tel_owner: "manager", tel_owner_name: "온누리 부흥센터", open_hours: "평일 09:00-18:00", open_hours_status: "known",
+      lat: 37.3866, lng: 126.9324 } ] } });
+  NE.openSosSheet("charge");
+  await sleep(30);
+  check("충전기 전화는 '관리기관(이름)' 으로 표시", () => {
+    const a = $("sosList").querySelector("a.tel");
+    assert.ok(a, "전화 링크 없음");
+    assert.match(a.textContent, /관리기관\(온누리 부흥센터\) 031-455-1313/);
+  });
+  NE.onUiAction({ action: "show_toilets", payload: { items: [
+    { name: "김중업 건축박물관(옛 유유산업 공장) (시설 내 장애인화장실)", type: "시설 내 화장실", dist_m: 20,
+      accessible: true, dis_male_cnt: null, dis_female_cnt: null, open_time: "시설 운영시간 내",
+      facility_toilet: true, lat: 37.4178, lng: 126.9178 } ] } });
+  NE.openSosSheet("toilet");
+  await sleep(30);
+  check("시설 내 장애인화장실 표기", () => {
+    assert.match($("sosList").textContent, /시설 안 장애인 화장실\(시설 운영시간에 이용\)/);
+  });
+  $("sosCancelBtn").dispatchEvent(new window.Event("click"));
+}
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {

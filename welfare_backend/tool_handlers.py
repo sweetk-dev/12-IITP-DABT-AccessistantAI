@@ -418,7 +418,7 @@ def _fac_labels(facilities: dict) -> list:
 
 
 async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
-                                  topk: int = 5,
+                                  topk: int = 10,
                                   origin_lat: float = None, origin_lng: float = None,
                                   offset: int = 0) -> dict:
     """장애 유형별 무장애 관광지 추천.
@@ -445,6 +445,9 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
             "distance_m": it.get("distance_m"),
             "facilities": _fac_labels(it.get("facilities")),
             "score": it.get("score"),
+            "category": it.get("category_label") or it.get("category"),
+            # 1 = 무장애 충족도 상위 등급(먼저 나열), 2 = 그 밖 — 등급 안에서 거리순 (02 v1.27.0)
+            "tier": it.get("tier"),
         })
     total = data.get("total", len(items))
     return {
@@ -457,7 +460,8 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
         "results": items,
         "ui_action": {"action": "show_tour_spots", "items": items},
         "ai_instruction": (
-            "상위 2~3곳만 이름과 대표 편의시설 위주로 짧게 안내하세요. "
+            "상위 2~3곳만 이름과 대표 편의시설 위주로 짧게 안내하세요. 목록은 무장애 편의시설을 "
+            "많이 갖춘 곳(tier 1)을 먼저, 같은 등급 안에서는 가까운 순으로 정렬돼 있습니다. "
             "화면에 지도와 목록이 함께 표시되므로 전부 나열하지 마세요. "
             "결과가 없으면 데이터가 아직 준비되지 않았다고 솔직히 말하세요."
         ),
@@ -1058,6 +1062,9 @@ async def tool_find_emergency_support(lat: float = None, lng: float = None, plac
             "name": it.get("name"), "install_desc": it.get("install_desc"),
             "addr": it.get("addr"), "dist_m": it.get("dist_m"),
             "tel": it.get("tel"),
+            # 충전기 표준데이터의 번호는 관리기관 번호다 (02 v1.27.0, #298)
+            "tel_owner": it.get("tel_owner") or "site",
+            "tel_owner_name": it.get("tel_owner_name"),
             "open_hours": it.get("open_hours"),
             "open_hours_status": it.get("open_hours_status") or ("known" if it.get("open_hours") else "unknown"),
             "source_label": it.get("source_label"), "confidence": it.get("confidence"),
@@ -1073,6 +1080,8 @@ async def tool_find_emergency_support(lat: float = None, lng: float = None, plac
           "open_hours 가 있으면 그대로 전하고, open_hours_status 가 unknown 이면 운영시간을 "
           "지어내지 말고 '운영시간은 확인이 필요하니 전화해 보시라'고 하세요. "
           "coord_suspect 가 true 인 곳은 '위치가 정확하지 않을 수 있다'고 덧붙이세요. "
+          "tel_owner 가 manager 인 번호는 설치장소가 아니라 관리기관(tel_owner_name) 번호이니 "
+          "'관리기관 번호'라고 밝히고 전하세요. "
           "화면에 카드가 떴고 '여기로 안내' 를 누르면 경로를 안내받을 수 있다고 알리세요. ")
     if missing:
         ai += "%s 은(는) 반경 %dm 안에 없다고 분명히 말하세요. " % ("·".join(missing), radius_m)
@@ -1124,12 +1133,15 @@ async def tool_find_toilet(lat: float = None, lng: float = None, place: str = ""
             "unisex": bool(it.get("unisex")),
             "open_time": it.get("open_time"), "open_time_detail": it.get("open_time_detail"),
             "emg_bell": bool(it.get("emg_bell")), "tel": it.get("tel"),
+            # 시설 내 장애인화장실(관광시설, 02 v1.27.0) — 시설 운영시간에만 이용 가능 (#298)
+            "facility_toilet": bool(it.get("facility_toilet")),
             "lat": it.get("lat"), "lng": it.get("lng"),
         })
     ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
           + ("가까운 순으로 1~2곳만 이름·거리·개방시간으로 말하세요. open_time 이 없으면 "
-             "'개방시간은 확인이 필요하다'고 하세요. 화면 카드의 '여기로 안내' 로 경로를 받을 수 "
-             "있다고 알리세요. " if items else
+             "'개방시간은 확인이 필요하다'고 하세요. facility_toilet 이 true 인 곳은 그 시설 안의 "
+             "화장실이라 시설 운영시간에만 쓸 수 있다고 덧붙이세요. 화면 카드의 '여기로 안내' 로 "
+             "경로를 받을 수 있다고 알리세요. " if items else
              "반경 %dm 안에 장애인 화장실이 등록된 공중화장실이 없다고 분명히 말하고, 가까운 "
              "지하철역 화장실은 get_station_facilities 로 확인할 수 있다고 안내하세요. " % radius_m))
     return {
