@@ -197,6 +197,11 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .step-now .mv{font-size:.86rem;color:var(--c-primary);font-weight:700;}
 .step-now .ins{font-size:1.25rem;line-height:1.5;font-weight:700;color:var(--c-secondary);margin-top:4px;}
 .step-now .wr{margin-top:8px;font-size:.88rem;color:#B45309;}
+.egress{border:2px dashed #1E40AF;border-radius:14px;padding:12px;margin:0 0 10px;background:#EFF6FF;}
+.egress .eg-q{font-weight:700;color:#1E3A8A;font-size:1.02rem;}
+.egress ol{margin:8px 0 0 18px;padding:0;font-size:.95rem;line-height:1.55;}
+.egress .eg-out{margin-top:8px;font-size:.95rem;}
+.egress .eg-warn{color:#B45309;}
 .step-next{font-size:.92rem;color:var(--c-text-muted);padding:8px 4px;border-top:1px dashed #E2E8F0;}
 .navi-actions{display:flex;gap:8px;margin-top:10px;}
 .navi-actions .btn{flex:1;}
@@ -1532,6 +1537,10 @@ window.NAVI = (function(){
   }
   function stepUtterance(i){
     var st = steps[i]; if(!st) return "";
+    // 지하철 하차 — 역 안에서는 위치를 알 수 없으니 이용자에게 묻는다 (#298)
+    if(st.maneuver === "subway_alight" && st.egress && st.egress.question){
+      return String(st.instruction || "").replace(/[.\s]*$/, "") + ". " + st.egress.question + " 화면에서 골라 주세요.";
+    }
     if(!_isMergedCrossing(i)) return st.instruction || "";
     var head = String(st.instruction || "");
     var warn = "";
@@ -1929,7 +1938,8 @@ window.NAVI = (function(){
       var b=document.createElement("b"); b.textContent = it.name + (it.install_desc ? " — " + it.install_desc : ""); c.appendChild(b);
       var meta=document.createElement("div"); meta.className="sos-meta";
       meta.textContent = (it.dist_m!=null ? it.dist_m + "m · " : "") + (it.addr || "")
-        + (sosKind==="toilet" ? ((it.dis_male_cnt||it.dis_female_cnt) ? " · 장애인 화장실 있음" : "") + (it.emg_bell ? " · 비상벨" : "") : "")
+        + (sosKind==="toilet" ? (it.facility_toilet ? " · 시설 안 장애인 화장실(시설 운영시간에 이용)"
+              : ((it.dis_male_cnt||it.dis_female_cnt) ? " · 장애인 화장실 있음" : "")) + (it.emg_bell ? " · 비상벨" : "") : "")
         + (it.coord_suspect ? " · ⚠ 위치 확인 필요" : "");
       c.appendChild(meta);
       var hrs=document.createElement("div");
@@ -1938,7 +1948,14 @@ window.NAVI = (function(){
       hrs.textContent = hv ? ("운영시간 " + hv) : "운영시간 확인 필요 — 전화로 확인해 주세요";
       c.appendChild(hrs);
       var acts=document.createElement("div"); acts.className="sos-acts";
-      if(it.tel){ var a=document.createElement("a"); a.className="tel"; a.href="tel:"+String(it.tel).replace(/[^0-9+]/g,""); a.textContent="📞 전화 " + it.tel; acts.appendChild(a); }
+      if(it.tel){
+        var a=document.createElement("a"); a.className="tel"; a.href="tel:"+String(it.tel).replace(/[^0-9+]/g,"");
+        // 충전기 표준데이터 번호는 설치장소가 아니라 관리기관 번호다 (#298, 02 v1.27.0)
+        a.textContent = (it.tel_owner === "manager"
+          ? "📞 관리기관" + (it.tel_owner_name ? "(" + it.tel_owner_name + ")" : "") + " "
+          : "📞 전화 ") + it.tel;
+        acts.appendChild(a);
+      }
       if(it.lat!=null && it.lng!=null && sosKind!=="calltaxi"){
         var g=document.createElement("button"); g.type="button"; g.textContent="🧭 여기로 안내";
         g.addEventListener("click", function(){
@@ -2030,9 +2047,17 @@ window.NAVI = (function(){
         var bs = steps[bi] || {};
         if(bs.leg_ref && bs.leg_ref.kind === "bus"){ bref = bs.leg_ref; break; }
       }
+      // 지금 또는 곧 내릴 역의 역 안/밖 안내 — "승강기 어디예요" 의 근거 (#298)
+      var eg = null;
+      for(var gi2 = stepIdx; gi2 < steps.length && gi2 <= stepIdx + 3; gi2++){
+        if(steps[gi2] && steps[gi2].egress){ eg = steps[gi2].egress; break; }
+      }
       wsRef.send(JSON.stringify({type:"nav_state",
         route_id: (route && route.route_id) || null,
         leg_kind: lk,
+        station_egress: eg ? {station: eg.station, exit_no: eg.exit ? eg.exit.exit_no : null,
+                              where: egressWhere[egressKey(eg)] || null,
+                              inside: eg.inside || [], outside: eg.outside || null} : null,
         board_station_id: bref ? bref.board_station_id : null,
         board_route_id: bref ? bref.route_id : null,
         board_stop_name: bref ? (bref.board_name || null) : null,
@@ -2645,6 +2670,7 @@ window.NAVI = (function(){
     var primary = (route.routes||[])[0];
     if(!primary){ status("경로를 찾지 못했습니다."); return; }
     steps = primary.steps || [];
+    egressWhere = {};
     stepIdx = 0; guiding = false;
     if(arrivalTimer){ clearInterval(arrivalTimer); arrivalTimer=null; }   // 새 경로 — 도착 정리 예약 취소 (v1.44.0)
     closeSpotChoice();   // 도착 확인 창이 떠 있었다면 닫는다 (v1.46.0)
@@ -2788,6 +2814,16 @@ window.NAVI = (function(){
             var ft = stationFacilityText(pair[1]);
             if(ft){ var f=document.createElement("div"); f.className="lg-fac"; f.textContent = pair[0]+" "+ft; c2.appendChild(f); }
           });
+          // 하차 출구(02 v1.27.0, #298) — 도보 안내는 이 출구에서 시작한다
+          if(leg.alight_exit){
+            var fx=document.createElement("div"); fx.className="lg-fac";
+            fx.textContent = "🚪 하차 후 " + leg.alight_exit.exit_no + "번 출구" + (leg.alight_exit.has_elevator ? "(승강기)" : "") + "로 나갑니다";
+            c2.appendChild(fx);
+          }
+          var egIn = leg.egress && leg.egress.inside && leg.egress.inside[0];
+          if(egIn && /휠체어리프트만|정보가 없습니다/.test(egIn)){
+            var fw=document.createElement("div"); fw.className="lg-w"; fw.textContent="※ "+egIn; c2.appendChild(fw);
+          }
           (leg.warnings||[]).forEach(function(wm){
             var w2=document.createElement("div"); w2.className="lg-w"; w2.textContent="※ "+wm; c2.appendChild(w2);
           });
@@ -3054,6 +3090,63 @@ window.NAVI = (function(){
     }catch(e){ el.textContent = "실시간 도착정보를 받지 못했습니다"; el.classList.add("off"); }
   }
 
+  /* ── 하차역 역 안/밖 안내 (#298) ──
+     역 안에서는 GPS 가 잡히지 않는다. 그래서 하차 스텝에서 이용자에게 '역 안(승강장)'인지
+     '역 밖(출구)'인지 묻고, 역 안이면 승강장 승강기 → 출구 승강기 순서를, 역 밖이면 출구 기준
+     도보 안내로 넘어간다. 02 가 두 벌의 문장(egress.inside / egress.outside)을 준다. */
+  var egressWhere = {};   // "역:출구" → "inside" | "outside"
+  function egressKey(eg){ return (eg && eg.station || "") + ":" + ((eg && eg.exit && eg.exit.exit_no) || ""); }
+  function exitStepIdx(from){
+    for(var k = from; k < steps.length && k <= from + 2; k++){
+      if(steps[k] && steps[k].maneuver === "station_exit") return k;
+    }
+    return -1;
+  }
+  function egressOutside(eg){
+    egressWhere[egressKey(eg)] = "outside";
+    sendActivity("egress_outside");
+    var ei = exitStepIdx(stepIdx);
+    if(ei >= 0 && ei !== stepIdx){ gotoStep(ei); }   // 출구 스텝 문장을 말하고 도보 안내로 이어진다
+    else { renderStep(); speak(eg.outside || ""); sendNavState(); }
+  }
+  function renderEgress(st){
+    var eg = st.egress, key = egressKey(eg), where = egressWhere[key];
+    var box = document.createElement("div"); box.className = "egress"; box.setAttribute("aria-live", "polite");
+    var q = document.createElement("div"); q.className = "eg-q";
+    q.textContent = "🚇 " + (eg.question || "지금 역 안에 계신가요, 역 밖으로 나오셨나요?");
+    box.appendChild(q);
+    var row = document.createElement("div"); row.className = "navi-actions";
+    var bIn = document.createElement("button"); bIn.type = "button";
+    bIn.className = "btn" + (where === "inside" ? "" : " outline"); bIn.textContent = "역 안(승강장)이에요";
+    bIn.setAttribute("aria-pressed", String(where === "inside")); bIn.setAttribute("data-egress", "inside");
+    bIn.addEventListener("click", function(){
+      egressWhere[key] = "inside"; sendActivity("egress_inside");
+      renderStep(); speak((eg.inside || []).join(". ")); sendNavState();
+    });
+    var bOut = document.createElement("button"); bOut.type = "button";
+    bOut.className = "btn" + (where === "outside" ? "" : " outline"); bOut.textContent = "역 밖(출구)으로 나왔어요";
+    bOut.setAttribute("aria-pressed", String(where === "outside")); bOut.setAttribute("data-egress", "outside");
+    bOut.addEventListener("click", function(){ egressOutside(eg); });
+    row.appendChild(bIn); row.appendChild(bOut); box.appendChild(row);
+    if(where === "inside" && (eg.inside || []).length){
+      var ol = document.createElement("ol");
+      eg.inside.forEach(function(t){
+        var li = document.createElement("li"); li.textContent = t;
+        if(/휠체어리프트만|정보가 없습니다/.test(t)) li.className = "eg-warn";
+        ol.appendChild(li);
+      });
+      box.appendChild(ol);
+      var done = document.createElement("button"); done.type = "button"; done.className = "btn";
+      done.setAttribute("data-egress", "exited");
+      done.textContent = "출구로 나왔어요 — 걸어서 이동 시작";
+      done.addEventListener("click", function(){ egressOutside(eg); });
+      box.appendChild(done);
+    } else if(where === "outside" && eg.outside){
+      var o = document.createElement("div"); o.className = "eg-out"; o.textContent = eg.outside; box.appendChild(o);
+    }
+    return box;
+  }
+
   function renderStep(){
     var st = steps[stepIdx];
     if(!st) return;
@@ -3077,6 +3170,10 @@ window.NAVI = (function(){
     }
     body.appendChild(card);
     if(liveRef) startArrivalPolling(liveRef);   // 카드가 DOM 에 붙은 뒤에 조회해야 표시 요소를 찾는다
+    // 지하철 하차 — 역 안/밖을 묻고 해당 안내를 보인다 (#298, 02 v1.27.0 egress)
+    if(st.egress && (st.maneuver === "subway_alight" || st.maneuver === "station_exit")){
+      body.appendChild(renderEgress(st));
+    }
 
     var nxt = steps[stepIdx+1];
     if(nxt){ var n=document.createElement("div"); n.className="step-next"; n.textContent="다음: "+nxt.instruction; body.appendChild(n); }
@@ -3736,7 +3833,8 @@ window.NAVI = (function(){
                                      profile:function(){return profile;}, wheelProfile:function(){return wheelProfile;},
                                      setWheelProfile:setWheelProfile,
                                      openSosSheet:openSosSheet, sosItems:function(){return sosItems;}, onUiAction:onUiAction,
-                                     guiding:function(){return guiding;}}; }
+                                     guiding:function(){return guiding;},
+                                     egressWhere:function(){return egressWhere;}, gotoStep:gotoStep}; }
   };
 })();
 document.addEventListener("DOMContentLoaded", function(){ window.NAVI.init(); });

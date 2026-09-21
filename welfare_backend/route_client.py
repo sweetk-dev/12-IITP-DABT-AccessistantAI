@@ -59,6 +59,32 @@ def _log_ctx() -> dict:
     return dict(_LOG_CTX.get() or {})
 
 
+# 요청 출처 태그 (#298) — 사이트 인증 계정명(nginx $remote_user → X-Remote-User).
+# 실증 참여자 단말은 전용 계정으로 접속하므로, 이 값으로 실증 요청과 운영진 요청을 가른다.
+# 경로 서버에는 X-Client-Tag 로 넘기고(02 계측 행의 client), 호출 로그에도 남긴다.
+import contextvars as _cv
+import re as _re
+_CLIENT_TAG: "_cv.ContextVar[Optional[str]]" = _cv.ContextVar("route_client_tag", default=None)
+_TAG_RE = _re.compile(r"[^A-Za-z0-9_.@-]")
+
+
+def normalize_client_tag(raw) -> Optional[str]:
+    if not raw:
+        return None
+    t = _TAG_RE.sub("", str(raw))[:40]
+    return t or None
+
+
+def set_client_tag(raw) -> Optional[str]:
+    t = normalize_client_tag(raw)
+    _CLIENT_TAG.set(t)
+    return t
+
+
+def client_tag() -> Optional[str]:
+    return _CLIENT_TAG.get()
+
+
 def _call_log(rec: dict):
     global _call_log_fh, _call_log_disabled
     if _call_log_disabled or not CALL_LOG_PATH:
@@ -70,8 +96,10 @@ def _call_log(rec: dict):
             if d:
                 os.makedirs(d, exist_ok=True)
             _call_log_fh = open(CALL_LOG_PATH, "a", encoding="utf-8")
-        rec = {"ts": round(time.time(), 3), **_log_ctx(),
+        rec = {"ts": round(time.time(), 3), "client": client_tag(), **_log_ctx(),
                **{k: v for k, v in rec.items() if v is not None}}
+        if rec.get("client") is None:
+            rec.pop("client", None)
         _call_log_fh.write(_json.dumps(rec, ensure_ascii=False) + "\n")
         _call_log_fh.flush()
     except (OSError, ValueError, TypeError) as e:
@@ -101,6 +129,7 @@ def _summarize_for_log(path: str, req: Optional[dict], body: Any) -> dict:
         out["sigungu"] = req.get("sigungu")
         out["topk"] = req.get("topk")
         out["offset"] = req.get("offset")
+        out["category"] = req.get("category")
         if isinstance(body, dict):
             out["total"] = body.get("total")
             out["items"] = [{"poi_id": str(it.get("poi_id")), "score": it.get("score")}
@@ -116,6 +145,9 @@ def _headers() -> dict:
     h = {"Accept": "application/json"}
     if API_TOKEN:
         h["Authorization"] = "Bearer %s" % API_TOKEN
+    tag = client_tag()
+    if tag:
+        h["X-Client-Tag"] = tag
     return h
 
 
@@ -325,10 +357,12 @@ async def tour_detail(poi_id: str) -> dict:
 async def tour_recommend(disabilities: list, sigungu: str = "안양",
                          match_mode: str = "all", topk: int = 10,
                          origin_lat: float = None, origin_lng: float = None,
-                         offset: int = 0) -> dict:
-    # origin 을 주면 02 route-api(v1.9.0+)가 거리 오름차순 + offset 페이징으로 응답한다.
+                         offset: int = 0, category: str = "tour") -> dict:
+    # origin 을 주면 02 route-api 가 offset 페이징으로 응답한다. category="tour"(02 v1.27.0)는
+    # 관광 분류만 후보로 쓰고 무장애 충족도 상위 등급 먼저·같은 등급 안에서 거리순이다.
     body = {"disabilities": disabilities, "sigungu": sigungu,
-            "match_mode": match_mode, "topk": topk, "offset": offset}
+            "match_mode": match_mode, "topk": topk, "offset": offset,
+            "category": category}
     if origin_lat is not None and origin_lng is not None:
         body["origin_lat"] = origin_lat
         body["origin_lng"] = origin_lng

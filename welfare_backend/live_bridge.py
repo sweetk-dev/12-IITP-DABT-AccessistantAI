@@ -311,7 +311,7 @@ def _route_tool_declarations() -> list:
                         description="지체장애/휠체어/시각장애/청각장애/영유아동반 중 해당하는 것",
                     ),
                     "sigungu": types.Schema(type=types.Type.STRING, description="지역명, 기본 '안양'"),
-                    "topk": types.Schema(type=types.Type.INTEGER, description="반환 개수, 기본 5"),
+                    "topk": types.Schema(type=types.Type.INTEGER, description="반환 개수, 기본 10(화면 목록·추천 평가용). 말로는 상위 2~3곳만 안내"),
                 },
             ),
         ),
