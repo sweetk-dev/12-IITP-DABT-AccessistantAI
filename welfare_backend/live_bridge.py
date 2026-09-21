@@ -267,6 +267,8 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - 이동 중에 긴 정책 질문이 오면 핵심 한 문장만 답하고 "도착하신 뒤에 자세히 안내해 드릴까요?" 라고 제안하세요.
 - "저상버스 언제 와", "다음 버스 저상이야", "51번 몇 분 남았어" → `get_bus_arrivals` 를 호출합니다. 안내 중이면 승차 정류장·노선이 자동으로 들어갑니다. 결과의 `next_low_floor` 를 먼저 말하고, 없으면 "지금 오는 차량은 저상이 아니다"라고 하세요 — "저상버스가 없다"고 단정하지 않습니다. 실시간이라 변동될 수 있다고 한 마디 덧붙입니다.
 - "○○역 엘리베이터 어디 있어", "장애인 화장실 있어", "휠체어로 탈 수 있어" → `get_station_facilities` 를 호출합니다. 출입구별 위치를 2~3개만 읽고, 상태가 unknown 이면 "자료가 없다"고 말합니다(없다고 하지 않습니다).
+- **긴급 상황** — "배터리가 다 됐어", "충전할 데 있어", "휠체어가 고장났어", "바퀴가 이상해", "콜택시 불러줘" → `find_emergency_support` 를 **먼저** 호출합니다(situation 에 사용자 말 원문). 유형별 가장 가까운 1~2곳을 이름·거리·전화번호로 말하고, `open_hours_status` 가 unknown 이면 운영시간을 지어내지 말고 "전화로 확인해 보시라"고 하세요. 배터리 상황이면 이동 가능 거리를 먼저 묻고 멀면 콜택시를 함께 권하세요. 화면에 카드가 떴고 '여기로 안내' 로 경로를 받을 수 있다고 알립니다.
+- "화장실 어디야", "장애인 화장실" → `find_toilet` 을 호출합니다. 가까운 1~2곳을 거리·개방시간으로 말합니다. 역 안 화장실은 `get_station_facilities` 입니다.
 - "근처 정류장", "여기서 뭐 타", "버스 어디서 타" → `find_nearby_transit` 을 호출합니다. 결과의 `accessible` 이 null(unknown)이면 "이용 불가"가 아니라 "저상버스 정차 여부는 실시간 도착정보로 확인이 필요하다"고 안내하세요. 버스 방면은 종점명(end_station)으로 안내하되, 양방향 종점명이 같은 순환 노선은 경유 순번(station_seq)이 다르다는 점을 함께 알립니다. 같은 번호라도 노선 유형(마을버스/일반형시내버스)이 다르면 다른 노선입니다.
 
 ## 시스템 신호(`[SYSTEM]`) 처리 규칙
@@ -365,6 +367,36 @@ def _route_tool_declarations() -> list:
                 properties={
                     "place": types.Schema(type=types.Type.STRING, description="사용자가 말한 기준 장소 이름(예: '안양역'). 미지정 시 현재 위치 사용"),
                     "radius_m": types.Schema(type=types.Type.INTEGER, description="검색 반경(m), 기본 500, 최대 2000"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="find_emergency_support",
+            description=("전동 보장구 충전기·보장구 수리센터·장애인콜택시를 현재 위치 주변에서 찾는다. "
+                         "\"배터리가 다 됐어\", \"충전할 데 있어\", \"바퀴가 이상해\", \"휠체어가 고장났어\", "
+                         "\"콜택시 불러줘\" 같은 긴급 질의에 사용. 기준 위치는 현재 위치가 자동 주입되고, "
+                         "사용자가 기준 장소를 말하면 place 에 담는다. 결과의 open_hours 가 없으면 "
+                         "운영시간을 지어내지 말고 전화 확인을 권한다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "situation": types.Schema(type=types.Type.STRING, description="사용자가 말한 상황 원문(예: '배터리가 10%밖에 안 남았어'). 유형 선택 근거"),
+                    "types": types.Schema(type=types.Type.STRING, description="charge(충전) / repair(수리) / calltaxi(콜택시) 콤마 구분. 모르면 비운다(상황에서 고른다)"),
+                    "place": types.Schema(type=types.Type.STRING, description="사용자가 말한 기준 장소 이름. 미지정 시 현재 위치"),
+                    "radius_m": types.Schema(type=types.Type.INTEGER, description="검색 반경(m), 기본 2000, 최대 10000"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="find_toilet",
+            description=("휠체어로 갈 수 있는 화장실(장애인 대·소변기 보유 공중화장실)을 현재 위치 주변에서 찾는다. "
+                         "\"화장실 어디야\", \"장애인 화장실\" 질의에 사용. 기준 위치는 현재 위치가 자동 주입된다. "
+                         "지하철역 안 화장실은 get_station_facilities 가 맡는다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "place": types.Schema(type=types.Type.STRING, description="사용자가 말한 기준 장소 이름. 미지정 시 현재 위치"),
+                    "radius_m": types.Schema(type=types.Type.INTEGER, description="검색 반경(m), 기본 800, 최대 3000"),
                 },
             ),
         ),

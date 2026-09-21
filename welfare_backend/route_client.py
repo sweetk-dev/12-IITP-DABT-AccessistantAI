@@ -344,6 +344,22 @@ async def transit_access(lat: float, lng: float, radius_m: float = 800,
     )
 
 
+# ── 긴급대응·화장실 (02 v1.26.0, #296) ──
+async def support_nearby(lat: float, lng: float, types: str = "charge,repair,calltaxi",
+                         radius_m: float = 2000, limit: int = 3) -> dict:
+    """전동보장구 충전기·보장구 수리·장애인콜택시 근접 조회(거리순, 유형별 limit)."""
+    return await _call("GET", "/support/nearby",
+                       params={"lat": lat, "lng": lng, "types": types,
+                               "radius_m": radius_m, "limit": limit})
+
+
+async def toilet_nearby(lat: float, lng: float, radius_m: float = 800, limit: int = 5,
+                        accessible_only: bool = True) -> dict:
+    return await _call("GET", "/toilet/nearby",
+                       params={"lat": lat, "lng": lng, "radius_m": radius_m, "limit": limit,
+                               "accessible_only": "true" if accessible_only else "false"})
+
+
 # ── 실시간 버스·역 설비 (02 v1.19.0) ──
 async def bus_arrivals(station_id: str, route_id: str = "") -> dict:
     """정류장 실시간 도착정보 — 노선별 1·2번째 차량의 도착 예정·저상 여부."""

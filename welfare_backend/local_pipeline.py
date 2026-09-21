@@ -255,6 +255,19 @@ def _ollama_route_tools() -> list:
            "accessible_status(yes/no/unknown) 로만 판단해 안내한다.",
            {"place": {"type": "string", "description": "사용자가 말한 기준 장소 이름"},
             "radius_m": I}),
+        fn("find_emergency_support",
+           "전동 보장구 충전기·보장구 수리센터·장애인콜택시를 현재 위치 주변에서 찾는다. '배터리가 다 됐어', "
+           "'충전할 데 있어', '휠체어가 고장났어', '콜택시 불러줘' 같은 긴급 질의에 먼저 호출한다. "
+           "open_hours 가 없으면 운영시간을 지어내지 말고 전화 확인을 권한다.",
+           {"situation": {"type": "string", "description": "사용자가 말한 상황 원문"},
+            "types": {"type": "string", "description": "charge/repair/calltaxi 콤마 구분. 모르면 비운다"},
+            "place": {"type": "string", "description": "사용자가 말한 기준 장소 이름"},
+            "radius_m": I}),
+        fn("find_toilet",
+           "휠체어로 갈 수 있는 화장실(장애인 대·소변기 보유 공중화장실)을 현재 위치 주변에서 찾는다. "
+           "'화장실 어디야' 질의에 사용. 역 안 화장실은 get_station_facilities.",
+           {"place": {"type": "string", "description": "사용자가 말한 기준 장소 이름"},
+            "radius_m": I}),
         fn("get_bus_arrivals",
            "정류장의 실시간 버스 도착정보와 저상버스 여부를 확인한다. '저상버스 언제 와', '다음 버스 저상이야' "
            "질문에 사용. 안내 중이면 승차 정류장·노선이 자동 주입된다 — station_id 를 지어내지 않는다.",

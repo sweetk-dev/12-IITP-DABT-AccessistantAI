@@ -1867,7 +1867,7 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   });
   check("정적 자원이 바뀌었으므로 서비스워커 캐시 이름이 올라가고 셸에 아이콘이 들어간다 (v1.46.1)", () => {
     const SW = readFileSync(new URL("../../static/sw.js", import.meta.url), "utf8");
-    assert.match(SW, /const CACHE = "accessistant-v4";/);   // v1.48.0 프로필 배지·전환으로 셸이 바뀜
+    assert.match(SW, /const CACHE = "accessistant-v5";/);   // v1.49.0 긴급·편의 시트로 셸이 바뀜
     assert.match(SW, /"\/static\/icons\/icon-512\.png"/);
     assert.match(SW, /"\/static\/icons\/apple-touch-icon-180\.png"/);
   });
@@ -2062,6 +2062,108 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.match(t, /1호선/);
   });
   window.fetch = prevFetchPF;
+}
+
+// ── 긴급·편의 시트 — 충전소·수리·콜택시·화장실 + 경로 충전기 요약 (v1.49.0, #296 · 02 v1.26.0) ──
+{
+  const SUPPORT = { status: "success", tool_name: "find_emergency_support", count: 2, items: [
+    { support_type: "charge", type_label: "충전소", name: "안양시청", install_desc: "본관 1층 로비", addr: "시민대로 235",
+      dist_m: 320, tel: "031-8045-0000", open_hours: "09:00~18:00", open_hours_status: "known",
+      source_label: "행정안전부 표준데이터", confidence: "H", coord_suspect: false, lat: 37.3943, lng: 126.9568 },
+    { support_type: "charge", type_label: "충전소", name: "안양역 환승센터", addr: "만안로 232",
+      dist_m: 640, tel: null, open_hours: null, open_hours_status: "unknown",
+      source_label: "행정안전부 표준데이터", coord_suspect: true, lat: 37.4019, lng: 126.9226 } ] };
+  const TOILET = { status: "success", tool_name: "find_toilet", count: 1, items: [
+    { name: "시청 화장실", type: "공중화장실", addr: "a", dist_m: 120, accessible: true, dis_male_cnt: 1, dis_female_cnt: 1,
+      unisex: false, open_time: "24시간", emg_bell: true, tel: null, lat: 37.3904, lng: 126.9505 } ] };
+  const prevFetchS = window.fetch;
+  const sosCalls = [];
+  window.fetch = async (url, opt) => {
+    const u = String(url);
+    if (u.includes("find_emergency_support")) { sosCalls.push(u); return { ok: true, json: async () => (u.includes("types=repair") ? { status: "success", items: [] } : SUPPORT) }; }
+    if (u.includes("find_toilet")) { sosCalls.push(u); return { ok: true, json: async () => TOILET }; }
+    if (u.includes("plan_accessible_route")) {
+      lastPlanQuery = u;
+      const r = JSON.parse(JSON.stringify(ROUTE));
+      r.ui_action.route.support_hint = { charge_within_m: 1000, charge_cnt: 2, nearest: { name: "안양시청", dist_to_route_m: 85 } };
+      return { ok: true, json: async () => r };
+    }
+    return prevFetchS(url, opt);
+  };
+  check("지도 위에 '긴급·편의' 버튼", () => {
+    const b = $("naviSosBtn");
+    assert.ok(b && !b.hidden);
+    assert.match(b.textContent, /긴급·편의/);
+  });
+  $("naviSosBtn").dispatchEvent(new window.Event("click"));
+  await sleep(60);
+  check("버튼 → 시트 열림, 충전소 탭 기본, 현재 위치로 조회", () => {
+    assert.equal($("sosSheet").hidden, false);
+    assert.equal($("sosTabs").querySelector("button[data-kind='charge']").getAttribute("aria-pressed"), "true");
+    assert.ok(sosCalls.some((u) => /find_emergency_support.*types=charge/.test(u)), JSON.stringify(sosCalls));
+  });
+  check("카드: 이름·설치 지점·거리·전화·운영시간, 미상은 '확인 필요', 위치 의심 표시", () => {
+    const cards = [...$("sosList").querySelectorAll(".sos-card")];
+    assert.equal(cards.length, 2);
+    assert.match(cards[0].textContent, /안양시청 — 본관 1층 로비/);
+    assert.match(cards[0].textContent, /320m/);
+    assert.match(cards[0].textContent, /운영시간 09:00~18:00/);
+    const tel = cards[0].querySelector("a.tel");
+    assert.ok(tel && tel.getAttribute("href") === "tel:03180450000");
+    assert.match(cards[1].textContent, /운영시간 확인 필요/);
+    assert.match(cards[1].textContent, /위치 확인 필요/);
+    assert.ok(!cards[1].querySelector("a.tel"), "전화 없는 곳엔 전화 버튼이 없다");
+    assert.match(cards[0].textContent, /출처: 행정안전부/);
+  });
+  $("sosTabs").querySelector("button[data-kind='repair']").dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(60);
+  check("수리 탭 — 결과 없음 문구", () => {
+    assert.match($("sosList").textContent, /근처에 등록된 수리센터이\(가\) 없습니다/);
+  });
+  $("sosTabs").querySelector("button[data-kind='toilet']").dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(60);
+  check("화장실 탭 — 장애인 화장실·비상벨·개방시간", () => {
+    const c = $("sosList").querySelector(".sos-card");
+    assert.ok(c);
+    assert.match(c.textContent, /시청 화장실/);
+    assert.match(c.textContent, /장애인 화장실 있음/);
+    assert.match(c.textContent, /비상벨/);
+    assert.match(c.textContent, /운영시간 24시간/);
+  });
+  $("sosTabs").querySelector("button[data-kind='charge']").dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(30);
+  const goBtn = [...$("sosList").querySelectorAll(".sos-acts button")][0];
+  goBtn.dispatchEvent(new window.Event("click"));
+  await sleep(80);
+  check("'여기로 안내' → 시트 닫고 좌표 목적지(building)로 경로 요청, reason=sos_charge", () => {
+    assert.equal($("sosSheet").hidden, true);
+    assert.match(lastPlanQuery || "", /destination_lat=37\.3943/);
+    assert.match(lastPlanQuery || "", /destination_type=building/);
+    assert.match(lastPlanQuery || "", /reason=sos_charge/);
+  });
+  check("경로 요약에 '경로 1km 안 충전 가능한 곳' 한 줄", () => {
+    assert.match($("naviSheetBody").textContent, /경로 1km 안에 충전 가능한 곳 2곳 — 가장 가까운 안양시청 \(경로에서 85m\)/);
+  });
+  // 상담(음성)에서 온 결과
+  const act = NAV.onUiAction({ action: "show_support", payload: { items: SUPPORT.items.concat([
+    { support_type: "calltaxi", type_label: "장애인콜택시", name: "경기도 광역이동지원센터", dist_m: 1500, tel: "1666-0420",
+      open_hours: "24시간", open_hours_status: "known", lat: 37.39, lng: 126.95 }]), types: "charge,calltaxi", base: { lat: 37.39, lng: 126.95 } } });
+  check("상담 결과 show_support → 이동 버튼 라벨 + 시트 데이터 준비(화면 강제 전환 없음)", () => {
+    assert.ok(act && /충전소 보기 \(3곳\)/.test(act.label), JSON.stringify(act));
+    assert.equal(NAV.sosItems().calltaxi.length, 1);
+  });
+  window.NAVI.showPreparedView();
+  await sleep(30);
+  check("이동 버튼을 누르면 시트가 열린다 · 콜택시 카드는 전화만(안내 없음)", () => {
+    assert.equal($("sosSheet").hidden, false);
+    $("sosTabs").querySelector("button[data-kind='calltaxi']").dispatchEvent(new window.Event("click", { bubbles: true }));
+    const c = $("sosList").querySelector(".sos-card");
+    assert.match(c.textContent, /1666-0420/);
+    assert.ok(!c.querySelector(".sos-acts button"), "콜택시는 '여기로 안내'가 없어야 한다");
+  });
+  $("sosCancelBtn").dispatchEvent(new window.Event("click"));
+  check("닫기", () => assert.equal($("sosSheet").hidden, true));
+  window.fetch = prevFetchS;
 }
 
 // ── 결과 ──
