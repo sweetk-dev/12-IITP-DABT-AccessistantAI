@@ -202,6 +202,8 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .egress ol{margin:8px 0 0 18px;padding:0;font-size:.95rem;line-height:1.55;}
 .egress .eg-out{margin-top:8px;font-size:.95rem;}
 .egress .eg-warn{color:#B45309;}
+.egress .eg-sub{margin-top:8px;font-size:.95rem;font-weight:600;color:#1E3A8A;}
+.egress.st-note{border-style:solid;padding:8px 12px;font-size:.92rem;}
 .step-next{font-size:.92rem;color:var(--c-text-muted);padding:8px 4px;border-top:1px dashed #E2E8F0;}
 .navi-actions{display:flex;gap:8px;margin-top:10px;}
 .navi-actions .btn{flex:1;}
@@ -1538,6 +1540,10 @@ window.NAVI = (function(){
   function stepUtterance(i){
     var st = steps[i]; if(!st) return "";
     // 지하철 하차 — 역 안에서는 위치를 알 수 없으니 이용자에게 묻는다 (#298)
+    if(st.maneuver === "station_start" && st.egress){
+      return [String(st.instruction || "").replace(/[.\s]*$/, "")].concat(st.egress.inside || []).join(". ")
+        + ". 출구로 나오시면 화면의 버튼을 눌러 주세요.";
+    }
     if(st.maneuver === "subway_alight" && st.egress && st.egress.question){
       return String(st.instruction || "").replace(/[.\s]*$/, "") + ". " + st.egress.question + " 화면에서 골라 주세요.";
     }
@@ -1813,6 +1819,7 @@ window.NAVI = (function(){
     if(!guiding || simActive || !here) return;
     var cur = steps[stepIdx] || {};
     if(/_board$/.test(String(cur.maneuver||""))){ offRouteCnt = 0; offRouteSince = 0; return; }   // 승차 구간 (v1.44.0)
+    if(cur.maneuver === "station_start"){ offRouteCnt = 0; offRouteSince = 0; return; }   // 역 안 출발 — 측위 불가(#300)
     if(offRouteDistM(here) <= OFF_ROUTE_M || beforeRouteStart(here)){ offRouteCnt = 0; offRouteSince = 0; return; }
     if(lastFixAcc != null && lastFixAcc > OFF_ROUTE_ACC_MAX) return;   // 부정확한 점은 세지 않는다 (v1.44.0)
     if(!offRouteSince) offRouteSince = Date.now();
@@ -2176,6 +2183,7 @@ window.NAVI = (function(){
 
   function resetTrip(){
     tripDest = null; pickMode = null;
+    stationAnswered = {}; stationHint = null; stationStartReq = null;
     status("선택을 초기화했습니다. 관광지를 골라 주세요.");
   }
 
@@ -2593,6 +2601,13 @@ window.NAVI = (function(){
     });
     // 계측(#294) — 왜 다시 찾는지와 직전 route_id 를 함께 보낸다(응답 계약에는 영향 없음)
     qs.set("reason", routeReason || (route ? "new" : "first"));
+    // 역 안(승강장)에서 출발 (#300) — 이용자가 고른 역·타고 온 방향을 한 번만 싣는다
+    var ssr = stationStartCarry();
+    if(ssr){
+      qs.set("origin_station", ssr.name);
+      qs.set("origin_travel", ssr.travel || "");
+    }
+    stationStartReq = null;
     if(route && route.route_id) qs.set("prev_route_id", route.route_id);
     routeReason = null;
     // 저상버스 우선 (#291) — 휠체어 프로필에서만 의미가 있다. 시각장애 프로필은 보내지 않는다.
@@ -2671,6 +2686,15 @@ window.NAVI = (function(){
     if(!primary){ status("경로를 찾지 못했습니다."); return; }
     steps = primary.steps || [];
     egressWhere = {};
+    routeDestName = destName || null;
+    // 역 근처 출발 (#300, 02 v1.28.0) — 안내 시작 때 역 안/밖을 묻는다. 역 안 출발 경로면 이미 답했다.
+    stationHint = null;
+    if(route.station_start && steps[0] && steps[0].egress){
+      egressWhere[egressKey(steps[0].egress)] = "inside";
+    } else if(route.station_nearby && route.station_nearby.station
+              && !stationAnswered[stationAskKey(route.station_nearby)]){
+      stationHint = route.station_nearby;
+    }
     stepIdx = 0; guiding = false;
     if(arrivalTimer){ clearInterval(arrivalTimer); arrivalTimer=null; }   // 새 경로 — 도착 정리 예약 취소 (v1.44.0)
     closeSpotChoice();   // 도착 확인 창이 떠 있었다면 닫는다 (v1.46.0)
@@ -2741,6 +2765,11 @@ window.NAVI = (function(){
       hrow.appendChild(lt);
     }
     body.appendChild(hrow);
+    if(stationHint){
+      var sn = document.createElement("div"); sn.className = "egress st-note"; sn.id = "stationNote";
+      sn.textContent = "🚇 " + stationHint.station + "역 근처에서 출발합니다 — 안내를 시작하면 역 안인지 밖인지 여쭤봅니다.";
+      body.appendChild(sn);
+    }
 
     // ── 이동 방식 카드 (#251) — 기본 '추천', 선택 시 그 방식으로 재요청 ──
     var mrow = document.createElement("div"); mrow.className="mode-cards";
@@ -3005,6 +3034,7 @@ window.NAVI = (function(){
       return;
     }
     staleRetried = false;
+    if(stationHint && !stationAnswered[stationAskKey(stationHint)]){ renderStationAsk(); return; }
     stopSimulation();
     guiding = true; stepIdx = 0; _interimDone = {};
     offRouteCnt = 0; offRouteSince = 0; setFollow(true);
@@ -3095,6 +3125,115 @@ window.NAVI = (function(){
      '역 밖(출구)'인지 묻고, 역 안이면 승강장 승강기 → 출구 승강기 순서를, 역 밖이면 출구 기준
      도보 안내로 넘어간다. 02 가 두 벌의 문장(egress.inside / egress.outside)을 준다. */
   var egressWhere = {};   // "역:출구" → "inside" | "outside"
+
+  /* ── 역에서 출발 — 역 안/밖 · 타고 온 방향 (#300, 02 v1.28.0) ──
+     서비스 지역 밖에서 전철로 와 역에서 도보 경로를 시작하면 경로에 지하철 구간이 없어
+     하차 안내가 붙지 않는다. 출발점이 역 가까이면(02 station_nearby) 안내 시작 때 묻고,
+     역 안이면 타고 온 방향을 물어 origin_station 으로 다시 요청한다 — 02 가 출구에서 계획하고
+     맨 앞에 승강장 승강기 → 출구 승강기 스텝(station_start)을 붙인다. */
+  var stationHint = null, stationStartReq = null, stationAnswered = {}, routeDestName = null;
+  function stationAskKey(h){
+    var d = (route && route.destination) || {};
+    return (h && h.station || "") + "|" + (d.poi_id || ((d.lat||"") + "," + (d.lng||"")));
+  }
+  function destSpotFromRoute(){
+    // 지금 화면의 경로 목적지가 기준이다 — 음성으로 온 좌표 목적지 경로는 tripDest 를 갱신하지 않으므로
+    // tripDest 가 이 경로의 목적지와 같을 때만 그것을 쓴다(이전 목적지로 재요청되는 것 방지)
+    var d = (route && route.destination) || {};
+    var nm = routeDestName || "안내 목적지";
+    if(d.poi_id){
+      if(tripDest && String(tripDest.poi_id) === String(d.poi_id)) return tripDest;
+      return {poi_id: String(d.poi_id), name: nm, kind: d.type === "transit_station" ? "transit_station" : "tour"};
+    }
+    if(d.lat != null && d.lng != null){
+      if(tripDest && !tripDest.poi_id && tripDest.lat === d.lat && tripDest.lng === d.lng) return tripDest;
+      return {lat: d.lat, lng: d.lng, name: nm, kind: "coord"};   // 02 가 해석한 도착점 그대로
+    }
+    return null;
+  }
+  // 역 안 출발 경로를 보는 중(또는 그 첫 스텝 진행 중)에 다시 찾으면 역 안 출발을 유지한다 —
+  // 프로필 전환·정보 만료 재탐색이 현재 위치(승강장) 기준 도보 경로로 바꿔 역 안 안내가 사라지지 않게
+  function stationStartCarry(){
+    if(stationStartReq) return stationStartReq;
+    var ss = route && route.station_start;
+    if(!ss || !ss.station) return null;
+    if(guiding && (steps[stepIdx] || {}).maneuver !== "station_start") return null;   // 이미 출구 밖
+    return {name: ss.station, travel: ss.travel || ""};
+  }
+  function stationAnswer(where, travel){
+    var h = stationHint; if(!h) return;
+    stationAnswered[stationAskKey(h)] = where;
+    sendActivity(where === "inside" ? "station_start_inside" : "station_start_outside");
+    if(where === "outside"){ stationHint = null; startGuidance(); return; }
+    var spot = destSpotFromRoute();
+    if(!spot){ stationHint = null; status("목적지를 다시 말씀해 주시면 역 안에서부터 안내해 드릴게요."); return; }
+    stationStartReq = {name: h.station, travel: travel || ""};
+    rerouteNote = h.station + "역 안에서 출발하는 경로로 다시 찾습니다";
+    routeReason = "station_inside";
+    autoResumeGuide = true;      // 새 경로가 오면 곧바로 안내를 시작한다
+    stationHint = null;
+    requestRoute(spot);
+  }
+  function renderStationAsk(){
+    var h = stationHint; if(!h) return;
+    sheetMini(false); sheetSetCollapsed(false); sheetTop();
+    var body = $("naviSheetBody"); body.textContent = "";
+    var box = document.createElement("div"); box.className = "egress"; box.id = "stationAsk";
+    box.setAttribute("aria-live", "polite");
+    var q = document.createElement("div"); q.className = "eg-q";
+    q.textContent = "🚇 " + (h.question || (h.station + "역 안에 계신가요, 역 밖에 계신가요?"));
+    box.appendChild(q);
+    var row = document.createElement("div"); row.className = "navi-actions";
+    var bIn = document.createElement("button"); bIn.type = "button"; bIn.className = "btn outline";
+    bIn.textContent = "역 안(승강장)이에요"; bIn.setAttribute("data-station", "inside");
+    var bOut = document.createElement("button"); bOut.type = "button"; bOut.className = "btn outline";
+    bOut.textContent = "역 밖이에요"; bOut.setAttribute("data-station", "outside");
+    bOut.addEventListener("click", function(){ stationAnswer("outside"); });
+    bIn.addEventListener("click", function(){
+      bIn.className = "btn"; bIn.setAttribute("aria-pressed", "true");
+      if($("stationTravel")) return;
+      var sub = document.createElement("div"); sub.className = "eg-sub"; sub.id = "stationTravel";
+      sub.textContent = h.travel_question || "어느 쪽에서 열차를 타고 오셨나요?";
+      box.appendChild(sub);
+      var r2 = document.createElement("div"); r2.className = "navi-actions";
+      (h.choices || []).forEach(function(c){
+        var b = document.createElement("button"); b.type = "button"; b.className = "btn outline";
+        b.textContent = c.label + (c.updown ? " (" + c.updown + ")" : "");
+        b.setAttribute("data-travel", c.travel);
+        b.addEventListener("click", function(){ stationAnswer("inside", c.travel); });
+        r2.appendChild(b);
+      });
+      var bk = document.createElement("button"); bk.type = "button"; bk.className = "btn outline";
+      bk.textContent = "잘 모르겠어요"; bk.setAttribute("data-travel", "");
+      bk.addEventListener("click", function(){ stationAnswer("inside", ""); });
+      r2.appendChild(bk);
+      box.appendChild(r2);
+      speak(sub.textContent + " 화면에서 골라 주세요.");
+    });
+    row.appendChild(bIn); row.appendChild(bOut); box.appendChild(row);
+    body.appendChild(box);
+    speak(q.textContent.replace(/^🚇\s*/, "") + " 화면에서 골라 주세요.");
+  }
+  function renderStationStart(st){
+    var eg = st.egress || {};
+    var box = document.createElement("div"); box.className = "egress"; box.setAttribute("aria-live", "polite");
+    var ol = document.createElement("ol");
+    (eg.inside || []).forEach(function(t){
+      var li = document.createElement("li"); li.textContent = t;
+      if(/휠체어리프트만|정보가 없습니다/.test(t)) li.className = "eg-warn";
+      ol.appendChild(li);
+    });
+    box.appendChild(ol);
+    var done = document.createElement("button"); done.type = "button"; done.className = "btn";
+    done.setAttribute("data-egress", "exited");
+    done.textContent = "출구로 나왔어요 — 걸어서 이동 시작";
+    done.addEventListener("click", function(){
+      egressWhere[egressKey(eg)] = "outside"; sendActivity("egress_outside");
+      if(stepIdx + 1 < steps.length) gotoStep(stepIdx + 1);
+    });
+    box.appendChild(done);
+    return box;
+  }
   function egressKey(eg){ return (eg && eg.station || "") + ":" + ((eg && eg.exit && eg.exit.exit_no) || ""); }
   function exitStepIdx(from){
     for(var k = from; k < steps.length && k <= from + 2; k++){
@@ -3177,6 +3316,10 @@ window.NAVI = (function(){
     if(st.egress && st.maneuver === "subway_alight"){
       body.appendChild(renderEgress(st));
     }
+    // 역 안에서 출발 (#300) — 승강장 승강기 → 출구 승강기. 출구로 나왔다고 누르면 도보로 넘어간다
+    if(st.egress && st.maneuver === "station_start"){
+      body.appendChild(renderStationStart(st));
+    }
 
     var nxt = steps[stepIdx+1];
     if(nxt){ var n=document.createElement("div"); n.className="step-next"; n.textContent="다음: "+nxt.instruction; body.appendChild(n); }
@@ -3196,7 +3339,7 @@ window.NAVI = (function(){
 
     var acts=document.createElement("div"); acts.className="navi-actions";
     var again=document.createElement("button"); again.type="button"; again.className="btn outline"; again.textContent="다시 듣기";
-    again.addEventListener("click", function(){ speak(st.instruction); });
+    again.addEventListener("click", function(){ speak(st.maneuver === "station_start" ? stepUtterance(stepIdx) : st.instruction); });
     // 안내 종료는 상단 우측 고정 버튼(#naviEndBtn)으로 이동 (#251) — 여기는 음성 토글
     var vt=document.createElement("button"); vt.type="button"; vt.className="btn outline";
     vt.textContent = voiceOn ? "음성 끄기" : "음성 켜기";
@@ -3267,6 +3410,7 @@ window.NAVI = (function(){
     // 하차 안내 직후에는 다음 스텝 좌표가 같은 정류장이라 즉시 재전환된다 —
     // 하차 음성이 끝날 시간을 보장한다(리뷰 #3a)
     var cur = steps[stepIdx] || {};
+    if(cur.maneuver === "station_start") return;   // 역 안 — 측위가 안 되므로 버튼으로만 넘어간다 (#300)
     if((String(cur.maneuver).indexOf("alight") >= 0)
         && Date.now() - _lastAdvanceTs < 4000) return;
     var nxt = steps[stepIdx+1];
@@ -3278,7 +3422,7 @@ window.NAVI = (function(){
       stepIdx += 1;
       renderStep();
       _announceStep(stepIdx);
-      if(steps[stepIdx].maneuver === "arrive"){ guiding = false; trackUpload("arrived"); setEndBtn("home"); stopArrivalPolling(); scheduleArrivalReset(); }
+      if(steps[stepIdx].maneuver === "arrive"){ guiding = false; stationAnswered = {}; trackUpload("arrived"); setEndBtn("home"); stopArrivalPolling(); scheduleArrivalReset(); }
       sendNavState();   // 구간 전환·도착을 세션에 알린다 (#248)
     }
   }
@@ -3837,7 +3981,8 @@ window.NAVI = (function(){
                                      setWheelProfile:setWheelProfile,
                                      openSosSheet:openSosSheet, sosItems:function(){return sosItems;}, onUiAction:onUiAction,
                                      guiding:function(){return guiding;},
-                                     egressWhere:function(){return egressWhere;}, gotoStep:gotoStep}; }
+                                     egressWhere:function(){return egressWhere;}, gotoStep:gotoStep,
+                                     stationHint:function(){return stationHint;}}; }
   };
 })();
 document.addEventListener("DOMContentLoaded", function(){ window.NAVI.init(); });

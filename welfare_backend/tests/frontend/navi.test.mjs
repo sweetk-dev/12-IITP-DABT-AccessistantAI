@@ -2264,6 +2264,145 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   $("sosCancelBtn").dispatchEvent(new window.Event("click"));
 }
 
+// ── 역에서 출발 — 역 안/밖 · 타고 온 방향 (v1.51.0, #300 · 02 v1.28.0) ──
+{
+  const NS = window.NAVI._internals();
+  const HINT = { station: "관악", distance_m: 40, question: "지금 관악역 안(승강장)에 계신가요, 역 밖에 계신가요?",
+    travel_question: "어느 쪽에서 열차를 타고 오셨나요?",
+    choices: [{ travel: "south", updown: "하행", label: "석수·서울 쪽에서 타고 왔어요" },
+              { travel: "north", updown: "상행", label: "안양·수원 쪽에서 타고 왔어요" }] };
+  const WALK = (id, extra) => Object.assign({
+    route_id: id, profile: "wheelchair_electric",
+    origin: { lat: 37.3900, lng: 126.9500 },
+    destination: { type: "tour", poi_id: "14792", lat: 37.3909, lng: 126.9511 },
+    routes: [{ summary: { total_distance_m: 1289, duration_sec: 1170, max_slope_deg: 5.6, stairs_cnt: 0, warnings: [] },
+      geometry: [[37.3900, 126.9500], [37.3905, 126.9505], [37.3909, 126.9511]],
+      steps: [
+        { idx: 0, maneuver: "depart", instruction: "예술공원로를 따라 600m 이동합니다.", distance_m: 600, coord: [37.3900, 126.9500], link_type: "sidewalk", warnings: [] },
+        { idx: 1, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: [37.3909, 126.9511], link_type: null, warnings: [] }] }],
+    fallback: {} }, extra || {});
+  const SEG = { station: "관악", travel: "south", question: null,
+    exit: { exit_no: "2", lat: 37.3901, lng: 126.9501, has_elevator: true, elevator: "(1F) 2번 출구 옆" },
+    inside: ["내린 승강장의 승강기로 이동합니다 — (1F) 안양역 방향 승강장 진행방향 앞쪽 끝",
+             "2번 출구 승강기로 나갑니다 — (1F) 2번 출구 옆"],
+    outside: "관악역 2번 출구 앞에서 도보 안내를 시작합니다." };
+  const START = WALK("r_st2", { station_start: { station: "관악", travel: "south", exit: SEG.exit, egress: SEG } });
+  START.routes[0].steps.unshift({ maneuver: "station_start", instruction: "관악역 안에서 출발합니다. 2번 출구(승강기)로 나간 뒤 걸어서 이동합니다",
+    distance_m: 0, coord: [37.3901, 126.9501], link_type: "walk", warnings: [], egress: SEG });
+  const prevFetchS2 = window.fetch;
+  const planUrls = [];
+  window.fetch = async (url, opt) => {
+    const u = String(url);
+    if (u.includes("/api/v1/tools/plan_accessible_route")) {
+      planUrls.push(decodeURIComponent(u));
+      return { ok: true, json: async () => ({ status: "success", mode_used: "walk", mode_label: "도보",
+        ui_action: { action: "show_route", route: JSON.parse(JSON.stringify(START)) } }) };
+    }
+    return prevFetchS2(url, opt);
+  };
+  NS.clearRouteDisplay(); NS.resetTrip(); NS.setHere({ lat: 37.3900, lng: 126.9500 });
+  NS.showRoute(WALK("r_st1", { station_nearby: HINT }), "김중업건축박물관");
+  await sleep(30);
+  check("역 근처 출발 — 경로 카드에 '안내 시작 때 묻는다' 안내", () => {
+    assert.match($("naviSheetBody").textContent, /관악역 근처에서 출발합니다/);
+    assert.equal(window.NAVI._internals().stationHint().station, "관악");
+  });
+  spoken.length = 0;
+  NS.startGuidance();
+  await sleep(30);
+  const askBox = () => $("stationAsk");
+  check("안내 시작 → 먼저 역 안/밖을 묻고 안내는 아직 시작하지 않는다", () => {
+    assert.ok(askBox(), "질문 상자 없음");
+    assert.equal(window.NAVI._internals().guiding(), false);
+    const b = [...askBox().querySelectorAll("button[data-station]")].map((x) => x.getAttribute("data-station"));
+    assert.deepEqual(b, ["inside", "outside"]);
+    assert.ok(spoken.some((t) => /관악역 안\(승강장\)에 계신가요/.test(t)), JSON.stringify(spoken.slice(-2)));
+  });
+  askBox().querySelector("button[data-station='inside']").dispatchEvent(new window.Event("click"));
+  await sleep(20);
+  check("'역 안' → 타고 온 방향 선택지(두 방향 + 모름)", () => {
+    const t = [...askBox().querySelectorAll("button[data-travel]")].map((x) => x.getAttribute("data-travel"));
+    assert.deepEqual(t, ["south", "north", ""]);
+    assert.match(askBox().textContent, /석수·서울 쪽에서 타고 왔어요 \(하행\)/);
+    assert.equal(planUrls.length, 0, "방향을 고르기 전에 다시 요청하면 안 된다");
+  });
+  askBox().querySelector("button[data-travel='south']").dispatchEvent(new window.Event("click"));
+  await sleep(80);
+  check("방향 선택 → origin_station·origin_travel 로 다시 요청", () => {
+    assert.equal(planUrls.length, 1);
+    assert.match(planUrls[0], /origin_station=관악/);
+    assert.match(planUrls[0], /origin_travel=south/);
+    assert.match(planUrls[0], /reason=station_inside/);
+  });
+  check("새 경로로 곧바로 안내 시작 — 첫 스텝은 승강장 → 출구 승강기 목록", () => {
+    const I = window.NAVI._internals();
+    assert.equal(I.guiding(), true);
+    assert.equal(I.stepIdx, 0);
+    const li = [...$("naviSheetBody").querySelectorAll(".egress ol li")].map((x) => x.textContent);
+    assert.equal(li.length, 2);
+    assert.match(li[0], /안양역 방향 승강장 진행방향 앞쪽 끝/);
+    assert.equal(I.egressWhere()["관악:2"], "inside");
+    assert.equal(I.stationHint(), null);
+    assert.match(I.stepUtterance(0), /관악역 안에서 출발합니다.*내린 승강장의 승강기로 이동합니다.*2번 출구 승강기로 나갑니다/);
+  });
+  NS.setHere({ lat: 37.3901, lng: 126.9501 }); NS.advanceStep(); await sleep(10);
+  check("역 안 스텝은 위치로 넘어가지 않는다(버튼으로만)", () => assert.equal(window.NAVI._internals().stepIdx, 0));
+  $("naviSheetBody").querySelector(".egress button[data-egress='exited']").dispatchEvent(new window.Event("click"));
+  await sleep(40);
+  check("'출구로 나왔어요' → 도보 안내로", () => {
+    const I = window.NAVI._internals();
+    assert.equal(I.stepIdx, 1);
+    assert.equal(I.egressWhere()["관악:2"], "outside");
+  });
+  // 역 밖 — 바로 안내를 시작하고 같은 목적지에서는 다시 묻지 않는다
+  NS.clearRouteDisplay(); NS.resetTrip();
+  planUrls.length = 0;
+  NS.showRoute(WALK("r_st3", { station_nearby: HINT, destination: { type: "tour", poi_id: "17245", lat: 37.39, lng: 126.95 } }), "안양아트센터");
+  await sleep(20);
+  NS.startGuidance(); await sleep(20);
+  askBox().querySelector("button[data-station='outside']").dispatchEvent(new window.Event("click"));
+  await sleep(30);
+  check("'역 밖' → 다시 요청 없이 안내 시작", () => {
+    const I = window.NAVI._internals();
+    assert.equal(I.guiding(), true);
+    assert.equal(I.stepIdx, 0);
+    assert.equal(planUrls.length, 0);
+    assert.equal(I.stationHint(), null);
+  });
+  NS.showRoute(WALK("r_st4", { station_nearby: HINT, destination: { type: "tour", poi_id: "17245", lat: 37.39, lng: 126.95 } }), "안양아트센터");
+  await sleep(20);
+  check("같은 역·같은 목적지 재탐색에서는 다시 묻지 않는다", () => assert.equal(window.NAVI._internals().stationHint(), null));
+  // 음성으로 온 좌표 목적지 경로 — 이전 여행의 tripDest 로 재요청하면 안 된다 (리뷰 #1)
+  NS.resetTrip(); NS.clearRouteDisplay(); planUrls.length = 0;
+  NS.showRoute(WALK("r_old", { destination: { type: "tour", poi_id: "17245", lat: 37.39, lng: 126.95 } }), "안양아트센터");
+  await sleep(10);
+  NS.onUiAction({ action: "show_route", payload: { route: WALK("r_voice", { station_nearby: HINT,
+    destination: { type: "coord", lat: 37.4183, lng: 126.9183 } }) } });
+  await sleep(20);
+  NS.startGuidance(); await sleep(20);
+  askBox().querySelector("button[data-station='inside']").dispatchEvent(new window.Event("click"));
+  await sleep(10);
+  askBox().querySelector("button[data-travel='']").dispatchEvent(new window.Event("click"));
+  await sleep(80);
+  check("음성 좌표 경로의 역 안 재요청은 그 경로의 목적지로(이전 목적지 아님), 방향 모름은 빈 값", () => {
+    assert.equal(planUrls.length, 1);
+    assert.match(planUrls[0], /destination_lat=37\.4183/);
+    assert.doesNotMatch(planUrls[0], /destination_poi_id=17245/);
+    assert.match(planUrls[0], /origin_travel=(&|$)/);
+  });
+  // 역 안 출발 경로를 보는 중 프로필을 바꾸면 역 안 출발을 유지한다 (리뷰 #2)
+  planUrls.length = 0;
+  NS.setWheelProfile(NS.wheelProfile() === "wheelchair_electric" ? "wheelchair_manual" : "wheelchair_electric");
+  await sleep(80);
+  check("역 안 출발 경로에서 재탐색해도 origin_station 을 유지", () => {
+    assert.equal(planUrls.length, 1);
+    assert.match(planUrls[0], /origin_station=관악/);
+  });
+  NS.setWheelProfile("wheelchair_electric"); await sleep(60);
+  NS.resetTrip(); NS.clearRouteDisplay();
+  window.fetch = prevFetchS2;
+}
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {

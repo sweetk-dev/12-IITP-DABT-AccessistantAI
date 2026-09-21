@@ -239,6 +239,8 @@ def _ollama_route_tools() -> list:
             "profile": {"type": "string",
                         "description": "wheelchair_electric(기본, 전동 휠체어)/wheelchair_manual(수동)/crutch/visual/walk"},
             "origin_place": {"type": "string", "description": "사용자가 말로 밝힌 출발지 이름"},
+            "origin_station": {"type": "string", "description": "사용자가 역 안(승강장)에 있다고 답했을 때 그 역 이름"},
+            "origin_travel": {"type": "string", "description": "타고 온 열차의 진행 방향 north/south(station_nearby.choices), 모르면 비움"},
             "mode": {"type": "string",
                      "description": "walk / walk_subway / walk_bus / walk_bus_subway. \'도보로\'·\'걸어서\' 는 walk, \'지하철로\'·\'버스 말고 지하철\' 은 walk_subway, \'버스로\' 는 walk_bus, \'대중교통으로\' 는 walk_bus_subway. 방식을 말하지 않았을 때만 비운다 (v1.48.0)"}}),
         fn("explain_route_segment",
