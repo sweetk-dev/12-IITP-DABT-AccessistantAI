@@ -298,9 +298,15 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
 # ── 경로 ──
 async def plan_route(origin: dict, destination: dict, profile: str = "wheelchair_electric",
                      alternatives: int = 1, mode: str = "", realtime: bool = False,
-                     low_floor: Optional[bool] = None) -> dict:
+                     low_floor: Optional[bool] = None,
+                     origin_station: Optional[dict] = None) -> dict:
     body = {"origin": origin, "destination": destination,
             "profile": profile, "alternatives": alternatives}
+    if origin_station and mode in ("", "walk", None):
+        # 02 v1.28.0(#79) — 역 안(승강장)에서 출발: 출구에서 계획하고 승강장→출구 스텝을 붙인다.
+        # 구버전 02 는 모르는 필드를 무시한다(역 근처 판정·질문도 오지 않으므로 이 경로가 열리지 않는다).
+        body["origin_station"] = {"name": str(origin_station.get("name") or "")[:20],
+                                  "travel": origin_station.get("travel") or None}
     # 02 v1.12.0 멀티모달(#36) — walk 은 기존 계약이므로 생략해 하위 서버와도 호환 유지
     if mode in ("walk_subway", "walk_bus", "walk_bus_subway"):
         # walk_subway 는 02 v1.25.0(#73) — 구버전 02 는 400 을 돌려주고, 그 사유가 그대로 안내된다

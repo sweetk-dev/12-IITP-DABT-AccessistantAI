@@ -331,6 +331,8 @@ def _route_tool_declarations() -> list:
                     "destination_type": types.Schema(type=types.Type.STRING, description="tour(기본) / transit_station / transit_stop"),
                     "profile": types.Schema(type=types.Type.STRING, description="wheelchair_electric(기본, 전동 휠체어)/wheelchair_manual(수동)/crutch/visual/walk"),
                     "origin_place": types.Schema(type=types.Type.STRING, description="사용자가 말로 지정한 출발지 이름(예: '안양역', '범계역', '김중업 건축박물관'). 사용자가 '~에서', '~에 있는데' 처럼 출발지를 밝히면 반드시 채운다. 미지정 시 현재 위치 사용"),
+                    "origin_station": types.Schema(type=types.Type.STRING, description="사용자가 역 안(승강장)에 있다고 답했을 때만 그 역 이름(예: '관악'). 결과의 station_nearby 안내를 따른다 (v1.51.0)"),
+                    "origin_travel": types.Schema(type=types.Type.STRING, description="origin_station 과 함께 — 타고 온 열차의 진행 방향. station_nearby.choices 에서 사용자가 고른 travel(north/south). 모르면 비운다"),
                     "mode": types.Schema(type=types.Type.STRING, description="이동 방식. walk(도보만) / walk_subway(지하철만, 버스 없음) / walk_bus(버스 허용) / walk_bus_subway(버스+지하철 허용). \'도보로\'·\'걸어서\'·\'타지 않고\' 처럼 도보만 원하면 walk, \'지하철로\'·\'전철 타고\'·\'버스 말고 지하철\' 처럼 지하철만 원하면 walk_subway, \'버스로\' 는 walk_bus, \'대중교통으로\' 는 walk_bus_subway. 방식을 말하지 않았을 때만 비워 둔다(자동 추천 — 거리가 멀면 대중교통 조합이 될 수 있다) (v1.48.0)"),
                 },
             ),

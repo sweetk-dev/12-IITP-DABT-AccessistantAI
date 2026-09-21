@@ -492,8 +492,12 @@ async def plan_accessible_route(
     low_floor: Optional[bool] = Query(None, description="저상버스 우선(#291). 생략하면 휠체어 프로필 on"),
     reason: str = Query("", description="계측용 요청 사유(#294): first | new | off_route | stale | low_floor | profile | mode"),
     prev_route_id: str = Query("", description="계측용 직전 route_id(#294)"),
+    origin_station: str = Query("", description="역 안(승강장)에서 출발할 때 역 이름(#300)"),
+    origin_travel: str = Query("", description="타고 온 열차의 진행 방향 north | south | ''(모름)"),
 ):
     return await tool_handlers.tool_plan_accessible_route(
+        origin_station=origin_station,
+        origin_travel=origin_travel,
         log_ctx={"reason": reason or None, "prev_route_id": prev_route_id or None},
         destination_poi_id=destination_poi_id,
         destination_place=destination_place,

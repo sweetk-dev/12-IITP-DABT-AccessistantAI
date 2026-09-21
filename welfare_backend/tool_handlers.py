@@ -715,6 +715,40 @@ def _mode_from_legs(legs: list, requested: str) -> str:
     return "walk" if legs else (requested or "walk")
 
 
+def _brief_station_nearby(v) -> Optional[dict]:
+    """02 station_nearby — 모델에 넘길 최소 필드(역·질문·방향 선택지)."""
+    if not isinstance(v, dict) or not v.get("station"):
+        return None
+    return {"station": v.get("station"), "distance_m": v.get("distance_m"),
+            "question": v.get("question"), "travel_question": v.get("travel_question"),
+            "choices": [{"travel": c.get("travel"), "label": c.get("label")}
+                        for c in (v.get("choices") or []) if isinstance(c, dict)][:2]}
+
+
+def _brief_station_start(v) -> Optional[dict]:
+    if not isinstance(v, dict) or not v.get("station"):
+        return None
+    eg = v.get("egress") or {}
+    return {"station": v.get("station"), "travel": v.get("travel"),
+            "exit_no": (v.get("exit") or {}).get("exit_no"),
+            "inside": list(eg.get("inside") or [])[:4]}
+
+
+def _station_ai_note(data: dict) -> str:
+    ss = data.get("station_start")
+    if isinstance(ss, dict) and ss.get("station"):
+        return ("역 안(승강장)에서 출발하는 경로입니다 — station_start.inside 의 첫 문장(승강장 승강기)과 "
+                "출구 번호를 한 문장으로 먼저 말하고, 출구로 나오면 걸어서 안내한다고 덧붙이세요. ")
+    sn = data.get("station_nearby")
+    if isinstance(sn, dict) and sn.get("station") and data.get("mode") in (None, "", "walk"):
+        labels = " / ".join(c.get("label") for c in (sn.get("choices") or []) if c.get("label"))
+        return ("출발점이 %s역 가까이입니다. 안내를 시작하면 화면이 역 안/밖을 묻습니다. 사용자가 말로 "
+                "'역 안', '승강장이야'처럼 답하면 어느 쪽에서 타고 왔는지(%s) 물은 뒤 같은 목적지로 "
+                "plan_accessible_route 를 다시 호출하되 origin_station='%s', origin_travel 에 "
+                "고른 방향(north/south, 모르면 비움)을 담으세요. ") % (sn["station"], labels, sn["station"])
+    return ""
+
+
 async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      destination_type: str = "tour",
                                      profile: str = DEFAULT_PROFILE,
@@ -726,8 +760,14 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      destination_lng: float = None,
                                      mode: str = "",
                                      low_floor: Optional[bool] = None,
+                                     origin_station: str = "",
+                                     origin_travel: str = "",
                                      log_ctx: Optional[dict] = None) -> dict:
     """현재 위치(또는 말로 지정한 출발지)에서 목적지까지 무장애 경로.
+
+    origin_station/origin_travel(02 v1.28.0, #300): 이용자가 역 안(승강장)에 있다고 답했을 때
+    역 이름과 타고 온 열차의 진행 방향(north|south|빈값=모름). 이 경우 도보로만 계획한다 —
+    출구까지의 역 안 이동을 먼저 안내해야 하기 때문이다.
 
     log_ctx 는 계측 로그(#294)에만 쓰는 문맥(요청 사유·직전 route_id)이다 — 응답에 영향 없음.
 
@@ -816,6 +856,11 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                                   "고를 수 있다고 짧게 안내하세요."}
 
     origin_pt = {"lat": origin_lat, "lng": origin_lng}
+    st_in = None
+    if (origin_station or "").strip():
+        tv = (origin_travel or "").strip().lower()
+        st_in = {"name": origin_station.strip(), "travel": tv if tv in ("north", "south") else None}
+        auto, req_mode = False, "walk"          # 역 안 출발은 도보 경로 + 출구 안내
     _set_ctx = getattr(route_client, "set_log_ctx", None)   # 테스트 스텁은 이 함수가 없다
     if _set_ctx:
         _set_ctx(log_ctx)
@@ -832,6 +877,12 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                 low_floor=low_floor)
             if upgraded.get("status") != "error" and (upgraded.get("routes") or []):
                 data, mode_used = upgraded, "walk_bus_subway"
+    elif st_in is not None:
+        data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk",
+                                             origin_station=st_in)
+        if data.get("status") == "error":
+            return data
+        mode_used = "walk"
     else:
         data = await route_client.plan_route(origin_pt, dest, profile=profile, mode=req_mode,
                                              realtime=True, low_floor=low_floor)
@@ -916,6 +967,9 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         "warnings": summary.get("warnings", []),
         "fallback": data.get("fallback", {}),
         "first_steps": [s.get("instruction") for s in (primary.get("steps") or [])[:2]],
+        # 02 v1.28.0(#79) — 출발점이 역 가까이면 역 안/밖 질문, 역 안 출발이면 승강장→출구 안내
+        "station_nearby": _brief_station_nearby(data.get("station_nearby")),
+        "station_start": _brief_station_start(data.get("station_start")),
         # 프런트가 지도·경로·턴바이턴을 그리도록 원본 경로를 그대로 전달
         "ui_action": {"action": "show_route", "route": data},
         "ai_instruction": (
@@ -939,6 +993,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                  + ("소요시간은 저상버스 대기를 더한 추정임을 밝히세요. "
                     if lf.get("tier") in (1, 2) else "소요시간은 대기 미포함 추정임을 밝히세요. ")
                if transit_brief else "")
+            + _station_ai_note(data)
             + "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로 요약하고, 첫 안내 한 문장을 덧붙이세요. "
             "경고(warnings)나 제약 완화(fallback.used=true)가 있으면 반드시 함께 알리세요. "
             "전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다. "
