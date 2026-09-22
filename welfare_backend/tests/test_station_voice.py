@@ -95,6 +95,16 @@ def t_inside_without_travel_asks_direction():
     assert r3["ui_action"]["travel"] is None
 
 
+def t_undo_exiting_matches_screen():
+    # 위치로 넘어간 직후 "나가는 중이야" — 화면은 역 안 안내로 되돌아가므로 지시도 되돌렸다고 한다
+    r = _run(tool_handlers.tool_report_station_position(
+        where="exiting", station_wait={"kind": "undo", "station": "관악", "choices": []}))
+    assert r["ui_action"]["where"] == "exiting" and "되돌렸습니다" in r["ai_instruction"]
+    r2 = _run(tool_handlers.tool_report_station_position(
+        where="inside", station_wait={"kind": "undo", "station": "관악", "choices": []}))
+    assert "되돌렸습니다" in r2["ai_instruction"]
+
+
 def t_bad_where_asks_again():
     r = _run(tool_handlers.tool_report_station_position(where="??", station_wait=ASK))
     assert r["status"] == "idle" and "ui_action" not in r

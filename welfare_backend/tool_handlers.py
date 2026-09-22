@@ -1590,7 +1590,10 @@ async def tool_report_station_position(where: str = "", travel: str = "",
     if not w:
         return {"status": "idle", "tool_name": "report_station_position",
                 "ai_instruction": "역 안인지, 이미 역 밖으로 나왔는지 한 문장으로 여쭤 보세요."}
-    if w == "exiting":
+    if kind == "undo" and w in ("inside", "exiting"):
+        # 위치로 역 밖이라고 판단한 직후 — 아직 역 안·나가는 중이면 화면이 역 안 안내로 되돌아간다
+        instr = ("역 안 안내로 되돌렸습니다. '네, 역 안 안내로 돌아갈게요. 천천히 오세요' 정도로 한 문장만 답하세요.")
+    elif w == "exiting":
         instr = ("화면은 그대로 둡니다. '천천히 오셔도 돼요. 출구로 나오시면 말씀해 주세요'처럼 "
                  "한 문장으로만 답하고 재촉하지 마세요.")
     elif w == "outside":
@@ -1604,8 +1607,6 @@ async def tool_report_station_position(where: str = "", travel: str = "",
     elif kind in ("ask_station", "alight_ask"):
         instr = ("역 안에서 출발하는 안내로 넘어갑니다. 승강기·출구 안내는 화면 음성이 말하니 "
                  "'네, 역 안에서부터 안내할게요' 정도로 한 문장만 답하세요.")
-    elif kind == "undo":
-        instr = "역 안 안내로 되돌렸습니다. '네, 역 안 안내로 돌아갈게요' 정도로 한 문장만 답하세요."
     else:   # exit 대기 중 inside — 아직 역 안
         instr = ("화면은 그대로 둡니다. '천천히 오셔도 돼요. 출구로 나오시면 말씀해 주세요'처럼 "
                  "한 문장으로만 답하세요.")
