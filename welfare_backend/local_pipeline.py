@@ -285,7 +285,8 @@ def _ollama_route_tools() -> list:
            {}),
         fn("report_station_position",
            "역 안/밖 질문과 출구 확인에 말로 답한다(화면 버튼 대신). \"역 안이야\", \"나왔어\", \"밖이야\", "
-           "\"나가는 중이야\", \"아직이야\" 처럼 말하면 사용한다. 나가는 중이면 재촉하지 말고 한 문장만 답한다.",
+           "\"나가는 중이야\", \"아직이야\" 처럼 말하면 사용한다. \"아직 안 나왔어\" 같은 부정 표현은 exiting. "
+           "나가는 중이면 재촉하지 말고 한 문장만 답한다.",
            {"where": {"type": "string", "description": "inside / outside / exiting"},
             "travel": {"type": "string", "description": "타고 온 열차 방향 north / south / unknown (말했을 때만)"}},
            ["where"]),

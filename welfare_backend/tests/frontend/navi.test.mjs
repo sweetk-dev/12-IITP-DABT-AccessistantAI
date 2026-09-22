@@ -2434,7 +2434,7 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     NH.startGuidance(); await sleep(20);
   };
   const fix = (lat, lng, acc) => { NH.setHere({ lat, lng }); NH.setFixAcc(acc == null ? 8 : acc); NH.maybeAutoExit(); };
-  NH.setExitGap(0);
+  NH.setExitGap(0, 0);
 
   // 음성 세션이 없을 때와 있을 때 안내 문장
   NH.setWs(null);
@@ -2448,7 +2448,9 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   NH.setWs(fakeWs);
   await begin("r_hf1");
   check("음성 세션 있음 — '나왔어요'라고 말해도 된다고 알린다", () => {
-    assert.match(window.NAVI._internals().stepUtterance(0), /'나왔어요'라고 말씀하시거나 화면의 버튼/);
+    const u = window.NAVI._internals().stepUtterance(0);
+    assert.match(u, /출구 밖으로 나오시면 말씀해 주시거나 화면의 버튼/);
+    assert.doesNotMatch(u, /나왔어요|나왔어/, "답할 말을 인용하면 스피커 소리가 답으로 인식될 수 있다");
   });
   check("세션에 출구 대기 상태(station_wait=exit)를 알린다", () => {
     const n = lastNav(); assert.ok(n, "nav_state 없음");
@@ -2464,27 +2466,27 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     r.routes[0].steps[0].egress = r.station_start.egress;
     NH.clearRouteDisplay(); NH.resetTrip(); NH.setHere({ lat: 37.3901, lng: 126.9501 });
     NH.showRoute(r, "김중업건축박물관"); await sleep(20); NH.startGuidance(); await sleep(20);
-    fix(37.3904, 126.95048); fix(37.3904, 126.95049);
+    fix(37.3904, 126.95048); fix(37.3904, 126.95049); fix(37.3904, 126.95050);
     check("승강장 윤곽 위(출구 30m 밖·경로선 가까이)는 역 밖으로 보지 않는다", () => assert.equal(window.NAVI._internals().stepIdx, 0));
     await begin("r_hf1b");
   }
   // 위치 — 출구 앞·승강장 옆·부정확한 점은 넘어가지 않는다
-  fix(37.3901, 126.9501); fix(37.3901, 126.9501);
+  fix(37.3901, 126.9501); fix(37.3901, 126.9501); fix(37.3901, 126.9501);
   check("출구 바로 앞은 역 밖으로 보지 않는다", () => assert.equal(window.NAVI._internals().stepIdx, 0));
-  fix(37.38985, 126.94985); fix(37.38985, 126.94985);
+  fix(37.38985, 126.94985); fix(37.38985, 126.94985); fix(37.38985, 126.94985);
   check("승강장 윤곽 옆(출구에서 30m 이상이어도)은 역 밖으로 보지 않는다", () => assert.equal(window.NAVI._internals().stepIdx, 0));
-  fix(37.3904, 126.95048, 60); fix(37.3904, 126.95048, 60);
-  check("정확도가 나쁜 점(60m)은 세지 않는다", () => {
+  fix(37.3904, 126.95048, 60); fix(37.3904, 126.95048, 60); fix(37.3904, 126.95048, 26);
+  check("정확도가 나쁜 점(60m·26m)은 세지 않는다", () => {
     assert.equal(window.NAVI._internals().stepIdx, 0);
     assert.equal(window.NAVI._internals().exitFix(), 0);
   });
-  fix(37.3904, 126.95048);
-  check("경로를 따라 출구에서 약 45m — 한 번으로는 넘어가지 않는다", () => {
+  fix(37.3904, 126.95048); fix(37.3904, 126.95049);
+  check("경로를 따라 출구에서 약 45m — 두 번으로는 넘어가지 않는다", () => {
     assert.equal(window.NAVI._internals().stepIdx, 0);
-    assert.equal(window.NAVI._internals().exitFix(), 1);
+    assert.equal(window.NAVI._internals().exitFix(), 2);
   });
   spoken.length = 0;
-  fix(37.3904, 126.95049);
+  fix(37.3904, 126.95050);
   await sleep(10);
   check("두 번 연속 — 도보 안내로 넘어가고 그 사실을 말한다", () => {
     const I = window.NAVI._internals();
@@ -2502,7 +2504,7 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.equal(I.egressWhere()["관악:2"], "inside");
     assert.equal(I.stationWait().kind, "exit");
   });
-  fix(37.3904, 126.95048); fix(37.3904, 126.95049);
+  fix(37.3904, 126.95048); fix(37.3904, 126.95049); fix(37.3904, 126.95050);
   check("되돌린 뒤에는 같은 역에서 위치로 다시 넘기지 않는다(말·버튼으로만)", () => assert.equal(window.NAVI._internals().stepIdx, 0));
 
   // 말 — 나가는 중이면 그대로, 나왔다면 넘어간다
@@ -2557,7 +2559,103 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.equal(I.guiding(), true);
     assert.equal(I.stationHint(), null);
   });
-  NH.setWs(null); NH.setExitGap(3000);
+  // ── v1.52.1 교차검토 반영 ──
+  // 넘어간 측위에서 다음 단계까지 건너뛰지 않는다 — 출구 뒤 첫 구간이 짧은 경로
+  {
+    const r = ST_ROUTE("r_hfB");
+    r.routes[0].steps.splice(2, 0, { idx: 2, maneuver: "turn", instruction: "오른쪽으로 돕니다.", distance_m: 0, coord: [37.3904, 126.95049], warnings: [] });
+    NH.clearRouteDisplay(); NH.resetTrip(); NH.setHere({ lat: 37.3901, lng: 126.9501 });
+    NH.showRoute(r, "김중업건축박물관"); await sleep(20); NH.startGuidance(); await sleep(20);
+    const wfix = (lat, lng) => { NH.setHere({ lat, lng }); NH.setFixAcc(8); if (!NH.maybeAutoExit()) NH.advanceStep(); };
+    wfix(37.3904, 126.95048); wfix(37.3904, 126.95049); wfix(37.3904, 126.95050);
+    await sleep(10);
+    check("위치로 나선 측위에서는 다음 단계 판정을 쉰다 — 1단계만 넘어가고 되돌리기 유지", () => {
+      const I = window.NAVI._internals();
+      assert.equal(I.stepIdx, 1);
+      assert.equal(I.undoExitOpen(), true);
+    });
+    wfix(37.3904, 126.95050); await sleep(10);
+    check("넘어간 직후 4초는 다음 단계로 넘기지 않는다(쿨다운)", () => assert.equal(window.NAVI._internals().stepIdx, 1));
+    NH.setAdvanceTs(0);
+    wfix(37.3904, 126.95050); await sleep(10);
+    check("그다음 측위에서 다음 단계로 가도 되돌리기는 남는다(두 단계까지)", () => {
+      const I = window.NAVI._internals();
+      assert.equal(I.stepIdx, 2);
+      assert.equal(I.undoExitOpen(), true);
+    });
+    NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "exiting" } });
+    await sleep(10);
+    check("되돌리기 대기 중 '나가는 중이야' → 역 안 안내로(서버 지시와 같은 동작)", () => assert.equal(window.NAVI._internals().stepIdx, 0));
+  }
+  // 승강장 윤곽이 없는 역은 위치로 넘기지 않는다
+  {
+    const r = ST_ROUTE("r_hfC");
+    r.station_start.egress = Object.assign({}, EG, { area: [] });
+    r.routes[0].steps[0].egress = r.station_start.egress;
+    NH.clearRouteDisplay(); NH.resetTrip(); NH.setHere({ lat: 37.3901, lng: 126.9501 });
+    NH.showRoute(r, "김중업건축박물관"); await sleep(20); NH.startGuidance(); await sleep(20);
+    fix(37.3904, 126.95048); fix(37.3904, 126.95049); fix(37.3904, 126.95050); fix(37.3905, 126.95060);
+    check("승강장 윤곽 없는 역(지하역) — 위치로 넘기지 않는다", () => assert.equal(window.NAVI._internals().stepIdx, 0));
+    NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "outside" } });
+    await sleep(10);
+    check("…말로는 넘어간다", () => assert.equal(window.NAVI._internals().stepIdx, 1));
+  }
+  // 방금 누른 뒤 늦게 도착한 말 답은 무시
+  {
+    NH.clearRouteDisplay(); NH.resetTrip(); NH.setHere({ lat: 37.3900, lng: 126.9500 });
+    NH.showRoute(JSON.parse(JSON.stringify(WALK2)), "테스트 목적지"); await sleep(20);
+    NH.startGuidance(); await sleep(20);
+    NH.setTap("inside", Date.now());
+    NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "outside" } });
+    await sleep(20);
+    check("방금 '역 안'을 누른 뒤 도착한 '역 밖' 말 답은 덮어쓰지 않는다", () => {
+      const I = window.NAVI._internals();
+      assert.equal(I.guiding(), false);
+      assert.ok($("stationAsk"));
+    });
+    NH.setTap(null, 0);
+    spoken.length = 0;
+    NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "inside" } });
+    await sleep(20);
+    check("말로 '역 안이야' → 방향 선택지는 열되 화면 음성은 내지 않는다(상담원이 묻는다)", () => {
+      assert.ok($("stationTravel"));
+      assert.ok(!spoken.some((t) => /어느 쪽에서 열차를/.test(t)), JSON.stringify(spoken));
+    });
+    // 손으로 '역 안'을 누르고 방향은 말로 — 방금 누른 직후라도 방향 답은 받는다
+    const prevF = window.fetch; const urls = [];
+    window.fetch = async (url, opt) => { const u = String(url);
+      if (u.includes("/api/v1/tools/plan_accessible_route")) { urls.push(decodeURIComponent(u));
+        return { ok: true, json: async () => ({ status: "success", mode_used: "walk", mode_label: "도보", ui_action: { action: "show_route", route: ST_ROUTE("r_hfD") } }) }; }
+      return prevF(url, opt); };
+    NH.setTap("inside", Date.now());
+    NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "inside", travel: "south" } });
+    await sleep(80);
+    check("누른 직후라도 말로 한 방향 답(서울 쪽)은 받는다 → 역 안 출발로 다시 요청", () => {
+      assert.equal(urls.length, 1);
+      assert.match(urls[0], /origin_travel=south/);
+    });
+    window.fetch = prevF; NH.setTap(null, 0);
+  }
+  // 출구 앞 짧은 단계를 GPS 가 연달아 지나도 출구 80m 안이면 되돌리기가 남는다
+  {
+    const r = ST_ROUTE("r_hfE");
+    r.routes[0].steps.splice(2, 0,
+      { idx: 2, maneuver: "turn", instruction: "오른쪽으로 돕니다.", distance_m: 0, coord: [37.3904, 126.95049], warnings: [] },
+      { idx: 3, maneuver: "turn", instruction: "왼쪽으로 돕니다.", distance_m: 0, coord: [37.39045, 126.95055], warnings: [] });
+    NH.clearRouteDisplay(); NH.resetTrip(); NH.setHere({ lat: 37.3901, lng: 126.9501 });
+    NH.showRoute(r, "김중업건축박물관"); await sleep(20); NH.startGuidance(); await sleep(20);
+    const wfix = (lat, lng) => { NH.setHere({ lat, lng }); NH.setFixAcc(8); if (!NH.maybeAutoExit()) NH.advanceStep(); };
+    wfix(37.3904, 126.95048); wfix(37.3904, 126.95049); wfix(37.3904, 126.95050);
+    NH.setAdvanceTs(0); wfix(37.3904, 126.95050);
+    NH.setAdvanceTs(0); wfix(37.39046, 126.95056);
+    await sleep(10);
+    check("세 단계 넘어가도 출구 80m 안이면 되돌리기 유지", () => {
+      const I = window.NAVI._internals();
+      assert.ok(I.stepIdx >= 3, "stepIdx=" + I.stepIdx);
+      assert.equal(I.undoExitOpen(), true);
+    });
+  }
+  NH.setWs(null); NH.setExitGap(2000, 8000);
   NH.resetTrip(); NH.clearRouteDisplay();
 }
 
