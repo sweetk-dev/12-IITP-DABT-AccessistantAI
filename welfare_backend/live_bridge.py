@@ -269,6 +269,7 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - "○○역 엘리베이터 어디 있어", "장애인 화장실 있어", "휠체어로 탈 수 있어" → `get_station_facilities` 를 호출합니다. 출입구별 위치를 2~3개만 읽고, 상태가 unknown 이면 "자료가 없다"고 말합니다(없다고 하지 않습니다).
 - **긴급 상황** — "배터리가 다 됐어", "충전할 데 있어", "휠체어가 고장났어", "바퀴가 이상해", "콜택시 불러줘" → `find_emergency_support` 를 **먼저** 호출합니다(situation 에 사용자 말 원문). 유형별 가장 가까운 1~2곳을 이름·거리·전화번호로 말하고, `open_hours_status` 가 unknown 이면 운영시간을 지어내지 말고 "전화로 확인해 보시라"고 하세요. 배터리 상황이면 이동 가능 거리를 먼저 묻고 멀면 콜택시를 함께 권하세요. 화면에 카드가 떴고 '여기로 안내' 로 경로를 받을 수 있다고 알립니다.
 - "화장실 어디야", "장애인 화장실" → `find_toilet` 을 호출합니다. 가까운 1~2곳을 거리·개방시간으로 말합니다. 역 안 화장실은 `get_station_facilities` 입니다.
+- **역 안/밖·출구 확인은 말로도 받습니다(손을 쓰기 어려운 분).** 화면이 "역 안(승강장)이신가요, 역 밖이신가요?"를 묻거나 역 안 안내 중일 때 사용자가 "역 안이야", "나왔어", "밖이야", "나가는 중이야", "아직이야", "엘리베이터 타는 중" 이라고 말하면 `report_station_position` 을 호출합니다(where = inside / outside / exiting). "서울 쪽에서 왔어" 처럼 타고 온 방향을 함께 말하면 travel 에 담습니다. 나가는 중이면 **재촉하지 말고** 천천히 오시라고 한 문장만 답합니다 — 이동에 시간이 걸리는 분들입니다.
 - "근처 정류장", "여기서 뭐 타", "버스 어디서 타" → `find_nearby_transit` 을 호출합니다. 결과의 `accessible` 이 null(unknown)이면 "이용 불가"가 아니라 "저상버스 정차 여부는 실시간 도착정보로 확인이 필요하다"고 안내하세요. 버스 방면은 종점명(end_station)으로 안내하되, 양방향 종점명이 같은 순환 노선은 경유 순번(station_seq)이 다르다는 점을 함께 알립니다. 같은 번호라도 노선 유형(마을버스/일반형시내버스)이 다르면 다른 노선입니다.
 
 ## 시스템 신호(`[SYSTEM]`) 처리 규칙
@@ -437,6 +438,24 @@ def _route_tool_declarations() -> list:
                          "'지도 화면 보여줘', '무장애 관광지 보기 화면으로 가줘' 처럼 화면 이동 "
                          "자체를 명시적으로 요청할 때만 사용한다. 관광지 추천·경로 안내 결과를 "
                          "말할 때는 호출하지 않는다(화면의 이동 버튼으로 사용자가 선택)."),
+        ),
+        types.FunctionDeclaration(
+            name="report_station_position",
+            description=("역 안/밖 질문과 출구 확인에 말로 답한다 — 화면 버튼 대신. 사용자가 \"역 안이야\", "
+                         "\"승강장이야\", \"나왔어\", \"밖이야\", \"출구야\", \"나가는 중이야\", \"아직이야\", "
+                         "\"엘리베이터 타는 중\" 처럼 역 안/밖이나 출구로 나왔는지를 말하면 사용한다. "
+                         "\"서울 쪽에서 왔어\" 처럼 타고 온 방향을 말하면 travel 에 담는다. 화면이 무엇을 "
+                         "기다리는지는 서버가 채운다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                required=["where"],
+                properties={
+                    "where": types.Schema(type=types.Type.STRING,
+                                          description="inside(역 안·승강장·아직 역 안) / outside(역 밖·출구로 나왔다) / exiting(나가는 중·승강기 타는 중)"),
+                    "travel": types.Schema(type=types.Type.STRING,
+                                           description="타고 온 열차 방향 — 선택지 label 에 맞춰 north / south, 모르면 unknown. 말하지 않았으면 비운다"),
+                },
+            ),
         ),
         types.FunctionDeclaration(
             name="report_accessibility_issue",

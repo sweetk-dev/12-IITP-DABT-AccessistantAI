@@ -13,7 +13,9 @@ _NAV_FIELDS = ("route_id", "guiding", "step_idx", "total_steps",
                # 현재(또는 다음) 버스 구간의 승차 정류장·노선 — 실시간 도착정보 조회 키 (v1.39.0)
                "board_station_id", "board_route_id", "board_stop_name",
                # 지하철 하차역 역 안/밖 안내 (#298) — {station, exit_no, where, inside[], outside}
-               "station_egress")
+               "station_egress",
+               # 화면이 지금 역 안/밖·출구 확인을 기다리는지 (v1.52.0) — {kind, station, choices[]}
+               "station_wait")
 
 
 def update_nav_state(nav: dict, msg: dict) -> None:
@@ -26,6 +28,7 @@ def update_nav_state(nav: dict, msg: dict) -> None:
         nav[k] = msg.get(k)
     nav["guiding"] = bool(nav.get("guiding"))
     nav["station_egress"] = _clean_egress(nav.get("station_egress"))
+    nav["station_wait"] = _clean_wait(nav.get("station_wait"))
     # step_idx/total_steps/remaining_m 은 정수화 실패 시 None 으로 방어
     for k in ("step_idx", "total_steps", "remaining_m"):
         v = nav.get(k)
@@ -51,6 +54,24 @@ def _clean_egress(v):
         "outside": str(v.get("outside") or "")[:200] or None,
     }
     return out if (out["station"] and (inside or out["outside"])) else None
+
+
+# 화면이 기다리는 역 안/밖 확인의 종류 (v1.52.0)
+#   ask_station — 안내 시작 때 "역 안(승강장)인가요, 역 밖인가요?" (+ 타고 온 방향)
+#   alight_ask  — 지하철 하차 스텝의 "역 안인가요, 나오셨나요?"
+#   exit        — 역 안 안내 중, 출구로 나오기를 기다린다
+#   undo        — 위치로 역 밖이라고 판단해 도보 안내로 넘어간 직후(되돌리기 가능)
+_WAIT_KINDS = ("ask_station", "alight_ask", "exit", "undo")
+
+
+def _clean_wait(v):
+    if not isinstance(v, dict) or v.get("kind") not in _WAIT_KINDS:
+        return None
+    choices = []
+    for c in (v.get("choices") or [])[:3]:
+        if isinstance(c, dict) and c.get("travel") in ("north", "south"):
+            choices.append({"travel": c["travel"], "label": str(c.get("label") or "")[:40]})
+    return {"kind": v["kind"], "station": str(v.get("station") or "")[:20] or None, "choices": choices}
 
 
 def note_new_route(nav: dict, route_id: str) -> None:
@@ -155,6 +176,7 @@ def current_guidance_result(nav: dict) -> dict:
         "leg_kind": nav.get("leg_kind") or "walk",
         "profile": nav.get("profile"),
         "station_egress": nav.get("station_egress"),
+        "station_wait": nav.get("station_wait"),
         "ai_instruction": (
             "이동 중 답변입니다 — 1~2문장으로 짧게. current_instruction(지금 할 안내)을 "
             "그대로 다시 들려주듯 답하세요. next_instruction 과 remaining_m_to_next 는 "
@@ -214,6 +236,9 @@ def inject_nav_defaults(fname: str, fargs: dict, nav: dict, user_location: dict)
             else:
                 fargs.pop("lat", None)
                 fargs.pop("lng", None)
+    elif fname == "report_station_position":
+        # 화면이 무엇을 기다리는지는 세션만 안다 (v1.52.0) — 모델이 지어내지 못하게 덮어쓴다
+        fargs["station_wait"] = (nav or {}).get("station_wait")
     elif fname == "report_accessibility_issue":
         # 제보 좌표·안내 세션은 모델이 아니라 세션이 아는 사실로만 채운다 (v1.35.0)
         if user_location and user_location.get("lat") is not None:

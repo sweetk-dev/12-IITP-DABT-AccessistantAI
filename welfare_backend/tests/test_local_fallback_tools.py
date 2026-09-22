@@ -46,7 +46,8 @@ ROUTE = {"find_bf_tour_spots", "plan_accessible_route", "explain_route_segment",
          "get_current_guidance", "find_nearby_transit", "open_navi_screen",
          "report_accessibility_issue",
          "get_bus_arrivals", "get_station_facilities",   # v1.39.0 실시간 버스·역 설비
-         "find_emergency_support", "find_toilet"}         # v1.49.0 긴급대응·화장실
+         "find_emergency_support", "find_toilet",         # v1.49.0 긴급대응·화장실
+         "report_station_position"}                        # v1.52.0 역 안/밖·출구 확인을 말로
 
 results = []
 
