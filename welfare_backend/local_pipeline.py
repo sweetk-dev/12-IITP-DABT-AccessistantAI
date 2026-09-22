@@ -283,6 +283,12 @@ def _ollama_route_tools() -> list:
         fn("open_navi_screen",
            "화면을 이동·관광(지도) 탭으로 전환한다. 사용자가 화면 이동 자체를 명시적으로 요청할 때만 사용한다.",
            {}),
+        fn("report_station_position",
+           "역 안/밖 질문과 출구 확인에 말로 답한다(화면 버튼 대신). \"역 안이야\", \"나왔어\", \"밖이야\", "
+           "\"나가는 중이야\", \"아직이야\" 처럼 말하면 사용한다. 나가는 중이면 재촉하지 말고 한 문장만 답한다.",
+           {"where": {"type": "string", "description": "inside / outside / exiting"},
+            "travel": {"type": "string", "description": "타고 온 열차 방향 north / south / unknown (말했을 때만)"}},
+           ["where"]),
         fn("report_accessibility_issue",
            "현재 위치의 접근성 문제를 제보로 접수한다. \"여기 턱이 있어\", \"보도가 끊겼어\", "
            "\"신고해줘\" 처럼 현장의 통행 문제를 말하면 사용한다. 위치는 자동 주입되므로 좌표를 만들지 않는다.",

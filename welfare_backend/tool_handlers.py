@@ -1560,6 +1560,63 @@ async def tool_open_navi_screen() -> dict:
     }
 
 
+# ─────────────────────────────────────────────────────────────
+# 도구 #10 — 역 안/밖·출구 확인을 말로 (v1.52.0)
+# ─────────────────────────────────────────────────────────────
+_STATION_WHERE = ("inside", "outside", "exiting")
+
+
+async def tool_report_station_position(where: str = "", travel: str = "",
+                                       station_wait: dict = None) -> dict:
+    """"역 안이야", "나왔어", "나가는 중이야" 같은 말로 화면의 역 안/밖 질문·출구 확인에 답한다.
+
+    손을 쓰기 어려운 이용자도 버튼 없이 진행할 수 있게 한다. 화면이 지금 무엇을 기다리는지
+    (station_wait)는 세션이 주입한다 — 기다리는 것이 없으면 화면을 건드리지 않는다.
+    나가는 중(exiting)이면 화면은 그대로 두고, 재촉하지 않는다.
+    """
+    w = (where or "").strip().lower()
+    if w not in _STATION_WHERE:
+        w = "exiting" if w in ("not_yet", "moving", "wait") else ""
+    tv = (travel or "").strip().lower()
+    tv = tv if tv in ("north", "south", "unknown") else ""
+    wait = station_wait if isinstance(station_wait, dict) else None
+    if not wait:
+        return {
+            "status": "idle", "tool_name": "report_station_position",
+            "ai_instruction": ("지금 화면은 역 안/밖이나 출구 확인을 기다리고 있지 않습니다. "
+                               "한 문장으로 짧게 답하고, 안내 내용을 물으면 get_current_guidance 로 확인하세요."),
+        }
+    kind = wait.get("kind")
+    if not w:
+        return {"status": "idle", "tool_name": "report_station_position",
+                "ai_instruction": "역 안인지, 이미 역 밖으로 나왔는지 한 문장으로 여쭤 보세요."}
+    if w == "exiting":
+        instr = ("화면은 그대로 둡니다. '천천히 오셔도 돼요. 출구로 나오시면 말씀해 주세요'처럼 "
+                 "한 문장으로만 답하고 재촉하지 마세요.")
+    elif w == "outside":
+        instr = ("역 밖에서 걸어서 가는 안내로 넘어갔습니다. 첫 안내는 화면 음성이 말하니 "
+                 "'네, 걸어서 안내를 이어갈게요' 정도로 한 문장만 답하세요.")
+    elif kind == "ask_station" and not tv:
+        labels = [c.get("label") for c in (wait.get("choices") or []) if c.get("label")]
+        instr = ("역 안으로 받았습니다. 이어서 어느 쪽에서 열차를 타고 오셨는지 여쭤 보세요"
+                 + ((" — 선택지: " + " / ".join(labels) + " / 잘 모르겠어요") if labels else "")
+                 + ". 답을 들으면 report_station_position 을 where=inside, travel 과 함께 다시 호출하세요.")
+    elif kind in ("ask_station", "alight_ask"):
+        instr = ("역 안에서 출발하는 안내로 넘어갑니다. 승강기·출구 안내는 화면 음성이 말하니 "
+                 "'네, 역 안에서부터 안내할게요' 정도로 한 문장만 답하세요.")
+    elif kind == "undo":
+        instr = "역 안 안내로 되돌렸습니다. '네, 역 안 안내로 돌아갈게요' 정도로 한 문장만 답하세요."
+    else:   # exit 대기 중 inside — 아직 역 안
+        instr = ("화면은 그대로 둡니다. '천천히 오셔도 돼요. 출구로 나오시면 말씀해 주세요'처럼 "
+                 "한 문장으로만 답하세요.")
+    return {
+        "status": "success", "tool_name": "report_station_position",
+        "where": w, "travel": tv or None, "wait_kind": kind,
+        "ui_action": {"action": "station_position", "where": w, "travel": tv or None},
+        "ai_instruction": instr,
+    }
+
+
 _REPORT_REASONS = ("curb", "no_sidewalk", "no_crossing", "steep", "blocked", "etc")
 
 
@@ -1621,4 +1678,5 @@ def get_tool_dispatcher(embed_fn):
         "get_station_facilities": tool_get_station_facilities,
         "open_navi_screen": tool_open_navi_screen,
         "report_accessibility_issue": tool_report_accessibility,
+        "report_station_position": tool_report_station_position,
     }

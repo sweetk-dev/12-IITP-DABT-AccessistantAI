@@ -1542,10 +1542,10 @@ window.NAVI = (function(){
     // 지하철 하차 — 역 안에서는 위치를 알 수 없으니 이용자에게 묻는다 (#298)
     if(st.maneuver === "station_start" && st.egress){
       return [String(st.instruction || "").replace(/[.\s]*$/, "")].concat(st.egress.inside || []).join(". ")
-        + ". 출구로 나오시면 화면의 버튼을 눌러 주세요.";
+        + ". " + exitPrompt();
     }
     if(st.maneuver === "subway_alight" && st.egress && st.egress.question){
-      return String(st.instruction || "").replace(/[.\s]*$/, "") + ". " + st.egress.question + " 화면에서 골라 주세요.";
+      return String(st.instruction || "").replace(/[.\s]*$/, "") + ". " + st.egress.question + " " + pickPrompt();
     }
     if(!_isMergedCrossing(i)) return st.instruction || "";
     var head = String(st.instruction || "");
@@ -1759,7 +1759,7 @@ window.NAVI = (function(){
       }
       if(!simActive) sendLocation();   // 모의 주행 중엔 가상 이동이 상담 출발지를 오염시키지 않도록 실좌표만 유지·전송 억제
       if(guiding && !simActive){ trackPush(pos.coords); maybeReroute(); }
-      if(guiding && !simActive){ advanceStep(); followCamera(); }
+      if(guiding && !simActive){ maybeAutoExit(); advanceStep(); followCamera(); }
     }, function(){
       status("위치 권한이 없어 현재 위치를 알 수 없습니다. 권한을 허용해 주세요.");
     }, {enableHighAccuracy:true, maximumAge:5000, timeout:10000});
@@ -2068,6 +2068,7 @@ window.NAVI = (function(){
         board_station_id: bref ? bref.board_station_id : null,
         board_route_id: bref ? bref.route_id : null,
         board_stop_name: bref ? (bref.board_name || null) : null,
+        station_wait: stationWait(),
         guiding: !!guiding,
         step_idx: stepIdx,
         total_steps: steps.length,
@@ -2685,7 +2686,7 @@ window.NAVI = (function(){
     var primary = (route.routes||[])[0];
     if(!primary){ status("경로를 찾지 못했습니다."); return; }
     steps = primary.steps || [];
-    egressWhere = {};
+    egressWhere = {}; autoExitUndo = null; exitAutoOff = {}; exitFixN = 0;
     routeDestName = destName || null;
     // 역 근처 출발 (#300, 02 v1.28.0) — 안내 시작 때 역 안/밖을 묻는다. 역 안 출발 경로면 이미 답했다.
     stationHint = null;
@@ -3208,11 +3209,12 @@ window.NAVI = (function(){
       bk.addEventListener("click", function(){ stationAnswer("inside", ""); });
       r2.appendChild(bk);
       box.appendChild(r2);
-      speak(sub.textContent + " 화면에서 골라 주세요.");
+      speak(sub.textContent + " " + pickPrompt());
     });
     row.appendChild(bIn); row.appendChild(bOut); box.appendChild(row);
     body.appendChild(box);
-    speak(q.textContent.replace(/^🚇\s*/, "") + " 화면에서 골라 주세요.");
+    speak(q.textContent.replace(/^🚇\s*/, "") + " " + pickPrompt());
+    sendNavState();   // 화면이 역 안/밖 답을 기다린다는 것을 세션에 알린다 — 말로 답할 수 있게 (v1.52.0)
   }
   function renderStationStart(st){
     var eg = st.egress || {};
@@ -3227,14 +3229,151 @@ window.NAVI = (function(){
     var done = document.createElement("button"); done.type = "button"; done.className = "btn";
     done.setAttribute("data-egress", "exited");
     done.textContent = "출구로 나왔어요 — 걸어서 이동 시작";
-    done.addEventListener("click", function(){
-      egressWhere[egressKey(eg)] = "outside"; sendActivity("egress_outside");
-      if(stepIdx + 1 < steps.length) gotoStep(stepIdx + 1);
-    });
+    done.addEventListener("click", function(){ leaveStation("button"); });
     box.appendChild(done);
     return box;
   }
   function egressKey(eg){ return (eg && eg.station || "") + ":" + ((eg && eg.exit && eg.exit.exit_no) || ""); }
+
+  /* ── 손을 쓰지 않고 역을 나서기 (v1.52.0) ──
+     역 안/밖 질문과 "출구로 나왔어요"는 버튼으로만 답할 수 있었다. 손을 쓰기 어려운 이용자를 위해
+       ① 말로 답한다 — 상담원 도구 report_station_position(where=inside|outside|exiting)
+       ② 말이 없어도 위치로 알아챈다 — 출구에서 걷는 경로를 따라 충분히 나아간 것이 GPS 로 두 번
+          연속 잡히면 도보 안내로 넘어가고, 그 사실을 알린다(되돌리기 가능)
+     시간으로는 재촉하지 않는다 — 이동과 승강기 이용에 시간이 걸리는 분들이다.
+     역 안·승강장 옆의 GPS 는 튀므로, 승강장 윤곽(02 egress.area)에서 떨어져 있어야 역 밖으로 본다. */
+  var EXIT_FROM_EXIT_M = 30;     // 출구에서 이만큼 떨어지고
+  var EXIT_ON_ROUTE_M = 25;      // 걷는 경로선에서 이 안에 있고
+  var EXIT_FROM_AREA_M = 15;     // 승강장 윤곽에서 이만큼 떨어졌을 때
+  var EXIT_ACC_MAX = 30, EXIT_FIX_N = 2, EXIT_FIX_GAP_MS = 3000, EXIT_UNDO_MS = 120000;
+  var exitFixN = 0, exitFixTs = 0, autoExitUndo = null, exitAutoOff = {};
+  function voiceSession(){ return !!(wsRef && wsRef.readyState === 1); }
+  function exitPrompt(){
+    return (voiceSession() ? "출구로 나오시면 '나왔어요'라고 말씀하시거나 화면의 버튼을 눌러 주세요."
+                           : "출구로 나오시면 화면의 버튼을 눌러 주세요.")
+      + " 출구를 나와 걷기 시작하시면 이어서 안내해 드려요.";
+  }
+  function pickPrompt(){ return voiceSession() ? "말씀하시거나 화면에서 골라 주세요." : "화면에서 골라 주세요."; }
+  function _xyM(p, q){ var kx = 111320 * Math.cos(p.lat * Math.PI/180), ky = 110540;
+    return [(q[1]-p.lng)*kx, (q[0]-p.lat)*ky]; }
+  function areaDistM(p, area){
+    // 승강장 윤곽까지 최단 거리(m). 윤곽 안이면 0, 자료가 없으면 Infinity
+    if(!area || !area.length) return Infinity;
+    var best = Infinity;
+    for(var r = 0; r < area.length; r++){
+      var ring = area[r] || []; if(ring.length < 3) continue;
+      var pts = ring.map(function(q){ return _xyM(p, q); }), inside = false;
+      for(var i = 0, j = pts.length - 1; i < pts.length; j = i++){
+        var xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1];
+        if((yi > 0) !== (yj > 0) && 0 < (xj - xi) * (0 - yi) / (yj - yi) + xi) inside = !inside;
+      }
+      if(inside) return 0;
+      for(var k = 1; k < ring.length; k++){ var d = distToSegM(p, ring[k-1], ring[k]); if(d < best) best = d; }
+    }
+    return best;
+  }
+  // 화면이 지금 무엇을 기다리는지 — 세션(상담원)이 말로 받은 답을 어디에 쓸지 정한다
+  function stationWait(){
+    if(!guiding && stationHint && $("stationAsk"))
+      return {kind:"ask_station", station: stationHint.station, choices: stationHint.choices || []};
+    if(!guiding) return null;
+    var cur = steps[stepIdx] || {};
+    if(cur.maneuver === "station_start" && cur.egress) return {kind:"exit", station: cur.egress.station, choices: []};
+    if(cur.maneuver === "subway_alight" && cur.egress){
+      var w = egressWhere[egressKey(cur.egress)];
+      if(w === "inside") return {kind:"exit", station: cur.egress.station, choices: []};
+      if(!w) return {kind:"alight_ask", station: cur.egress.station, choices: []};
+    }
+    if(undoExitOpen()) return {kind:"undo", station: autoExitUndo.station, choices: []};
+    return null;
+  }
+  function undoExitOpen(){
+    return !!(autoExitUndo && guiding && stepIdx === autoExitUndo.step + 1
+              && Date.now() - autoExitUndo.ts < EXIT_UNDO_MS);
+  }
+  // 역 안 → 도보 안내로 (버튼·말·위치 공통)
+  function leaveStation(src){
+    var cur = steps[stepIdx] || {}, eg = cur.egress;
+    if(!eg) return false;
+    if(cur.maneuver === "subway_alight"){ egressOutside(eg); return true; }
+    if(cur.maneuver !== "station_start") return false;
+    var key = egressKey(eg);
+    egressWhere[key] = "outside"; sendActivity("egress_outside" + (src ? "_" + src : ""));
+    exitFixN = 0;
+    if(stepIdx + 1 >= steps.length) return true;
+    if(src === "gps"){
+      autoExitUndo = {step: stepIdx, key: key, station: eg.station, ts: Date.now()};
+      stepIdx += 1; renderStep(); _spokenAhead = {};
+      stopSpeak();
+      speak("역 밖으로 나오신 것 같아 걸어서 안내를 시작할게요. 아직 역 안이시면 "
+            + (voiceSession() ? "'아직 역 안이야'라고 말씀하시거나 " : "") + "되돌리기 버튼을 눌러 주세요. "
+            + (steps[stepIdx].instruction || ""));
+      followCamera(); sendNavState();
+    } else {
+      autoExitUndo = null;
+      gotoStep(stepIdx + 1);
+    }
+    return true;
+  }
+  function undoAutoExit(){
+    if(!autoExitUndo) return false;
+    var u = autoExitUndo; autoExitUndo = null;
+    exitAutoOff[u.key] = true;     // 이 역에서는 위치로 다시 넘기지 않는다 — 말·버튼으로만
+    egressWhere[u.key] = "inside"; sendActivity("egress_undo");
+    stepIdx = u.step; renderStep(); _spokenAhead = {};
+    stopSpeak(); speak("역 안 안내로 돌아갑니다. " + stepUtterance(stepIdx));
+    sendNavState();
+    return true;
+  }
+  function maybeAutoExit(){
+    if(!guiding || simActive || !here) return;
+    var cur = steps[stepIdx] || {}, eg = cur.egress;
+    if(cur.maneuver !== "station_start" || !eg){ exitFixN = 0; return; }
+    if(exitAutoOff[egressKey(eg)]) return;
+    if(lastFixAcc != null && lastFixAcc > EXIT_ACC_MAX) return;      // 부정확한 점은 세지도 지우지도 않는다
+    var ex = eg.exit || {};
+    var farExit = (ex.lat != null && ex.lng != null) ? distM(here, {lat: ex.lat, lng: ex.lng}) >= EXIT_FROM_EXIT_M : false;
+    var offArea = areaDistM(here, eg.area) >= EXIT_FROM_AREA_M;
+    var onRoute = offRouteDistM(here) <= EXIT_ON_ROUTE_M;
+    if(!(farExit && offArea && onRoute)){ exitFixN = 0; return; }
+    var now = Date.now();
+    if(exitFixN && now - exitFixTs < EXIT_FIX_GAP_MS) return;         // 같은 순간의 중복 측위는 한 번으로
+    exitFixN += 1; exitFixTs = now;
+    if(exitFixN < EXIT_FIX_N) return;
+    leaveStation("gps");
+  }
+  // 상담원이 말로 받은 역 안/밖 답 (report_station_position → ui_action station_position)
+  function onStationVoice(where, travel){
+    var wait = stationWait();
+    if(!wait) return false;
+    if(wait.kind === "ask_station"){
+      if(where === "outside"){ stationAnswer("outside"); return true; }
+      if(where !== "inside") return false;
+      if(travel === "north" || travel === "south"){ stationAnswer("inside", travel); return true; }
+      if(travel === "unknown"){ stationAnswer("inside", ""); return true; }
+      var bIn = $("stationAsk") && $("stationAsk").querySelector("button[data-station='inside']");
+      if(bIn) bIn.dispatchEvent(new Event("click"));                     // 타고 온 방향 선택지를 연다
+      return true;
+    }
+    var cur = steps[stepIdx] || {};
+    if(wait.kind === "alight_ask"){
+      if(where === "outside"){ egressOutside(cur.egress); return true; }
+      if(where === "inside"){
+        egressWhere[egressKey(cur.egress)] = "inside"; sendActivity("egress_inside_voice");
+        renderStep(); speak((cur.egress.inside || []).join(". ")); sendNavState(); return true;
+      }
+      return false;
+    }
+    if(wait.kind === "exit"){
+      if(where === "outside") return leaveStation("voice");
+      return false;                                                      // 아직 역 안·나가는 중 — 그대로 기다린다
+    }
+    if(wait.kind === "undo"){
+      if(where === "inside" || where === "exiting") return undoAutoExit();
+      autoExitUndo = null; renderStep(); return true;                   // 밖이 맞다 — 되돌리기 버튼을 거둔다
+    }
+    return false;
+  }
   function exitStepIdx(from){
     for(var k = from; k < steps.length && k <= from + 2; k++){
       if(steps[k] && steps[k].maneuver === "station_exit") return k;
@@ -3319,6 +3458,14 @@ window.NAVI = (function(){
     // 역 안에서 출발 (#300) — 승강장 승강기 → 출구 승강기. 출구로 나왔다고 누르면 도보로 넘어간다
     if(st.egress && st.maneuver === "station_start"){
       body.appendChild(renderStationStart(st));
+    }
+    // 위치로 역 밖이라고 판단해 넘어온 직후 — 아직 역 안이면 되돌린다 (v1.52.0)
+    if(undoExitOpen()){
+      var ub = document.createElement("button"); ub.type = "button"; ub.className = "btn outline";
+      ub.setAttribute("data-egress", "undo-exit");
+      ub.textContent = "아직 역 안이에요 — 역 안 안내로 돌아가기";
+      ub.addEventListener("click", function(){ undoAutoExit(); });
+      body.appendChild(ub);
     }
 
     var nxt = steps[stepIdx+1];
@@ -3606,6 +3753,9 @@ window.NAVI = (function(){
       sosKind = k; sosPending = true;
       return {label: (k==="toilet" ? "🚻 지도에서 화장실 보기" : "🆘 지도에서 " + SOS_LABEL[k] + " 보기")
                      + (((p||{}).items||[]).length ? " (" + p.items.length + "곳)" : "")};
+    } else if(msg.action === "station_position"){
+      onStationVoice(p.where, p.travel);   // 말로 한 역 안/밖·출구 답 (v1.52.0)
+      return null;
     } else if(msg.action === "open_navi"){
       // 사용자가 음성으로 화면 이동을 '직접' 요청한 경우(#215) — 즉시 전환한다.
       // 준비된 목록/경로가 있으면 그대로, 처음이면 장애유형 게이트부터.
@@ -3982,7 +4132,10 @@ window.NAVI = (function(){
                                      openSosSheet:openSosSheet, sosItems:function(){return sosItems;}, onUiAction:onUiAction,
                                      guiding:function(){return guiding;},
                                      egressWhere:function(){return egressWhere;}, gotoStep:gotoStep,
-                                     stationHint:function(){return stationHint;}}; }
+                                     stationHint:function(){return stationHint;},
+                                     maybeAutoExit:maybeAutoExit, stationWait:stationWait, undoAutoExit:undoAutoExit,
+                                     setFixAcc:function(a){ lastFixAcc=a; }, exitFix:function(){ return exitFixN; },
+                                     setWs:function(w){ wsRef=w; }, setExitGap:function(ms){ EXIT_FIX_GAP_MS=ms; }}; }
   };
 })();
 document.addEventListener("DOMContentLoaded", function(){ window.NAVI.init(); });
