@@ -2085,12 +2085,17 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   });
   await sleep(2700);
   check("잠시 뒤 글자가 접히고 아이콘만 남는다", () => assert.ok(!$("profBadge").classList.contains("expanded")));
+  check("전동 기준 배지는 pb-electric 색", () => assert.ok($("profBadge").classList.contains("pb-electric")));
   $("profBadge").dispatchEvent(new window.Event("click"));
   await sleep(30);
   check("수동으로 바꾸면 아이콘이 수동휠체어 모양으로 바뀐다", () => {
     const svg = $("profBadge").querySelector("svg").outerHTML;
     assert.notEqual(svg, electricSvg);
     assert.equal($("profBadge").querySelector(".pb-label").textContent, "수동휠체어 기준으로 변경");
+  });
+  check("색으로도 구분 — 수동은 pb-manual, 전동은 pb-electric", () => {
+    assert.ok($("profBadge").classList.contains("pb-manual"));
+    assert.ok(!$("profBadge").classList.contains("pb-electric"));
   });
   $("profBadge").dispatchEvent(new window.Event("click"));
   await sleep(80);

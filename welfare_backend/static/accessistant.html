@@ -146,6 +146,10 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .prof-badge .pb-label{display:inline-block;max-width:0;opacity:0;margin-left:0;overflow:hidden;white-space:nowrap;transition:max-width .35s ease,opacity .25s ease,margin-left .35s ease;}
 .prof-badge.expanded .pb-label{max-width:16em;opacity:1;margin-left:6px;}
 .prof-badge.visual{border-color:#7C3AED;color:#5B21B6;}
+/* 기준별 색 구분 — 전동: 청록 채움(흰 아이콘) / 수동: 흰 바탕 파랑 / 시각: 보라 (아이콘 모양 + 색·채움 이중 구분) */
+.prof-badge.pb-electric{border-color:#0F766E;color:#fff;background:#0F766E;}
+.prof-badge.pb-manual{border-color:#1D4ED8;color:#1D4ED8;background:#fff;}
+.prof-badge.visual{background:#F5F3FF;}
 @media (prefers-reduced-motion:reduce){.prof-badge .pb-label{transition:none;}}
 .prof-seg{flex:none;display:inline-flex;border:1.5px solid var(--c-border);border-radius:999px;overflow:hidden;background:#fff;}
 .prof-seg button{border:0;background:transparent;padding:6px 10px;font-size:.78rem;font-weight:700;color:#64748B;line-height:1.2;}
@@ -1285,6 +1289,8 @@ window.NAVI = (function(){
   function renderProfBadge(labelText){
     var b=$("profBadge"); if(!b) return;
     b.classList.toggle("visual", profile==="visual");
+    b.classList.toggle("pb-electric", profile==="wheelchair_electric");
+    b.classList.toggle("pb-manual", profile==="wheelchair_manual");
     b.innerHTML = PROF_ICON[profile] || PROF_ICON.wheelchair_electric;
     var lb=document.createElement("span"); lb.className="pb-label"; lb.setAttribute("aria-hidden","true");
     lb.textContent = labelText || (profileLabel(profile) + " 기준");
