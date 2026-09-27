@@ -237,10 +237,12 @@ def _ollama_route_tools() -> list:
            "이름으로 찾는다. 지어낸 poi_id 를 넣지 않는다.",
            {"destination_poi_id": S, "destination_place": S, "destination_type": S,
             "profile": {"type": "string",
-                        "description": "wheelchair_manual(기본)/wheelchair_electric/crutch/visual/walk"},
+                        "description": "wheelchair_electric(기본, 전동 휠체어)/wheelchair_manual(수동)/crutch/visual/walk"},
             "origin_place": {"type": "string", "description": "사용자가 말로 밝힌 출발지 이름"},
+            "origin_station": {"type": "string", "description": "사용자가 역 안(승강장)에 있다고 답했을 때 그 역 이름"},
+            "origin_travel": {"type": "string", "description": "타고 온 열차의 진행 방향 north/south(station_nearby.choices), 모르면 비움"},
             "mode": {"type": "string",
-                     "description": "walk / walk_bus / walk_bus_subway. \'도보로\'·\'걸어서\' 는 walk, \'버스로\'·\'지하철로\' 는 walk_bus/walk_bus_subway. 방식을 말하지 않았을 때만 비운다 (v1.43.2)"}}),
+                     "description": "walk / walk_subway / walk_bus / walk_bus_subway. \'도보로\'·\'걸어서\' 는 walk, \'지하철로\'·\'버스 말고 지하철\' 은 walk_subway, \'버스로\' 는 walk_bus, \'대중교통으로\' 는 walk_bus_subway. 방식을 말하지 않았을 때만 비운다 (v1.48.0)"}}),
         fn("explain_route_segment",
            "직전에 안내한 경로의 특정 구간이 왜 그렇게(우회·경사·계단) 안내되었는지 설명한다. "
            "안내가 진행 중이면 route_id·step_idx 는 서버가 채우므로 생략한다.",
@@ -253,6 +255,19 @@ def _ollama_route_tools() -> list:
            "주변의 버스 정류장·지하철역을 찾는다. 기준 위치는 현재 위치가 자동 주입된다. "
            "결과의 accessible 이 null 이면 '이용 불가'가 아니라 미판정이다 — "
            "accessible_status(yes/no/unknown) 로만 판단해 안내한다.",
+           {"place": {"type": "string", "description": "사용자가 말한 기준 장소 이름"},
+            "radius_m": I}),
+        fn("find_emergency_support",
+           "전동 보장구 충전기·보장구 수리센터·장애인콜택시를 현재 위치 주변에서 찾는다. '배터리가 다 됐어', "
+           "'충전할 데 있어', '휠체어가 고장났어', '콜택시 불러줘' 같은 긴급 질의에 먼저 호출한다. "
+           "open_hours 가 없으면 운영시간을 지어내지 말고 전화 확인을 권한다.",
+           {"situation": {"type": "string", "description": "사용자가 말한 상황 원문"},
+            "types": {"type": "string", "description": "charge/repair/calltaxi 콤마 구분. 모르면 비운다"},
+            "place": {"type": "string", "description": "사용자가 말한 기준 장소 이름"},
+            "radius_m": I}),
+        fn("find_toilet",
+           "휠체어로 갈 수 있는 화장실(장애인 대·소변기 보유 공중화장실)을 현재 위치 주변에서 찾는다. "
+           "'화장실 어디야' 질의에 사용. 역 안 화장실은 get_station_facilities.",
            {"place": {"type": "string", "description": "사용자가 말한 기준 장소 이름"},
             "radius_m": I}),
         fn("get_bus_arrivals",
@@ -268,6 +283,13 @@ def _ollama_route_tools() -> list:
         fn("open_navi_screen",
            "화면을 이동·관광(지도) 탭으로 전환한다. 사용자가 화면 이동 자체를 명시적으로 요청할 때만 사용한다.",
            {}),
+        fn("report_station_position",
+           "역 안/밖 질문과 출구 확인에 말로 답한다(화면 버튼 대신). \"역 안이야\", \"나왔어\", \"밖이야\", "
+           "\"나가는 중이야\", \"아직이야\" 처럼 말하면 사용한다. \"아직 안 나왔어\" 같은 부정 표현은 exiting. "
+           "나가는 중이면 재촉하지 말고 한 문장만 답한다.",
+           {"where": {"type": "string", "description": "inside / outside / exiting"},
+            "travel": {"type": "string", "description": "타고 온 열차 방향 north / south / unknown (말했을 때만)"}},
+           ["where"]),
         fn("report_accessibility_issue",
            "현재 위치의 접근성 문제를 제보로 접수한다. \"여기 턱이 있어\", \"보도가 끊겼어\", "
            "\"신고해줘\" 처럼 현장의 통행 문제를 말하면 사용한다. 위치는 자동 주입되므로 좌표를 만들지 않는다.",

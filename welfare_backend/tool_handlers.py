@@ -418,7 +418,7 @@ def _fac_labels(facilities: dict) -> list:
 
 
 async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
-                                  topk: int = 5,
+                                  topk: int = 10,
                                   origin_lat: float = None, origin_lng: float = None,
                                   offset: int = 0) -> dict:
     """장애 유형별 무장애 관광지 추천.
@@ -445,6 +445,9 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
             "distance_m": it.get("distance_m"),
             "facilities": _fac_labels(it.get("facilities")),
             "score": it.get("score"),
+            "category": it.get("category_label") or it.get("category"),
+            # 1 = 무장애 충족도 상위 등급(먼저 나열), 2 = 그 밖 — 등급 안에서 거리순 (02 v1.27.0)
+            "tier": it.get("tier"),
         })
     total = data.get("total", len(items))
     return {
@@ -457,7 +460,8 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
         "results": items,
         "ui_action": {"action": "show_tour_spots", "items": items},
         "ai_instruction": (
-            "상위 2~3곳만 이름과 대표 편의시설 위주로 짧게 안내하세요. "
+            "상위 2~3곳만 이름과 대표 편의시설 위주로 짧게 안내하세요. 목록은 무장애 편의시설을 "
+            "많이 갖춘 곳(tier 1)을 먼저, 같은 등급 안에서는 가까운 순으로 정렬돼 있습니다. "
             "화면에 지도와 목록이 함께 표시되므로 전부 나열하지 마세요. "
             "결과가 없으면 데이터가 아직 준비되지 않았다고 솔직히 말하세요."
         ),
@@ -684,9 +688,14 @@ def _out_of_service_area(kind: str, place: str) -> dict:
 
 AUTO_TRANSIT_MIN_M = 700     # 이 직선거리 미만이면 자동 모드는 도보를 쓴다
 
+# 기본 경로 프로필 (#294, 02 v1.25.0) — 전동 휠체어. 3차년도 실증 기준이며 02 서버 기본값과 같다.
+DEFAULT_PROFILE = "wheelchair_electric"
+# 지원 이동 방식 — walk_subway 는 버스 없이 지하철만 쓴다(02 v1.25.0, #294)
+ROUTE_MODES = ("walk", "walk_subway", "walk_bus", "walk_bus_subway")
+
 
 def _mode_label(mode: str) -> str:
-    return {"walk": "도보", "walk_bus": "도보+버스",
+    return {"walk": "도보", "walk_subway": "도보+지하철", "walk_bus": "도보+버스",
             "walk_bus_subway": "도보+버스+지하철"}.get(mode, mode)
 
 
@@ -699,15 +708,50 @@ def _mode_from_legs(legs: list, requested: str) -> str:
     """
     kinds = {l.get("kind") for l in (legs or []) if isinstance(l, dict)}
     if "subway" in kinds:
-        return "walk_bus_subway"
+        # 버스가 섞이지 않은 지하철 조합은 walk_subway 다(#294) — "버스+지하철"이라 말하면 안 된다
+        return "walk_bus_subway" if "bus" in kinds else "walk_subway"
     if "bus" in kinds:
         return "walk_bus"
     return "walk" if legs else (requested or "walk")
 
 
+def _brief_station_nearby(v) -> Optional[dict]:
+    """02 station_nearby — 모델에 넘길 최소 필드(역·질문·방향 선택지)."""
+    if not isinstance(v, dict) or not v.get("station"):
+        return None
+    return {"station": v.get("station"), "distance_m": v.get("distance_m"),
+            "question": v.get("question"), "travel_question": v.get("travel_question"),
+            "choices": [{"travel": c.get("travel"), "label": c.get("label")}
+                        for c in (v.get("choices") or []) if isinstance(c, dict)][:2]}
+
+
+def _brief_station_start(v) -> Optional[dict]:
+    if not isinstance(v, dict) or not v.get("station"):
+        return None
+    eg = v.get("egress") or {}
+    return {"station": v.get("station"), "travel": v.get("travel"),
+            "exit_no": (v.get("exit") or {}).get("exit_no"),
+            "inside": list(eg.get("inside") or [])[:4]}
+
+
+def _station_ai_note(data: dict) -> str:
+    ss = data.get("station_start")
+    if isinstance(ss, dict) and ss.get("station"):
+        return ("역 안(승강장)에서 출발하는 경로입니다 — station_start.inside 의 첫 문장(승강장 승강기)과 "
+                "출구 번호를 한 문장으로 먼저 말하고, 출구로 나오면 걸어서 안내한다고 덧붙이세요. ")
+    sn = data.get("station_nearby")
+    if isinstance(sn, dict) and sn.get("station") and data.get("mode") in (None, "", "walk"):
+        labels = " / ".join(c.get("label") for c in (sn.get("choices") or []) if c.get("label"))
+        return ("출발점이 %s역 가까이입니다. 안내를 시작하면 화면이 역 안/밖을 묻습니다. 사용자가 말로 "
+                "'역 안', '승강장이야'처럼 답하면 어느 쪽에서 타고 왔는지(%s) 물은 뒤 같은 목적지로 "
+                "plan_accessible_route 를 다시 호출하되 origin_station='%s', origin_travel 에 "
+                "고른 방향(north/south, 모르면 비움)을 담으세요. ") % (sn["station"], labels, sn["station"])
+    return ""
+
+
 async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      destination_type: str = "tour",
-                                     profile: str = "wheelchair_manual",
+                                     profile: str = DEFAULT_PROFILE,
                                      origin_lat: float = None,
                                      origin_lng: float = None,
                                      origin_place: str = "",
@@ -715,8 +759,17 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      destination_lat: float = None,
                                      destination_lng: float = None,
                                      mode: str = "",
-                                     low_floor: Optional[bool] = None) -> dict:
+                                     low_floor: Optional[bool] = None,
+                                     origin_station: str = "",
+                                     origin_travel: str = "",
+                                     log_ctx: Optional[dict] = None) -> dict:
     """현재 위치(또는 말로 지정한 출발지)에서 목적지까지 무장애 경로.
+
+    origin_station/origin_travel(02 v1.28.0, #300): 이용자가 역 안(승강장)에 있다고 답했을 때
+    역 이름과 타고 온 열차의 진행 방향(north|south|빈값=모름). 이 경우 도보로만 계획한다 —
+    출구까지의 역 안 이동을 먼저 안내해야 하기 때문이다.
+
+    log_ctx 는 계측 로그(#294)에만 쓰는 문맥(요청 사유·직전 route_id)이다 — 응답에 영향 없음.
 
     origin_lat/lng 은 프런트가 보낸 현위치가 주입되고,
     사용자가 출발지를 말로 밝히면 origin_place 가 우선한다.
@@ -796,13 +849,21 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     # 대중교통 조합(walk_bus_subway)으로 승격을 시도한다. 조합이 없으면 도보 유지.
     req_mode = (mode or "").strip().lower()
     auto = req_mode in ("", "auto", "recommend")
-    if not auto and req_mode not in ("walk", "walk_bus", "walk_bus_subway"):
+    if not auto and req_mode not in ROUTE_MODES:
         return {"status": "error",
                 "message": "지원하지 않는 이동 방식입니다: %s" % mode,
-                "ai_instruction": "이동 방식은 도보/도보+버스/도보+버스+지하철 중에서만 "
+                "ai_instruction": "이동 방식은 도보/도보+지하철/도보+버스/도보+버스+지하철 중에서만 "
                                   "고를 수 있다고 짧게 안내하세요."}
 
     origin_pt = {"lat": origin_lat, "lng": origin_lng}
+    st_in = None
+    if (origin_station or "").strip():
+        tv = (origin_travel or "").strip().lower()
+        st_in = {"name": origin_station.strip(), "travel": tv if tv in ("north", "south") else None}
+        auto, req_mode = False, "walk"          # 역 안 출발은 도보 경로 + 출구 안내
+    _set_ctx = getattr(route_client, "set_log_ctx", None)   # 테스트 스텁은 이 함수가 없다
+    if _set_ctx:
+        _set_ctx(log_ctx)
     if auto:
         data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk")
         if data.get("status") == "error":
@@ -816,6 +877,12 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                 low_floor=low_floor)
             if upgraded.get("status") != "error" and (upgraded.get("routes") or []):
                 data, mode_used = upgraded, "walk_bus_subway"
+    elif st_in is not None:
+        data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk",
+                                             origin_station=st_in)
+        if data.get("status") == "error":
+            return data
+        mode_used = "walk"
     else:
         data = await route_client.plan_route(origin_pt, dest, profile=profile, mode=req_mode,
                                              realtime=True, low_floor=low_floor)
@@ -900,6 +967,9 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         "warnings": summary.get("warnings", []),
         "fallback": data.get("fallback", {}),
         "first_steps": [s.get("instruction") for s in (primary.get("steps") or [])[:2]],
+        # 02 v1.28.0(#79) — 출발점이 역 가까이면 역 안/밖 질문, 역 안 출발이면 승강장→출구 안내
+        "station_nearby": _brief_station_nearby(data.get("station_nearby")),
+        "station_start": _brief_station_start(data.get("station_start")),
         # 프런트가 지도·경로·턴바이턴을 그리도록 원본 경로를 그대로 전달
         "ui_action": {"action": "show_route", "route": data},
         "ai_instruction": (
@@ -923,6 +993,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                  + ("소요시간은 저상버스 대기를 더한 추정임을 밝히세요. "
                     if lf.get("tier") in (1, 2) else "소요시간은 대기 미포함 추정임을 밝히세요. ")
                if transit_brief else "")
+            + _station_ai_note(data)
             + "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로 요약하고, 첫 안내 한 문장을 덧붙이세요. "
             "경고(warnings)나 제약 완화(fallback.used=true)가 있으면 반드시 함께 알리세요. "
             "전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다. "
@@ -972,11 +1043,184 @@ async def tool_explain_route_segment(route_id: str, step_idx: int = None) -> dic
 
 
 # ─────────────────────────────────────────────────────────────
+# 도구 #13·#14 — 긴급대응 지원시설·화장실 (#296, 02 v1.26.0)
+# ─────────────────────────────────────────────────────────────
+SUPPORT_TYPE_LABEL = {"charge": "충전소", "repair": "수리센터", "calltaxi": "장애인콜택시"}
+
+
+def _support_types_from_situation(types: str, situation: str) -> str:
+    """상황 문구로 유형을 고른다 — 배터리·방전·충전 → charge, 고장·바퀴·수리 → repair,
+    택시·못 가겠 → calltaxi. 명시 types 가 있으면 그대로. 아무것도 없으면 전부."""
+    t = (types or "").strip().lower()
+    if t:
+        picked = [x.strip() for x in t.split(",") if x.strip() in SUPPORT_TYPE_LABEL]
+        if picked:
+            return ",".join(picked)
+    st = situation or ""
+    picked = []
+    if any(k in st for k in ("배터리", "방전", "충전", "전기")):
+        picked.append("charge")
+    if any(k in st for k in ("고장", "바퀴", "수리", "고쳐", "펑크", "브레이크", "안 움직")):
+        picked.append("repair")
+    if any(k in st for k in ("택시", "콜택시", "못 가", "데리러", "실어")):
+        picked.append("calltaxi")
+    return ",".join(picked) if picked else "charge,repair,calltaxi"
+
+
+async def _resolve_base(place: str, lat, lng, tool_name: str):
+    """기준 위치 — 말한 장소 > 주입된 현재 위치. (lat, lng, label) 또는 오류 dict."""
+    if place:
+        hit = await _resolve_place(place)
+        if hit is None:
+            return _out_of_service_area("기준 위치", place)
+        return hit["lat"], hit["lng"], hit["label"]
+    if lat is None or lng is None:
+        return {
+            "status": "need_location",
+            "tool_name": tool_name,
+            "ai_instruction": (
+                "현재 위치를 알 수 없다고 안내하고, 화면의 위치 권한을 허용하거나 "
+                "기준 장소 이름(예: 안양역 근처)을 말씀해 달라고 짧게 요청하세요."
+            ),
+        }
+    return lat, lng, None
+
+
+async def tool_find_emergency_support(lat: float = None, lng: float = None, place: str = "",
+                                      types: str = "", situation: str = "",
+                                      radius_m: int = 2000) -> dict:
+    """전동 보장구 충전기·보장구 수리센터·장애인콜택시 근접 조회.
+
+    "배터리가 다 됐어요", "바퀴가 이상해요", "택시 불러줘" 같은 긴급 질의에 답한다.
+    운영시간이 없는 곳은 지어내지 않고 '확인 필요(전화 권장)'로 전한다. 화면에는
+    show_support 액션으로 카드 시트를 띄우고 '여기로 안내' 로 경로 연계가 된다.
+    """
+    base = await _resolve_base(place, lat, lng, "find_emergency_support")
+    if isinstance(base, dict):
+        return base
+    lat, lng, base_label = base
+    tsel = _support_types_from_situation(types, situation)
+    try:
+        radius_m = max(300, min(int(radius_m or 2000), 10000))
+    except (TypeError, ValueError):
+        radius_m = 2000
+    data = await route_client.support_nearby(lat, lng, types=tsel, radius_m=radius_m, limit=3)
+    if isinstance(data, dict) and data.get("status") == "error":
+        return data
+    items = []
+    for it in (data.get("items") or []):
+        if not isinstance(it, dict):
+            continue
+        items.append({
+            "support_type": it.get("support_type"),
+            "type_label": SUPPORT_TYPE_LABEL.get(it.get("support_type"), it.get("type_label")),
+            "name": it.get("name"), "install_desc": it.get("install_desc"),
+            "addr": it.get("addr"), "dist_m": it.get("dist_m"),
+            "tel": it.get("tel"),
+            # 충전기 표준데이터의 번호는 관리기관 번호다 (02 v1.27.0, #298)
+            "tel_owner": it.get("tel_owner") or "site",
+            "tel_owner_name": it.get("tel_owner_name"),
+            "open_hours": it.get("open_hours"),
+            "open_hours_status": it.get("open_hours_status") or ("known" if it.get("open_hours") else "unknown"),
+            "source_label": it.get("source_label"), "confidence": it.get("confidence"),
+            "coord_suspect": bool(it.get("coord_suspect")),
+            "lat": it.get("lat"), "lng": it.get("lng"),
+        })
+    by_type = {}
+    for it in items:
+        by_type[it["support_type"]] = by_type.get(it["support_type"], 0) + 1
+    missing = [SUPPORT_TYPE_LABEL[t] for t in tsel.split(",") if t not in by_type]
+    ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
+          + "유형별로 가장 가까운 1~2곳만 이름·거리·전화번호로 말하세요. "
+          "open_hours 가 있으면 그대로 전하고, open_hours_status 가 unknown 이면 운영시간을 "
+          "지어내지 말고 '운영시간은 확인이 필요하니 전화해 보시라'고 하세요. "
+          "coord_suspect 가 true 인 곳은 '위치가 정확하지 않을 수 있다'고 덧붙이세요. "
+          "tel_owner 가 manager 인 번호는 설치장소가 아니라 관리기관(tel_owner_name) 번호이니 "
+          "'관리기관 번호'라고 밝히고 전하세요. "
+          "화면에 카드가 떴고 '여기로 안내' 를 누르면 경로를 안내받을 수 있다고 알리세요. ")
+    if missing:
+        ai += "%s 은(는) 반경 %dm 안에 없다고 분명히 말하세요. " % ("·".join(missing), radius_m)
+    if "charge" in tsel:
+        ai += "배터리 상황이면 이동 가능 거리를 먼저 묻고, 멀면 콜택시를 함께 권하세요. "
+    return {
+        "status": "success",
+        "tool_name": "find_emergency_support",
+        "base_label": base_label,
+        "types": tsel,
+        "radius_m": radius_m,
+        "count": len(items),
+        "count_by_type": by_type,
+        "items": items,
+        "ui_action": {
+            "action": "show_support",
+            "payload": {"items": items, "types": tsel, "base_label": base_label,
+                        "base": {"lat": lat, "lng": lng}, "radius_m": radius_m},
+        },
+        "ai_instruction": ai,
+    }
+
+
+async def tool_find_toilet(lat: float = None, lng: float = None, place: str = "",
+                           radius_m: int = 800) -> dict:
+    """휠체어로 갈 수 있는 화장실 — 장애인 대·소변기 보유 공중화장실(거리순).
+
+    "화장실 어디예요" 질의. 역사 화장실은 get_station_facilities 가 맡는다.
+    """
+    base = await _resolve_base(place, lat, lng, "find_toilet")
+    if isinstance(base, dict):
+        return base
+    lat, lng, base_label = base
+    try:
+        radius_m = max(100, min(int(radius_m or 800), 3000))
+    except (TypeError, ValueError):
+        radius_m = 800
+    data = await route_client.toilet_nearby(lat, lng, radius_m=radius_m, limit=5, accessible_only=True)
+    if isinstance(data, dict) and data.get("status") == "error":
+        return data
+    items = []
+    for it in (data.get("items") or []):
+        if not isinstance(it, dict):
+            continue
+        items.append({
+            "name": it.get("name"), "type": it.get("type"), "addr": it.get("addr"),
+            "dist_m": it.get("dist_m"), "accessible": bool(it.get("accessible")),
+            "dis_male_cnt": it.get("dis_male_cnt"), "dis_female_cnt": it.get("dis_female_cnt"),
+            "unisex": bool(it.get("unisex")),
+            "open_time": it.get("open_time"), "open_time_detail": it.get("open_time_detail"),
+            "emg_bell": bool(it.get("emg_bell")), "tel": it.get("tel"),
+            # 시설 내 장애인화장실(관광시설, 02 v1.27.0) — 시설 운영시간에만 이용 가능 (#298)
+            "facility_toilet": bool(it.get("facility_toilet")),
+            "lat": it.get("lat"), "lng": it.get("lng"),
+        })
+    ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
+          + ("가까운 순으로 1~2곳만 이름·거리·개방시간으로 말하세요. open_time 이 없으면 "
+             "'개방시간은 확인이 필요하다'고 하세요. facility_toilet 이 true 인 곳은 그 시설 안의 "
+             "화장실이라 시설 운영시간에만 쓸 수 있다고 덧붙이세요. 화면 카드의 '여기로 안내' 로 "
+             "경로를 받을 수 있다고 알리세요. " if items else
+             "반경 %dm 안에 장애인 화장실이 등록된 공중화장실이 없다고 분명히 말하고, 가까운 "
+             "지하철역 화장실은 get_station_facilities 로 확인할 수 있다고 안내하세요. " % radius_m))
+    return {
+        "status": "success",
+        "tool_name": "find_toilet",
+        "base_label": base_label,
+        "radius_m": radius_m,
+        "count": len(items),
+        "items": items,
+        "ui_action": {
+            "action": "show_toilets",
+            "payload": {"items": items, "base_label": base_label,
+                        "base": {"lat": lat, "lng": lng}, "radius_m": radius_m},
+        },
+        "ai_instruction": ai,
+    }
+
+
+# ─────────────────────────────────────────────────────────────
 # 도구 #10 — 주변 정류장·역 (#248, 02 v1.11.1 /transit/access-points)
 # ─────────────────────────────────────────────────────────────
 async def tool_find_nearby_transit(lat: float = None, lng: float = None,
                                    place: str = "", radius_m: int = 500,
-                                   profile: str = "wheelchair_manual") -> dict:
+                                   profile: str = DEFAULT_PROFILE) -> dict:
     """현재 위치(또는 말한 기준 장소) 주변의 버스 정류장·지하철역.
 
     lat/lng 은 live_bridge 가 프런트의 현재 위치를 주입한다(place 미지정 시).
@@ -1141,7 +1385,7 @@ def _arrival_line(it: dict) -> dict:
 
 async def tool_get_bus_arrivals(station_id: str = "", route_id: str = "", place: str = "",
                                 station_name: str = "", lat: float = None, lng: float = None,
-                                profile: str = "wheelchair_manual") -> dict:
+                                profile: str = DEFAULT_PROFILE) -> dict:
     """정류장의 실시간 도착정보 — "저상버스 언제 와", "다음 버스 저상이야?".
 
     정류장은 (1) station_id (2) 안내 중 버스 구간의 승차 정류장(세션 주입)
@@ -1316,6 +1560,64 @@ async def tool_open_navi_screen() -> dict:
     }
 
 
+# ─────────────────────────────────────────────────────────────
+# 도구 #10 — 역 안/밖·출구 확인을 말로 (v1.52.0)
+# ─────────────────────────────────────────────────────────────
+_STATION_WHERE = ("inside", "outside", "exiting")
+
+
+async def tool_report_station_position(where: str = "", travel: str = "",
+                                       station_wait: dict = None) -> dict:
+    """"역 안이야", "나왔어", "나가는 중이야" 같은 말로 화면의 역 안/밖 질문·출구 확인에 답한다.
+
+    손을 쓰기 어려운 이용자도 버튼 없이 진행할 수 있게 한다. 화면이 지금 무엇을 기다리는지
+    (station_wait)는 세션이 주입한다 — 기다리는 것이 없으면 화면을 건드리지 않는다.
+    나가는 중(exiting)이면 화면은 그대로 두고, 재촉하지 않는다.
+    """
+    w = (where or "").strip().lower()
+    if w not in _STATION_WHERE:
+        w = "exiting" if w in ("not_yet", "moving", "wait") else ""
+    tv = (travel or "").strip().lower()
+    tv = tv if tv in ("north", "south", "unknown") else ""
+    wait = station_wait if isinstance(station_wait, dict) else None
+    if not wait:
+        return {
+            "status": "idle", "tool_name": "report_station_position",
+            "ai_instruction": ("지금 화면은 역 안/밖이나 출구 확인을 기다리고 있지 않습니다. "
+                               "한 문장으로 짧게 답하고, 안내 내용을 물으면 get_current_guidance 로 확인하세요."),
+        }
+    kind = wait.get("kind")
+    if not w:
+        return {"status": "idle", "tool_name": "report_station_position",
+                "ai_instruction": "역 안인지, 이미 역 밖으로 나왔는지 한 문장으로 여쭤 보세요."}
+    if kind == "undo" and w in ("inside", "exiting"):
+        # 위치로 역 밖이라고 판단한 직후 — 아직 역 안·나가는 중이면 화면이 역 안 안내로 되돌아간다
+        instr = ("역 안 안내로 되돌렸습니다. '네, 역 안 안내로 돌아갈게요. 천천히 오세요' 정도로 한 문장만 답하세요.")
+    elif w == "exiting":
+        instr = ("화면은 그대로 둡니다. '천천히 오셔도 돼요. 출구로 나오시면 말씀해 주세요'처럼 "
+                 "한 문장으로만 답하고 재촉하지 마세요.")
+    elif w == "outside":
+        instr = ("역 밖에서 걸어서 가는 안내로 넘어갔습니다. 첫 안내는 화면 음성이 말하니 "
+                 "'네, 걸어서 안내를 이어갈게요' 정도로 한 문장만 답하세요.")
+    elif kind == "ask_station" and not tv:
+        labels = [c.get("label") for c in (wait.get("choices") or []) if c.get("label")]
+        instr = ("역 안으로 받았습니다. 이어서 어느 쪽에서 열차를 타고 오셨는지 여쭤 보세요"
+                 + ((" — 선택지: " + " / ".join(labels) + " / 잘 모르겠어요") if labels else "")
+                 + ". 답을 들으면 report_station_position 을 where=inside, travel 과 함께 다시 호출하세요.")
+    elif kind in ("ask_station", "alight_ask"):
+        instr = ("역 안에서 출발하는 안내로 넘어갑니다. 승강기·출구 안내는 화면 음성이 말하니 "
+                 "'네, 역 안에서부터 안내할게요' 정도로 한 문장만 답하세요.")
+    else:   # exit 대기 중 inside — 아직 역 안
+        instr = ("화면은 그대로 둡니다. '천천히 오셔도 돼요. 출구로 나오시면 말씀해 주세요'처럼 "
+                 "한 문장으로만 답하세요.")
+    return {
+        "status": "success", "tool_name": "report_station_position",
+        "where": w, "travel": tv or None, "wait_kind": kind,
+        "ui_action": {"action": "station_position", "where": w, "travel": tv or None},
+        "ai_instruction": instr,
+    }
+
+
 _REPORT_REASONS = ("curb", "no_sidewalk", "no_crossing", "steep", "blocked", "etc")
 
 
@@ -1371,8 +1673,11 @@ def get_tool_dispatcher(embed_fn):
         "plan_accessible_route": tool_plan_accessible_route,
         "explain_route_segment": tool_explain_route_segment,
         "find_nearby_transit": tool_find_nearby_transit,
+        "find_emergency_support": tool_find_emergency_support,
+        "find_toilet": tool_find_toilet,
         "get_bus_arrivals": tool_get_bus_arrivals,
         "get_station_facilities": tool_get_station_facilities,
         "open_navi_screen": tool_open_navi_screen,
         "report_accessibility_issue": tool_report_accessibility,
+        "report_station_position": tool_report_station_position,
     }

@@ -33,6 +33,115 @@ _OPEN_SEC = 30.0
 _fail_count = 0
 _open_until = 0.0
 
+# 호출 계측 (#294) — 실증 정량지표 ②(응답시간)·③(추천 MAP)의 클라이언트 측 원천.
+# 경로 서버 왕복 소요(ms)와 서버가 헤더로 준 내부 처리시간(02 v1.25.0 X-Process-Time-Ms)을
+# 함께 JSONL 로 남긴다. 파일을 못 열면 계측만 건너뛰고 호출은 계속한다.
+CALL_LOG_PATH = os.environ.get("ROUTE_CLIENT_LOG_PATH", "logs/route_client.jsonl")
+_call_log_fh = None
+_call_log_disabled = False
+
+
+_LOG_CTX: "contextvars.ContextVar[Optional[dict]]" = None
+
+
+def set_log_ctx(ctx: Optional[dict]):
+    """이 요청의 계측 문맥(요청 사유·직전 route_id, #294). 도구 핸들러가 호출 전에 넣는다."""
+    global _LOG_CTX
+    if _LOG_CTX is None:
+        import contextvars
+        _LOG_CTX = contextvars.ContextVar("route_client_log_ctx", default=None)
+    _LOG_CTX.set({k: v for k, v in (ctx or {}).items() if v} or None)
+
+
+def _log_ctx() -> dict:
+    if _LOG_CTX is None:
+        return {}
+    return dict(_LOG_CTX.get() or {})
+
+
+# 요청 출처 태그 (#298) — 사이트 인증 계정명(nginx $remote_user → X-Remote-User).
+# 실증 참여자 단말은 전용 계정으로 접속하므로, 이 값으로 실증 요청과 운영진 요청을 가른다.
+# 경로 서버에는 X-Client-Tag 로 넘기고(02 계측 행의 client), 호출 로그에도 남긴다.
+import contextvars as _cv
+import re as _re
+_CLIENT_TAG: "_cv.ContextVar[Optional[str]]" = _cv.ContextVar("route_client_tag", default=None)
+_TAG_RE = _re.compile(r"[^A-Za-z0-9_.@-]")
+
+
+def normalize_client_tag(raw) -> Optional[str]:
+    if not raw:
+        return None
+    t = _TAG_RE.sub("", str(raw))[:40]
+    return t or None
+
+
+def set_client_tag(raw):
+    """출처 태그를 이 문맥에 둔다. 되돌릴 때 쓰는 토큰을 돌려준다(reset_client_tag)."""
+    return _CLIENT_TAG.set(normalize_client_tag(raw))
+
+
+def reset_client_tag(token) -> None:
+    try:
+        _CLIENT_TAG.reset(token)
+    except (ValueError, LookupError):     # 다른 문맥에서 만든 토큰 — 무시(값은 다음 요청에서 다시 정해진다)
+        pass
+
+
+def client_tag() -> Optional[str]:
+    return _CLIENT_TAG.get()
+
+
+def _call_log(rec: dict):
+    global _call_log_fh, _call_log_disabled
+    if _call_log_disabled or not CALL_LOG_PATH:
+        return
+    try:
+        import json as _json
+        if _call_log_fh is None:
+            d = os.path.dirname(CALL_LOG_PATH)
+            if d:
+                os.makedirs(d, exist_ok=True)
+            _call_log_fh = open(CALL_LOG_PATH, "a", encoding="utf-8")
+        rec = {"ts": round(time.time(), 3), "client": client_tag(), **_log_ctx(),
+               **{k: v for k, v in rec.items() if v is not None}}
+        if rec.get("client") is None:
+            rec.pop("client", None)
+        _call_log_fh.write(_json.dumps(rec, ensure_ascii=False) + "\n")
+        _call_log_fh.flush()
+    except (OSError, ValueError, TypeError) as e:
+        _call_log_disabled = True
+        logger.warning("경로 호출 로그를 쓸 수 없어 계측을 끈다(%s): %s", CALL_LOG_PATH, e)
+
+
+def _summarize_for_log(path: str, req: Optional[dict], body: Any) -> dict:
+    """요청·응답에서 지표 산출에 필요한 최소 필드만 뽑는다(좌표·본문 전체는 남기지 않는다)."""
+    out = {}
+    req = req or {}
+    if path == "/route/plan" or path == "/route/reroute":
+        out["profile"] = req.get("profile")
+        out["mode"] = req.get("mode") or "walk"
+        out["dest_type"] = (req.get("destination") or {}).get("type")
+        out["dest_id"] = (req.get("destination") or {}).get("poi_id")
+        if isinstance(body, dict):
+            out["route_id"] = body.get("route_id")
+            summ = ((body.get("routes") or [{}])[0] or {}).get("summary") or {}
+            out["total_m"] = summ.get("total_distance_m")
+            out["walk_m"] = summ.get("walk_distance_m")
+            if path == "/route/reroute":
+                out["prev_route_id"] = req.get("route_id")
+                out["off_route"] = body.get("off_route")
+    elif path == "/tour/recommend":
+        out["disabilities"] = req.get("disabilities")
+        out["sigungu"] = req.get("sigungu")
+        out["topk"] = req.get("topk")
+        out["offset"] = req.get("offset")
+        out["category"] = req.get("category")
+        if isinstance(body, dict):
+            out["total"] = body.get("total")
+            out["items"] = [{"poi_id": str(it.get("poi_id")), "score": it.get("score")}
+                            for it in (body.get("items") or []) if isinstance(it, dict)]
+    return out
+
 
 def enabled() -> bool:
     return bool(BASE_URL) and (FEATURE_ROUTE or FEATURE_TOUR)
@@ -42,6 +151,9 @@ def _headers() -> dict:
     h = {"Accept": "application/json"}
     if API_TOKEN:
         h["Authorization"] = "Bearer %s" % API_TOKEN
+    tag = client_tag()
+    if tag:
+        h["X-Client-Tag"] = tag
     return h
 
 
@@ -138,6 +250,7 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
 
     url = "%s%s" % (BASE_URL, path)
     last_detail = ""
+    t0 = time.perf_counter()
     for attempt in range(2):
         try:
             async with httpx.AsyncClient(timeout=TIMEOUT_SEC) as client:
@@ -147,6 +260,11 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
                 last_detail = "HTTP %d" % r.status_code
                 continue
             _record(True)
+            ms = round((time.perf_counter() - t0) * 1000.0, 1)
+            try:
+                server_ms = float(r.headers.get("X-Process-Time-Ms", ""))
+            except ValueError:
+                server_ms = None
             if r.status_code >= 400:
                 body: Any = {}
                 try:
@@ -157,26 +275,41 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
                 # 4xx 는 "일시적 장애"가 아니라 요청 자체의 문제(서비스 지역 밖 등) —
                 # 오해를 낳지 않도록 사유별 안내문을 함께 전달한다.
                 logger.info("경로 API 4xx %s %s — %s", method, path, detail_msg)
+                _call_log({"path": path, "status": r.status_code, "ms": ms, "server_ms": server_ms,
+                           "attempt": attempt + 1, "detail": str(detail_msg)[:120],
+                           **_summarize_for_log(path, json, None)})
                 return _err(detail_msg, "HTTP %d" % r.status_code,
                             _ai_for_4xx(detail_msg))
-            return r.json()
+            data = r.json()
+            _call_log({"path": path, "status": r.status_code, "ms": ms, "server_ms": server_ms,
+                       "attempt": attempt + 1, **_summarize_for_log(path, json, data)})
+            return data
         except (httpx.TimeoutException, httpx.TransportError) as e:
             last_detail = "%s: %s" % (type(e).__name__, e)
             continue
 
     _record(False)
+    _call_log({"path": path, "status": 0, "ms": round((time.perf_counter() - t0) * 1000.0, 1),
+               "error": last_detail[:120], **_summarize_for_log(path, json, None)})
     logger.warning("경로 API 호출 실패 %s %s — %s", method, path, last_detail)
     return _err("경로 서비스에 연결하지 못했습니다", last_detail, _AI_TRANSIENT)
 
 
 # ── 경로 ──
-async def plan_route(origin: dict, destination: dict, profile: str = "wheelchair_manual",
+async def plan_route(origin: dict, destination: dict, profile: str = "wheelchair_electric",
                      alternatives: int = 1, mode: str = "", realtime: bool = False,
-                     low_floor: Optional[bool] = None) -> dict:
+                     low_floor: Optional[bool] = None,
+                     origin_station: Optional[dict] = None) -> dict:
     body = {"origin": origin, "destination": destination,
             "profile": profile, "alternatives": alternatives}
+    if origin_station and mode in ("", "walk", None):
+        # 02 v1.28.0(#79) — 역 안(승강장)에서 출발: 출구에서 계획하고 승강장→출구 스텝을 붙인다.
+        # 구버전 02 는 모르는 필드를 무시한다(역 근처 판정·질문도 오지 않으므로 이 경로가 열리지 않는다).
+        body["origin_station"] = {"name": str(origin_station.get("name") or "")[:20],
+                                  "travel": origin_station.get("travel") or None}
     # 02 v1.12.0 멀티모달(#36) — walk 은 기존 계약이므로 생략해 하위 서버와도 호환 유지
-    if mode in ("walk_bus", "walk_bus_subway"):
+    if mode in ("walk_subway", "walk_bus", "walk_bus_subway"):
+        # walk_subway 는 02 v1.25.0(#73) — 구버전 02 는 400 을 돌려주고, 그 사유가 그대로 안내된다
         body["mode"] = mode
         if realtime:
             # 02 v1.19.0 — 버스 leg 승차 정류장의 실시간 도착정보(저상 여부)를 함께 받는다.
@@ -188,13 +321,13 @@ async def plan_route(origin: dict, destination: dict, profile: str = "wheelchair
     return await _call("POST", "/route/plan", json=body)
 
 
-async def reroute(current: dict, destination: dict, profile: str = "wheelchair_manual",
-                  route_id: str = None) -> dict:
-    return await _call(
-        "POST", "/route/reroute",
-        json={"current": current, "destination": destination,
-              "profile": profile, "route_id": route_id},
-    )
+async def reroute(current: dict, destination: dict, profile: str = "wheelchair_electric",
+                  route_id: str = None, reason: str = None) -> dict:
+    body = {"current": current, "destination": destination,
+            "profile": profile, "route_id": route_id}
+    if reason:
+        body["reason"] = reason          # 02 v1.25.0 계측 로그용(구버전은 무시)
+    return await _call("POST", "/route/reroute", json=body)
 
 
 async def get_route(route_id: str) -> dict:
@@ -236,10 +369,12 @@ async def tour_detail(poi_id: str) -> dict:
 async def tour_recommend(disabilities: list, sigungu: str = "안양",
                          match_mode: str = "all", topk: int = 10,
                          origin_lat: float = None, origin_lng: float = None,
-                         offset: int = 0) -> dict:
-    # origin 을 주면 02 route-api(v1.9.0+)가 거리 오름차순 + offset 페이징으로 응답한다.
+                         offset: int = 0, category: str = "tour") -> dict:
+    # origin 을 주면 02 route-api 가 offset 페이징으로 응답한다. category="tour"(02 v1.27.0)는
+    # 관광 분류만 후보로 쓰고 무장애 충족도 상위 등급 먼저·같은 등급 안에서 거리순이다.
     body = {"disabilities": disabilities, "sigungu": sigungu,
-            "match_mode": match_mode, "topk": topk, "offset": offset}
+            "match_mode": match_mode, "topk": topk, "offset": offset,
+            "category": category}
     if origin_lat is not None and origin_lng is not None:
         body["origin_lat"] = origin_lat
         body["origin_lng"] = origin_lng
@@ -248,11 +383,27 @@ async def tour_recommend(disabilities: list, sigungu: str = "안양",
 
 # ── 대중교통 접근점 ──
 async def transit_access(lat: float, lng: float, radius_m: float = 800,
-                         profile: str = "wheelchair_manual") -> dict:
+                         profile: str = "wheelchair_electric") -> dict:
     return await _call(
         "GET", "/transit/access-points",
         params={"lat": lat, "lng": lng, "radius_m": radius_m, "profile": profile},
     )
+
+
+# ── 긴급대응·화장실 (02 v1.26.0, #296) ──
+async def support_nearby(lat: float, lng: float, types: str = "charge,repair,calltaxi",
+                         radius_m: float = 2000, limit: int = 3) -> dict:
+    """전동보장구 충전기·보장구 수리·장애인콜택시 근접 조회(거리순, 유형별 limit)."""
+    return await _call("GET", "/support/nearby",
+                       params={"lat": lat, "lng": lng, "types": types,
+                               "radius_m": radius_m, "limit": limit})
+
+
+async def toilet_nearby(lat: float, lng: float, radius_m: float = 800, limit: int = 5,
+                        accessible_only: bool = True) -> dict:
+    return await _call("GET", "/toilet/nearby",
+                       params={"lat": lat, "lng": lng, "radius_m": radius_m, "limit": limit,
+                               "accessible_only": "true" if accessible_only else "false"})
 
 
 # ── 실시간 버스·역 설비 (02 v1.19.0) ──

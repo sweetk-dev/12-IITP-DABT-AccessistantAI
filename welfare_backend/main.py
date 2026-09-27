@@ -79,6 +79,20 @@ ALLOWED_ORIGINS = [
     if o.strip()
 ]
 
+@app.middleware("http")
+async def _client_tag_ctx(request, call_next):
+    """사이트 인증 계정명(nginx 가 넣는 X-Remote-User)을 이 요청의 출처 태그로 둔다 (#298).
+
+    경로 서버 호출(X-Client-Tag)과 호출 로그의 client 필드로 전달돼, 실증 참여자 계정의
+    요청을 운영진 요청과 가를 수 있다. 외부에서 직접 보낸 헤더는 nginx 가 덮어쓴다.
+    """
+    token = route_client.set_client_tag(request.headers.get("x-remote-user"))
+    try:
+        return await call_next(request)
+    finally:
+        route_client.reset_client_tag(token)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -197,9 +211,11 @@ async def front_config():
             "default_center": {"lat": 37.3943, "lng": 126.9568},
             "default_level": 5,
         },
+        # 기본 프로필은 전동 휠체어(#294, 02 v1.25.0). 프런트는 현재 프로필을 화면에 상시 표시한다
+        "default_profile": tool_handlers.DEFAULT_PROFILE,
         "route_profiles": [
+            {"id": "wheelchair_electric", "label": "전동 휠체어 (기본)"},
             {"id": "wheelchair_manual", "label": "수동 휠체어"},
-            {"id": "wheelchair_electric", "label": "전동 휠체어"},
             {"id": "crutch", "label": "목발·보행보조"},
             {"id": "visual", "label": "시각장애"},
             {"id": "walk", "label": "일반 보행"},
@@ -215,8 +231,8 @@ async def front_config():
 async def find_bf_tour_spots(
     disabilities: str = Query("지체장애", description="쉼표 구분. 예: '지체장애,시각장애'"),
     sigungu: str = Query("안양"),
-    topk: int = Query(5, ge=1, le=50),
-    origin_lat: float = Query(None, description="출발지 위도 — 주면 거리 오름차순"),
+    topk: int = Query(10, ge=1, le=50),
+    origin_lat: float = Query(None, description="출발지 위도 — 주면 같은 충족도 등급 안에서 거리순"),
     origin_lng: float = Query(None, description="출발지 경도"),
     offset: int = Query(0, ge=0, description="거리순 목록에서 건너뛸 개수(무한스크롤)"),
 ):
@@ -471,11 +487,18 @@ async def plan_accessible_route(
     destination_lat: float = Query(None, description="지도에서 직접 지정한 목적지 위도"),
     destination_lng: float = Query(None, description="지도에서 직접 지정한 목적지 경도"),
     destination_type: str = Query("tour"),
-    profile: str = Query("wheelchair_manual"),
-    mode: str = Query("", description="walk | walk_bus | walk_bus_subway | ''(자동 추천)"),
+    profile: str = Query(tool_handlers.DEFAULT_PROFILE),
+    mode: str = Query("", description="walk | walk_subway | walk_bus | walk_bus_subway | ''(자동 추천)"),
     low_floor: Optional[bool] = Query(None, description="저상버스 우선(#291). 생략하면 휠체어 프로필 on"),
+    reason: str = Query("", description="계측용 요청 사유(#294): first | new | off_route | stale | low_floor | profile | mode"),
+    prev_route_id: str = Query("", description="계측용 직전 route_id(#294)"),
+    origin_station: str = Query("", description="역 안(승강장)에서 출발할 때 역 이름(#300)"),
+    origin_travel: str = Query("", description="타고 온 열차의 진행 방향 north | south | ''(모름)"),
 ):
     return await tool_handlers.tool_plan_accessible_route(
+        origin_station=origin_station,
+        origin_travel=origin_travel,
+        log_ctx={"reason": reason or None, "prev_route_id": prev_route_id or None},
         destination_poi_id=destination_poi_id,
         destination_place=destination_place,
         destination_lat=destination_lat,
@@ -523,13 +546,34 @@ async def search_places(
             "region": data.get("region"), "source": source}
 
 
+@app.get("/api/v1/tools/find_emergency_support", tags=["tools"],
+         summary="[13] 충전소·수리센터·장애인콜택시 근접 조회")
+async def find_emergency_support(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    types: str = Query("", description="charge,repair,calltaxi — 비우면 전부"),
+    radius_m: int = Query(2000, ge=300, le=10000),
+):
+    return await tool_handlers.tool_find_emergency_support(lat=lat, lng=lng, types=types, radius_m=radius_m)
+
+
+@app.get("/api/v1/tools/find_toilet", tags=["tools"],
+         summary="[14] 휠체어 접근 가능 화장실 근접 조회")
+async def find_toilet(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    radius_m: int = Query(800, ge=100, le=3000),
+):
+    return await tool_handlers.tool_find_toilet(lat=lat, lng=lng, radius_m=radius_m)
+
+
 @app.get("/api/v1/tools/transit_access_points", tags=["tools"],
          summary="[7-1] 휠체어 접근 가능한 정류장·역")
 async def transit_access_points(
     lat: float = Query(...),
     lng: float = Query(...),
     radius_m: float = Query(800, ge=50, le=3000),
-    profile: str = Query("wheelchair_manual"),
+    profile: str = Query(tool_handlers.DEFAULT_PROFILE),
 ):
     return await route_client.transit_access(lat, lng, radius_m, profile)
 
@@ -892,4 +936,6 @@ async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str
         await websocket.send_json({"type": "error", "message": "GEMINI_API_KEY 미설정"})
         await websocket.close()
         return
+    # 음성 세션 안의 도구 호출도 같은 출처 태그를 쓴다 — 이 코루틴에서 만든 태스크는 문맥을 물려받는다(#298)
+    route_client.set_client_tag(websocket.headers.get("x-remote-user"))
     await handle_live_chat(websocket, ai_client, _embed, voice=voice, mode=mode)

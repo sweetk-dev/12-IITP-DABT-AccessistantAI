@@ -362,9 +362,10 @@ check("지정한 출발지가 경로 요청에 사용됨", () => {
 });
 
 // 3-b) 이동 방식 카드 + 멀티모달 렌더 (#251)
-check("이동 방식 카드 4개 — 기본 '추천' 선택", () => {
+check("이동 방식 카드 5개(도보+지하철 포함, v1.48.0) — 기본 '추천' 선택", () => {
   const cards = [...window.document.querySelectorAll(".mode-cards button")];
-  assert.equal(cards.length, 4);
+  assert.equal(cards.length, 5);
+  assert.deepEqual(cards.map((b) => b.getAttribute("data-mode")), ["auto", "walk", "walk_subway", "walk_bus", "walk_bus_subway"]);
   assert.equal(cards[0].getAttribute("aria-pressed"), "true");
   assert.match(cards[0].textContent, /추천/);
 });
@@ -1000,6 +1001,37 @@ check("신고 버튼 -> 사유 시트 열림 (6개 사유 + 사진 첨부 + 닫�
 });
 $("reportCancelBtn").dispatchEvent(new window.Event("click"));
 check("닫기 버튼으로 시트가 닫힘", () => assert.equal($("reportSheet").hidden, true));
+// #306 — 신고 창은 지도 영역 밖, 화면 전체 배경 위 가운데 팝업
+check("신고 창은 앱 전체를 덮는 반투명 배경(reportPop) 안에 있고 닫히면 배경도 숨는다", () => {
+  const pop = $("reportPop");
+  assert.ok(pop, "reportPop 없음");
+  assert.ok(pop.classList.contains("modal-backdrop") && pop.classList.contains("navi-pop"));
+  assert.equal($("reportSheet").parentElement, pop);
+  assert.ok(!pop.closest(".navi-wrap"), "지도 영역 안에 있으면 안 된다");
+  assert.equal(pop.hidden, true);
+});
+$("naviReportBtn").dispatchEvent(new window.Event("click"));
+check("신고 버튼 → 배경과 창이 함께 열림", () => {
+  assert.equal($("reportPop").hidden, false);
+  assert.equal($("reportSheet").hidden, false);
+});
+check("팝업이 떠 있는 동안 뒤 화면은 inert", () => assert.ok($("view-navi").hasAttribute("inert")));
+$("naviEndModal").hidden = false;
+window.document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape" }));
+check("종료 확인 창이 위에 떠 있으면 Esc 가 신고 팝업을 닫지 않는다", () => assert.equal($("reportPop").hidden, false));
+$("naviEndModal").hidden = true;
+$("reportPop").dispatchEvent(new window.Event("click"));
+check("어두운 배경을 누르면 닫힘", () => {
+  assert.equal($("reportPop").hidden, true);
+  assert.equal($("reportSheet").hidden, true);
+  assert.ok(!$("view-navi").hasAttribute("inert"), "닫힌 뒤 inert 해제");
+  assert.equal(window.document.activeElement, $("naviReportBtn"), "초점이 신고 버튼으로 돌아온다");
+});
+$("naviReportBtn").dispatchEvent(new window.Event("click"));
+$("reportSheet").querySelector("h3").dispatchEvent(new window.Event("click", { bubbles: true }));
+check("창 안쪽을 누르면 닫히지 않음", () => assert.equal($("reportPop").hidden, false));
+window.document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape" }));
+check("Esc 로 닫힘", () => assert.equal($("reportPop").hidden, true));
 $("naviReportBtn").dispatchEvent(new window.Event("click"));
 $("reportSheet").querySelector('button[data-reason="curb"]').dispatchEvent(new window.Event("click"));
 await sleep(40);
@@ -1866,7 +1898,7 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   });
   check("정적 자원이 바뀌었으므로 서비스워커 캐시 이름이 올라가고 셸에 아이콘이 들어간다 (v1.46.1)", () => {
     const SW = readFileSync(new URL("../../static/sw.js", import.meta.url), "utf8");
-    assert.match(SW, /const CACHE = "accessistant-v3";/);   // v1.47.0 저상 스위치로 셸이 바뀜
+    assert.match(SW, /const CACHE = "accessistant-v5";/);   // v1.49.0 긴급·편의 시트로 셸이 바뀜
     assert.match(SW, /"\/static\/icons\/icon-512\.png"/);
     assert.match(SW, /"\/static\/icons\/apple-touch-icon-180\.png"/);
   });
@@ -1970,6 +2002,802 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.equal(window.NAVI._internals().stepIdx, 0);
   });
   window.fetch = prevFetchLF;
+}
+
+// ── 전동 휠체어 기본 프로필 · 배지 · 전환 · 도보+지하철 · 계측 사유 (v1.48.0, #294 · 02 v1.25.0) ──
+{
+  const SUB_ROUTE = JSON.parse(JSON.stringify(MMROUTE.ui_action.route));
+  SUB_ROUTE.route_id = "r_sub"; SUB_ROUTE.mode = "walk_subway"; SUB_ROUTE.low_floor = { mode: false };
+  SUB_ROUTE.routes[0].legs = [
+    { kind: "walk", summary: { total_distance_m: 300, duration_sec: 270 }, to_label: "명학역" },
+    { kind: "subway", line: "1호선", board: { name: "명학" }, alight: { name: "관악" }, station_cnt: 2, warnings: [] },
+    { kind: "walk", summary: { total_distance_m: 700, duration_sec: 640 }, to_label: "목적지" },
+  ];
+  SUB_ROUTE.routes[0].steps = ROUTE.ui_action.route.routes[0].steps;
+  const prevFetchPF = window.fetch;
+  const pfCalls = [];
+  window.fetch = async (url, opt) => {
+    const u = String(url);
+    if (u.includes("plan_accessible_route")) {
+      lastPlanQuery = u; pfCalls.push(u);
+      const sub = u.includes("mode=walk_subway");
+      return { ok: true, json: async () => ({ status: "success", route_id: sub ? "r_sub" : "r_test",
+        mode_used: sub ? "walk_subway" : "walk", mode_label: sub ? "도보+지하철" : "도보",
+        ui_action: { action: "show_route", route: JSON.parse(JSON.stringify(sub ? SUB_ROUTE : ROUTE.ui_action.route)) } }) };
+    }
+    return prevFetchPF(url, opt);
+  };
+  check("기본 경로 프로필은 전동 휠체어", () => {
+    assert.equal(NAV.profile(), "wheelchair_electric");
+    assert.equal(NAV.wheelProfile(), "wheelchair_electric");
+  });
+  check("지도 위 배지에 '전동휠체어 기준' 상시 표시", () => {
+    const b = $("profBadge");
+    assert.ok(b, "배지 없음");
+    assert.match(b.textContent, /전동휠체어 기준/);
+    assert.equal(b.hidden, false);
+  });
+  NAV.clearRouteDisplay(); NAV.resetTrip();
+  NAV.requestRoute({ poi_id: "TBF-1", name: "안양문화원" });
+  await sleep(60);
+  check("경로 요청에 profile=wheelchair_electric + reason=first 가 실린다", () => {
+    assert.match(lastPlanQuery || "", /profile=wheelchair_electric/);
+    assert.match(lastPlanQuery || "", /reason=first/);
+  });
+  check("결과 제목 줄에 전동|수동 전환이 있고 전동이 눌려 있다", () => {
+    const seg = $("profSeg");
+    assert.ok(seg, "전환 없음");
+    const btns = [...seg.querySelectorAll("button")];
+    assert.deepEqual(btns.map((b) => b.getAttribute("data-profile")), ["wheelchair_electric", "wheelchair_manual"]);
+    assert.equal(btns[0].getAttribute("aria-pressed"), "true");
+    assert.ok(seg.parentElement.querySelector("h2"), "제목 줄(rhead)에 있어야 한다");
+  });
+  spoken.length = 0;
+  [...$("profSeg").querySelectorAll("button")].find((b) => b.getAttribute("data-profile") === "wheelchair_manual")
+    .dispatchEvent(new window.Event("click"));
+  check("수동으로 전환: 배지·상태줄이 바뀌고 재탐색 문구가 뜬다", () => {
+    assert.equal(NAV.profile(), "wheelchair_manual");
+    assert.match($("profBadge").textContent, /수동휠체어 기준/);
+    assert.match($("naviStatus").textContent, /재 탐색|수동휠체어 기준/);
+  });
+  await sleep(120);
+  check("전환 음성 안내 + 재요청에 profile=wheelchair_manual + reason=profile + 직전 route_id", () => {
+    assert.ok(spoken.some((t) => /수동휠체어 기준으로 바꿨습니다/.test(t)), JSON.stringify(spoken.slice(-3)));
+    assert.match(lastPlanQuery || "", /profile=wheelchair_manual/);
+    assert.match(lastPlanQuery || "", /reason=profile/);
+    assert.match(lastPlanQuery || "", /prev_route_id=r_test/);
+  });
+  check("선택이 단말에 저장된다", () => {
+    assert.equal(window.localStorage.getItem("acc_profile"), "wheelchair_manual");
+  });
+  $("profBadge").dispatchEvent(new window.Event("click"));
+  await sleep(80);
+  check("배지를 누르면 다시 전동으로 돌아간다", () => {
+    assert.equal(NAV.profile(), "wheelchair_electric");
+    assert.match($("profBadge").textContent, /전동휠체어 기준/);
+    assert.match(lastPlanQuery || "", /profile=wheelchair_electric/);
+  });
+  // #306 — 아이콘 배지: 바꾸면 '○○휠체어 기준으로 변경' 이 펼쳐졌다가 아이콘만 남는다
+  const electricSvg = $("profBadge").querySelector("svg") && $("profBadge").querySelector("svg").outerHTML;
+  check("배지 — 아이콘(svg) + 글자가 펼쳐진 상태, 글자는 '전동휠체어 기준으로 변경'", () => {
+    const b = $("profBadge");
+    assert.ok(b.querySelector("svg"), "아이콘 없음");
+    assert.ok(b.classList.contains("expanded"), "바꾼 직후 펼쳐져 있어야 한다");
+    assert.equal(b.querySelector(".pb-label").textContent, "전동휠체어 기준으로 변경");
+    assert.match(b.getAttribute("aria-label"), /경로 기준 프로필: 전동휠체어/);
+  });
+  check("안내 줄은 '바꿨습니다' 없이 수치 위주 (배지와 중복 안내 없음)", () => {
+    const t = $("naviStatus").textContent;
+    assert.ok(!/바꿨습니다/.test(t), t);
+  });
+  await sleep(3200);
+  check("잠시 뒤 글자가 접히고 아이콘만 남는다", () => assert.ok(!$("profBadge").classList.contains("expanded")));
+  check("접힌 뒤 라벨은 기본 '전동휠체어 기준' 으로 되돌아간다", () => assert.equal($("profBadge").querySelector(".pb-label").textContent, "전동휠체어 기준"));
+  check("전동 기준 배지는 pb-electric 색", () => assert.ok($("profBadge").classList.contains("pb-electric")));
+  $("profBadge").dispatchEvent(new window.Event("click"));
+  await sleep(30);
+  check("수동으로 바꾸면 아이콘이 수동휠체어 모양으로 바뀐다", () => {
+    const svg = $("profBadge").querySelector("svg").outerHTML;
+    assert.notEqual(svg, electricSvg);
+    assert.equal($("profBadge").querySelector(".pb-label").textContent, "수동휠체어 기준으로 변경");
+  });
+  check("색으로도 구분 — 수동은 pb-manual, 전동은 pb-electric", () => {
+    assert.ok($("profBadge").classList.contains("pb-manual"));
+    assert.ok(!$("profBadge").classList.contains("pb-electric"));
+  });
+  $("profBadge").dispatchEvent(new window.Event("click"));
+  await sleep(80);
+  check("배지는 안내 줄이 있는 좌상단이 아니라 우측(현재 위치 위)에 놓인다", () => {
+    const css = [...window.document.querySelectorAll("style")].map((x) => x.textContent).join("\n");
+    const rule = (css.match(/\.prof-badge\{[^}]*\}/) || [""])[0];
+    assert.match(rule, /right:12px/); assert.ok(!/top:54px/.test(rule), rule);
+  });
+  // 도보+지하철 카드
+  [...window.document.querySelectorAll(".mode-cards button")].find((b) => b.getAttribute("data-mode") === "walk_subway")
+    .dispatchEvent(new window.Event("click"));
+  await sleep(80);
+  check("'도보+지하철' 카드 → mode=walk_subway + reason=mode 로 재요청", () => {
+    assert.match(lastPlanQuery || "", /mode=walk_subway/);
+    assert.match(lastPlanQuery || "", /reason=mode/);
+  });
+  check("지하철만 있는 결과의 라벨은 '도보+지하철' (버스+지하철 아님)", () => {
+    const auto = [...window.document.querySelectorAll(".mode-cards button")].find((b) => b.getAttribute("data-mode") === "auto");
+    assert.match(auto.textContent, /도보\+지하철/);
+    assert.doesNotMatch(auto.textContent, /버스\+지하철/);
+    const t = $("naviSheetBody").textContent;
+    assert.match(t, /1호선/);
+  });
+  window.fetch = prevFetchPF;
+}
+
+// ── 긴급·편의 시트 — 충전소·수리·콜택시·화장실 + 경로 충전기 요약 (v1.49.0, #296 · 02 v1.26.0) ──
+{
+  const SUPPORT = { status: "success", tool_name: "find_emergency_support", count: 2, items: [
+    { support_type: "charge", type_label: "충전소", name: "안양시청", install_desc: "본관 1층 로비", addr: "시민대로 235",
+      dist_m: 320, tel: "031-8045-0000", open_hours: "09:00~18:00", open_hours_status: "known",
+      source_label: "행정안전부 표준데이터", confidence: "H", coord_suspect: false, lat: 37.3943, lng: 126.9568 },
+    { support_type: "charge", type_label: "충전소", name: "안양역 환승센터", addr: "만안로 232",
+      dist_m: 640, tel: null, open_hours: null, open_hours_status: "unknown",
+      source_label: "행정안전부 표준데이터", coord_suspect: true, lat: 37.4019, lng: 126.9226 } ] };
+  const TOILET = { status: "success", tool_name: "find_toilet", count: 1, items: [
+    { name: "시청 화장실", type: "공중화장실", addr: "a", dist_m: 120, accessible: true, dis_male_cnt: 1, dis_female_cnt: 1,
+      unisex: false, open_time: "24시간", emg_bell: true, tel: null, lat: 37.3904, lng: 126.9505 } ] };
+  const prevFetchS = window.fetch;
+  const sosCalls = [];
+  window.fetch = async (url, opt) => {
+    const u = String(url);
+    if (u.includes("find_emergency_support")) { sosCalls.push(u); return { ok: true, json: async () => (u.includes("types=repair") ? { status: "success", items: [] } : SUPPORT) }; }
+    if (u.includes("find_toilet")) { sosCalls.push(u); return { ok: true, json: async () => TOILET }; }
+    if (u.includes("plan_accessible_route")) {
+      lastPlanQuery = u;
+      const r = JSON.parse(JSON.stringify(ROUTE));
+      r.ui_action.route.support_hint = { charge_within_m: 1000, charge_cnt: 2, nearest: { name: "안양시청", dist_to_route_m: 85 } };
+      return { ok: true, json: async () => r };
+    }
+    return prevFetchS(url, opt);
+  };
+  check("지도 위에 '긴급·편의' 버튼", () => {
+    const b = $("naviSosBtn");
+    assert.ok(b && !b.hidden);
+    assert.match(b.textContent, /긴급·편의/);
+  });
+  $("naviSosBtn").dispatchEvent(new window.Event("click"));
+  await sleep(60);
+  check("버튼 → 시트 열림, 충전소 탭 기본, 현재 위치로 조회", () => {
+    assert.equal($("sosSheet").hidden, false);
+    assert.equal($("sosTabs").querySelector("button[data-kind='charge']").getAttribute("aria-pressed"), "true");
+    assert.ok(sosCalls.some((u) => /find_emergency_support.*types=charge/.test(u)), JSON.stringify(sosCalls));
+  });
+  check("카드: 이름·설치 지점·거리·전화·운영시간, 미상은 '확인 필요', 위치 의심 표시", () => {
+    const cards = [...$("sosList").querySelectorAll(".sos-card")];
+    assert.equal(cards.length, 2);
+    assert.match(cards[0].textContent, /안양시청 — 본관 1층 로비/);
+    assert.match(cards[0].textContent, /320m/);
+    assert.match(cards[0].textContent, /운영시간 09:00~18:00/);
+    const tel = cards[0].querySelector("a.tel");
+    assert.ok(tel && tel.getAttribute("href") === "tel:03180450000");
+    assert.match(cards[1].textContent, /운영시간 확인 필요/);
+    assert.match(cards[1].textContent, /위치 확인 필요/);
+    assert.ok(!cards[1].querySelector("a.tel"), "전화 없는 곳엔 전화 버튼이 없다");
+    assert.match(cards[0].textContent, /출처: 행정안전부/);
+  });
+  $("sosTabs").querySelector("button[data-kind='repair']").dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(60);
+  check("수리 탭 — 결과 없음 문구", () => {
+    assert.match($("sosList").textContent, /근처에 등록된 수리센터이\(가\) 없습니다/);
+  });
+  $("sosTabs").querySelector("button[data-kind='toilet']").dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(60);
+  check("화장실 탭 — 장애인 화장실·비상벨·개방시간", () => {
+    const c = $("sosList").querySelector(".sos-card");
+    assert.ok(c);
+    assert.match(c.textContent, /시청 화장실/);
+    assert.match(c.textContent, /장애인 화장실 있음/);
+    assert.match(c.textContent, /비상벨/);
+    assert.match(c.textContent, /운영시간 24시간/);
+  });
+  $("sosTabs").querySelector("button[data-kind='charge']").dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(30);
+  const goBtn = [...$("sosList").querySelectorAll(".sos-acts button")][0];
+  goBtn.dispatchEvent(new window.Event("click"));
+  await sleep(80);
+  check("'여기로 안내' → 시트 닫고 좌표 목적지(building)로 경로 요청, reason=sos_charge", () => {
+    assert.equal($("sosSheet").hidden, true);
+    assert.match(lastPlanQuery || "", /destination_lat=37\.3943/);
+    assert.match(lastPlanQuery || "", /destination_type=building/);
+    assert.match(lastPlanQuery || "", /reason=sos_charge/);
+  });
+  check("경로 요약에 '경로 1km 안 충전 가능한 곳' 한 줄", () => {
+    assert.match($("naviSheetBody").textContent, /경로 1km 안에 충전 가능한 곳 2곳 — 가장 가까운 안양시청 \(경로에서 85m\)/);
+  });
+  // 상담(음성)에서 온 결과
+  const act = NAV.onUiAction({ action: "show_support", payload: { items: SUPPORT.items.concat([
+    { support_type: "calltaxi", type_label: "장애인콜택시", name: "경기도 광역이동지원센터", dist_m: 1500, tel: "1666-0420",
+      open_hours: "24시간", open_hours_status: "known", lat: 37.39, lng: 126.95 }]), types: "charge,calltaxi", base: { lat: 37.39, lng: 126.95 } } });
+  check("상담 결과 show_support → 이동 버튼 라벨 + 시트 데이터 준비(화면 강제 전환 없음)", () => {
+    assert.ok(act && /충전소 보기 \(3곳\)/.test(act.label), JSON.stringify(act));
+    assert.equal(NAV.sosItems().calltaxi.length, 1);
+  });
+  window.NAVI.showPreparedView();
+  await sleep(30);
+  check("이동 버튼을 누르면 시트가 열린다 · 콜택시 카드는 전화만(안내 없음)", () => {
+    assert.equal($("sosSheet").hidden, false);
+    $("sosTabs").querySelector("button[data-kind='calltaxi']").dispatchEvent(new window.Event("click", { bubbles: true }));
+    const c = $("sosList").querySelector(".sos-card");
+    assert.match(c.textContent, /1666-0420/);
+    assert.ok(!c.querySelector(".sos-acts button"), "콜택시는 '여기로 안내'가 없어야 한다");
+  });
+  check("긴급·편의 창도 가운데 팝업(sosPop) — 열리면 배경이 보인다", () => {
+    const pop = $("sosPop");
+    assert.ok(pop && pop.classList.contains("navi-pop"));
+    assert.equal($("sosSheet").parentElement, pop);
+    assert.equal(pop.hidden, false);
+  });
+  $("sosCancelBtn").dispatchEvent(new window.Event("click"));
+  check("닫기", () => { assert.equal($("sosSheet").hidden, true); assert.equal($("sosPop").hidden, true); });
+  $("naviSosBtn").dispatchEvent(new window.Event("click"));
+  $("sosPop").dispatchEvent(new window.Event("click"));
+  check("긴급·편의 — 배경을 누르면 닫힘 (#306)", () => { assert.equal($("sosPop").hidden, true); assert.equal($("sosSheet").hidden, true); });
+  $("naviSosBtn").dispatchEvent(new window.Event("click"));
+  $("naviReportBtn").dispatchEvent(new window.Event("click"));
+  check("긴급·편의가 열린 채 신고를 열면 긴급·편의 배경은 닫힌다", () => {
+    assert.equal($("sosPop").hidden, true); assert.equal($("reportPop").hidden, false);
+  });
+  $("reportCancelBtn").dispatchEvent(new window.Event("click"));
+  window.fetch = prevFetchS;
+}
+
+// ── 하차역 역 안/밖 안내 · 관리기관 전화 · 시설 내 화장실 (v1.50.0, #298 · 02 v1.27.0) ──
+{
+  const EG = { station: "관악", exit: { exit_no: "2", lat: 37.4189, lng: 126.9092, has_elevator: true, elevator: "(1F) 2번 출구 옆" },
+    platform: [{ kind: "lift", detail_loc: "1F(석수역 방향 상행승강장 계단 옆)", side: "arrival" }],
+    inside: ["내린 승강장 쪽에는 휠체어리프트만 있습니다 — 1F(석수역 방향 상행승강장 계단 옆). 역무원 호출이 필요할 수 있습니다",
+             "2번 출구 승강기로 나갑니다 — (1F) 2번 출구 옆"],
+    outside: "관악역 2번 출구 앞에서 도보 안내를 시작합니다. 다른 출구로 나오셨다면 경로를 다시 찾아 주세요",
+    question: "지금 역 안(승강장)에 계신가요, 역 밖으로 나오셨나요?" };
+  const EG_ROUTE = JSON.parse(JSON.stringify(MMROUTE.ui_action.route));
+  EG_ROUTE.route_id = "r_eg"; EG_ROUTE.mode = "walk_subway"; EG_ROUTE.low_floor = { mode: false };
+  EG_ROUTE.routes[0].legs = [
+    { kind: "walk", summary: { total_distance_m: 60, duration_sec: 50 }, to_label: "안양역 1번 출구" },
+    { kind: "subway", line: "1호선", board: { name: "안양" }, alight: { name: "관악" }, station_cnt: 1, warnings: [],
+      alight_exit: EG.exit, egress: EG },
+    { kind: "walk", summary: { total_distance_m: 1289, duration_sec: 1170 }, from_label: "관악역 2번 출구", to_label: "목적지" },
+  ];
+  EG_ROUTE.routes[0].steps = [
+    { idx: 0, maneuver: "depart", instruction: "안양역까지 60m 이동합니다.", distance_m: 60, coord: [37.3900, 126.9500], link_type: "sidewalk", warnings: [] },
+    { idx: 1, maneuver: "subway_board", instruction: "안양역에서 1호선에 승차합니다 — 1개 역 이동", distance_m: 2000, coord: [37.3903, 126.9503], link_type: "subway", warnings: [] },
+    { idx: 2, maneuver: "subway_alight", instruction: "관악역에서 하차합니다 — 2번 출구(승강기)로 나갑니다", distance_m: 0, coord: [37.3905, 126.9505], link_type: "subway", warnings: [], egress: EG },
+    { idx: 3, maneuver: "station_exit", instruction: "관악역 2번 출구입니다. 여기서부터 걸어서 이동합니다", distance_m: 0, coord: [37.3906, 126.9507], link_type: "walk", warnings: [], egress: EG },
+    { idx: 4, maneuver: "straight", instruction: "예술공원로를 따라 600m 이동합니다.", distance_m: 600, coord: [37.3907, 126.9509], link_type: "sidewalk", warnings: [] },
+    { idx: 5, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: [37.3909, 126.9511], link_type: null, warnings: [] },
+  ];
+  const NE = window.NAVI._internals();
+  NE.clearRouteDisplay(); NE.resetTrip();
+  NE.showRoute(JSON.parse(JSON.stringify(EG_ROUTE)), "");
+  await sleep(30);
+  check("경로 카드에 하차 출구와 리프트 경고가 보인다", () => {
+    const t = $("naviSheetBody").textContent;
+    assert.match(t, /하차 후 2번 출구\(승강기\)로 나갑니다/);
+    assert.match(t, /휠체어리프트만/);
+  });
+  check("하차 스텝 발화에 역 안/밖 질문이 붙는다", () => {
+    const u = window.NAVI._internals().stepUtterance(2);
+    assert.match(u, /하차합니다 — 2번 출구\(승강기\)로 나갑니다\. 지금 역 안\(승강장\)에 계신가요/);
+    assert.equal(window.NAVI._internals().stepUtterance(4), "예술공원로를 따라 600m 이동합니다.");
+  });
+  NE.startGuidance();
+  await sleep(30);
+  window.NAVI._internals().gotoStep(2);
+  await sleep(30);
+  const egBox = () => $("naviSheetBody").querySelector(".egress");
+  check("하차 스텝에 역 안/밖 선택 버튼", () => {
+    assert.ok(egBox(), "egress 상자 없음");
+    const btns = [...egBox().querySelectorAll("button[data-egress]")].map((b) => b.getAttribute("data-egress"));
+    assert.deepEqual(btns, ["inside", "outside"]);
+  });
+  spoken.length = 0;
+  egBox().querySelector("button[data-egress='inside']").dispatchEvent(new window.Event("click"));
+  await sleep(60);
+  check("'역 안' → 승강장·출구 승강기 순서 목록 + 음성, 응답 기록", () => {
+    const li = [...egBox().querySelectorAll("ol li")].map((x) => x.textContent);
+    assert.equal(li.length, 2);
+    assert.match(li[1], /^2번 출구 승강기로 나갑니다/);
+    assert.ok(egBox().querySelector("ol li.eg-warn"), "리프트 경고 강조 없음");
+    assert.equal(window.NAVI._internals().egressWhere()["관악:2"], "inside");
+    assert.ok(spoken.some((t) => /2번 출구 승강기로 나갑니다/.test(t)), JSON.stringify(spoken.slice(-3)));
+  });
+  egBox().querySelector("button[data-egress='exited']").dispatchEvent(new window.Event("click"));
+  await sleep(60);
+  check("'출구로 나왔어요' → 출구 스텝으로 이동, 출구 스텝에서는 다시 묻지 않는다", () => {
+    assert.equal(window.NAVI._internals().stepIdx, 3);
+    assert.equal(window.NAVI._internals().egressWhere()["관악:2"], "outside");
+    assert.match($("naviSheetBody").textContent, /관악역 2번 출구입니다/);
+    assert.equal(egBox(), null, "출구 스텝에 역 안/밖 질문이 다시 떴다");
+  });
+  window.NAVI._internals().gotoStep(2);
+  await sleep(30);
+  egBox().querySelector("button[data-egress='outside']").dispatchEvent(new window.Event("click"));
+  await sleep(60);
+  check("'역 밖' → 바로 출구 스텝(도보 안내)으로", () => {
+    assert.equal(window.NAVI._internals().stepIdx, 3);
+  });
+  // 관리기관 전화 · 시설 내 화장실 — 상담 결과(ui_action)로 시트에 싣는다
+  NE.onUiAction({ action: "show_support", payload: { types: "charge", items: [
+    { support_type: "charge", name: "만안구청", install_desc: "1층 로비", dist_m: 180, tel: "031-455-1313",
+      tel_owner: "manager", tel_owner_name: "온누리 부흥센터", open_hours: "평일 09:00-18:00", open_hours_status: "known",
+      lat: 37.3866, lng: 126.9324 } ] } });
+  NE.openSosSheet("charge");
+  await sleep(30);
+  check("충전기 전화는 '관리기관(이름)' 으로 표시", () => {
+    const a = $("sosList").querySelector("a.tel");
+    assert.ok(a, "전화 링크 없음");
+    assert.match(a.textContent, /관리기관\(온누리 부흥센터\) 031-455-1313/);
+  });
+  NE.onUiAction({ action: "show_toilets", payload: { items: [
+    { name: "김중업 건축박물관(옛 유유산업 공장) (시설 내 장애인화장실)", type: "시설 내 화장실", dist_m: 20,
+      accessible: true, dis_male_cnt: null, dis_female_cnt: null, open_time: "시설 운영시간 내",
+      facility_toilet: true, lat: 37.4178, lng: 126.9178 } ] } });
+  NE.openSosSheet("toilet");
+  await sleep(30);
+  check("시설 내 장애인화장실 표기", () => {
+    assert.match($("sosList").textContent, /시설 안 장애인 화장실\(시설 운영시간에 이용\)/);
+  });
+  $("sosCancelBtn").dispatchEvent(new window.Event("click"));
+}
+
+// ── 역에서 출발 — 역 안/밖 · 타고 온 방향 (v1.51.0, #300 · 02 v1.28.0) ──
+{
+  const NS = window.NAVI._internals();
+  const HINT = { station: "관악", distance_m: 40, question: "지금 관악역 안(승강장)에 계신가요, 역 밖에 계신가요?",
+    travel_question: "어느 쪽에서 열차를 타고 오셨나요?",
+    choices: [{ travel: "south", updown: "하행", label: "석수·서울 쪽에서 타고 왔어요" },
+              { travel: "north", updown: "상행", label: "안양·수원 쪽에서 타고 왔어요" }] };
+  const WALK = (id, extra) => Object.assign({
+    route_id: id, profile: "wheelchair_electric",
+    origin: { lat: 37.3900, lng: 126.9500 },
+    destination: { type: "tour", poi_id: "14792", lat: 37.3909, lng: 126.9511 },
+    routes: [{ summary: { total_distance_m: 1289, duration_sec: 1170, max_slope_deg: 5.6, stairs_cnt: 0, warnings: [] },
+      geometry: [[37.3900, 126.9500], [37.3905, 126.9505], [37.3909, 126.9511]],
+      steps: [
+        { idx: 0, maneuver: "depart", instruction: "예술공원로를 따라 600m 이동합니다.", distance_m: 600, coord: [37.3900, 126.9500], link_type: "sidewalk", warnings: [] },
+        { idx: 1, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: [37.3909, 126.9511], link_type: null, warnings: [] }] }],
+    fallback: {} }, extra || {});
+  const SEG = { station: "관악", travel: "south", question: null,
+    exit: { exit_no: "2", lat: 37.3901, lng: 126.9501, has_elevator: true, elevator: "(1F) 2번 출구 옆" },
+    inside: ["내린 승강장의 승강기로 이동합니다 — (1F) 안양역 방향 승강장 진행방향 앞쪽 끝",
+             "2번 출구 승강기로 나갑니다 — (1F) 2번 출구 옆"],
+    outside: "관악역 2번 출구 앞에서 도보 안내를 시작합니다." };
+  const START = WALK("r_st2", { station_start: { station: "관악", travel: "south", exit: SEG.exit, egress: SEG } });
+  START.routes[0].steps.unshift({ maneuver: "station_start", instruction: "관악역 안에서 출발합니다. 2번 출구(승강기)로 나간 뒤 걸어서 이동합니다",
+    distance_m: 0, coord: [37.3901, 126.9501], link_type: "walk", warnings: [], egress: SEG });
+  const prevFetchS2 = window.fetch;
+  const planUrls = [];
+  window.fetch = async (url, opt) => {
+    const u = String(url);
+    if (u.includes("/api/v1/tools/plan_accessible_route")) {
+      planUrls.push(decodeURIComponent(u));
+      return { ok: true, json: async () => ({ status: "success", mode_used: "walk", mode_label: "도보",
+        ui_action: { action: "show_route", route: JSON.parse(JSON.stringify(START)) } }) };
+    }
+    return prevFetchS2(url, opt);
+  };
+  NS.clearRouteDisplay(); NS.resetTrip(); NS.setHere({ lat: 37.3900, lng: 126.9500 });
+  NS.showRoute(WALK("r_st1", { station_nearby: HINT }), "김중업건축박물관");
+  await sleep(30);
+  check("역 근처 출발 — 경로 카드에 '안내 시작 때 묻는다' 안내", () => {
+    assert.match($("naviSheetBody").textContent, /관악역 근처에서 출발합니다/);
+    assert.equal(window.NAVI._internals().stationHint().station, "관악");
+  });
+  spoken.length = 0;
+  NS.startGuidance();
+  await sleep(30);
+  const askBox = () => $("stationAsk");
+  check("안내 시작 → 먼저 역 안/밖을 묻고 안내는 아직 시작하지 않는다", () => {
+    assert.ok(askBox(), "질문 상자 없음");
+    assert.equal(window.NAVI._internals().guiding(), false);
+    const b = [...askBox().querySelectorAll("button[data-station]")].map((x) => x.getAttribute("data-station"));
+    assert.deepEqual(b, ["inside", "outside"]);
+    assert.ok(spoken.some((t) => /관악역 안\(승강장\)에 계신가요/.test(t)), JSON.stringify(spoken.slice(-2)));
+  });
+  askBox().querySelector("button[data-station='inside']").dispatchEvent(new window.Event("click"));
+  await sleep(20);
+  check("'역 안' → 타고 온 방향 선택지(두 방향 + 모름)", () => {
+    const t = [...askBox().querySelectorAll("button[data-travel]")].map((x) => x.getAttribute("data-travel"));
+    assert.deepEqual(t, ["south", "north", ""]);
+    assert.match(askBox().textContent, /석수·서울 쪽에서 타고 왔어요 \(하행\)/);
+    assert.equal(planUrls.length, 0, "방향을 고르기 전에 다시 요청하면 안 된다");
+  });
+  askBox().querySelector("button[data-travel='south']").dispatchEvent(new window.Event("click"));
+  await sleep(80);
+  check("방향 선택 → origin_station·origin_travel 로 다시 요청", () => {
+    assert.equal(planUrls.length, 1);
+    assert.match(planUrls[0], /origin_station=관악/);
+    assert.match(planUrls[0], /origin_travel=south/);
+    assert.match(planUrls[0], /reason=station_inside/);
+  });
+  check("새 경로로 곧바로 안내 시작 — 첫 스텝은 승강장 → 출구 승강기 목록", () => {
+    const I = window.NAVI._internals();
+    assert.equal(I.guiding(), true);
+    assert.equal(I.stepIdx, 0);
+    const li = [...$("naviSheetBody").querySelectorAll(".egress ol li")].map((x) => x.textContent);
+    assert.equal(li.length, 2);
+    assert.match(li[0], /안양역 방향 승강장 진행방향 앞쪽 끝/);
+    assert.equal(I.egressWhere()["관악:2"], "inside");
+    assert.equal(I.stationHint(), null);
+    assert.match(I.stepUtterance(0), /관악역 안에서 출발합니다.*내린 승강장의 승강기로 이동합니다.*2번 출구 승강기로 나갑니다/);
+  });
+  NS.setHere({ lat: 37.3901, lng: 126.9501 }); NS.advanceStep(); await sleep(10);
+  check("역 안 스텝은 위치로 넘어가지 않는다(버튼으로만)", () => assert.equal(window.NAVI._internals().stepIdx, 0));
+  $("naviSheetBody").querySelector(".egress button[data-egress='exited']").dispatchEvent(new window.Event("click"));
+  await sleep(40);
+  check("'출구로 나왔어요' → 도보 안내로", () => {
+    const I = window.NAVI._internals();
+    assert.equal(I.stepIdx, 1);
+    assert.equal(I.egressWhere()["관악:2"], "outside");
+  });
+  // 역 밖 — 바로 안내를 시작하고 같은 목적지에서는 다시 묻지 않는다
+  NS.clearRouteDisplay(); NS.resetTrip();
+  planUrls.length = 0;
+  NS.showRoute(WALK("r_st3", { station_nearby: HINT, destination: { type: "tour", poi_id: "17245", lat: 37.39, lng: 126.95 } }), "안양아트센터");
+  await sleep(20);
+  NS.startGuidance(); await sleep(20);
+  askBox().querySelector("button[data-station='outside']").dispatchEvent(new window.Event("click"));
+  await sleep(30);
+  check("'역 밖' → 다시 요청 없이 안내 시작", () => {
+    const I = window.NAVI._internals();
+    assert.equal(I.guiding(), true);
+    assert.equal(I.stepIdx, 0);
+    assert.equal(planUrls.length, 0);
+    assert.equal(I.stationHint(), null);
+  });
+  NS.showRoute(WALK("r_st4", { station_nearby: HINT, destination: { type: "tour", poi_id: "17245", lat: 37.39, lng: 126.95 } }), "안양아트센터");
+  await sleep(20);
+  check("같은 역·같은 목적지 재탐색에서는 다시 묻지 않는다", () => assert.equal(window.NAVI._internals().stationHint(), null));
+  // 음성으로 온 좌표 목적지 경로 — 이전 여행의 tripDest 로 재요청하면 안 된다 (리뷰 #1)
+  NS.resetTrip(); NS.clearRouteDisplay(); planUrls.length = 0;
+  NS.showRoute(WALK("r_old", { destination: { type: "tour", poi_id: "17245", lat: 37.39, lng: 126.95 } }), "안양아트센터");
+  await sleep(10);
+  NS.onUiAction({ action: "show_route", payload: { route: WALK("r_voice", { station_nearby: HINT,
+    destination: { type: "coord", lat: 37.4183, lng: 126.9183 } }) } });
+  await sleep(20);
+  NS.startGuidance(); await sleep(20);
+  askBox().querySelector("button[data-station='inside']").dispatchEvent(new window.Event("click"));
+  await sleep(10);
+  askBox().querySelector("button[data-travel='']").dispatchEvent(new window.Event("click"));
+  await sleep(80);
+  check("음성 좌표 경로의 역 안 재요청은 그 경로의 목적지로(이전 목적지 아님), 방향 모름은 빈 값", () => {
+    assert.equal(planUrls.length, 1);
+    assert.match(planUrls[0], /destination_lat=37\.4183/);
+    assert.doesNotMatch(planUrls[0], /destination_poi_id=17245/);
+    assert.match(planUrls[0], /origin_travel=(&|$)/);
+  });
+  // 역 안 출발 경로를 보는 중 프로필을 바꾸면 역 안 출발을 유지한다 (리뷰 #2)
+  planUrls.length = 0;
+  NS.setWheelProfile(NS.wheelProfile() === "wheelchair_electric" ? "wheelchair_manual" : "wheelchair_electric");
+  await sleep(80);
+  check("역 안 출발 경로에서 재탐색해도 origin_station 을 유지", () => {
+    assert.equal(planUrls.length, 1);
+    assert.match(planUrls[0], /origin_station=관악/);
+  });
+  NS.setWheelProfile("wheelchair_electric"); await sleep(60);
+  NS.resetTrip(); NS.clearRouteDisplay();
+  window.fetch = prevFetchS2;
+}
+
+// ── 손을 쓰지 않고 역을 나서기 (v1.52.0) — 말·위치로 역 안/밖·출구 확인 ──
+{
+  const NH = window.NAVI._internals();
+  const AREA = [[[37.3897, 126.9497], [37.3897, 126.9500], [37.3900, 126.9500], [37.3900, 126.9497], [37.3897, 126.9497]]];
+  const EG = { station: "관악", travel: "south", question: null, area: AREA,
+    exit: { exit_no: "2", lat: 37.3901, lng: 126.9501, has_elevator: true, elevator: "(1F) 2번 출구 옆" },
+    inside: ["내린 승강장의 승강기로 이동합니다 — (1F) 안양역 방향 승강장 진행방향 앞쪽 끝",
+             "2번 출구 승강기로 나갑니다 — (1F) 2번 출구 옆"],
+    outside: "관악역 2번 출구 앞에서 도보 안내를 시작합니다." };
+  const ST_ROUTE = (id) => ({
+    route_id: id, profile: "wheelchair_electric",
+    origin: { lat: 37.3901, lng: 126.9501, label: "관악역 2번 출구" },
+    destination: { type: "tour", poi_id: "14792", lat: 37.3909, lng: 126.9511 },
+    station_start: { station: "관악", travel: "south", exit: EG.exit, egress: EG },
+    routes: [{ summary: { total_distance_m: 1289, duration_sec: 1170, max_slope_deg: 5.6, stairs_cnt: 0, warnings: [] },
+      geometry: [[37.3901, 126.9501], [37.3905, 126.9506], [37.3909, 126.9511]],
+      steps: [
+        { idx: 0, maneuver: "station_start", instruction: "관악역 안에서 출발합니다. 2번 출구(승강기)로 나간 뒤 걸어서 이동합니다",
+          distance_m: 0, coord: [37.3901, 126.9501], link_type: "walk", warnings: [], egress: EG },
+        { idx: 1, maneuver: "depart", instruction: "예술공원로를 따라 600m 이동합니다.", distance_m: 600, coord: [37.3901, 126.9501], link_type: "sidewalk", warnings: [] },
+        { idx: 2, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: [37.3909, 126.9511], link_type: null, warnings: [] }] }],
+    fallback: {} });
+  const sent = [];
+  const fakeWs = { readyState: 1, send: (m) => sent.push(JSON.parse(m)) };
+  const lastNav = () => [...sent].reverse().find((m) => m.type === "nav_state");
+  const begin = async (id) => {
+    NH.clearRouteDisplay(); NH.resetTrip(); NH.setHere({ lat: 37.3901, lng: 126.9501 });
+    NH.showRoute(ST_ROUTE(id), "김중업건축박물관"); await sleep(20);
+    NH.startGuidance(); await sleep(20);
+  };
+  const fix = (lat, lng, acc) => { NH.setHere({ lat, lng }); NH.setFixAcc(acc == null ? 8 : acc); NH.maybeAutoExit(); };
+  NH.setExitGap(0, 0);
+
+  // 음성 세션이 없을 때와 있을 때 안내 문장
+  NH.setWs(null);
+  await begin("r_hf0");
+  check("음성 세션 없음 — 버튼 안내 + '걷기 시작하면 이어서 안내'", () => {
+    const u = window.NAVI._internals().stepUtterance(0);
+    assert.match(u, /출구로 나오시면 화면의 버튼을 눌러 주세요/);
+    assert.match(u, /걷기 시작하시면 이어서 안내해 드려요/);
+    assert.doesNotMatch(u, /말씀하시거나/);
+  });
+  NH.setWs(fakeWs);
+  await begin("r_hf1");
+  check("음성 세션 있음 — '나왔어요'라고 말해도 된다고 알린다", () => {
+    const u = window.NAVI._internals().stepUtterance(0);
+    assert.match(u, /출구 밖으로 나오시면 말씀해 주시거나 화면의 버튼/);
+    assert.doesNotMatch(u, /나왔어요|나왔어/, "답할 말을 인용하면 스피커 소리가 답으로 인식될 수 있다");
+  });
+  check("세션에 출구 대기 상태(station_wait=exit)를 알린다", () => {
+    const n = lastNav(); assert.ok(n, "nav_state 없음");
+    assert.equal(n.station_wait.kind, "exit");
+    assert.equal(n.station_wait.station, "관악");
+  });
+
+  // 승강장이 걷는 경로와 나란히 있는 역 — 승강장 위 GPS 가 경로선 가까이 찍혀도 역 밖으로 보지 않는다
+  {
+    const r = ST_ROUTE("r_hfA");
+    const A2 = [[[37.3903, 126.9503], [37.3903, 126.9505], [37.3906, 126.9508], [37.3906, 126.9506], [37.3903, 126.9503]]];
+    r.station_start.egress = Object.assign({}, EG, { area: A2 });
+    r.routes[0].steps[0].egress = r.station_start.egress;
+    NH.clearRouteDisplay(); NH.resetTrip(); NH.setHere({ lat: 37.3901, lng: 126.9501 });
+    NH.showRoute(r, "김중업건축박물관"); await sleep(20); NH.startGuidance(); await sleep(20);
+    fix(37.3904, 126.95048); fix(37.3904, 126.95049); fix(37.3904, 126.95050);
+    check("승강장 윤곽 위(출구 30m 밖·경로선 가까이)는 역 밖으로 보지 않는다", () => assert.equal(window.NAVI._internals().stepIdx, 0));
+    await begin("r_hf1b");
+  }
+  // 위치 — 출구 앞·승강장 옆·부정확한 점은 넘어가지 않는다
+  fix(37.3901, 126.9501); fix(37.3901, 126.9501); fix(37.3901, 126.9501);
+  check("출구 바로 앞은 역 밖으로 보지 않는다", () => assert.equal(window.NAVI._internals().stepIdx, 0));
+  fix(37.38985, 126.94985); fix(37.38985, 126.94985); fix(37.38985, 126.94985);
+  check("승강장 윤곽 옆(출구에서 30m 이상이어도)은 역 밖으로 보지 않는다", () => assert.equal(window.NAVI._internals().stepIdx, 0));
+  fix(37.3904, 126.95048, 60); fix(37.3904, 126.95048, 60); fix(37.3904, 126.95048, 26);
+  check("정확도가 나쁜 점(60m·26m)은 세지 않는다", () => {
+    assert.equal(window.NAVI._internals().stepIdx, 0);
+    assert.equal(window.NAVI._internals().exitFix(), 0);
+  });
+  fix(37.3904, 126.95048); fix(37.3904, 126.95049);
+  check("경로를 따라 출구에서 약 45m — 두 번으로는 넘어가지 않는다", () => {
+    assert.equal(window.NAVI._internals().stepIdx, 0);
+    assert.equal(window.NAVI._internals().exitFix(), 2);
+  });
+  spoken.length = 0;
+  fix(37.3904, 126.95050);
+  await sleep(10);
+  check("두 번 연속 — 도보 안내로 넘어가고 그 사실을 말한다", () => {
+    const I = window.NAVI._internals();
+    assert.equal(I.stepIdx, 1);
+    assert.equal(I.egressWhere()["관악:2"], "outside");
+    assert.ok(spoken.some((t) => /역 밖으로 나오신 것 같아 걸어서 안내를 시작할게요/.test(t)), JSON.stringify(spoken.slice(-2)));
+    assert.ok($("naviSheetBody").querySelector("button[data-egress='undo-exit']"), "되돌리기 버튼 없음");
+    assert.equal(I.stationWait().kind, "undo");
+  });
+  $("naviSheetBody").querySelector("button[data-egress='undo-exit']").dispatchEvent(new window.Event("click"));
+  await sleep(10);
+  check("'아직 역 안이에요' → 역 안 안내로 되돌린다", () => {
+    const I = window.NAVI._internals();
+    assert.equal(I.stepIdx, 0);
+    assert.equal(I.egressWhere()["관악:2"], "inside");
+    assert.equal(I.stationWait().kind, "exit");
+  });
+  fix(37.3904, 126.95048); fix(37.3904, 126.95049); fix(37.3904, 126.95050);
+  check("되돌린 뒤에는 같은 역에서 위치로 다시 넘기지 않는다(말·버튼으로만)", () => assert.equal(window.NAVI._internals().stepIdx, 0));
+
+  // 말 — 나가는 중이면 그대로, 나왔다면 넘어간다
+  NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "exiting" } });
+  await sleep(10);
+  check("말: '나가는 중이야' → 그대로 기다린다", () => assert.equal(window.NAVI._internals().stepIdx, 0));
+  NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "outside" } });
+  await sleep(10);
+  check("말: '나왔어' → 도보 안내로(되돌리기 버튼 없음)", () => {
+    const I = window.NAVI._internals();
+    assert.equal(I.stepIdx, 1);
+    assert.equal(I.egressWhere()["관악:2"], "outside");
+    assert.equal($("naviSheetBody").querySelector("button[data-egress='undo-exit']"), null);
+  });
+  NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "outside" } });
+  await sleep(10);
+  check("기다리는 것이 없을 때의 말은 화면을 건드리지 않는다", () => assert.equal(window.NAVI._internals().stepIdx, 1));
+
+  // 말 — 안내 시작 때의 역 안/밖 질문
+  const HINT2 = { station: "관악", distance_m: 0, basis: "platform", question: "지금 관악역 안(승강장)에 계신가요, 역 밖에 계신가요?",
+    travel_question: "어느 쪽에서 열차를 타고 오셨나요?",
+    choices: [{ travel: "south", updown: "하행", label: "석수·서울 쪽에서 타고 왔어요" },
+              { travel: "north", updown: "상행", label: "안양·수원 쪽에서 타고 왔어요" }] };
+  const WALK2 = { route_id: "r_hf2", profile: "wheelchair_electric", origin: { lat: 37.3900, lng: 126.9500 },
+    destination: { type: "tour", poi_id: "99001", lat: 37.3909, lng: 126.9511 }, station_nearby: HINT2,
+    routes: [{ summary: { total_distance_m: 600, duration_sec: 540, max_slope_deg: 3, stairs_cnt: 0, warnings: [] },
+      geometry: [[37.3900, 126.9500], [37.3909, 126.9511]],
+      steps: [{ idx: 0, maneuver: "depart", instruction: "앞으로 이동합니다.", distance_m: 600, coord: [37.3900, 126.9500], warnings: [] },
+              { idx: 1, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: [37.3909, 126.9511], warnings: [] }] }],
+    fallback: {} };
+  NH.clearRouteDisplay(); NH.resetTrip(); NH.setHere({ lat: 37.3900, lng: 126.9500 });
+  NH.showRoute(JSON.parse(JSON.stringify(WALK2)), "테스트 목적지"); await sleep(20);
+  spoken.length = 0;
+  NH.startGuidance(); await sleep(20);
+  check("안내 시작 질문 — 말로도 답할 수 있다고 알리고, 세션에 ask_station 과 선택지를 보낸다", () => {
+    assert.ok(spoken.some((t) => /말씀하시거나 화면에서 골라 주세요/.test(t)), JSON.stringify(spoken.slice(-2)));
+    const n = lastNav();
+    assert.equal(n.station_wait.kind, "ask_station");
+    assert.deepEqual(n.station_wait.choices.map((c) => c.travel), ["south", "north"]);
+  });
+  NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "inside" } });
+  await sleep(10);
+  check("말: '역 안이야'(방향 없음) → 타고 온 방향 선택지를 연다", () => {
+    const t = [...$("stationAsk").querySelectorAll("button[data-travel]")].map((x) => x.getAttribute("data-travel"));
+    assert.deepEqual(t, ["south", "north", ""]);
+    assert.equal(window.NAVI._internals().guiding(), false);
+  });
+  NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "outside" } });
+  await sleep(20);
+  check("말: '역 밖이야' → 다시 묻지 않고 안내 시작", () => {
+    const I = window.NAVI._internals();
+    assert.equal(I.guiding(), true);
+    assert.equal(I.stationHint(), null);
+  });
+  // ── v1.52.1 교차검토 반영 ──
+  // 넘어간 측위에서 다음 단계까지 건너뛰지 않는다 — 출구 뒤 첫 구간이 짧은 경로
+  {
+    const r = ST_ROUTE("r_hfB");
+    r.routes[0].steps.splice(2, 0, { idx: 2, maneuver: "turn", instruction: "오른쪽으로 돕니다.", distance_m: 0, coord: [37.3904, 126.95049], warnings: [] });
+    NH.clearRouteDisplay(); NH.resetTrip(); NH.setHere({ lat: 37.3901, lng: 126.9501 });
+    NH.showRoute(r, "김중업건축박물관"); await sleep(20); NH.startGuidance(); await sleep(20);
+    const wfix = (lat, lng) => { NH.setHere({ lat, lng }); NH.setFixAcc(8); if (!NH.maybeAutoExit()) NH.advanceStep(); };
+    wfix(37.3904, 126.95048); wfix(37.3904, 126.95049); wfix(37.3904, 126.95050);
+    await sleep(10);
+    check("위치로 나선 측위에서는 다음 단계 판정을 쉰다 — 1단계만 넘어가고 되돌리기 유지", () => {
+      const I = window.NAVI._internals();
+      assert.equal(I.stepIdx, 1);
+      assert.equal(I.undoExitOpen(), true);
+    });
+    wfix(37.3904, 126.95050); await sleep(10);
+    check("넘어간 직후 4초는 다음 단계로 넘기지 않는다(쿨다운)", () => assert.equal(window.NAVI._internals().stepIdx, 1));
+    NH.setAdvanceTs(0);
+    wfix(37.3904, 126.95050); await sleep(10);
+    check("그다음 측위에서 다음 단계로 가도 되돌리기는 남는다(두 단계까지)", () => {
+      const I = window.NAVI._internals();
+      assert.equal(I.stepIdx, 2);
+      assert.equal(I.undoExitOpen(), true);
+    });
+    NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "exiting" } });
+    await sleep(10);
+    check("되돌리기 대기 중 '나가는 중이야' → 역 안 안내로(서버 지시와 같은 동작)", () => assert.equal(window.NAVI._internals().stepIdx, 0));
+  }
+  // 승강장 윤곽이 없는 역은 위치로 넘기지 않는다
+  {
+    const r = ST_ROUTE("r_hfC");
+    r.station_start.egress = Object.assign({}, EG, { area: [] });
+    r.routes[0].steps[0].egress = r.station_start.egress;
+    NH.clearRouteDisplay(); NH.resetTrip(); NH.setHere({ lat: 37.3901, lng: 126.9501 });
+    NH.showRoute(r, "김중업건축박물관"); await sleep(20); NH.startGuidance(); await sleep(20);
+    fix(37.3904, 126.95048); fix(37.3904, 126.95049); fix(37.3904, 126.95050); fix(37.3905, 126.95060);
+    check("승강장 윤곽 없는 역(지하역) — 위치로 넘기지 않는다", () => assert.equal(window.NAVI._internals().stepIdx, 0));
+    NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "outside" } });
+    await sleep(10);
+    check("…말로는 넘어간다", () => assert.equal(window.NAVI._internals().stepIdx, 1));
+  }
+  // 방금 누른 뒤 늦게 도착한 말 답은 무시
+  {
+    NH.clearRouteDisplay(); NH.resetTrip(); NH.setHere({ lat: 37.3900, lng: 126.9500 });
+    NH.showRoute(JSON.parse(JSON.stringify(WALK2)), "테스트 목적지"); await sleep(20);
+    NH.startGuidance(); await sleep(20);
+    NH.setTap("inside", Date.now());
+    NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "outside" } });
+    await sleep(20);
+    check("방금 '역 안'을 누른 뒤 도착한 '역 밖' 말 답은 덮어쓰지 않는다", () => {
+      const I = window.NAVI._internals();
+      assert.equal(I.guiding(), false);
+      assert.ok($("stationAsk"));
+    });
+    NH.setTap(null, 0);
+    spoken.length = 0;
+    NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "inside" } });
+    await sleep(20);
+    check("말로 '역 안이야' → 방향 선택지는 열되 화면 음성은 내지 않는다(상담원이 묻는다)", () => {
+      assert.ok($("stationTravel"));
+      assert.ok(!spoken.some((t) => /어느 쪽에서 열차를/.test(t)), JSON.stringify(spoken));
+    });
+    // 손으로 '역 안'을 누르고 방향은 말로 — 방금 누른 직후라도 방향 답은 받는다
+    const prevF = window.fetch; const urls = [];
+    window.fetch = async (url, opt) => { const u = String(url);
+      if (u.includes("/api/v1/tools/plan_accessible_route")) { urls.push(decodeURIComponent(u));
+        return { ok: true, json: async () => ({ status: "success", mode_used: "walk", mode_label: "도보", ui_action: { action: "show_route", route: ST_ROUTE("r_hfD") } }) }; }
+      return prevF(url, opt); };
+    NH.setTap("inside", Date.now());
+    NH.onUiAction({ type: "ui_action", action: "station_position", payload: { where: "inside", travel: "south" } });
+    await sleep(80);
+    check("누른 직후라도 말로 한 방향 답(서울 쪽)은 받는다 → 역 안 출발로 다시 요청", () => {
+      assert.equal(urls.length, 1);
+      assert.match(urls[0], /origin_travel=south/);
+    });
+    window.fetch = prevF; NH.setTap(null, 0);
+  }
+  // 출구 앞 짧은 단계를 GPS 가 연달아 지나도 출구 80m 안이면 되돌리기가 남는다
+  {
+    const r = ST_ROUTE("r_hfE");
+    r.routes[0].steps.splice(2, 0,
+      { idx: 2, maneuver: "turn", instruction: "오른쪽으로 돕니다.", distance_m: 0, coord: [37.3904, 126.95049], warnings: [] },
+      { idx: 3, maneuver: "turn", instruction: "왼쪽으로 돕니다.", distance_m: 0, coord: [37.39045, 126.95055], warnings: [] });
+    NH.clearRouteDisplay(); NH.resetTrip(); NH.setHere({ lat: 37.3901, lng: 126.9501 });
+    NH.showRoute(r, "김중업건축박물관"); await sleep(20); NH.startGuidance(); await sleep(20);
+    const wfix = (lat, lng) => { NH.setHere({ lat, lng }); NH.setFixAcc(8); if (!NH.maybeAutoExit()) NH.advanceStep(); };
+    wfix(37.3904, 126.95048); wfix(37.3904, 126.95049); wfix(37.3904, 126.95050);
+    NH.setAdvanceTs(0); wfix(37.3904, 126.95050);
+    NH.setAdvanceTs(0); wfix(37.39046, 126.95056);
+    await sleep(10);
+    check("세 단계 넘어가도 출구 80m 안이면 되돌리기 유지", () => {
+      const I = window.NAVI._internals();
+      assert.ok(I.stepIdx >= 3, "stepIdx=" + I.stepIdx);
+      assert.equal(I.undoExitOpen(), true);
+    });
+  }
+  NH.setWs(null); NH.setExitGap(2000, 8000);
+  NH.resetTrip(); NH.clearRouteDisplay();
+}
+
+// ── 주변 랜드마크 안내 (#308, 02 v1.30.0) ──
+{
+  const LM = window.NAVI._internals();
+  const lon = (m) => 126.95 + m / (111320 * Math.cos(37.39 * Math.PI / 180));
+  const geom = []; for (let m = 0; m <= 900; m += 300) geom.push([37.39, lon(m)]);   // 꼭짓점이 드문 900m 직선
+  const LMR = { route_id: "r_lm", routes: [{ summary: { total_distance_m: 900, duration_sec: 800, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+    geometry: geom,
+    steps: [{ idx: 0, maneuver: "depart", instruction: "예술공원로를 따라 900m 이동합니다.", distance_m: 900, coord: geom[0], warnings: [] },
+            { idx: 1, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: geom[3], warnings: [] }],
+    landmarks: [
+      { kind: "facility", name: "만안구보건소", along_m: 700, side: "left", speech: "왼쪽에 만안구보건소가 있습니다" },
+      { kind: "bus_stop", name: "만안구청", along_m: 200, side: "right", speech: "오른쪽에 만안구청 정류장이 있습니다" },
+      { kind: "facility", name: "퍼스트힐", along_m: 450, side: "right", speech: "오른쪽에 퍼스트힐이 있습니다" },
+      { kind: "facility", name: "도착직전", along_m: 880, side: "right", speech: "오른쪽에 도착직전이 있습니다" } ] }] };
+  LM.clearRouteDisplay(); LM.resetTrip(); LM.setHere({ lat: 37.39, lng: lon(0) });
+  LM.showRoute(LMR, "시험 목적지"); await sleep(20);
+  check("랜드마크를 진행거리 순으로 싣는다", () => {
+    assert.deepEqual(window.NAVI._internals().landmarks().map((x) => x.along_m), [200, 450, 700, 880]);
+  });
+  check("긴 직선(꼭짓점 300m 간격)에서도 진행거리를 선분 투영으로 잰다", () => {
+    const a = LM.alongOnRoute({ lat: 37.39, lng: lon(185) });
+    assert.ok(Math.abs(a - 185) < 2, "along=" + a);
+  });
+  LM.startGuidance(); await sleep(20); LM.stopSpeak();
+  const at = (m) => { LM.setHere({ lat: 37.39, lng: lon(m) }); LM.advanceStep(); };
+  let base = spoken.length;
+  at(150);
+  check("랜드마크 30m 앞보다 멀면 아직 말하지 않는다", () => assert.ok(!spoken.slice(base).some((t) => /만안구청/.test(t))));
+  at(180); await sleep(10);
+  check("지나기 직전(30m 안)에 한 번 말한다", () => assert.ok(spoken.slice(base).some((t) => t === "오른쪽에 만안구청 정류장이 있습니다"), JSON.stringify(spoken.slice(base))));
+  LM.stopSpeak(); base = spoken.length;
+  at(190); await sleep(10);
+  check("같은 랜드마크는 다시 말하지 않는다", () => assert.ok(!spoken.slice(base).some((t) => /만안구청/.test(t))));
+  at(435); await sleep(10);
+  check("앞 랜드마크 뒤 30초 안이면 다음 것을 미룬다", () => assert.ok(!spoken.slice(base).some((t) => /퍼스트힐/.test(t))));
+  LM.stopSpeak(); LM.setLmLastTs(0);
+  at(470); await sleep(5);                      // 측위 튐 — 한 번 창을 넘었다가
+  at(440); await sleep(10);                     // 돌아오면 아직 말할 수 있다
+  check("30초가 지나면 창 안의 다음 랜드마크를 말한다", () => assert.ok(spoken.slice(base).some((t) => /퍼스트힐/.test(t))));
+  LM.stopSpeak(); LM.setLmLastTs(0); base = spoken.length;
+  at(760); await sleep(10);
+  check("이미 지나친 랜드마크(700m)는 뒤늦게 말하지 않는다", () => assert.ok(!spoken.slice(base).some((t) => /만안구보건소/.test(t))));
+  LM.stopSpeak(); LM.setLmLastTs(0); base = spoken.length;
+  at(870); await sleep(10);
+  check("다음 안내 지점(도착) 40m 안에서는 랜드마크를 말하지 않는다", () => assert.ok(!spoken.slice(base).some((t) => /도착직전/.test(t))));
+  // 이탈 재탐색 자동 재개 — 말한 목록·시간 간격을 잇는다
+  LM.setLmKeepOnStart(true); LM.showRoute(LMR, "시험 목적지"); await sleep(10); LM.startGuidance(); await sleep(10); LM.stopSpeak();
+  base = spoken.length; LM.setLmLastTs(0);
+  at(185); await sleep(10);
+  check("재탐색 자동 재개 뒤에는 이미 말한 랜드마크를 다시 말하지 않는다", () => {
+    assert.ok(!spoken.slice(base).some((t) => /만안구청/.test(t)), JSON.stringify(spoken.slice(base)));
+    assert.equal(window.NAVI._internals().lmDone()["만안구청@4"], "spoken");
+  });
+  LM.stopSpeak(); LM.startGuidance(); await sleep(10); LM.stopSpeak(); LM.setLmLastTs(0); base = spoken.length;
+  at(185); await sleep(10);
+  check("사용자가 새로 안내를 시작하면 처음부터 다시 말한다", () => assert.ok(spoken.slice(base).some((t) => /만안구청/.test(t))));
+  LM.stopSpeak(); LM.resetTrip(); LM.clearRouteDisplay();
+  check("경로를 지우면 랜드마크도 비운다", () => assert.equal(window.NAVI._internals().landmarks().length, 0));
 }
 
 // ── 결과 ──

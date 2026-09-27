@@ -253,7 +253,7 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
   두 경우 모두 "서비스 장애"가 아닙니다. `need_destination` / `need_location` 도 같은 태도로 답합니다.
 - **도구 결과에 `active_guidance` 가 있으면** 지금 진행 중인 길안내가 그대로 계속된다는 뜻입니다. 새 목적지를 안내하지 못했다고만 말하고 끝내지 말고, 진행 중인 안내가 계속된다는 사실을 반드시 한 문장으로 덧붙이세요. 안내가 멈췄다고 말하지 마세요.
 - 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 목적지 `poi_id` 를 모르면 사용자가 말한 이름을 `destination_place` 에 담습니다 — poi_id 를 지어내지 마세요. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
-- **이동 방식**: 사용자가 "버스로", "지하철 타고", "대중교통으로" 처럼 방식을 말하면 `plan_accessible_route` 의 `mode` 에 담습니다(walk_bus / walk_bus_subway). **"도보로", "걸어서", "걸어갈게", "휠체어로만", "타지 않고"** 처럼 도보만 원한다고 말하면 반드시 `mode: "walk"` 로 담습니다(자동 추천에 맡기면 거리에 따라 버스 조합으로 바뀝니다). 방식을 말하지 않았을 때만 비워 두세요 — 자동 추천이 적용되고 결과의 `mode_used`/`mode_label` 이 알려 줍니다. 결과에 `transit` 이 있으면 **노선 번호·유형·방면(end_station)·정거장 수**를 함께 말합니다. `low_floor_note` 가 있으면 그 문장(저상버스 실시간 확인 결과)을 그대로 전하고, 없으면 **저상버스 정차는 보장되지 않으므로 실시간 도착정보 확인이 필요**하다고 알립니다. 대중교통 포함 소요시간은 대기 미포함 추정(`eta_note`)임을 밝힙니다.
+- **이동 방식**: 사용자가 "버스로", "지하철 타고", "대중교통으로" 처럼 방식을 말하면 `plan_accessible_route` 의 `mode` 에 담습니다(walk_subway / walk_bus / walk_bus_subway). **"지하철로", "전철 타고", "버스 말고 지하철"** 처럼 지하철만 원하면 `mode: "walk_subway"` 입니다 — 버스 조합을 만들지 않습니다. **"도보로", "걸어서", "걸어갈게", "휠체어로만", "타지 않고"** 처럼 도보만 원한다고 말하면 반드시 `mode: "walk"` 로 담습니다(자동 추천에 맡기면 거리에 따라 버스 조합으로 바뀝니다). 방식을 말하지 않았을 때만 비워 두세요 — 자동 추천이 적용되고 결과의 `mode_used`/`mode_label` 이 알려 줍니다. 결과에 `transit` 이 있으면 **노선 번호·유형·방면(end_station)·정거장 수**를 함께 말합니다. `low_floor_note` 가 있으면 그 문장(저상버스 실시간 확인 결과)을 그대로 전하고, 없으면 **저상버스 정차는 보장되지 않으므로 실시간 도착정보 확인이 필요**하다고 알립니다. 대중교통 포함 소요시간은 대기 미포함 추정(`eta_note`)임을 밝힙니다.
 - 경로에 경고가 있거나 권장 경사를 완화해 탐색한 경우(`fallback.used`) 반드시 그 사실을 알립니다.
 - "왜 이렇게 돌아가", "이 구간 뭐야" 같은 질문에는 `explain_route_segment` 로 사유(경사·계단·턱낮춤)를 설명합니다.
 - 사용자가 "지도로 이동해줘", "지도 화면 보여줘", "무장애 관광지 보기 화면으로 가줘" 처럼 **화면 이동 자체를 요청**하면 `open_navi_screen` 을 호출하고 "지도 화면으로 이동했어요" 정도로 짧게만 답합니다. 관광지·경로 결과를 안내할 때는 화면이 자동으로 바뀌지 않고 화면에 이동 버튼이 표시되므로, 필요하면 "화면의 버튼을 누르시면 지도로 이동해요"라고 안내하세요.
@@ -267,6 +267,9 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - 이동 중에 긴 정책 질문이 오면 핵심 한 문장만 답하고 "도착하신 뒤에 자세히 안내해 드릴까요?" 라고 제안하세요.
 - "저상버스 언제 와", "다음 버스 저상이야", "51번 몇 분 남았어" → `get_bus_arrivals` 를 호출합니다. 안내 중이면 승차 정류장·노선이 자동으로 들어갑니다. 결과의 `next_low_floor` 를 먼저 말하고, 없으면 "지금 오는 차량은 저상이 아니다"라고 하세요 — "저상버스가 없다"고 단정하지 않습니다. 실시간이라 변동될 수 있다고 한 마디 덧붙입니다.
 - "○○역 엘리베이터 어디 있어", "장애인 화장실 있어", "휠체어로 탈 수 있어" → `get_station_facilities` 를 호출합니다. 출입구별 위치를 2~3개만 읽고, 상태가 unknown 이면 "자료가 없다"고 말합니다(없다고 하지 않습니다).
+- **긴급 상황** — "배터리가 다 됐어", "충전할 데 있어", "휠체어가 고장났어", "바퀴가 이상해", "콜택시 불러줘" → `find_emergency_support` 를 **먼저** 호출합니다(situation 에 사용자 말 원문). 유형별 가장 가까운 1~2곳을 이름·거리·전화번호로 말하고, `open_hours_status` 가 unknown 이면 운영시간을 지어내지 말고 "전화로 확인해 보시라"고 하세요. 배터리 상황이면 이동 가능 거리를 먼저 묻고 멀면 콜택시를 함께 권하세요. 화면에 카드가 떴고 '여기로 안내' 로 경로를 받을 수 있다고 알립니다.
+- "화장실 어디야", "장애인 화장실" → `find_toilet` 을 호출합니다. 가까운 1~2곳을 거리·개방시간으로 말합니다. 역 안 화장실은 `get_station_facilities` 입니다.
+- **역 안/밖·출구 확인은 말로도 받습니다(손을 쓰기 어려운 분).** 화면이 "역 안(승강장)이신가요, 역 밖이신가요?"를 묻거나 역 안 안내 중일 때 사용자가 "역 안이야", "나왔어", "밖이야", "나가는 중이야", "아직이야", "엘리베이터 타는 중" 이라고 말하면 `report_station_position` 을 호출합니다(where = inside / outside / exiting). "서울 쪽에서 왔어" 처럼 타고 온 방향을 함께 말하면 travel 에 담습니다. 나가는 중이면 **재촉하지 말고** 천천히 오시라고 한 문장만 답합니다 — 이동에 시간이 걸리는 분들입니다. **"아직 안 나왔어", "나온 거 아니야" 같은 부정 표현은 outside 가 아닙니다 — exiting 입니다.** 역과 무관한 말("식당에서 나왔어")에는 호출하지 않습니다.
 - "근처 정류장", "여기서 뭐 타", "버스 어디서 타" → `find_nearby_transit` 을 호출합니다. 결과의 `accessible` 이 null(unknown)이면 "이용 불가"가 아니라 "저상버스 정차 여부는 실시간 도착정보로 확인이 필요하다"고 안내하세요. 버스 방면은 종점명(end_station)으로 안내하되, 양방향 종점명이 같은 순환 노선은 경유 순번(station_seq)이 다르다는 점을 함께 알립니다. 같은 번호라도 노선 유형(마을버스/일반형시내버스)이 다르면 다른 노선입니다.
 
 ## 시스템 신호(`[SYSTEM]`) 처리 규칙
@@ -309,7 +312,7 @@ def _route_tool_declarations() -> list:
                         description="지체장애/휠체어/시각장애/청각장애/영유아동반 중 해당하는 것",
                     ),
                     "sigungu": types.Schema(type=types.Type.STRING, description="지역명, 기본 '안양'"),
-                    "topk": types.Schema(type=types.Type.INTEGER, description="반환 개수, 기본 5"),
+                    "topk": types.Schema(type=types.Type.INTEGER, description="반환 개수, 기본 10(화면 목록·추천 평가용). 말로는 상위 2~3곳만 안내"),
                 },
             ),
         ),
@@ -327,9 +330,11 @@ def _route_tool_declarations() -> list:
                     "destination_poi_id": types.Schema(type=types.Type.STRING, description="find_bf_tour_spots 결과의 poi_id. 없으면 비워 두고 destination_place 를 채운다"),
                     "destination_place": types.Schema(type=types.Type.STRING, description="사용자가 말한 목적지 이름(예: '평촌아트홀', '범계역', '안양시청', '안양시노인종합복지관'). poi_id 를 모를 때 채운다. 관광지·지하철역뿐 아니라 시청·구청·복지관·도서관·학교·병원 같은 일반 시설도 이름으로 찾을 수 있다"),
                     "destination_type": types.Schema(type=types.Type.STRING, description="tour(기본) / transit_station / transit_stop"),
-                    "profile": types.Schema(type=types.Type.STRING, description="wheelchair_manual(기본)/wheelchair_electric/crutch/visual/walk"),
+                    "profile": types.Schema(type=types.Type.STRING, description="wheelchair_electric(기본, 전동 휠체어)/wheelchair_manual(수동)/crutch/visual/walk"),
                     "origin_place": types.Schema(type=types.Type.STRING, description="사용자가 말로 지정한 출발지 이름(예: '안양역', '범계역', '김중업 건축박물관'). 사용자가 '~에서', '~에 있는데' 처럼 출발지를 밝히면 반드시 채운다. 미지정 시 현재 위치 사용"),
-                    "mode": types.Schema(type=types.Type.STRING, description="이동 방식. walk(도보만) / walk_bus(버스 허용) / walk_bus_subway(버스+지하철 허용). \'도보로\'·\'걸어서\'·\'타지 않고\' 처럼 도보만 원하면 walk, \'버스로\'·\'지하철로\'·\'대중교통으로\' 처럼 말하면 walk_bus/walk_bus_subway. 방식을 말하지 않았을 때만 비워 둔다(자동 추천 — 거리가 멀면 버스 조합이 될 수 있다) (v1.43.2)"),
+                    "origin_station": types.Schema(type=types.Type.STRING, description="사용자가 역 안(승강장)에 있다고 답했을 때만 그 역 이름(예: '관악'). 결과의 station_nearby 안내를 따른다 (v1.51.0)"),
+                    "origin_travel": types.Schema(type=types.Type.STRING, description="origin_station 과 함께 — 타고 온 열차의 진행 방향. station_nearby.choices 에서 사용자가 고른 travel(north/south). 모르면 비운다"),
+                    "mode": types.Schema(type=types.Type.STRING, description="이동 방식. walk(도보만) / walk_subway(지하철만, 버스 없음) / walk_bus(버스 허용) / walk_bus_subway(버스+지하철 허용). \'도보로\'·\'걸어서\'·\'타지 않고\' 처럼 도보만 원하면 walk, \'지하철로\'·\'전철 타고\'·\'버스 말고 지하철\' 처럼 지하철만 원하면 walk_subway, \'버스로\' 는 walk_bus, \'대중교통으로\' 는 walk_bus_subway. 방식을 말하지 않았을 때만 비워 둔다(자동 추천 — 거리가 멀면 대중교통 조합이 될 수 있다) (v1.48.0)"),
                 },
             ),
         ),
@@ -369,6 +374,36 @@ def _route_tool_declarations() -> list:
             ),
         ),
         types.FunctionDeclaration(
+            name="find_emergency_support",
+            description=("전동 보장구 충전기·보장구 수리센터·장애인콜택시를 현재 위치 주변에서 찾는다. "
+                         "\"배터리가 다 됐어\", \"충전할 데 있어\", \"바퀴가 이상해\", \"휠체어가 고장났어\", "
+                         "\"콜택시 불러줘\" 같은 긴급 질의에 사용. 기준 위치는 현재 위치가 자동 주입되고, "
+                         "사용자가 기준 장소를 말하면 place 에 담는다. 결과의 open_hours 가 없으면 "
+                         "운영시간을 지어내지 말고 전화 확인을 권한다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "situation": types.Schema(type=types.Type.STRING, description="사용자가 말한 상황 원문(예: '배터리가 10%밖에 안 남았어'). 유형 선택 근거"),
+                    "types": types.Schema(type=types.Type.STRING, description="charge(충전) / repair(수리) / calltaxi(콜택시) 콤마 구분. 모르면 비운다(상황에서 고른다)"),
+                    "place": types.Schema(type=types.Type.STRING, description="사용자가 말한 기준 장소 이름. 미지정 시 현재 위치"),
+                    "radius_m": types.Schema(type=types.Type.INTEGER, description="검색 반경(m), 기본 2000, 최대 10000"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="find_toilet",
+            description=("휠체어로 갈 수 있는 화장실(장애인 대·소변기 보유 공중화장실)을 현재 위치 주변에서 찾는다. "
+                         "\"화장실 어디야\", \"장애인 화장실\" 질의에 사용. 기준 위치는 현재 위치가 자동 주입된다. "
+                         "지하철역 안 화장실은 get_station_facilities 가 맡는다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "place": types.Schema(type=types.Type.STRING, description="사용자가 말한 기준 장소 이름. 미지정 시 현재 위치"),
+                    "radius_m": types.Schema(type=types.Type.INTEGER, description="검색 반경(m), 기본 800, 최대 3000"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
             name="get_bus_arrivals",
             description=("정류장의 실시간 버스 도착정보와 저상버스 여부를 확인한다. \"저상버스 언제 와\", "
                          "\"다음 버스 저상이야\", \"몇 번 버스 몇 분 남았어\" 질문에 사용. 안내 중이면 "
@@ -403,6 +438,24 @@ def _route_tool_declarations() -> list:
                          "'지도 화면 보여줘', '무장애 관광지 보기 화면으로 가줘' 처럼 화면 이동 "
                          "자체를 명시적으로 요청할 때만 사용한다. 관광지 추천·경로 안내 결과를 "
                          "말할 때는 호출하지 않는다(화면의 이동 버튼으로 사용자가 선택)."),
+        ),
+        types.FunctionDeclaration(
+            name="report_station_position",
+            description=("역 안/밖 질문과 출구 확인에 말로 답한다 — 화면 버튼 대신. 사용자가 \"역 안이야\", "
+                         "\"승강장이야\", \"나왔어\", \"밖이야\", \"출구야\", \"나가는 중이야\", \"아직이야\", "
+                         "\"엘리베이터 타는 중\" 처럼 역 안/밖이나 출구로 나왔는지를 말하면 사용한다. \"아직 안 나왔어\" 같은 부정 표현은 exiting 이다. "
+                         "\"서울 쪽에서 왔어\" 처럼 타고 온 방향을 말하면 travel 에 담는다. 화면이 무엇을 "
+                         "기다리는지는 서버가 채운다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                required=["where"],
+                properties={
+                    "where": types.Schema(type=types.Type.STRING,
+                                          description="inside(역 안·승강장·아직 역 안) / outside(역 밖·출구로 나왔다) / exiting(나가는 중·승강기 타는 중)"),
+                    "travel": types.Schema(type=types.Type.STRING,
+                                           description="타고 온 열차 방향 — 선택지 label 에 맞춰 north / south, 모르면 unknown. 말하지 않았으면 비운다"),
+                },
+            ),
         ),
         types.FunctionDeclaration(
             name="report_accessibility_issue",
