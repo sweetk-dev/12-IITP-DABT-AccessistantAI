@@ -144,7 +144,7 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 /* #306 — 평소엔 아이콘만. 기준을 바꾸면 글자가 잠시 펼쳐졌다가 접힌다(안내 줄을 가리지 않도록 지도 우측 '현재 위치' 위에 둔다) */
 .prof-badge svg{width:24px;height:24px;flex:none;display:block;}
 .prof-badge .pb-label{display:inline-block;max-width:0;opacity:0;margin-left:0;overflow:hidden;white-space:nowrap;transition:max-width .35s ease,opacity .25s ease,margin-left .35s ease;}
-.prof-badge.expanded .pb-label{max-width:16em;opacity:1;margin-left:6px;}
+.prof-badge.expanded .pb-label{max-width:min(16em,calc(100vw - 96px));opacity:1;margin-left:6px;}
 .prof-badge.visual{border-color:#7C3AED;color:#5B21B6;}
 /* 기준별 색 구분 — 전동: 청록 채움(흰 아이콘) / 수동: 흰 바탕 파랑 / 시각: 보라 (아이콘 모양 + 색·채움 이중 구분) */
 .prof-badge.pb-electric{border-color:#0F766E;color:#fff;background:#0F766E;}
@@ -263,6 +263,7 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .navi-pop .report-sheet{position:relative;left:auto;right:auto;bottom:auto;width:100%;max-width:420px;max-height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.45);}
 .navi-pop .report-sheet[hidden]{display:none;}
 .navi-pop #reportSheet{overflow-y:auto;}
+.navi-pop #reportSheet>*{flex:none;}
 .navi-pop .sos-list{flex:1 1 auto;min-height:0;max-height:none;}
 .navi-pop .report-cancel,.navi-pop h3,.navi-pop .report-hint,.navi-pop .sos-tabs{flex:none;}
 .report-hint{margin:0 0 10px;font-size:.9em;color:#555;}
@@ -1303,7 +1304,11 @@ window.NAVI = (function(){
     renderProfBadge(labelText);
     b.classList.add("expanded");
     if(profBadgeTimer) clearTimeout(profBadgeTimer);
-    profBadgeTimer = setTimeout(function(){ profBadgeTimer=null; b.classList.remove("expanded"); }, ms || 2600);
+    profBadgeTimer = setTimeout(function(){
+      b.classList.remove("expanded");
+      // 접히는 동안 글자가 바뀌어 보이지 않도록 접힌 뒤에 기본 라벨('○○ 기준')로 되돌린다
+      profBadgeTimer = setTimeout(function(){ profBadgeTimer=null; if(!b.classList.contains("expanded")) renderProfBadge(); }, 450);
+    }, ms || 2600);
   }
   // 전동↔수동 전환 — 경로가 떠 있으면 같은 목적지로 재탐색한다
   function setWheelProfile(next, viaVoice){
@@ -1926,7 +1931,7 @@ window.NAVI = (function(){
   var SOS_LABEL = {charge:"충전소", repair:"수리센터", calltaxi:"장애인콜택시", toilet:"화장실"};
   function openSosSheet(kind, viaVoice){
     var sh=$("sosSheet"); if(!sh) return;
-    closeReportSheet(true);
+    closeReportSheet(false);
     sh.hidden=false; setNaviPop("sosPop", true);
     if(kind) sosKind = kind;
     setSosTab(sosKind);
@@ -1936,11 +1941,17 @@ window.NAVI = (function(){
     var first=sh.querySelector(".sos-tabs button[aria-pressed='true']"); if(first) try{ first.focus(); }catch(e){}
   }
   // #306 — 창(sheet)과 그 배경(pop)을 함께 연다/닫는다. refocus: 닫은 뒤 창을 연 버튼으로 초점을 돌린다
-  function setNaviPop(id, on){ var p=$(id); if(p) p.hidden = !on; }
+  // 팝업이 떠 있는 동안 뒤 화면(#view-navi)은 초점·스크린리더 탐색에서 뺀다(inert)
+  function setNaviPop(id, on){
+    var p=$(id); if(p) p.hidden = !on;
+    var anyOpen = ["sosPop","reportPop"].some(function(k){ var e=$(k); return e && !e.hidden; });
+    var v=$("view-navi"); if(v){ if(anyOpen) v.setAttribute("inert",""); else v.removeAttribute("inert"); }
+  }
+  // refocus: 닫은 뒤 창을 연 버튼으로 초점을 돌린다(기본). 다른 창으로 바로 넘어갈 때만 false
   function closeSosSheet(refocus){
     var sh=$("sosSheet"); var was = sh && !sh.hidden;
     if(sh) sh.hidden=true; setNaviPop("sosPop", false);
-    if(was && refocus===true){ var b=$("naviSosBtn"); if(b) try{ b.focus(); }catch(e){} }
+    if(was && refocus!==false){ var b=$("naviSosBtn"); if(b) try{ b.focus(); }catch(e){} }
   }
   function setSosTab(kind){
     sosKind = kind;
@@ -2022,15 +2033,15 @@ window.NAVI = (function(){
 
   function openReportSheet(){
     var sh=$("reportSheet"); if(!sh) return;
-    closeSosSheet();
+    closeSosSheet(false);
     sh.hidden=false; setNaviPop("reportPop", true);
     sendActivity("report_open");
     var first=sh.querySelector("button[data-reason]"); if(first) first.focus();
   }
-  function closeReportSheet(silent){
+  function closeReportSheet(refocus){
     var sh=$("reportSheet"); var was = sh && !sh.hidden;
     if(sh) sh.hidden=true; setNaviPop("reportPop", false);
-    if(was && silent===false){ var b=$("naviReportBtn"); if(b) try{ b.focus(); }catch(e){} }
+    if(was && refocus!==false){ var b=$("naviReportBtn"); if(b) try{ b.focus(); }catch(e){} }
   }
   function setPhotoState(){
     var el=$("repPhotoState");
@@ -3990,12 +4001,13 @@ window.NAVI = (function(){
     var spop=$("sosPop");
     if(spop) spop.addEventListener("click", function(e){ if(e.target===spop) closeSosSheet(true); });
     var rpop=$("reportPop");
-    if(rpop) rpop.addEventListener("click", function(e){ if(e.target===rpop) closeReportSheet(false); });
+    if(rpop) rpop.addEventListener("click", function(e){ if(e.target===rpop) closeReportSheet(true); });
     document.addEventListener("keydown", function(e){
       if(e.key!=="Escape") return;
+      var end=$("naviEndModal"); if(end && !end.hidden) return;   // 위에 뜬 종료 확인 창이 우선
       var a=$("sosPop"), c=$("reportPop");
       if(a && !a.hidden) closeSosSheet(true);
-      else if(c && !c.hidden) closeReportSheet(false);
+      else if(c && !c.hidden) closeReportSheet(true);
     });
     var st=$("sosTabs");
     if(st) st.addEventListener("click", function(e){
@@ -4018,7 +4030,7 @@ window.NAVI = (function(){
       scheduleKakaoRetry(500);
     });
     var rc=$("reportCancelBtn");
-    if(rc) rc.addEventListener("click", function(){ closeReportSheet(false); });
+    if(rc) rc.addEventListener("click", function(){ closeReportSheet(true); });
     var rs=$("reportSheet");
     if(rs) rs.querySelectorAll("button[data-reason]").forEach(function(b){
       b.addEventListener("click", function(){ sendReport(b.getAttribute("data-reason")); });

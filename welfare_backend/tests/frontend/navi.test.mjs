@@ -1015,10 +1015,17 @@ check("신고 버튼 → 배경과 창이 함께 열림", () => {
   assert.equal($("reportPop").hidden, false);
   assert.equal($("reportSheet").hidden, false);
 });
+check("팝업이 떠 있는 동안 뒤 화면은 inert", () => assert.ok($("view-navi").hasAttribute("inert")));
+$("naviEndModal").hidden = false;
+window.document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape" }));
+check("종료 확인 창이 위에 떠 있으면 Esc 가 신고 팝업을 닫지 않는다", () => assert.equal($("reportPop").hidden, false));
+$("naviEndModal").hidden = true;
 $("reportPop").dispatchEvent(new window.Event("click"));
 check("어두운 배경을 누르면 닫힘", () => {
   assert.equal($("reportPop").hidden, true);
   assert.equal($("reportSheet").hidden, true);
+  assert.ok(!$("view-navi").hasAttribute("inert"), "닫힌 뒤 inert 해제");
+  assert.equal(window.document.activeElement, $("naviReportBtn"), "초점이 신고 버튼으로 돌아온다");
 });
 $("naviReportBtn").dispatchEvent(new window.Event("click"));
 $("reportSheet").querySelector("h3").dispatchEvent(new window.Event("click", { bubbles: true }));
@@ -2083,8 +2090,9 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     const t = $("naviStatus").textContent;
     assert.ok(!/바꿨습니다/.test(t), t);
   });
-  await sleep(2700);
+  await sleep(3200);
   check("잠시 뒤 글자가 접히고 아이콘만 남는다", () => assert.ok(!$("profBadge").classList.contains("expanded")));
+  check("접힌 뒤 라벨은 기본 '전동휠체어 기준' 으로 되돌아간다", () => assert.equal($("profBadge").querySelector(".pb-label").textContent, "전동휠체어 기준"));
   check("전동 기준 배지는 pb-electric 색", () => assert.ok($("profBadge").classList.contains("pb-electric")));
   $("profBadge").dispatchEvent(new window.Event("click"));
   await sleep(30);
