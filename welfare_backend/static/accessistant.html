@@ -3612,12 +3612,16 @@ window.NAVI = (function(){
   // _lmDone: 이미 말한(또는 지나친) 랜드마크 이름 — 이탈 재탐색으로 경로가 바뀌어도 이어 간다(같은 곳을 두 번 말하지 않게)
   var landmarks = [], _lmDone = {}, _lmLastTs = 0, _lmPassCnt = {}, _lmKeepOnStart = false;
   var LM_BEFORE_M = 30, LM_AFTER_M = 15, LM_MIN_GAP_MS = 30000, LM_TURN_CLEAR_M = 40;
-  // 경로 위 진행거리 — 선분 투영(꼭짓점이 드문 긴 직선에서도 정확하게)
+  // 경로 위 진행거리 — 선분 투영(꼭짓점이 드문 긴 직선에서도 정확하게).
+  // 되돌아오는 길·평행 도로에서 엉뚱한 선분에 붙지 않도록 현재 스텝 근처(앞 60m ~ 다음 안내 지점 뒤 100m)만 본다.
   function alongOnRoute(pos){
     if(routeGeom.length < 2) return 0;
+    var lo = (typeof stepAlong[stepIdx] === "number") ? stepAlong[stepIdx] - 60 : -Infinity;
+    var hi = (typeof stepAlong[stepIdx+1] === "number") ? stepAlong[stepIdx+1] + 100 : Infinity;
     var kx = 111320 * Math.cos(routeGeom[0][0] * Math.PI / 180), ky = 110540;
     var px = pos.lng * kx, py = pos.lat * ky, best = Infinity, bestAlong = 0;
     for(var i=0; i<routeGeom.length-1; i++){
+      if((cumDist[i+1]||0) < lo || (cumDist[i]||0) > hi) continue;
       var ax = routeGeom[i][1]*kx, ay = routeGeom[i][0]*ky, bx = routeGeom[i+1][1]*kx, by = routeGeom[i+1][0]*ky;
       var dx = bx-ax, dy = by-ay, L2 = dx*dx+dy*dy;
       var t = L2 ? Math.max(0, Math.min(1, ((px-ax)*dx + (py-ay)*dy) / L2)) : 0;
@@ -3637,7 +3641,7 @@ window.NAVI = (function(){
     var nextAlong = stepAlong[stepIdx+1];
     if(typeof nextAlong === "number" && nextAlong - along < LM_TURN_CLEAR_M) return;   // 곧 회전 안내 — 겹치지 않게
     for(var i=0; i<landmarks.length; i++){
-      var lm = landmarks[i], key = lm.name || String(i);
+      var lm = landmarks[i], key = (lm.name || "") + "@" + Math.round((lm.along_m || 0) / 50);   // 같은 이름 다른 곳 구분
       if(_lmDone[key] || typeof lm.along_m !== "number") continue;
       if(along > lm.along_m + LM_AFTER_M){
         // 이미 지났다 — 뒤늦게 말하지 않는다. 측위 튐 한 번으로 버리지 않도록 두 번 연속일 때 확정

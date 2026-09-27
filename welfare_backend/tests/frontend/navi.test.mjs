@@ -2791,7 +2791,7 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   at(185); await sleep(10);
   check("재탐색 자동 재개 뒤에는 이미 말한 랜드마크를 다시 말하지 않는다", () => {
     assert.ok(!spoken.slice(base).some((t) => /만안구청/.test(t)), JSON.stringify(spoken.slice(base)));
-    assert.equal(window.NAVI._internals().lmDone()["만안구청"], "spoken");
+    assert.equal(window.NAVI._internals().lmDone()["만안구청@4"], "spoken");
   });
   LM.stopSpeak(); LM.startGuidance(); await sleep(10); LM.stopSpeak(); LM.setLmLastTs(0); base = spoken.length;
   at(185); await sleep(10);
