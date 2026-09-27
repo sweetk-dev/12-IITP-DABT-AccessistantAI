@@ -2740,6 +2740,66 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   NH.resetTrip(); NH.clearRouteDisplay();
 }
 
+// ── 주변 랜드마크 안내 (#308, 02 v1.30.0) ──
+{
+  const LM = window.NAVI._internals();
+  const lon = (m) => 126.95 + m / (111320 * Math.cos(37.39 * Math.PI / 180));
+  const geom = []; for (let m = 0; m <= 900; m += 300) geom.push([37.39, lon(m)]);   // 꼭짓점이 드문 900m 직선
+  const LMR = { route_id: "r_lm", routes: [{ summary: { total_distance_m: 900, duration_sec: 800, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+    geometry: geom,
+    steps: [{ idx: 0, maneuver: "depart", instruction: "예술공원로를 따라 900m 이동합니다.", distance_m: 900, coord: geom[0], warnings: [] },
+            { idx: 1, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: geom[3], warnings: [] }],
+    landmarks: [
+      { kind: "facility", name: "만안구보건소", along_m: 700, side: "left", speech: "왼쪽에 만안구보건소가 있습니다" },
+      { kind: "bus_stop", name: "만안구청", along_m: 200, side: "right", speech: "오른쪽에 만안구청 정류장이 있습니다" },
+      { kind: "facility", name: "퍼스트힐", along_m: 450, side: "right", speech: "오른쪽에 퍼스트힐이 있습니다" },
+      { kind: "facility", name: "도착직전", along_m: 880, side: "right", speech: "오른쪽에 도착직전이 있습니다" } ] }] };
+  LM.clearRouteDisplay(); LM.resetTrip(); LM.setHere({ lat: 37.39, lng: lon(0) });
+  LM.showRoute(LMR, "시험 목적지"); await sleep(20);
+  check("랜드마크를 진행거리 순으로 싣는다", () => {
+    assert.deepEqual(window.NAVI._internals().landmarks().map((x) => x.along_m), [200, 450, 700, 880]);
+  });
+  check("긴 직선(꼭짓점 300m 간격)에서도 진행거리를 선분 투영으로 잰다", () => {
+    const a = LM.alongOnRoute({ lat: 37.39, lng: lon(185) });
+    assert.ok(Math.abs(a - 185) < 2, "along=" + a);
+  });
+  LM.startGuidance(); await sleep(20); LM.stopSpeak();
+  const at = (m) => { LM.setHere({ lat: 37.39, lng: lon(m) }); LM.advanceStep(); };
+  let base = spoken.length;
+  at(150);
+  check("랜드마크 30m 앞보다 멀면 아직 말하지 않는다", () => assert.ok(!spoken.slice(base).some((t) => /만안구청/.test(t))));
+  at(180); await sleep(10);
+  check("지나기 직전(30m 안)에 한 번 말한다", () => assert.ok(spoken.slice(base).some((t) => t === "오른쪽에 만안구청 정류장이 있습니다"), JSON.stringify(spoken.slice(base))));
+  LM.stopSpeak(); base = spoken.length;
+  at(190); await sleep(10);
+  check("같은 랜드마크는 다시 말하지 않는다", () => assert.ok(!spoken.slice(base).some((t) => /만안구청/.test(t))));
+  at(435); await sleep(10);
+  check("앞 랜드마크 뒤 30초 안이면 다음 것을 미룬다", () => assert.ok(!spoken.slice(base).some((t) => /퍼스트힐/.test(t))));
+  LM.stopSpeak(); LM.setLmLastTs(0);
+  at(470); await sleep(5);                      // 측위 튐 — 한 번 창을 넘었다가
+  at(440); await sleep(10);                     // 돌아오면 아직 말할 수 있다
+  check("30초가 지나면 창 안의 다음 랜드마크를 말한다", () => assert.ok(spoken.slice(base).some((t) => /퍼스트힐/.test(t))));
+  LM.stopSpeak(); LM.setLmLastTs(0); base = spoken.length;
+  at(760); await sleep(10);
+  check("이미 지나친 랜드마크(700m)는 뒤늦게 말하지 않는다", () => assert.ok(!spoken.slice(base).some((t) => /만안구보건소/.test(t))));
+  LM.stopSpeak(); LM.setLmLastTs(0); base = spoken.length;
+  at(870); await sleep(10);
+  check("다음 안내 지점(도착) 40m 안에서는 랜드마크를 말하지 않는다", () => assert.ok(!spoken.slice(base).some((t) => /도착직전/.test(t))));
+  // 이탈 재탐색 자동 재개 — 말한 목록·시간 간격을 잇는다
+  LM.setLmKeepOnStart(true); LM.showRoute(LMR, "시험 목적지"); await sleep(10); LM.startGuidance(); await sleep(10); LM.stopSpeak();
+  base = spoken.length; LM.setLmLastTs(0);
+  at(185); await sleep(10);
+  check("재탐색 자동 재개 뒤에는 이미 말한 랜드마크를 다시 말하지 않는다", () => {
+    assert.ok(!spoken.slice(base).some((t) => /만안구청/.test(t)), JSON.stringify(spoken.slice(base)));
+    assert.equal(window.NAVI._internals().lmDone()["만안구청"], "spoken");
+  });
+  LM.stopSpeak(); LM.startGuidance(); await sleep(10); LM.stopSpeak(); LM.setLmLastTs(0); base = spoken.length;
+  at(185); await sleep(10);
+  check("사용자가 새로 안내를 시작하면 처음부터 다시 말한다", () => assert.ok(spoken.slice(base).some((t) => /만안구청/.test(t))));
+  LM.stopSpeak(); LM.resetTrip(); LM.clearRouteDisplay();
+  check("경로를 지우면 랜드마크도 비운다", () => assert.equal(window.NAVI._internals().landmarks().length, 0));
+}
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {
