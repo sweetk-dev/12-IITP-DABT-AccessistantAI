@@ -1605,6 +1605,7 @@ window.NAVI = (function(){
     var texts = steps.map(function(st, i){ return _isMergedCrossing(i) ? stepUtterance(i) : st.instruction; }).filter(Boolean);
     _spokenAhead = {};
     texts.push("다음 안내까지 약 300미터입니다", "다음 안내까지 약 150미터입니다");
+    landmarks.forEach(function(x){ if(x.speech) texts.push(x.speech); });   // 주변 랜드마크 (#308)
     // 2개 병렬 — 캐시 미스 한 문장에 5~9초가 걸리므로 순차로는 안내 시작 전에 채우지 못한다 (v1.43.1)
     var queue = texts.slice();
     function next(){
@@ -2611,7 +2612,7 @@ window.NAVI = (function(){
     closeSpotChoice();
     clearRouteLines();
     stopSimulation();
-    route=null; steps=[]; stepIdx=0; routeGeom=[]; cumDist=[0];
+    route=null; steps=[]; stepIdx=0; routeGeom=[]; cumDist=[0]; landmarks=[]; _lmDone={}; _lmPassCnt={};
     guiding=false;
     setEndBtn("home");
     sendNavState();   // 세션의 안내 상태도 함께 비운다 — 상담원이 이전 경로를 답하지 않도록
@@ -2772,10 +2773,13 @@ window.NAVI = (function(){
       stepAlong.push(sa);
     }
 
+    landmarks = (primary.landmarks || []).filter(function(x){ return x && x.speech; })
+      .sort(function(a, b){ return (a.along_m||0) - (b.along_m||0); });
+    _lmPassCnt = {};   // 말한 목록·시간 간격은 재탐색 뒤에도 이어 간다(_lmDone·_lmLastTs 유지)
     drawRouteLines(true);
     renderSummary(primary, destName);
     status((destName||"목적지") + " 경로를 표시했습니다.");
-    if(autoResumeGuide){ autoResumeGuide = false; startGuidance(); }   // 이탈 재탐색 — 안내 자동 재개 (v1.35.0)
+    if(autoResumeGuide){ autoResumeGuide = false; _lmKeepOnStart = true; startGuidance(); }   // 이탈 재탐색 — 안내 자동 재개 (v1.35.0)
     sendNavState();   // 경로 준비 상태(안내 전)도 세션에 알린다 (#248)
   }
 
@@ -3096,6 +3100,8 @@ window.NAVI = (function(){
     if(stationHint && !stationAnswered[stationAskKey(stationHint)]){ renderStationAsk(); return; }
     stopSimulation();
     guiding = true; stepIdx = 0; _interimDone = {};
+    if(!_lmKeepOnStart){ _lmDone = {}; _lmLastTs = 0; }   // 이탈 재탐색 자동 재개는 말한 목록을 잇는다
+    _lmKeepOnStart = false; _lmPassCnt = {};
     offRouteCnt = 0; offRouteSince = 0; setFollow(true);
     trackBegin();                     // 주행 트랙 수집 시작 (v1.34.0)
     sendActivity("guidance_start");
@@ -3599,6 +3605,58 @@ window.NAVI = (function(){
   }
   // 긴 구간에서 침묵하지 않도록, 다음 안내 지점까지 남은 거리를 문턱(300/150m) 통과 시 1회씩 안내
   var _interimDone = {};
+  /* ── 주변 랜드마크 안내 (02 v1.30.0 landmarks, #308) ──
+     경로 응답에 실린 랜드마크(정류장·공공시설·건물·화장실·충전기)를 지나기 직전에 한 번씩 말한다.
+     간격은 02 가 150m 로 골라 보내고, 여기서는 시간 간격(30초)·다음 회전 안내와의 충돌만 본다.
+     발화 등급은 interim — 스텝 안내가 대기 중이면 말하지 않는다. */
+  // _lmDone: 이미 말한(또는 지나친) 랜드마크 이름 — 이탈 재탐색으로 경로가 바뀌어도 이어 간다(같은 곳을 두 번 말하지 않게)
+  var landmarks = [], _lmDone = {}, _lmLastTs = 0, _lmPassCnt = {}, _lmKeepOnStart = false;
+  var LM_BEFORE_M = 30, LM_AFTER_M = 15, LM_MIN_GAP_MS = 30000, LM_TURN_CLEAR_M = 40;
+  // 경로 위 진행거리 — 선분 투영(꼭짓점이 드문 긴 직선에서도 정확하게).
+  // 되돌아오는 길·평행 도로에서 엉뚱한 선분에 붙지 않도록 현재 스텝 근처(앞 60m ~ 다음 안내 지점 뒤 100m)만 본다.
+  function alongOnRoute(pos){
+    if(routeGeom.length < 2) return 0;
+    var lo = (typeof stepAlong[stepIdx] === "number") ? stepAlong[stepIdx] - 60 : -Infinity;
+    var hi = (typeof stepAlong[stepIdx+1] === "number") ? stepAlong[stepIdx+1] + 100 : Infinity;
+    var kx = 111320 * Math.cos(routeGeom[0][0] * Math.PI / 180), ky = 110540;
+    var px = pos.lng * kx, py = pos.lat * ky, best = Infinity, bestAlong = 0;
+    for(var i=0; i<routeGeom.length-1; i++){
+      if((cumDist[i+1]||0) < lo || (cumDist[i]||0) > hi) continue;
+      var ax = routeGeom[i][1]*kx, ay = routeGeom[i][0]*ky, bx = routeGeom[i+1][1]*kx, by = routeGeom[i+1][0]*ky;
+      var dx = bx-ax, dy = by-ay, L2 = dx*dx+dy*dy;
+      var t = L2 ? Math.max(0, Math.min(1, ((px-ax)*dx + (py-ay)*dy) / L2)) : 0;
+      var qx = ax+t*dx, qy = ay+t*dy, d = Math.hypot(px-qx, py-qy);
+      if(d < best){ best = d; bestAlong = (cumDist[i]||0) + t * ((cumDist[i+1]||0) - (cumDist[i]||0)); }
+    }
+    return bestAlong;
+  }
+  function _landmarkAnnounce(pos, alongOverride){
+    if(!guiding || !pos || !landmarks.length) return;
+    var cur = steps[stepIdx] || {};
+    if(cur.maneuver === "station_start") return;          // 역 안 — 위치가 부정확하다
+    var now = Date.now();
+    var gap = simActive ? LM_MIN_GAP_MS / SIM_FACTOR : LM_MIN_GAP_MS;
+    if(now - _lmLastTs < gap) return;
+    var along = (typeof alongOverride === "number") ? alongOverride : alongOnRoute(pos);
+    var nextAlong = stepAlong[stepIdx+1];
+    if(typeof nextAlong === "number" && nextAlong - along < LM_TURN_CLEAR_M) return;   // 곧 회전 안내 — 겹치지 않게
+    for(var i=0; i<landmarks.length; i++){
+      var lm = landmarks[i], key = (lm.name || "") + "@" + Math.round((lm.along_m || 0) / 50);   // 같은 이름 다른 곳 구분
+      if(_lmDone[key] || typeof lm.along_m !== "number") continue;
+      if(along > lm.along_m + LM_AFTER_M){
+        // 이미 지났다 — 뒤늦게 말하지 않는다. 측위 튐 한 번으로 버리지 않도록 두 번 연속일 때 확정
+        _lmPassCnt[key] = (_lmPassCnt[key] || 0) + 1;
+        if(_lmPassCnt[key] >= 2) _lmDone[key] = "passed";
+        continue;
+      }
+      _lmPassCnt[key] = 0;
+      if(along < lm.along_m - LM_BEFORE_M) break;          // along_m 오름차순
+      if(speakBusy()) return;                              // 다른 안내 중 — 창 안에 있는 동안 다시 시도
+      _lmDone[key] = "spoken"; _lmLastTs = now;
+      speakInterim(lm.speech);
+      return;
+    }
+  }
   function _interimAnnounce(pos){
     if(!guiding || !pos) return;
     var nxt = steps[stepIdx+1];
@@ -3642,6 +3700,7 @@ window.NAVI = (function(){
     var nxt = steps[stepIdx+1];
     if(!nxt || !nxt.coord) return;
     _interimAnnounce(here);
+    _landmarkAnnounce(here);
     _drainSpeak();
     if(_reachedStep(here, stepIdx+1)){   // 다음 안내 지점 도달 -> 스텝 전환
       _lastAdvanceTs = Date.now();
@@ -3755,7 +3814,7 @@ window.NAVI = (function(){
     setEndBtn("guide");   // (#251, v1.35.0)
     if(!steps.length || !routeGeom.length){ status("경로가 없어 모의 주행을 시작할 수 없습니다."); return; }
     stopSimulation();
-    simActive=true; guiding=true; stepIdx=0; simDist=0; _interimDone = {};
+    simActive=true; guiding=true; stepIdx=0; simDist=0; _interimDone = {}; _lmDone = {}; _lmLastTs = 0; _lmPassCnt = {};
     setFollow(true);
     sendActivity("simulation_start");
     prefetchTts();
@@ -3784,6 +3843,7 @@ window.NAVI = (function(){
     var nxt=steps[stepIdx+1];
     if(!nxt || !nxt.coord) return;
     _interimAnnounce(simPos);
+    _landmarkAnnounce(simPos, simDist);
     if(_reachedStep(simPos, stepIdx+1)){
       stepIdx+=1;
       renderStep();
@@ -4210,6 +4270,9 @@ window.NAVI = (function(){
                                      speakBusy:speakBusy, stepUtterance:stepUtterance, drainSpeak:_drainSpeak,
                                      resetTrip:resetTrip, tripDest:function(){return tripDest;},
                                      startGuidance:startGuidance, setHere:function(h){here=h;}, advanceStep:advanceStep,
+                                     landmarks:function(){return landmarks;}, alongOnRoute:alongOnRoute,
+                                     setLmLastTs:function(t){_lmLastTs=t;},
+                                     lmDone:function(){return _lmDone;}, setLmKeepOnStart:function(v){_lmKeepOnStart=!!v;},
                                      requestRoute:requestRoute, renderSpotsPanel:renderSpotsPanel,
                                      clearRouteDisplay:clearRouteDisplay,
                                      refreshArrivals:refreshArrivals,
