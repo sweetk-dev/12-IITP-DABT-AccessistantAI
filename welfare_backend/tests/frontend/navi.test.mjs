@@ -1001,6 +1001,30 @@ check("신고 버튼 -> 사유 시트 열림 (6개 사유 + 사진 첨부 + 닫�
 });
 $("reportCancelBtn").dispatchEvent(new window.Event("click"));
 check("닫기 버튼으로 시트가 닫힘", () => assert.equal($("reportSheet").hidden, true));
+// #306 — 신고 창은 지도 영역 밖, 화면 전체 배경 위 가운데 팝업
+check("신고 창은 앱 전체를 덮는 반투명 배경(reportPop) 안에 있고 닫히면 배경도 숨는다", () => {
+  const pop = $("reportPop");
+  assert.ok(pop, "reportPop 없음");
+  assert.ok(pop.classList.contains("modal-backdrop") && pop.classList.contains("navi-pop"));
+  assert.equal($("reportSheet").parentElement, pop);
+  assert.ok(!pop.closest(".navi-wrap"), "지도 영역 안에 있으면 안 된다");
+  assert.equal(pop.hidden, true);
+});
+$("naviReportBtn").dispatchEvent(new window.Event("click"));
+check("신고 버튼 → 배경과 창이 함께 열림", () => {
+  assert.equal($("reportPop").hidden, false);
+  assert.equal($("reportSheet").hidden, false);
+});
+$("reportPop").dispatchEvent(new window.Event("click"));
+check("어두운 배경을 누르면 닫힘", () => {
+  assert.equal($("reportPop").hidden, true);
+  assert.equal($("reportSheet").hidden, true);
+});
+$("naviReportBtn").dispatchEvent(new window.Event("click"));
+$("reportSheet").querySelector("h3").dispatchEvent(new window.Event("click", { bubbles: true }));
+check("창 안쪽을 누르면 닫히지 않음", () => assert.equal($("reportPop").hidden, false));
+window.document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape" }));
+check("Esc 로 닫힘", () => assert.equal($("reportPop").hidden, true));
 $("naviReportBtn").dispatchEvent(new window.Event("click"));
 $("reportSheet").querySelector('button[data-reason="curb"]').dispatchEvent(new window.Event("click"));
 await sleep(40);
@@ -2046,6 +2070,35 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.match($("profBadge").textContent, /전동휠체어 기준/);
     assert.match(lastPlanQuery || "", /profile=wheelchair_electric/);
   });
+  // #306 — 아이콘 배지: 바꾸면 '○○휠체어 기준으로 변경' 이 펼쳐졌다가 아이콘만 남는다
+  const electricSvg = $("profBadge").querySelector("svg") && $("profBadge").querySelector("svg").outerHTML;
+  check("배지 — 아이콘(svg) + 글자가 펼쳐진 상태, 글자는 '전동휠체어 기준으로 변경'", () => {
+    const b = $("profBadge");
+    assert.ok(b.querySelector("svg"), "아이콘 없음");
+    assert.ok(b.classList.contains("expanded"), "바꾼 직후 펼쳐져 있어야 한다");
+    assert.equal(b.querySelector(".pb-label").textContent, "전동휠체어 기준으로 변경");
+    assert.match(b.getAttribute("aria-label"), /경로 기준 프로필: 전동휠체어/);
+  });
+  check("안내 줄은 '바꿨습니다' 없이 수치 위주 (배지와 중복 안내 없음)", () => {
+    const t = $("naviStatus").textContent;
+    assert.ok(!/바꿨습니다/.test(t), t);
+  });
+  await sleep(2700);
+  check("잠시 뒤 글자가 접히고 아이콘만 남는다", () => assert.ok(!$("profBadge").classList.contains("expanded")));
+  $("profBadge").dispatchEvent(new window.Event("click"));
+  await sleep(30);
+  check("수동으로 바꾸면 아이콘이 수동휠체어 모양으로 바뀐다", () => {
+    const svg = $("profBadge").querySelector("svg").outerHTML;
+    assert.notEqual(svg, electricSvg);
+    assert.equal($("profBadge").querySelector(".pb-label").textContent, "수동휠체어 기준으로 변경");
+  });
+  $("profBadge").dispatchEvent(new window.Event("click"));
+  await sleep(80);
+  check("배지는 안내 줄이 있는 좌상단이 아니라 우측(현재 위치 위)에 놓인다", () => {
+    const css = [...window.document.querySelectorAll("style")].map((x) => x.textContent).join("\n");
+    const rule = (css.match(/\.prof-badge\{[^}]*\}/) || [""])[0];
+    assert.match(rule, /right:12px/); assert.ok(!/top:54px/.test(rule), rule);
+  });
   // 도보+지하철 카드
   [...window.document.querySelectorAll(".mode-cards button")].find((b) => b.getAttribute("data-mode") === "walk_subway")
     .dispatchEvent(new window.Event("click"));
@@ -2161,8 +2214,23 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.match(c.textContent, /1666-0420/);
     assert.ok(!c.querySelector(".sos-acts button"), "콜택시는 '여기로 안내'가 없어야 한다");
   });
+  check("긴급·편의 창도 가운데 팝업(sosPop) — 열리면 배경이 보인다", () => {
+    const pop = $("sosPop");
+    assert.ok(pop && pop.classList.contains("navi-pop"));
+    assert.equal($("sosSheet").parentElement, pop);
+    assert.equal(pop.hidden, false);
+  });
   $("sosCancelBtn").dispatchEvent(new window.Event("click"));
-  check("닫기", () => assert.equal($("sosSheet").hidden, true));
+  check("닫기", () => { assert.equal($("sosSheet").hidden, true); assert.equal($("sosPop").hidden, true); });
+  $("naviSosBtn").dispatchEvent(new window.Event("click"));
+  $("sosPop").dispatchEvent(new window.Event("click"));
+  check("긴급·편의 — 배경을 누르면 닫힘 (#306)", () => { assert.equal($("sosPop").hidden, true); assert.equal($("sosSheet").hidden, true); });
+  $("naviSosBtn").dispatchEvent(new window.Event("click"));
+  $("naviReportBtn").dispatchEvent(new window.Event("click"));
+  check("긴급·편의가 열린 채 신고를 열면 긴급·편의 배경은 닫힌다", () => {
+    assert.equal($("sosPop").hidden, true); assert.equal($("reportPop").hidden, false);
+  });
+  $("reportCancelBtn").dispatchEvent(new window.Event("click"));
   window.fetch = prevFetchS;
 }
 
