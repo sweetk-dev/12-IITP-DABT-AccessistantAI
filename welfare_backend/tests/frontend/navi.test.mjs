@@ -2800,6 +2800,50 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   check("경로를 지우면 랜드마크도 비운다", () => assert.equal(window.NAVI._internals().landmarks().length, 0));
 }
 
+// ── 음식점·공공건물 화장실 (v1.55.0, 02 v1.31.0) — 서버가 보내는 실제 모양(ui_action 전체가 payload) ──
+{
+  const NF = window.NAVI._internals();
+  const actT = NF.onUiAction({ action: "show_toilets", payload: { action: "show_toilets", payload: { items: [
+    { name: "안양시 만안구보건소 (건물 안 장애인화장실)", type: "국가 또는 지자체 청사", dist_m: 120, accessible: true,
+      open_time: "건물 운영시간 내", facility_toilet: true, building_toilet: true, lat: 37.39, lng: 126.92 } ] } } });
+  check("서버 모양 ui_action(한 겹 더 싼 payload)도 풀어서 시트에 싣는다 — 화장실", () => {
+    assert.ok(actT && /화장실 보기 \(1곳\)/.test(actT.label), JSON.stringify(actT));
+    assert.equal(NF.sosItems().toilet.length, 1);
+  });
+  NF.openSosSheet("toilet");
+  await sleep(30);
+  check("공공건물 안 장애인 화장실 표기", () => {
+    assert.match($("sosList").textContent, /공공건물 안 장애인 화장실\(건물 운영시간에 이용\)/);
+  });
+  $("sosCancelBtn").dispatchEvent(new window.Event("click"));
+  const actF = NF.onUiAction({ action: "show_restaurants", payload: { action: "show_restaurants", payload: { items: [
+    { name: "경사로식당", addr: "안양시 동안구 1", dist_m: 220, cuisine: "한식", entry_status: "yes",
+      entry_label: "접근로·경사로 확인", facilities: ["접근로·경사로", "장애인 화장실"], record_type: "tour_listing",
+      lat: 37.393, lng: 126.95 },
+    { name: "흥부가", addr: "안양시 만안구 2", dist_m: 400, cuisine: "일반음식점", entry_status: "unknown",
+      entry_label: "휠체어 정보 없음", facilities: [], record_type: "building_survey",
+      survey_note: "건물 단위 실태조사(사용승인 시점) 기록입니다.", lat: 37.391, lng: 126.95 } ],
+    total: 7, confirmed: 1 } } });
+  check("show_restaurants → '식당 보기' 버튼 라벨 + 시트 데이터", () => {
+    assert.ok(actF && /🍽 지도에서 식당 보기 \(2곳\)/.test(actF.label), JSON.stringify(actF));
+    assert.equal(NF.sosItems().food.length, 2);
+  });
+  window.NAVI.showPreparedView();
+  await sleep(30);
+  check("식당 탭 — 확인된 곳은 ♿ 표시·시설 목록, 정보 없음은 전화 확인·실태조사 주의문", () => {
+    assert.equal($("sosSheet").hidden, false);
+    assert.equal($("sosTabs").querySelector("button[data-kind='food']").getAttribute("aria-pressed"), "true");
+    const cards = [...$("sosList").querySelectorAll(".sos-card")];
+    assert.equal(cards.length, 2);
+    assert.match(cards[0].textContent, /♿ 접근로·경사로 확인 — 접근로·경사로, 장애인 화장실/);
+    assert.match(cards[0].textContent, /220m · 안양시 동안구 1 · 한식/);
+    assert.match(cards[1].textContent, /휠체어 정보 없음 · 방문 전 전화로 확인해 주세요/);
+    assert.match(cards[1].textContent, /※ 건물 단위 실태조사/);
+    assert.ok(cards[0].querySelector(".sos-acts button"), "'여기로 안내' 버튼이 있어야 한다");
+  });
+  $("sosCancelBtn").dispatchEvent(new window.Event("click"));
+}
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {

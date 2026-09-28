@@ -1190,12 +1190,17 @@ async def tool_find_toilet(lat: float = None, lng: float = None, place: str = ""
             "emg_bell": bool(it.get("emg_bell")), "tel": it.get("tel"),
             # 시설 내 장애인화장실(관광시설, 02 v1.27.0) — 시설 운영시간에만 이용 가능 (#298)
             "facility_toilet": bool(it.get("facility_toilet")),
+            # 공공건물(청사·도서관·병원 등) 안 장애인화장실 (02 v1.31.0)
+            "building_toilet": bool(it.get("building_toilet")),
+            "facility_type": it.get("type") if it.get("building_toilet") else None,
             "lat": it.get("lat"), "lng": it.get("lng"),
         })
     ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
           + ("가까운 순으로 1~2곳만 이름·거리·개방시간으로 말하세요. open_time 이 없으면 "
              "'개방시간은 확인이 필요하다'고 하세요. facility_toilet 이 true 인 곳은 그 시설 안의 "
-             "화장실이라 시설 운영시간에만 쓸 수 있다고 덧붙이세요. 화면 카드의 '여기로 안내' 로 "
+             "화장실이라 시설 운영시간에만 쓸 수 있다고 덧붙이세요. building_toilet 이 true 인 곳은 "
+             "청사·도서관·병원 같은 공공건물 안의 장애인 화장실이라 건물이 문을 연 시간(대개 평일 낮)에 "
+             "이용할 수 있다고 말하세요. 화면 카드의 '여기로 안내' 로 "
              "경로를 받을 수 있다고 알리세요. " if items else
              "반경 %dm 안에 장애인 화장실이 등록된 공중화장실이 없다고 분명히 말하고, 가까운 "
              "지하철역 화장실은 get_station_facilities 로 확인할 수 있다고 안내하세요. " % radius_m))
@@ -1213,6 +1218,165 @@ async def tool_find_toilet(lat: float = None, lng: float = None, place: str = ""
         },
         "ai_instruction": ai,
     }
+
+
+# ─────────────────────────────────────────────────────────────
+# 음식점·건물 편의시설·명부 (02 v1.31.0) — 통합DB 에 있던 데이터를 상담에 연결
+# ─────────────────────────────────────────────────────────────
+ENTRY_LABEL = {"yes": "접근로·경사로 확인", "no": "출입구 턱 있음", "unknown": "휠체어 정보 없음"}
+
+
+async def tool_find_accessible_restaurants(lat: float = None, lng: float = None, place: str = "",
+                                           radius_m: int = 2000, accessible_only: bool = False) -> dict:
+    """휠체어로 갈 수 있는 음식점 — 통합DB(관광 음식점 + 편의시설 실태조사 음식점 건물).
+
+    휠체어 출입은 3상태다. unknown(정보 없음)은 '못 간다'가 아니다. 종전에는 이 질의를
+    외부 검색으로만 답했다 — 근거 없는 추천이 되기 쉬웠다.
+    """
+    base_label = None
+    if place:
+        base = await _resolve_base(place, lat, lng, "find_accessible_restaurants")
+        if isinstance(base, dict):
+            return base
+        lat, lng, base_label = base
+    try:
+        radius_m = max(300, min(int(radius_m or 2000), 10000))
+    except (TypeError, ValueError):
+        radius_m = 2000
+    data = await route_client.food_nearby(lat, lng, radius_m=radius_m, limit=5,
+                                          accessible_only=bool(accessible_only))
+    if isinstance(data, dict) and data.get("status") == "error":
+        return data
+    items = []
+    for it in (data.get("items") or []):
+        if not isinstance(it, dict):
+            continue
+        items.append({
+            "name": it.get("name"), "addr": it.get("addr"), "dist_m": it.get("dist_m"),
+            "cuisine": it.get("cuisine"),
+            "entry_status": it.get("entry_status") or "unknown",
+            "entry_label": ENTRY_LABEL.get(it.get("entry_status") or "unknown"),
+            "facilities": it.get("facilities") or [],
+            "record_type": it.get("record_type"),
+            "survey_note": it.get("survey_note"),
+            "source_label": it.get("source_label"),
+            "lat": it.get("lat"), "lng": it.get("lng"),
+        })
+    total, confirmed = data.get("total", len(items)), data.get("confirmed", 0)
+    where = ("기준 위치는 %s 입니다. " % base_label) if base_label else ""
+    if lat is None:
+        where += "현재 위치를 몰라 안양시 전체에서 찾았습니다 — 거리는 말하지 마세요. "
+    if confirmed:
+        ai = (where + "entry_status 가 yes 인 곳을 먼저 1~2곳 이름·거리로 말하세요. 근거는 '접근로나 경사로가 "
+              "있다고 등록된 곳'이라고 표현하고, 문턱이 전혀 없다고 단정하지 마세요. record_type 이 "
+              "building_survey 인 곳은 건물 실태조사 기록이라 지금 같은 가게가 영업 중인지 확인이 필요하다고 "
+              "덧붙이세요. 반경 안 %d곳 중 휠체어 정보가 확인된 곳은 %d곳뿐이라는 점을 한 문장으로 알리고, "
+              "방문 전 전화로 출입구·좌석을 확인하시라고 권하세요. 화면 목록의 '여기로 안내' 로 경로를 받을 "
+              "수 있다고 알리세요. " % (total, confirmed))
+    elif items:
+        ai = (where + "반경 안에 휠체어 출입이 확인된 음식점은 없다고 분명히 말하세요. 목록의 곳들은 "
+              "'휠체어 정보가 없는 곳'이지 못 가는 곳이 아닙니다 — 1~2곳만 이름을 말하고 방문 전 전화 확인을 "
+              "권하세요. 필요하면 google_search 로 경사로·문턱 정보를 찾아볼 수 있다고 제안하세요. ")
+    else:
+        ai = (where + "반경 %dm 안에 등록된 음식점이 없다고 말하고, 범위를 넓히거나 다른 장소를 기준으로 "
+              "찾아볼지 물어보세요. " % radius_m)
+    return {
+        "status": "success",
+        "tool_name": "find_accessible_restaurants",
+        "base_label": base_label,
+        "radius_m": radius_m if lat is not None else None,
+        "total": total, "confirmed": confirmed,
+        "count": len(items),
+        "items": items,
+        "ui_action": {
+            "action": "show_restaurants",
+            "payload": {"items": items, "base_label": base_label,
+                        "base": {"lat": lat, "lng": lng} if lat is not None else None,
+                        "total": total, "confirmed": confirmed},
+        },
+        "ai_instruction": ai,
+    }
+
+
+async def tool_check_building_accessibility(name: str = "", lat: float = None, lng: float = None,
+                                            place: str = "") -> dict:
+    """건물 편의시설 — "○○ 휠체어로 들어갈 수 있어?", "보건소에 장애인 화장실 있어?".
+
+    장애인편의시설 실태조사(한국사회보장정보원) 기준. 항목은 3상태이며 unknown 은 '자료 없음'이다.
+    """
+    name = (name or place or "").strip()
+    data = await route_client.facility_accessibility(q=name, lat=lat, lng=lng, limit=3)
+    if isinstance(data, dict) and data.get("status") == "error":
+        if not name and lat is None:
+            return {"status": "need_location", "tool_name": "check_building_accessibility",
+                    "ai_instruction": "어느 건물인지 이름을 말씀해 달라고 짧게 요청하세요."}
+        return data
+    label = {"entrance_ramp": "주출입구 턱 없음(경사로)", "entrance_door": "주출입구 문",
+             "approach_road": "주출입구 접근로", "elevator": "승강기", "dis_toilet": "장애인 화장실",
+             "dis_parking": "장애인 주차구역", "guide_facility": "안내설비"}
+    items = []
+    for it in (data.get("items") or []):
+        st = it.get("status") or {}
+        items.append({
+            "name": it.get("name"), "facility_type": it.get("facl_type"), "addr": it.get("addr"),
+            "dist_m": it.get("dist_m"),
+            "entry_status": it.get("entry_status") or "unknown",
+            "has": it.get("has") or [], "lacks": it.get("lacks") or [],
+            "no_data": [label[k] for k, v in st.items() if v == "unknown" and k in label],
+            "from_text": [label[k] for k, v in (it.get("basis") or {}).items() if v == "text" and k in label],
+            "survey_date": it.get("base_dt"),
+            "source_label": it.get("source_label"),
+        })
+    if items:
+        ai = ("첫 결과가 사용자가 말한 건물이 맞는지 이름으로 확인하고, 다르면 '비슷한 이름의 ○○ 자료만 있다'고 "
+              "말하세요. has(있음)·lacks(없음)를 나눠 짧게 말하고, no_data 항목은 '자료가 없다'고 하되 '없다'고 "
+              "하지 마세요. entry_status 가 yes 면 주출입구에 턱이 없다고 조사된 곳입니다. 장애인편의시설 "
+              "실태조사 기준이며 현장이 바뀌었을 수 있으니 방문 전 건물에 확인을 권하세요. "
+              "가는 길이 필요하면 plan_accessible_route 로 안내할 수 있다고 제안하세요. ")
+    else:
+        ai = ("이 건물은 장애인편의시설 실태조사 자료에 없다고 정직하게 말하세요. 없는 정보를 지어내지 말고, "
+              "건물 관리사무소나 대표번호로 확인을 권하세요. 필요하면 google_search 로 찾아볼 수 있습니다. ")
+    return {"status": "success", "tool_name": "check_building_accessibility", "query": name or None,
+            "count": len(items), "items": items, "ai_instruction": ai}
+
+
+async def tool_find_service_providers(service: str = "", district: str = "", name: str = "") -> dict:
+    """장애인 서비스 제공기관 — 주간활동·방과후·발달재활 바우처 사용처·거주시설·활동지원 등(안양 명부)."""
+    data = await route_client.service_providers(service=service, district=district, q=name, limit=5)
+    if isinstance(data, dict) and data.get("status") == "error":
+        return data
+    items = [{"name": it.get("name"), "services": it.get("services") or [], "addr": it.get("addr"),
+              "tel": it.get("tel")} for it in (data.get("items") or []) if isinstance(it, dict)]
+    base = data.get("base_date")
+    if items:
+        ai = ("2~3곳만 이름·제공 서비스·전화번호로 말하세요. %s 기준 명부라 운영 여부와 빈자리는 기관에 전화로 "
+              "확인하시라고 권하세요. 바우처·주간활동 같은 서비스는 먼저 행정복지센터에 신청해 자격을 받아야 "
+              "이용할 수 있으니, 신청 방법을 물으면 정책 도구(search_by_keyword)로 안내하세요. "
+              "전체 %d곳이 있습니다. " % (base or "적재 시점", data.get("total", len(items))))
+    else:
+        ai = ("조건에 맞는 제공기관이 명부에 없다고 말하고, 서비스 종류나 구를 바꿔 다시 찾아볼지 물어보세요. "
+              "안양시 장애인복지 담당 부서나 보건복지상담센터 129 로도 안내받을 수 있습니다. ")
+    return {"status": "success", "tool_name": "find_service_providers", "base_date": base,
+            "total": data.get("total", len(items)), "count": len(items), "items": items,
+            "ai_instruction": ai}
+
+
+async def tool_find_standard_workplaces(district: str = "", keyword: str = "", sigungu: str = "안양") -> dict:
+    """장애인 표준사업장(한국장애인고용공단 인증) — 업종·구로 좁힌다. 채용공고는 다루지 않는다."""
+    data = await route_client.std_workplaces(sigungu=sigungu or "안양", q=keyword, district=district, limit=5)
+    if isinstance(data, dict) and data.get("status") == "error":
+        return data
+    items = [{"name": it.get("name"), "business": it.get("business"), "addr": it.get("addr"),
+              "tel": it.get("tel"), "cert_date": it.get("cert_date")}
+             for it in (data.get("items") or []) if isinstance(it, dict)]
+    base = data.get("base_date")
+    ai = (("2~3곳만 이름·업종·전화번호로 말하세요. 표준사업장은 장애인 고용 요건을 갖춰 인증받은 사업장이며, "
+           "지금 채용 중인지는 알 수 없으니 회사나 한국장애인고용공단(1588-1519)에 문의하시라고 권하세요. "
+           "%s 기준 인증 현황입니다. " % (base or "적재 시점")) if items else
+          "조건에 맞는 표준사업장이 없다고 말하고, 업종이나 지역을 바꿔 찾아볼지 물어보세요. ")
+    return {"status": "success", "tool_name": "find_standard_workplaces", "base_date": base,
+            "total": data.get("total", len(items)), "count": len(items), "items": items,
+            "ai_instruction": ai}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1675,6 +1839,10 @@ def get_tool_dispatcher(embed_fn):
         "find_nearby_transit": tool_find_nearby_transit,
         "find_emergency_support": tool_find_emergency_support,
         "find_toilet": tool_find_toilet,
+        "find_accessible_restaurants": tool_find_accessible_restaurants,
+        "check_building_accessibility": tool_check_building_accessibility,
+        "find_service_providers": tool_find_service_providers,
+        "find_standard_workplaces": tool_find_standard_workplaces,
         "get_bus_arrivals": tool_get_bus_arrivals,
         "get_station_facilities": tool_get_station_facilities,
         "open_navi_screen": tool_open_navi_screen,

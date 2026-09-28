@@ -406,6 +406,39 @@ async def toilet_nearby(lat: float, lng: float, radius_m: float = 800, limit: in
                                "accessible_only": "true" if accessible_only else "false"})
 
 
+# ── 음식점·건물 편의시설·명부 (02 v1.31.0) ──
+async def food_nearby(lat: float = None, lng: float = None, sigungu: str = "안양",
+                      radius_m: float = 3000, limit: int = 5, accessible_only: bool = False) -> dict:
+    """휠체어로 갈 수 있는 음식점 — 출입 3상태(yes/no/unknown), 확인된 곳 먼저."""
+    params = {"sigungu": sigungu, "radius_m": radius_m, "limit": limit,
+              "accessible_only": "true" if accessible_only else "false"}
+    if lat is not None and lng is not None:
+        params.update({"lat": lat, "lng": lng})
+    return await _call("GET", "/food/nearby", params=params)
+
+
+async def facility_accessibility(q: str = "", lat: float = None, lng: float = None,
+                                 radius_m: float = 300, limit: int = 3) -> dict:
+    """건물 편의시설(장애인편의시설 실태조사) — 이름 또는 근처."""
+    params = {"q": q or "", "radius_m": radius_m, "limit": limit}
+    if lat is not None and lng is not None:
+        params.update({"lat": lat, "lng": lng})
+    return await _call("GET", "/facility/accessibility", params=params)
+
+
+async def service_providers(service: str = "", district: str = "", q: str = "",
+                            sigungu: str = "안양", limit: int = 5) -> dict:
+    return await _call("GET", "/directory/providers",
+                       params={"service": service or "", "district": district or "", "q": q or "",
+                               "sigungu": sigungu or "안양", "limit": limit})
+
+
+async def std_workplaces(sigungu: str = "안양", q: str = "", district: str = "", limit: int = 5) -> dict:
+    return await _call("GET", "/directory/workplaces",
+                       params={"sigungu": sigungu or "안양", "q": q or "", "district": district or "",
+                               "limit": limit})
+
+
 # ── 실시간 버스·역 설비 (02 v1.19.0) ──
 async def bus_arrivals(station_id: str, route_id: str = "") -> dict:
     """정류장 실시간 도착정보 — 노선별 1·2번째 차량의 도착 예정·저상 여부."""
