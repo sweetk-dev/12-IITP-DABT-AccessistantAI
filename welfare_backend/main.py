@@ -567,6 +567,18 @@ async def find_toilet(
     return await tool_handlers.tool_find_toilet(lat=lat, lng=lng, radius_m=radius_m)
 
 
+@app.get("/api/v1/tools/find_accessible_restaurants", tags=["tools"],
+         summary="[15] 휠체어로 갈 수 있는 음식점 조회")
+async def find_accessible_restaurants(
+    lat: float = Query(None),
+    lng: float = Query(None),
+    radius_m: int = Query(2000, ge=300, le=10000),
+    accessible_only: bool = Query(False),
+):
+    return await tool_handlers.tool_find_accessible_restaurants(
+        lat=lat, lng=lng, radius_m=radius_m, accessible_only=accessible_only)
+
+
 @app.get("/api/v1/tools/transit_access_points", tags=["tools"],
          summary="[7-1] 휠체어 접근 가능한 정류장·역")
 async def transit_access_points(

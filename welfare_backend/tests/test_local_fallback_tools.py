@@ -47,7 +47,9 @@ ROUTE = {"find_bf_tour_spots", "plan_accessible_route", "explain_route_segment",
          "report_accessibility_issue",
          "get_bus_arrivals", "get_station_facilities",   # v1.39.0 실시간 버스·역 설비
          "find_emergency_support", "find_toilet",         # v1.49.0 긴급대응·화장실
-         "report_station_position"}                        # v1.52.0 역 안/밖·출구 확인을 말로
+         "report_station_position",                        # v1.52.0 역 안/밖·출구 확인을 말로
+         "find_accessible_restaurants", "check_building_accessibility",   # v1.55.0 음식점·건물 편의시설
+         "find_service_providers", "find_standard_workplaces"}            # v1.55.0 기관·사업장 명부
 
 results = []
 

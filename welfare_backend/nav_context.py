@@ -194,7 +194,8 @@ def inject_nav_defaults(fname: str, fargs: dict, nav: dict, user_location: dict)
     - explain_route_segment: 안내가 진행 중이면 route_id·step_idx 기본값을
       '경고 구간 자동 선택'이 아니라 **현재 진행 구간**으로 준다.
       모델이 값을 명시했으면 그대로 둔다(과거 구간 질문 허용).
-    - find_nearby_transit / find_emergency_support / find_toilet: 기준 장소(place)를 말하지 않았으면 현재 위치를 쓴다.
+    - find_nearby_transit / find_emergency_support / find_toilet / find_accessible_restaurants /
+      check_building_accessibility: 기준 장소(place)를 말하지 않았으면 현재 위치를 쓴다.
     - get_bus_arrivals: 정류장을 말하지 않았으면 안내 중인 버스 구간의 승차 정류장·노선을,
       그것도 없으면 현재 위치(가장 가까운 정류장 탐색)를 쓴다.
     """
@@ -213,7 +214,8 @@ def inject_nav_defaults(fname: str, fargs: dict, nav: dict, user_location: dict)
         else:
             fargs.pop("origin_lat", None)
             fargs.pop("origin_lng", None)
-    elif fname in ("find_nearby_transit", "find_emergency_support", "find_toilet"):
+    elif fname in ("find_nearby_transit", "find_emergency_support", "find_toilet",
+                   "find_accessible_restaurants", "check_building_accessibility"):
         # 긴급대응·화장실(#296)도 정류장과 같다 — 기준 장소를 말하지 않았으면 현재 위치
         if not fargs.get("place"):
             if user_location and user_location.get("lat") is not None:

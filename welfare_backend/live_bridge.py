@@ -216,9 +216,13 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 되물었을 때 사용자가 다른 의도를 밝히면, **주제로 범위를 자르지 마세요.** 기준은 장애 관련성입니다.
 
 - "그냥 맛집 추천해줘" → **범위 밖**. 장애인 정책 안내가 제 역할임을 짧게 밝히고, 관련 정책이 있으면 다시 제안합니다.
-- "휠체어로 들어갈 수 있는 식당 있어?" → **범위 안**. 정책 DB 에 없는 정보이므로 `google_search` 로 답합니다. 검색어에 경사로·문턱·장애인 화장실·장애인 주차 같은 **접근성 조건을 반드시 포함**하세요.
+- "휠체어로 들어갈 수 있는 식당 있어?" → **범위 안**. `find_accessible_restaurants` 를 **먼저** 호출합니다. 휠체어 정보가 확인된 곳이 없거나 사용자가 특정 식당을 물으면 그때 `google_search` 를 씁니다 — 검색어에 경사로·문턱·장애인 화장실 같은 **접근성 조건을 반드시 포함**하세요.
 
-건물·시설의 이동 편의(접근성) 정보는 정책 DB 에 없는 것이 확실하므로, **이 경우에 한해** DB 도구를 거치지 않고 바로 `google_search` 를 호출해도 됩니다.
+건물·시설의 이동 편의(접근성) 정보는 정책 DB 에 없으므로 정책 도구를 거치지 않습니다. 주민센터·보건소·우체국·도서관 같은 **특정 건물**이면 `check_building_accessibility` 를 먼저 부르고, 자료가 없을 때만 `google_search` 를 호출합니다.
+
+### 기관·사업장 명부
+- "주간활동 어디서 해?", "발달재활 바우처 쓸 수 있는 곳", "장애인 거주시설" → `find_service_providers`. 이용 신청 방법은 정책 도구로 안내합니다.
+- "장애인이 일하는 회사", "표준사업장" → `find_standard_workplaces`. 채용 여부는 알 수 없으니 회사·한국장애인고용공단에 문의를 권합니다.
 
 ## 단계적 라우팅
 - 첫 호출로 정보 부족하면 한 번 더 다른 도구를 연쇄 호출해도 됩니다. 단, 음성 침묵을 줄이기 위해 가능한 한 1~2회 안에 답변을 완성하세요.
@@ -268,7 +272,8 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - "저상버스 언제 와", "다음 버스 저상이야", "51번 몇 분 남았어" → `get_bus_arrivals` 를 호출합니다. 안내 중이면 승차 정류장·노선이 자동으로 들어갑니다. 결과의 `next_low_floor` 를 먼저 말하고, 없으면 "지금 오는 차량은 저상이 아니다"라고 하세요 — "저상버스가 없다"고 단정하지 않습니다. 실시간이라 변동될 수 있다고 한 마디 덧붙입니다.
 - "○○역 엘리베이터 어디 있어", "장애인 화장실 있어", "휠체어로 탈 수 있어" → `get_station_facilities` 를 호출합니다. 출입구별 위치를 2~3개만 읽고, 상태가 unknown 이면 "자료가 없다"고 말합니다(없다고 하지 않습니다).
 - **긴급 상황** — "배터리가 다 됐어", "충전할 데 있어", "휠체어가 고장났어", "바퀴가 이상해", "콜택시 불러줘" → `find_emergency_support` 를 **먼저** 호출합니다(situation 에 사용자 말 원문). 유형별 가장 가까운 1~2곳을 이름·거리·전화번호로 말하고, `open_hours_status` 가 unknown 이면 운영시간을 지어내지 말고 "전화로 확인해 보시라"고 하세요. 배터리 상황이면 이동 가능 거리를 먼저 묻고 멀면 콜택시를 함께 권하세요. 화면에 카드가 떴고 '여기로 안내' 로 경로를 받을 수 있다고 알립니다.
-- "화장실 어디야", "장애인 화장실" → `find_toilet` 을 호출합니다. 가까운 1~2곳을 거리·개방시간으로 말합니다. 역 안 화장실은 `get_station_facilities` 입니다.
+- "화장실 어디야", "장애인 화장실" → `find_toilet` 을 호출합니다. 가까운 1~2곳을 거리·개방시간으로 말합니다. 청사·도서관·병원 같은 공공건물 안 화장실(building_toilet)은 건물이 문을 연 시간에만 쓸 수 있다고 덧붙입니다. 역 안 화장실은 `get_station_facilities` 입니다.
+- "근처 밥 먹을 데", "휠체어로 들어갈 수 있는 식당" → `find_accessible_restaurants`. 휠체어 정보가 없는 곳을 "못 간다"고 말하지 않습니다.
 - **역 안/밖·출구 확인은 말로도 받습니다(손을 쓰기 어려운 분).** 화면이 "역 안(승강장)이신가요, 역 밖이신가요?"를 묻거나 역 안 안내 중일 때 사용자가 "역 안이야", "나왔어", "밖이야", "나가는 중이야", "아직이야", "엘리베이터 타는 중" 이라고 말하면 `report_station_position` 을 호출합니다(where = inside / outside / exiting). "서울 쪽에서 왔어" 처럼 타고 온 방향을 함께 말하면 travel 에 담습니다. 나가는 중이면 **재촉하지 말고** 천천히 오시라고 한 문장만 답합니다 — 이동에 시간이 걸리는 분들입니다. **"아직 안 나왔어", "나온 거 아니야" 같은 부정 표현은 outside 가 아닙니다 — exiting 입니다.** 역과 무관한 말("식당에서 나왔어")에는 호출하지 않습니다.
 - "근처 정류장", "여기서 뭐 타", "버스 어디서 타" → `find_nearby_transit` 을 호출합니다. 결과의 `accessible` 이 null(unknown)이면 "이용 불가"가 아니라 "저상버스 정차 여부는 실시간 도착정보로 확인이 필요하다"고 안내하세요. 버스 방면은 종점명(end_station)으로 안내하되, 양방향 종점명이 같은 순환 노선은 경유 순번(station_seq)이 다르다는 점을 함께 알립니다. 같은 번호라도 노선 유형(마을버스/일반형시내버스)이 다르면 다른 노선입니다.
 
@@ -400,6 +405,58 @@ def _route_tool_declarations() -> list:
                 properties={
                     "place": types.Schema(type=types.Type.STRING, description="사용자가 말한 기준 장소 이름. 미지정 시 현재 위치"),
                     "radius_m": types.Schema(type=types.Type.INTEGER, description="검색 반경(m), 기본 800, 최대 3000"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="find_accessible_restaurants",
+            description=("휠체어로 갈 수 있는 음식점을 찾는다. \"휠체어로 들어갈 수 있는 식당 있어?\", \"근처 밥 먹을 데\" "
+                         "질의에 먼저 사용. 휠체어 출입은 3상태(yes 확인 / no 턱 있음 / unknown 정보 없음)이며 "
+                         "unknown 은 못 간다는 뜻이 아니다. 기준 위치는 현재 위치가 자동 주입된다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "place": types.Schema(type=types.Type.STRING, description="사용자가 말한 기준 장소 이름. 미지정 시 현재 위치"),
+                    "radius_m": types.Schema(type=types.Type.INTEGER, description="검색 반경(m), 기본 2000, 최대 10000"),
+                    "accessible_only": types.Schema(type=types.Type.BOOLEAN, description="휠체어 출입이 확인된 곳만 원할 때 true"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="check_building_accessibility",
+            description=("특정 건물(주민센터·보건소·우체국·도서관·병원·경찰서 등)의 장애인 편의시설을 알려 준다 — "
+                         "주출입구 턱·접근로·승강기·장애인 화장실·장애인 주차구역. \"○○ 휠체어로 들어갈 수 있어?\", "
+                         "\"보건소에 장애인 화장실 있어?\" 질문에 사용. 장애인편의시설 실태조사 기준."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "name": types.Schema(type=types.Type.STRING, description="건물 이름(예: '만안구보건소', '비산2동 행정복지센터')"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="find_service_providers",
+            description=("안양의 장애인 서비스 제공기관을 찾는다 — 발달장애인 주간활동·방과후활동, 발달재활·언어발달 "
+                         "바우처 사용처, 장애인 거주시설, 활동지원기관, 직업재활시설, 긴급돌봄 등. "
+                         "\"주간활동 어디서 해?\", \"발달재활 받을 수 있는 곳\" 질문에 사용."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "service": types.Schema(type=types.Type.STRING, description="주간활동/방과후/발달재활/언어/거주/활동지원/직업재활/긴급돌봄 등"),
+                    "district": types.Schema(type=types.Type.STRING, description="만안구 또는 동안구(말했을 때만)"),
+                    "name": types.Schema(type=types.Type.STRING, description="기관 이름 일부(말했을 때만)"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="find_standard_workplaces",
+            description=("장애인 표준사업장(한국장애인고용공단 인증, 장애인을 일정 비율 이상 고용한 사업장)을 찾는다. "
+                         "\"장애인이 일하는 회사\", \"표준사업장 어디 있어\" 질문에 사용. 채용공고는 다루지 않는다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "keyword": types.Schema(type=types.Type.STRING, description="업종 낱말(예: 카페, 제조) — 말했을 때만"),
+                    "district": types.Schema(type=types.Type.STRING, description="만안구 또는 동안구(말했을 때만)"),
                 },
             ),
         ),
