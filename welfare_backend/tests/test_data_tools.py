@@ -64,10 +64,14 @@ def _patch(attr, fn):
 
 FOOD = {"total": 12, "confirmed": 2, "unknown": 10, "items": [
     {"name": "경사로식당", "addr": "a", "dist_m": 220, "cuisine": "한식", "entry_status": "yes",
-     "facilities": ["접근로·경사로"], "record_type": "tour_listing", "lat": 37.39, "lng": 126.95},
+     "facilities": ["접근로·경사로", "장애인 화장실"], "record_type": "tour_listing", "lat": 37.39, "lng": 126.95,
+     "toilet": {"status": "own", "nearby": None, "radius_m": 200}},
     {"name": "흥부가", "addr": "b", "dist_m": 400, "cuisine": "일반음식점", "entry_status": "yes",
      "facilities": ["접근로·경사로"], "record_type": "building_survey", "survey_note": "건물 단위",
-     "lat": 37.391, "lng": 126.95},
+     "lat": 37.391, "lng": 126.95,
+     "toilet": {"status": "nearby", "radius_m": 200,
+                "nearby": {"name": "공원 공중화장실", "dist_m": 44, "source": "PUBLIC_TOILET", "open_time": "24시간",
+                           "lat": 37.3906, "lng": 126.95}}},
     {"name": "모르는식당", "addr": "c", "dist_m": 500, "entry_status": "unknown", "facilities": [],
      "record_type": "tour_listing", "lat": 37.392, "lng": 126.95},
 ]}
@@ -89,9 +93,25 @@ def t_restaurants_confirmed():
     ai = r["ai_instruction"]
     assert "12곳 중 휠체어 정보가 확인된 곳은 2곳" in ai, ai
     assert "building_survey" in ai and "단정하지" in ai
+    assert "toilet" in ai and "목록 전체를 읽지 마세요" in ai                  # v1.56.0 화장실 한 마디 — 1~2곳에만
+    assert r["items"][0]["toilet"] == {"status": "own", "nearby": None}
+    assert r["items"][1]["toilet"]["nearby"] == {"name": "공원 공중화장실", "dist_m": 44, "open_time": "24시간"}
+    assert r["items"][2]["toilet"] is None                                    # 02 가 toilet 을 안 주면 None
     ua = r["ui_action"]
     assert ua["action"] == "show_restaurants" and len(ua["payload"]["items"]) == 3
     assert calls[0][:2] == (37.39, 126.95)
+
+
+def t_restaurants_toilet_absent_means_silent():
+    """02 가 toilet 을 안 주면(구버전) 화장실 지침을 넣지 않는다 — 정보 없음 ≠ 화장실 없음."""
+    async def fake(lat=None, lng=None, **kw):
+        return {"total": 1, "confirmed": 0, "items": [FOOD["items"][2]]}
+    orig = _patch("food_nearby", fake)
+    try:
+        r = _run(tool_handlers.tool_find_accessible_restaurants(lat=37.39, lng=126.95))
+    finally:
+        route_client.food_nearby = orig
+    assert r["items"][0]["toilet"] is None and "화장실" not in r["ai_instruction"]
 
 
 def t_restaurants_none_confirmed_and_no_location():
