@@ -1583,7 +1583,8 @@ window.NAVI = (function(){
      횡단보도 3개를 연달아 건너면 "횡단보도를 건너 ○m" 스텝이 7개 나온다(안양시청 → 안양아트센터, 범계역 서쪽).
      crossing 스텝이 연달아 오면 한 체인으로 보고, 첫 스텝에서 "횡단보도 N개를 교통섬을 거쳐 연달아 건넙니다.
      총 Xm" 으로 한 번 말한 뒤, 같은 횡단보도의 다음 조각은 무음, 다음 횡단보도로 들어설 때만 "다음 횡단보도입니다".
-     N 은 경로 서비스가 주는 crosswalk_id(안양시 좌표본 관리번호)로 센다 — 없으면 조각 수로 센다(02 v1.33.1 이전). */
+     N 은 경로 서비스가 주는 crosswalk_id(안양시 좌표본 관리번호)로 센다 — 없으면(02 v1.33.1 이전) 개수 없이 총거리만 말하고 조각은 무음. */
+  function _hasCw(st){ return !!st && st.crosswalk_id != null && st.crosswalk_id !== ""; }
   function _chainEnd(i){                       // i 가 crossing 이면 체인의 마지막 인덱스, 아니면 -1
     if(!steps[i] || steps[i].maneuver !== "crossing") return -1;
     var j = i; while(steps[j+1] && steps[j+1].maneuver === "crossing") j++;
@@ -1593,33 +1594,56 @@ window.NAVI = (function(){
     var j = i; while(j > 0 && steps[j-1] && steps[j-1].maneuver === "crossing") j--;
     return j;
   }
-  function _cwKey(st, i){ return (st && st.crosswalk_id) ? String(st.crosswalk_id) : ("#" + i); }
-  function _chainInfo(i){                      // 체인 머리 i 의 요약 {n, total, end} — 체인이 아니면 null
+  function _cwKey(st, i){ return _hasCw(st) ? String(st.crosswalk_id) : ("#" + i); }
+  function _bearing(a, b){ return Math.atan2((b[1]-a[1]) * Math.cos(a[0]*Math.PI/180), b[0]-a[0]) * 180/Math.PI; }
+  function _chainInfo(i){                      // 체인 머리 i 의 요약 {n, total, end, straight} — 체인이 아니면 null
     var end = _chainEnd(i);
     if(end < 0 || end === i) return null;
-    var ids = {}, n = 0, total = 0;
-    for(var j = i; j <= end; j++){ var k = _cwKey(steps[j], j); if(!ids[k]){ ids[k] = 1; n++; } total += Number(steps[j].distance_m) || 0; }
-    return { n: n, total: Math.round(total), end: end };
+    var ids = Object.create(null), n = 0, total = 0, allIds = true, straight = true, prevB = null;
+    for(var j = i; j <= end; j++){
+      if(!_hasCw(steps[j])) allIds = false;
+      var k = _cwKey(steps[j], j); if(!ids[k]){ ids[k] = 1; n++; } total += Number(steps[j].distance_m) || 0;
+      // 횡단보도 경계에서 진행 방향이 크게 꺾이면(모퉁이 ㄷ자 횡단) 교통섬이 아니다
+      var a = steps[j].coord, b = steps[j+1] && steps[j+1].coord;
+      if(a && b && (a[0] !== b[0] || a[1] !== b[1])){
+        var bb = _bearing(a, b);
+        if(prevB !== null && j > i && _cwKey(steps[j], j) !== _cwKey(steps[j-1], j-1)){
+          var dlt = Math.abs(((bb - prevB + 540) % 360) - 180); if(dlt > 45) straight = false;
+        }
+        prevB = bb;
+      }
+    }
+    return { n: allIds ? n : null, total: Math.round(total), end: end, straight: straight };   // 관리번호가 하나라도 없으면 개수를 말하지 않는다
   }
-  function _chainUtterance(i){                 // 체인 머리의 문장. 뒤따르는 조각은 여기서 무음/짧은 안내로 표시한다
-    var c = _chainInfo(i); if(!c) return null;
-    var warn = [];
+  function _chainWarnings(i){
+    var c = _chainInfo(i), warn = []; if(!c) return warn;
     for(var j = i; j <= c.end; j++){ (steps[j].warnings || []).forEach(function(w){ if(warn.indexOf(w) < 0) warn.push(w); }); }
-    var body = c.n >= 2
-      ? ("횡단보도 " + c.n + "개를 교통섬을 거쳐 연달아 건넙니다. 총 " + c.total + "m입니다.")
-      : ("횡단보도를 건너 " + c.total + "m 이동합니다.");
+    return warn;
+  }
+  function _chainBody(i){                      // 체인 머리의 본문(경고 제외). 체인이 아니면 null
+    var c = _chainInfo(i); if(!c) return null;
+    if(c.n === null) return "횡단보도를 연달아 건넙니다. 총 " + c.total + "m입니다.";
+    if(c.n >= 2) return "횡단보도 " + c.n + "개를 " + (c.straight ? "교통섬을 거쳐 " : "") + "연달아 건넙니다. 총 " + c.total + "m입니다.";
+    return "횡단보도를 건너 " + c.total + "m 이동합니다.";
+  }
+  function _chainUtterance(i){                 // 체인 머리의 문장(경고 포함)
+    var body = _chainBody(i); if(!body) return null;
+    var warn = _chainWarnings(i);
     return body + (warn.length ? " (" + warn.join(", ") + ")" : "");
   }
+  var _chainSpoken = -1;                       // 마지막으로 머리 문장을 말한 체인의 머리 인덱스 — 머리를 건너뛰고 조각에 들어서면 대신 말한다
   function _chainMemberUtterance(i){           // 체인 안(머리 제외) 스텝의 문장 — 같은 횡단보도면 "", 새 횡단보도면 짧게
     if(!steps[i] || steps[i].maneuver !== "crossing") return null;
     var head = _chainHead(i); if(head === i || _chainEnd(head) === head) return null;
+    if(_chainSpoken !== head) return _chainUtterance(head);                 // 머리 문장을 아직 안 했다(스텝 점프) — 여기서 한다
+    if(!_hasCw(steps[i]) || !_hasCw(steps[i-1])) return "";                 // 관리번호 없이는 경계를 모른다 — 무음
     return _cwKey(steps[i], i) === _cwKey(steps[i-1], i-1) ? "" : "다음 횡단보도입니다.";
   }
-  function stepUtterance(i){
+  function stepUtterance(i, mark){             // mark=true 는 실제 발화 시점(_announceStep)에서만 — 상태 표시는 그때만 (v1.57.0)
     var st = steps[i]; if(!st) return "";
     var member = _chainMemberUtterance(i);
-    if(member !== null) return member;
-    if(st.maneuver === "crossing"){ var ch = _chainUtterance(i); if(ch) return ch; }
+    if(member !== null){ if(mark && member) _chainSpoken = _chainHead(i); return member; }
+    if(st.maneuver === "crossing"){ var ch = _chainUtterance(i); if(ch){ if(mark) _chainSpoken = i; return ch; } }
     // 지하철 하차 — 역 안에서는 위치를 알 수 없으니 이용자에게 묻는다 (#298)
     if(st.maneuver === "station_start" && st.egress){
       return [String(st.instruction || "").replace(/[.\s]*$/, "")].concat(st.egress.inside || []).join(". ")
@@ -1635,10 +1659,16 @@ window.NAVI = (function(){
     if(m){ warn = " (" + m[1] + ")"; head = head.slice(0, m.index); }
     head = head.replace(/횡단보도를 건너세요\.?/, "").trim();
     var nx = String(steps[i+1].instruction || "").trim();
-    var chain = (steps[i+1].maneuver === "crossing") ? _chainUtterance(i+1) : null;   // 노드 스텝 뒤가 체인이면 체인 문장으로
-    if(chain){ nx = chain.replace(/\s*\([^)]*\)\s*$/, ""); }
-    var body = /^횡단보도/.test(nx) ? nx : ("횡단보도를 건넌 뒤 " + nx);
-    _spokenAhead[i+1] = true;
+    var chainBody = (steps[i+1].maneuver === "crossing") ? _chainBody(i+1) : null;   // 노드 스텝 뒤가 체인이면 체인 문장으로
+    if(chainBody){
+      // 체인이면 "횡단보도가 있습니다"는 빼고(중복) 체인 문장만, 경고는 노드 스텝 + 체인 전체의 합집합
+      var ws = m ? [m[1]] : [];
+      _chainWarnings(i+1).forEach(function(w){ if(ws.indexOf(w) < 0) ws.push(w); });
+      if(mark){ _spokenAhead[i+1] = true; _chainSpoken = i+1; }
+      return chainBody + (ws.length ? " (" + ws.join(", ") + ")" : "");
+    }
+    var body = /^횡단보도를 건너/.test(nx) ? nx : ("횡단보도를 건넌 뒤 " + nx);
+    if(mark) _spokenAhead[i+1] = true;
     return (head + " " + body).replace(/\s+/g, " ").trim() + warn;
   }
   // 안내 시작 시 전체 안내 문장을 미리 합성해 캐시에 올려둔다(첫 재생 지연·폴백 혼재 방지)
@@ -1646,7 +1676,7 @@ window.NAVI = (function(){
     if(!voiceOn || !steps.length) return;
     var v = window.__sessionVoice || "female";
     var texts = steps.map(function(st, i){ return (_isMergedCrossing(i) || st.maneuver === "crossing") ? stepUtterance(i) : st.instruction; }).filter(Boolean);
-    _spokenAhead = {};
+    texts = texts.filter(function(t, k){ return texts.indexOf(t) === k; });   // 체인 문장은 노드 스텝과 머리 스텝에서 겹친다
     texts.push("다음 안내까지 약 300미터입니다", "다음 안내까지 약 150미터입니다");
     landmarks.forEach(function(x){ if(x.speech) texts.push(x.speech); });   // 주변 랜드마크 (#308)
     // 2개 병렬 — 캐시 미스 한 문장에 5~9초가 걸리므로 순차로는 안내 시작 전에 채우지 못한다 (v1.43.1)
@@ -2683,7 +2713,7 @@ window.NAVI = (function(){
     closeSpotChoice();
     clearRouteLines();
     stopSimulation();
-    route=null; steps=[]; stepIdx=0; routeGeom=[]; cumDist=[0]; landmarks=[]; _lmDone={}; _lmPassCnt={};
+    route=null; steps=[]; stepIdx=0; routeGeom=[]; cumDist=[0]; landmarks=[]; _lmDone={}; _lmPassCnt={}; _chainSpoken=-1;
     guiding=false;
     setEndBtn("home");
     sendNavState();   // 세션의 안내 상태도 함께 비운다 — 상담원이 이전 경로를 답하지 않도록
@@ -2816,6 +2846,7 @@ window.NAVI = (function(){
     var primary = (route.routes||[])[0];
     if(!primary){ status("경로를 찾지 못했습니다."); return; }
     steps = primary.steps || [];
+    _chainSpoken = -1;   // 새 경로 — 횡단보도 체인 발화 상태 초기화 (v1.57.0)
     egressWhere = {}; autoExitUndo = null; exitAutoOff = {}; exitFixN = 0;
     routeDestName = destName || null;
     // 역 근처 출발 (#300, 02 v1.28.0) — 안내 시작 때 역 안/밖을 묻는다. 역 안 출발 경로면 이미 답했다.
@@ -3181,7 +3212,7 @@ window.NAVI = (function(){
     sheetMini(true); sheetSetCollapsed(false);   // 안내 중엔 시트를 낮춰 지도를 넓게
     renderStep();
     sendNavState();   // 안내 시작을 세션에 알린다 (#248)
-    stopSpeak(); _spokenAhead = {};
+    stopSpeak(); _spokenAhead = {}; _chainSpoken = -1;
     _announceStep(0);
     followCamera();
   }
@@ -3450,7 +3481,7 @@ window.NAVI = (function(){
       var exc = (eg.exit && eg.exit.lat != null) ? {lat: eg.exit.lat, lng: eg.exit.lng} : null;
       autoExitUndo = {step: stepIdx, key: key, station: eg.station, ts: Date.now(), exit: exc};
       _lastAdvanceTs = Date.now();   // 넘어간 직후 4초는 다음 단계로 넘기지 않는다(advanceStep 쿨다운)
-      stepIdx += 1; renderStep(); _spokenAhead = {};
+      stepIdx += 1; renderStep(); _spokenAhead = {}; _chainSpoken = -1;
       stopSpeak();
       speak("역 밖으로 나오신 것 같아 걸어서 안내를 시작할게요. 아직 역 안이시면 "
             + (voiceSession() ? "말씀해 주시거나 " : "") + "되돌리기 버튼을 눌러 주세요. "
@@ -3467,7 +3498,7 @@ window.NAVI = (function(){
     var u = autoExitUndo; autoExitUndo = null;
     exitAutoOff[u.key] = true;     // 이 역에서는 위치로 다시 넘기지 않는다 — 말·버튼으로만
     egressWhere[u.key] = "inside"; sendActivity("egress_undo");
-    stepIdx = u.step; renderStep(); _spokenAhead = {};
+    stepIdx = u.step; renderStep(); _spokenAhead = {}; _chainSpoken = -1;
     stopSpeak(); speak("역 안 안내로 돌아갑니다. " + stepUtterance(stepIdx));
     sendNavState();
     return true;
@@ -3757,7 +3788,7 @@ window.NAVI = (function(){
   }
   function _announceStep(i){
     if(_spokenAhead[i]){ delete _spokenAhead[i]; return; }   // 앞 스텝에서 합쳐 말했다
-    var u = stepUtterance(i);
+    var u = stepUtterance(i, true);
     if(u) speakStep(u);                                       // 횡단보도 체인의 같은 조각은 무음 (v1.57.0)
   }
   var _lastAdvanceTs = 0;
@@ -3894,7 +3925,7 @@ window.NAVI = (function(){
     sheetMini(true); sheetSetCollapsed(false);   // 모의 주행 중에도 지도를 넓게
     drawSim();
     renderStep();
-    stopSpeak(); _spokenAhead = {};
+    stopSpeak(); _spokenAhead = {}; _chainSpoken = -1;
     _announceStep(0);
     status("모의 주행을 시작합니다.");
     var TICK=200;
