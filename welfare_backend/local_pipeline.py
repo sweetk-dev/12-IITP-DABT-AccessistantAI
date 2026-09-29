@@ -34,6 +34,8 @@ import numpy as np
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
+import trial_recorder
+
 from nav_context import (update_nav_state, current_guidance_result,
                          note_new_route, inject_nav_defaults)
 
@@ -446,6 +448,9 @@ class LocalVoiceSession:
         self._closed = False
 
     async def _send(self, payload: dict) -> bool:
+        _tr = trial_recorder.of(self.ws)            # 실증 참여자 계정 기록(#318)
+        if _tr is not None:
+            _tr.on_out(payload)
         try:
             await self.ws.send_json(payload)
             return True
@@ -556,6 +561,9 @@ class LocalVoiceSession:
                 raw = await self.ws.receive_text()
                 msg = json.loads(raw)
                 mtype = msg.get("type")
+                _tr = trial_recorder.of(self.ws)        # 실증 기록(#318)
+                if _tr is not None:
+                    _tr.on_in(msg)
 
                 if mtype == "audio_chunk":
                     pcm = base64.b64decode(msg["data"])

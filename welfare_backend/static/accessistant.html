@@ -458,6 +458,129 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
 </script>
 
 <script>
+/* 실증 참여자 계정 전용 대화·음성 기록 (v1.58.0, #318)
+   상담 중 단말은 소리를 통화 모드로 처리해 화면 녹화에 서비스 음성이 담기지 않는다. 서버가 실증 참여자
+   계정(서버 설정)이라고 답할 때만 켜지고, 그 밖의 계정에서는 기록 요청을 하나도 보내지 않는다.
+   - ev(type, data): 단말에서 일어난 일(길안내 문장 재생·끊김, 상담원 음성 재생 시작 위치 등)을 모아 5초마다 올린다
+   - attachMic(stream): 서비스로 보내는 마이크와 별개로 같은 마이크를 처음부터 끝까지 녹음해 10초 조각으로 올린다
+     (안내 중에는 서비스가 마이크 프레임을 걸러 서버에 안 들어오므로 그 구간을 메운다). 에코·끼어들기 판정은 건드리지 않는다
+   - 업로드가 실패하면 단말 메모리에 잠시 두고 다시 보낸다. 어떤 실패도 상담·길안내 동작에 영향을 주지 않는다 */
+(function(){
+  var T = { enabled:false, rid:null,
+            ev:function(){}, attachMic:function(){}, detachMic:function(){},
+            wsQuery:function(){ return Promise.resolve(""); } };
+  window.__TRIAL = T;
+  if (typeof fetch !== "function") return;
+  var ready = fetch("/api/v1/trial/status", {credentials:"same-origin"})
+    .then(function(r){ return r.ok ? r.json() : {}; })
+    .catch(function(){ return {}; })
+    .then(function(j){ if (j && j.enabled === true) enable(); });
+  // 웹소켓 주소에 기록 식별자를 붙인다 — 상태 확인이 늦어도 1.5초 넘게 기다리지 않는다
+  T.wsQuery = function(){
+    return Promise.race([ready, new Promise(function(r){ setTimeout(r, 1500); })])
+      .then(function(){ return T.enabled ? "&rid=" + encodeURIComponent(T.rid) : ""; })
+      .catch(function(){ return ""; });
+  };
+
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function enable(){
+    var d = new Date();
+    T.rid = "t" + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + pad(d.getHours()) + pad(d.getMinutes())
+          + pad(d.getSeconds()) + "_" + Math.random().toString(36).slice(2, 8);
+    T.enabled = true;
+    var q = [], dropped = 0, flushing = false, EV_MAX = 3000;
+    function flush(){
+      if (flushing || !q.length) return;
+      flushing = true;
+      var batch = q.splice(0, 400);
+      fetch("/api/v1/trial/events", {method:"POST", credentials:"same-origin",
+            headers:{"Content-Type":"application/json"}, body: JSON.stringify({rid:T.rid, events:batch})})
+        .then(function(r){ if (!r.ok) throw new Error("http " + r.status); })
+        .catch(function(){ q = batch.concat(q); if (q.length > EV_MAX){ dropped += q.length - EV_MAX; q = q.slice(q.length - EV_MAX); } })
+        .then(function(){ flushing = false; });
+    }
+    T.ev = function(type, data){
+      try{
+        var e = {type:String(type), tc:Date.now()};
+        if (data) for (var k in data) if (Object.prototype.hasOwnProperty.call(data, k)) e[k] = data[k];
+        if (dropped){ e.dropped_before = dropped; dropped = 0; }
+        q.push(e);
+        if (q.length > EV_MAX){ dropped += q.length - EV_MAX; q = q.slice(q.length - EV_MAX); }
+        if (q.length >= 40) flush();
+      }catch(err){}
+    };
+    setInterval(flush, 5000);
+    window.addEventListener("pagehide", function(){
+      try{
+        if (q.length && navigator.sendBeacon)
+          navigator.sendBeacon("/api/v1/trial/events",
+            new Blob([JSON.stringify({rid:T.rid, events:q.splice(0, 400)})], {type:"application/json"}));
+      }catch(err){}
+    });
+
+    // ── 마이크 연속 녹음 ──
+    var mr = null, aq = [], aqBytes = 0, AQ_MAX = 40 * 1024 * 1024, pumping = false;
+    function pickMime(){
+      var c = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
+      for (var i = 0; i < c.length; i++){ try{ if (MediaRecorder.isTypeSupported(c[i])) return c[i]; }catch(err){} }
+      return "";
+    }
+    function pump(){
+      if (pumping || !aq.length) return;
+      pumping = true;
+      var it = aq[0];
+      var url = "/api/v1/trial/audio?rid=" + encodeURIComponent(T.rid) + "&rec=" + encodeURIComponent(it.rec)
+              + "&seq=" + it.seq + "&t0=" + it.t0 + "&tc=" + it.tc;
+      fetch(url, {method:"POST", credentials:"same-origin",
+                  headers:{"Content-Type": it.blob.type || "application/octet-stream"}, body: it.blob})
+        .then(function(r){ if (!r.ok) throw new Error("http " + r.status); })
+        .then(function(){ aq.shift(); aqBytes -= it.blob.size; pumping = false; pump(); })
+        .catch(function(){
+          it.tries = (it.tries || 0) + 1;
+          pumping = false;
+          setTimeout(pump, Math.min(60000, 1000 * Math.pow(2, Math.min(it.tries, 6))));   // 통신 음영 — 잠시 뒤 다시
+        });
+    }
+    T.attachMic = function(stream){
+      try{
+        if (!stream || typeof MediaRecorder === "undefined") { T.ev("mic_rec_unavailable"); return; }
+        T.detachMic();
+        var mime = pickMime();
+        var opts = {audioBitsPerSecond: 32000};
+        if (mime) opts.mimeType = mime;
+        var rec = "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+        var t0 = Date.now(), seq = 0;
+        var m = new MediaRecorder(stream, opts);
+        m.ondataavailable = function(e){
+          try{
+            if (!e.data || !e.data.size) return;
+            aq.push({rec:rec, seq:seq++, blob:e.data, t0:t0, tc:Date.now()});
+            aqBytes += e.data.size;
+            while (aqBytes > AQ_MAX && aq.length > 1){   // 오래 못 올리면 오래된 조각부터 버린다(첫 조각=헤더는 남김)
+              var old = aq.splice(1, 1)[0]; aqBytes -= old.blob.size;
+              T.ev("mic_part_dropped", {rec:old.rec, seq:old.seq});
+            }
+            pump();
+          }catch(err){}
+        };
+        m.onerror = function(){ T.ev("mic_rec_error", {rec:rec}); };
+        m.start(10000);
+        mr = m;
+        T.ev("mic_rec_start", {rec:rec, mime:m.mimeType || mime, t0:t0});
+      }catch(err){ T.ev("mic_rec_error", {msg:String(err && err.message || err).slice(0, 120)}); }
+    };
+    T.detachMic = function(){
+      try{
+        if (mr && mr.state !== "inactive"){ mr.stop(); T.ev("mic_rec_stop"); }
+      }catch(err){}
+      mr = null;
+    };
+    T.ev("page_open", {ua: String(navigator.userAgent || "").slice(0, 160)});
+  }
+})();
+</script>
+
+<script>
 
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -647,6 +770,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       addBubble("sys", "🔊 " + NOTICE_TXT);
       localTtsNoticeShown = true;
     }
+    trialEv("consult_device_tts", { text: t });   // 서버 음성 없이 기기 음성으로 읽은 답변(#318)
     try {
       window.speechSynthesis.cancel();
       ttsSpeaking = true;                 // 마이크 게이트 ON (에코 차단)
@@ -755,6 +879,9 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   let pendingPlayback = Promise.resolve();
   const activeSources = new Set();
   let interruptedFlag = false;
+  // 실증 기록(#318) — 이 연결에서 받은 상담원 음성 바이트 누적. 서버 기록 파일의 위치와 1:1 로 맞는다
+  let aiRecvBytes = 0;
+  const trialEv = (t, d) => { try { if (window.__TRIAL && window.__TRIAL.enabled) window.__TRIAL.ev(t, d); } catch (e) {} };
   let lastAiAudioEnd = 0;    // 상담원(서버) 음성 재생 종료 시각 — 잔향 게이트용
   // 상담 음성(서버 합성)과 길안내 TTS(브라우저) 의 체감 볼륨 정합용 게인.
   // 브라우저 TTS 는 volume 1.0 이 상한이라 키울 수 없어, 더 크게 들리는 서버 음성을 낮춰 맞춘다.
@@ -789,7 +916,11 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   });
 
   const connectWs = async (voice) => {
-    const url = `${wsBaseUrl()}?voice=${encodeURIComponent(voice)}${window.__sessionMode ? "&mode=" + encodeURIComponent(window.__sessionMode) : ""}`;
+    // 실증 참여자 계정이면 기록 식별자를 붙인다(#318) — 다른 계정은 빈 문자열
+    let trialQ = "";
+    try { trialQ = window.__TRIAL ? await window.__TRIAL.wsQuery() : ""; } catch (e) { trialQ = ""; }
+    aiRecvBytes = 0;
+    const url = `${wsBaseUrl()}?voice=${encodeURIComponent(voice)}${window.__sessionMode ? "&mode=" + encodeURIComponent(window.__sessionMode) : ""}${trialQ}`;
     ws = new WebSocket(url);
 
     ws.onopen = async () => {
@@ -991,11 +1122,13 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     };
     micNode.connect(micProcessor);
     window.__micOn = true;    // navi 질문바의 마이크 상태 표시용 (#248)
+    try { if (window.__TRIAL && window.__TRIAL.enabled) window.__TRIAL.attachMic(micStream); } catch (e) {}   // 실증 기록(#318)
     startSTT();   // #105 실시간 자막
   };
 
   const stopMic = () => {
     window.__micOn = false;   // (#248)
+    try { if (window.__TRIAL && window.__TRIAL.enabled) window.__TRIAL.detachMic(); } catch (e) {}   // 실증 기록(#318)
     stopSTT();   // #105
     if (micProcessor) {
       try { micProcessor.port.onmessage = null; } catch{}
@@ -1087,6 +1220,9 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
 
   // ────── 응답 오디오 재생 (인터럽션 가능) ──────
   const playAudioChunk = async (b64, mimeType) => {
+    // 받은 음성 위치는 재생 여부와 무관하게 센다 — 서버 파일은 보낸 음성을 전부 담는다(#318)
+    const trialOff = aiRecvBytes;
+    aiRecvBytes += Math.floor(((b64 || "").length * 3) / 4) - (((b64 || "").match(/=+$/) || [""])[0].length);
     if (interruptedFlag || textOnly) return;
     pendingPlayback = pendingPlayback.then(async () => {
       if (interruptedFlag) return;
@@ -1106,6 +1242,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
         const gain = playbackCtx.createGain();
         gain.gain.value = AI_VOICE_GAIN;
         src.buffer = ab; src.connect(gain); gain.connect(playbackCtx.destination);
+        if (activeSources.size === 0) trialEv("ai_play", { off: trialOff });   // 쉬었다가 다시 재생 시작한 위치(#318)
         activeSources.add(src);
         src.onended = () => { activeSources.delete(src); lastAiAudioEnd = Date.now(); };
         src.start();
@@ -1115,6 +1252,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   };
 
   const stopAllPlayback = () => {
+    if (activeSources.size > 0 || ttsSpeaking) trialEv("ai_stop", { off: aiRecvBytes });
     interruptedFlag = true;
     ttsSpeaking = false;
     try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch {}
@@ -1389,6 +1527,8 @@ window.NAVI = (function(){
      speakSeq: 발화 요청 세대 토큰. 합성 응답이 늦게 도착해도 그 사이 새 발화가
      요청됐으면 폐기한다 — 안내가 밀리거나(순서 꼬임) 폴백 목소리와 섞이는 것 방지. */
   var ttsAudio=null, ttsCache={}, ttsCacheKeys=[], speakSeq=0;
+  // 실증 기록(#318) — 실제로 말한 문장·끊김·버려진 문장을 남긴다. 실증 계정이 아니면 아무 일도 없다
+  function _tev(t, d){ try{ if(window.__TRIAL && window.__TRIAL.enabled) window.__TRIAL.ev(t, d); }catch(e){} }
   /* v1.43.0 발화 큐 — 스텝 안내는 앞 안내를 끊지 않고 이어서 말한다.
      실보행 시뮬레이션(2026-09-02, 경로 8건×10회)에서 스텝 안내의 25% 가 다음 안내에 잘렸고,
      횡단보도 노드 스텝(거리 0, 다음 스텝과 같은 좌표) 뒤에서는 87% 가 1초 만에 끊겼다.
@@ -1417,6 +1557,7 @@ window.NAVI = (function(){
   // 실제 재생이 시작된 시점에 종료 추정 창을 다시 잡는다 (v1.43.1)
   function _markPlaying(durMs){
     if(!speakPlaying) return;
+    _tev("navi_play", {text:speakPlaying.text, via:speakPlaying.via || "server", voice:window.__sessionVoice || "female", dur_ms:Math.round(durMs)});
     var now = Date.now();
     speakPlaying.phase = "playing";
     speakPlaying.startedAt = now;
@@ -1437,6 +1578,8 @@ window.NAVI = (function(){
     }, Math.max(50, speakPlaying.maxEnd - now));
   }
   function _stopCurrent(){
+    if(speakPlaying && !speakPlaying.ended)
+      _tev(speakPlaying.phase === "playing" ? "navi_cut" : "navi_cancel", {text:speakPlaying.text});
     speakSeq++;
     if(speakLoadTimer){ clearTimeout(speakLoadTimer); speakLoadTimer=null; }
     if(speakEndTimer){ clearTimeout(speakEndTimer); speakEndTimer=null; }
@@ -1451,6 +1594,7 @@ window.NAVI = (function(){
     _stopCurrent();
   }
   function _speakEnded(){
+    if(speakPlaying && !speakPlaying.ended) _tev("navi_end", {text:speakPlaying.text});
     if(speakPlaying) speakPlaying.ended = true;
     if(speakEndTimer){ clearTimeout(speakEndTimer); speakEndTimer=null; }
     window.__NAVI_SPEAKING = false;
@@ -1486,6 +1630,7 @@ window.NAVI = (function(){
       var u = new SpeechSynthesisUtterance(text);
       u.lang="ko-KR"; u.rate=1.0; u.volume=1.0;
       window.__NAVI_SPEAKING = true;
+      if(speakPlaying) speakPlaying.via = "device";   // 기기 내장 음성으로 말함 — 서버 음성 파일 없음(#318)
       _markPlaying(_estSpeakSec(text) * 1000);   // 내장 TTS 는 길이를 모르므로 추정 (v1.43.1)
       u.onend = function(){ _speakEnded(); };
       u.onerror = function(){ _speakEnded(); };
@@ -1518,18 +1663,18 @@ window.NAVI = (function(){
     return p;
   }
   function speak(text, opts){
-    if(!voiceOn || !text) return;
+    if(!voiceOn || !text){ if(text) _tev("navi_muted", {text:text}); return; }
     opts = opts || {};
     cancelResume();               // 새 발화가 시작되면 예약된 안내 복귀는 폐기 (#248)
     if(opts.queue){
       if(opts.kind === "interim"){
         // 중간 거리 안내는 스텝 안내가 대기 중이면 의미가 없다
-        if(speakQueue.some(function(q){ return q.kind !== "interim"; })) return;
+        if(speakQueue.some(function(q){ return q.kind !== "interim"; })){ _tev("navi_drop", {text:text, kind:"interim"}); return; }
       } else {
-        speakQueue = speakQueue.filter(function(q){ return q.kind !== "interim"; });
+        speakQueue = speakQueue.filter(function(q){ if(q.kind === "interim") _tev("navi_drop", {text:q.text, kind:"interim"}); return q.kind !== "interim"; });
       }
       speakQueue.push({text:text, kind:opts.kind || "step"});
-      while(speakQueue.length > 3) speakQueue.shift();
+      while(speakQueue.length > 3){ var _dq = speakQueue.shift(); _tev("navi_drop", {text:_dq.text, kind:_dq.kind}); }
       _drainSpeak();
       return;
     }
@@ -2242,7 +2387,7 @@ window.NAVI = (function(){
   // 안내를 멈춰 말할 길을 연다. 대화가 끝나면 scheduleResume 이 안내를 복귀시킨다.
   function bargeStop(){
     if(simActive) return;             // 모의 주행은 안내를 끝까지 듣는 용도 — 에코 오탐으로 끊지 않는다 (v1.43.2)
-    if(window.__NAVI_SPEAKING){ try{ console.info("[navi] barge-in: 사용자 발화 감지로 안내 중단"); }catch(e){} sendActivity("navi_barge"); stopSpeak(); }
+    if(window.__NAVI_SPEAKING){ try{ console.info("[navi] barge-in: 사용자 발화 감지로 안내 중단"); }catch(e){} _tev("navi_barge"); sendActivity("navi_barge"); stopSpeak(); }
     if(guiding) scheduleResume(8000);   // 질문이 이어지지 않아도 8초 뒤 안내 복귀
   }
   function cancelResume(){ if(resumePoll){ clearInterval(resumePoll); resumePoll=null; } }

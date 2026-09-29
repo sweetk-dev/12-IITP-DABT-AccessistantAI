@@ -29,6 +29,7 @@ from tool_handlers import get_tool_dispatcher
 from unresolved_logger import TurnTracker
 from database import AsyncSessionLocal
 from local_pipeline import LocalVoiceSession, local_fallback_enabled
+import trial_recorder
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,9 @@ async def _safe_send_json(websocket: WebSocket, payload: dict) -> bool:
     """
     # client_state 사전 체크는 false positive 가능 (application_state 와 unsync 시점) —
     # try/except 로 흡수하는 게 가장 안정적.
+    _tr = trial_recorder.of(websocket)          # 실증 참여자 계정 기록(#318) — 대상 아니면 None
+    if _tr is not None:
+        _tr.on_out(payload)
     try:
         await websocket.send_json(payload)
         return True
@@ -1037,6 +1041,9 @@ async def handle_live_chat(
                     "[SYSTEM:GREETING_NAVI]" if mode == "navi" else "[SYSTEM:GREETING]")
             else:
                 # silent 재연결 — 사용자에게 어떤 알림도 보내지 않음. 로그만 남김.
+                _tr_r = trial_recorder.of(websocket)
+                if _tr_r is not None:
+                    _tr_r.event("gemini_reconnect", n=reconnect_count, ms=_connect_elapsed_ms)
                 logger.info("🔇 Gemini Live silent 재연결 #%d (handle=%s, %dms)",
                             reconnect_count,
                             "이어받음" if session_handle else "신규",
@@ -1054,10 +1061,13 @@ async def handle_live_chat(
             # ─── 클라이언트 → Gemini ───
             async def pump_client_to_gemini():
                 nonlocal _user_buf
+                _tr = trial_recorder.of(websocket)      # 실증 기록(#318)
                 try:
                     while True:
                         raw = await websocket.receive_text()
                         msg = json.loads(raw)
+                        if _tr is not None:
+                            _tr.on_in(msg)
                         # 클라이언트 메시지 포맷 (간단 합의):
                         #  {"type":"audio_chunk", "data": "<base64 PCM 16kHz>"}
                         #  {"type":"text", "content": "..."}
@@ -1220,6 +1230,9 @@ async def handle_live_chat(
                                         < ECHO_WINDOW_SEC):
                                     # 상담원 끝말 에코 — 사용자 발화로 표시·집계하지 않는다 (v1.40.0)
                                     logger.info("🔇 에코 전사 무시: %r (직전 발화 끝말과 일치)", text)
+                                    _tr_e = trial_recorder.of(websocket)
+                                    if _tr_e is not None:
+                                        _tr_e.event("echo_dropped", content=text)
                                     text = None
                                 if text:
                                     _user_buf += text
@@ -1466,6 +1479,9 @@ async def handle_live_chat(
                 and websocket.client_state == WebSocketState.CONNECTED):
             logger.warning("🔁 Gemini 재연결 불가(%s) — 로컬 폴백 파이프라인으로 silent 전환",
                            type(e).__name__)
+            _tr_f = trial_recorder.of(websocket)
+            if _tr_f is not None:
+                _tr_f.event("local_fallback", reason=type(e).__name__)
             try:
                 sess = LocalVoiceSession(
                     websocket=websocket,

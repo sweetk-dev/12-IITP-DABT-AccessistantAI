@@ -159,8 +159,10 @@ const { window } = dom;
 
 // ── 외부 의존성 스텁 ──
 let lastPlanQuery = null;
+const fetchLog = [];
 window.fetch = async (url) => {
   const u = String(url);
+  fetchLog.push(u);
   if (u.includes("plan_accessible_route")) lastPlanQuery = u;
   const body = u.includes("/api/v1/config") ? CONFIG
     : u.includes("find_bf_tour_spots") ? SPOTS
@@ -2962,6 +2964,18 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.ok(cards[1].querySelector(".sos-toilet").classList.contains("unknown"));
   });
   $("sosCancelBtn").dispatchEvent(new window.Event("click"));
+}
+
+// ── v1.58.0 실증 기록(#318) — 실증 계정이 아니면 기록 요청을 하나도 보내지 않는다 ──
+{
+  const q = await window.__TRIAL.wsQuery();
+  check("실증 계정 아님: 기록 꺼짐 · 웹소켓 주소에 기록 식별자 없음 (v1.58.0)", () => {
+    assert.equal(window.__TRIAL.enabled, false);
+    assert.equal(q, "");
+  });
+  check("실증 계정 아님: 길안내·상담을 거쳐도 기록 전송(events·audio) 0건 (v1.58.0)", () => {
+    assert.equal(fetchLog.filter((u) => /\/api\/v1\/trial\/(events|audio)/.test(u)).length, 0);
+  });
 }
 
 // ── 결과 ──

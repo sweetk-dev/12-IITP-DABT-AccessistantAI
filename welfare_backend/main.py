@@ -58,6 +58,7 @@ def _embed(text_query: str) -> list[float]:
 
 import route_client
 import kakao_local
+import trial_recorder
 import tool_handlers
 from tool_handlers import expand_query
 
@@ -950,4 +951,55 @@ async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str
         return
     # 음성 세션 안의 도구 호출도 같은 출처 태그를 쓴다 — 이 코루틴에서 만든 태스크는 문맥을 물려받는다(#298)
     route_client.set_client_tag(websocket.headers.get("x-remote-user"))
-    await handle_live_chat(websocket, ai_client, _embed, voice=voice, mode=mode)
+    # 실증 참여자 계정이면 대화·음성 기록기를 붙인다(#318) — 다른 계정은 None 이라 아무 일도 없다
+    _trial = trial_recorder.session_for_ws(websocket)
+    try:
+        await handle_live_chat(websocket, ai_client, _embed, voice=voice, mode=mode)
+    finally:
+        if _trial is not None:
+            _trial.close()
+
+
+# ─────────────────────────────────────────────────────────────
+# 실증 참여자 계정 전용 기록 (#318) — 설정(TRIAL_RECORD_CLIENTS)에 없는 계정은
+# status 가 enabled=false 이고, 나머지 두 엔드포인트는 아무것도 저장하지 않는다.
+# ─────────────────────────────────────────────────────────────
+from fastapi import Request as _Request  # noqa: E402
+
+
+@app.get("/api/v1/trial/status", tags=["collect"], summary="실증 기록 대상 계정인지")
+async def trial_status(request: _Request):
+    return {"enabled": trial_recorder.enabled_for(request.headers.get("x-remote-user"))}
+
+
+@app.post("/api/v1/trial/events", tags=["collect"], summary="실증 기록 — 단말 사건")
+async def trial_events(request: _Request):
+    user = request.headers.get("x-remote-user")
+    if not trial_recorder.enabled_for(user):
+        return {"ok": False}
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="JSON 이 아닙니다")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="형식 오류")
+    n = trial_recorder.append_events(body.get("rid"), body.get("events"), "client",
+                                     str(user).strip().lower())
+    return {"ok": n > 0, "n": n}
+
+
+@app.post("/api/v1/trial/audio", tags=["collect"], summary="실증 기록 — 단말 마이크 녹음 조각")
+async def trial_audio(request: _Request, rid: str = Query(...), rec: str = Query(...),
+                      seq: int = Query(..., ge=0), t0: Optional[int] = Query(None),
+                      tc: Optional[int] = Query(None)):
+    if not trial_recorder.enabled_for(request.headers.get("x-remote-user")):
+        return {"ok": False}
+    data = await request.body()
+    if len(data) > trial_recorder.MAX_AUDIO_PART_BYTES:
+        raise HTTPException(status_code=413, detail="조각이 너무 큽니다")
+    meta = {"mime": (request.headers.get("content-type") or "")[:60]}
+    if t0 is not None:
+        meta["t0"] = t0
+    if tc is not None:
+        meta["tc"] = tc
+    return {"ok": trial_recorder.save_mic_part(rid, rec, seq, data, meta)}
