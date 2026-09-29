@@ -1236,13 +1236,18 @@ def _toilet_brief(t):
                        if nb else None)}
 
 
-def _toilet_instruction(with_toilet: int) -> str:
-    """식당 자체 장애인 화장실 자료는 거의 없다 — 근처 화장실을 판단 근거로 말하게 한다."""
-    if with_toilet:
-        return ("각 식당의 toilet 을 보고, status 가 own 이면 '장애인 화장실이 있다고 등록된 곳', nearby 면 "
-                "'가게 안 화장실 정보는 없지만 ○○m 에 접근 가능한 화장실(이름)이 있다'고 한 곳당 한 문장으로 "
-                "말하세요. none 이면 근처 200m 안에 확인된 화장실이 없다고 말하세요. ")
-    return "식당 화장실 정보는 없고 근처 200m 안 접근 가능한 화장실도 확인되지 않았다고 알리세요. "
+def _toilet_instruction(items: list) -> str:
+    """식당 자체 장애인 화장실 자료는 거의 없다 — 이름을 말하는 1~2곳에만 화장실 한 마디를 덧붙이게 한다.
+
+    toilet 이 None(경로 서비스가 안 준 경우)이면 아무 말도 시키지 않는다 — '정보 없음'을 '화장실 없음'으로
+    말하면 안 된다.
+    """
+    if not any(isinstance(i.get("toilet"), dict) for i in items):
+        return ""
+    return ("이름을 말하는 식당에만 toilet 을 보고 화장실 한 마디를 덧붙이세요(목록 전체를 읽지 마세요): "
+            "status 가 own 이면 '장애인 화장실이 등록된 곳', nearby 면 toilet.nearby 의 dist_m 와 name 값을 넣어 "
+            "'가게 화장실 정보는 없지만 (dist_m)m 에 (name)이 있다', none 이면 '근처 200m 안에 확인된 화장실은 "
+            "없다', unknown 이면 화장실은 말하지 마세요. ")
 
 
 async def tool_find_accessible_restaurants(lat: float = None, lng: float = None, place: str = "",
@@ -1284,7 +1289,7 @@ async def tool_find_accessible_restaurants(lat: float = None, lng: float = None,
             "toilet": _toilet_brief(it.get("toilet")),
         })
     total, confirmed = data.get("total", len(items)), data.get("confirmed", 0)
-    with_toilet = sum(1 for i in items if (i["toilet"] or {}).get("status") in ("own", "nearby"))
+
     where = ("기준 위치는 %s 입니다. " % base_label) if base_label else ""
     if lat is None:
         where += "현재 위치를 몰라 안양시 전체에서 찾았습니다 — 거리는 말하지 마세요. "
@@ -1295,12 +1300,12 @@ async def tool_find_accessible_restaurants(lat: float = None, lng: float = None,
               "덧붙이세요. 반경 안 %d곳 중 휠체어 정보가 확인된 곳은 %d곳뿐이라는 점을 한 문장으로 알리고, "
               "방문 전 전화로 출입구·좌석을 확인하시라고 권하세요. 화면 목록의 '여기로 안내' 로 경로를 받을 "
               "수 있다고 알리세요. " % (total, confirmed)
-              + _toilet_instruction(with_toilet))
+              + _toilet_instruction(items))
     elif items:
         ai = (where + "반경 안에 휠체어 출입이 확인된 음식점은 없다고 분명히 말하세요. 목록의 곳들은 "
               "'휠체어 정보가 없는 곳'이지 못 가는 곳이 아닙니다 — 1~2곳만 이름을 말하고 방문 전 전화 확인을 "
               "권하세요. 필요하면 google_search 로 경사로·문턱 정보를 찾아볼 수 있다고 제안하세요. "
-              + _toilet_instruction(with_toilet))
+              + _toilet_instruction(items))
     else:
         ai = (where + "반경 %dm 안에 등록된 음식점이 없다고 말하고, 범위를 넓히거나 다른 장소를 기준으로 "
               "찾아볼지 물어보세요. " % radius_m)

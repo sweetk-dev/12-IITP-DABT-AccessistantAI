@@ -2848,6 +2848,19 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.match(cards[1].querySelector(".sos-toilet").textContent, /가게 화장실 정보 없음 · 근처 장애인 화장실: 공원 공중화장실 44m \(24시간\)/);
     assert.ok(!cards[0].querySelector(".sos-toilet").classList.contains("unknown"));
   });
+  const actF2 = NF.onUiAction({ action: "show_restaurants", payload: { action: "show_restaurants", payload: { items: [
+    { name: "옛버전식당", addr: "x", dist_m: 100, entry_status: "unknown", entry_label: "휠체어 정보 없음", facilities: [], lat: 37.39, lng: 126.95 },
+    { name: "화장실없음식당", addr: "y", dist_m: 120, entry_status: "unknown", entry_label: "휠체어 정보 없음", facilities: [], lat: 37.39, lng: 126.95,
+      toilet: { status: "none", nearby: null } } ], total: 2, confirmed: 0 } } });
+  window.NAVI.showPreparedView();
+  await sleep(30);
+  check("식당 탭 — toilet 없으면 줄 없음(정보 없음 ≠ 없음), none 이면 '확인된 화장실 없음' (v1.56.0)", () => {
+    const cards = [...$("sosList").querySelectorAll(".sos-card")];
+    assert.equal(cards.length, 2);
+    assert.equal(cards[0].querySelector(".sos-toilet"), null);
+    assert.match(cards[1].querySelector(".sos-toilet").textContent, /200m 안 확인된 장애인 화장실 없음/);
+    assert.ok(cards[1].querySelector(".sos-toilet").classList.contains("unknown"));
+  });
   $("sosCancelBtn").dispatchEvent(new window.Event("click"));
 }
 

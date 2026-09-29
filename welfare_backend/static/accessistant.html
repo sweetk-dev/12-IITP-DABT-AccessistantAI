@@ -2019,13 +2019,18 @@ window.NAVI = (function(){
           + ((it.facilities||[]).length ? " — " + it.facilities.join(", ") : "")
           + (ok ? "" : " · 방문 전 전화로 확인해 주세요");
         c.appendChild(hrs);
-        // 식당 ↔ 접근 가능 화장실 짝짓기 (v1.56.0, 02 v1.33.0) — 가게 화장실 자료가 없어도 근처 화장실로 판단할 수 있게
-        var tl=document.createElement("div"); tl.className="sos-toilet";
-        var t=it.toilet||{};
-        if(t.status==="own"){ tl.textContent="🚻 장애인 화장실 있음(등록)" + (t.nearby ? " · 근처 " + t.nearby.name + " " + t.nearby.dist_m + "m" : ""); }
-        else if(t.status==="nearby" && t.nearby){ tl.textContent="🚻 가게 화장실 정보 없음 · 근처 장애인 화장실: " + t.nearby.name + " " + t.nearby.dist_m + "m" + (t.nearby.open_time ? " (" + t.nearby.open_time + ")" : ""); }
-        else { tl.className += " unknown"; tl.textContent="🚻 200m 안 확인된 장애인 화장실 없음"; }
-        c.appendChild(tl);
+        // 식당 ↔ 접근 가능 화장실 짝짓기 (v1.56.0, 02 v1.33.0) — 가게 화장실 자료가 없어도 근처 화장실로 판단할 수 있게.
+        // toilet 이 없으면(경로 서비스 구버전) 줄을 아예 안 보인다 — '정보 없음'을 '없음'으로 보이지 않게
+        var t = it.toilet;
+        if(t && typeof t === "object" && t.status && t.status !== "unknown"){
+          var tl=document.createElement("div"); tl.className="sos-toilet";
+          var nb = t.nearby && typeof t.nearby === "object" ? t.nearby : null;
+          var nbTxt = nb ? ((nb.name || "장애인 화장실") + " " + Math.round(Number(nb.dist_m) || 0) + "m" + (nb.open_time ? " (" + nb.open_time + ")" : "")) : "";
+          if(t.status==="own"){ tl.textContent = "🚻 장애인 화장실 있음(등록)" + (nb ? " · 근처 " + nbTxt : ""); }
+          else if(t.status==="nearby" && nb){ tl.textContent = "🚻 가게 화장실 정보 없음 · 근처 장애인 화장실: " + nbTxt; }
+          else { tl.classList.add("unknown"); tl.textContent = "🚻 200m 안 확인된 장애인 화장실 없음"; }
+          c.appendChild(tl);
+        }
         if(it.survey_note){ var sn=document.createElement("div"); sn.className="sos-src"; sn.textContent="※ " + it.survey_note; c.appendChild(sn); }
       } else {
       var hv = sosKind==="toilet" ? (it.open_time || it.open_time_detail) : it.open_hours;

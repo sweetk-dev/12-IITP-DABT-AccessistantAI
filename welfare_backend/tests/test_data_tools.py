@@ -93,13 +93,25 @@ def t_restaurants_confirmed():
     ai = r["ai_instruction"]
     assert "12곳 중 휠체어 정보가 확인된 곳은 2곳" in ai, ai
     assert "building_survey" in ai and "단정하지" in ai
-    assert "toilet" in ai and "nearby" in ai                                  # v1.56.0 화장실 짝짓기 지침
+    assert "toilet" in ai and "목록 전체를 읽지 마세요" in ai                  # v1.56.0 화장실 한 마디 — 1~2곳에만
     assert r["items"][0]["toilet"] == {"status": "own", "nearby": None}
     assert r["items"][1]["toilet"]["nearby"] == {"name": "공원 공중화장실", "dist_m": 44, "open_time": "24시간"}
     assert r["items"][2]["toilet"] is None                                    # 02 가 toilet 을 안 주면 None
     ua = r["ui_action"]
     assert ua["action"] == "show_restaurants" and len(ua["payload"]["items"]) == 3
     assert calls[0][:2] == (37.39, 126.95)
+
+
+def t_restaurants_toilet_absent_means_silent():
+    """02 가 toilet 을 안 주면(구버전) 화장실 지침을 넣지 않는다 — 정보 없음 ≠ 화장실 없음."""
+    async def fake(lat=None, lng=None, **kw):
+        return {"total": 1, "confirmed": 0, "items": [FOOD["items"][2]]}
+    orig = _patch("food_nearby", fake)
+    try:
+        r = _run(tool_handlers.tool_find_accessible_restaurants(lat=37.39, lng=126.95))
+    finally:
+        route_client.food_nearby = orig
+    assert r["items"][0]["toilet"] is None and "화장실" not in r["ai_instruction"]
 
 
 def t_restaurants_none_confirmed_and_no_location():
