@@ -2819,10 +2819,11 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   const actF = NF.onUiAction({ action: "show_restaurants", payload: { action: "show_restaurants", payload: { items: [
     { name: "경사로식당", addr: "안양시 동안구 1", dist_m: 220, cuisine: "한식", entry_status: "yes",
       entry_label: "접근로·경사로 확인", facilities: ["접근로·경사로", "장애인 화장실"], record_type: "tour_listing",
-      lat: 37.393, lng: 126.95 },
+      lat: 37.393, lng: 126.95, toilet: { status: "own", nearby: null } },
     { name: "흥부가", addr: "안양시 만안구 2", dist_m: 400, cuisine: "일반음식점", entry_status: "unknown",
       entry_label: "휠체어 정보 없음", facilities: [], record_type: "building_survey",
-      survey_note: "건물 단위 실태조사(사용승인 시점) 기록입니다.", lat: 37.391, lng: 126.95 } ],
+      survey_note: "건물 단위 실태조사(사용승인 시점) 기록입니다.", lat: 37.391, lng: 126.95,
+      toilet: { status: "nearby", nearby: { name: "공원 공중화장실", dist_m: 44, open_time: "24시간" } } } ],
     total: 7, confirmed: 1 } } });
   check("show_restaurants → '식당 보기' 버튼 라벨 + 시트 데이터", () => {
     assert.ok(actF && /🍽 지도에서 식당 보기 \(2곳\)/.test(actF.label), JSON.stringify(actF));
@@ -2840,6 +2841,12 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.match(cards[1].textContent, /휠체어 정보 없음 · 방문 전 전화로 확인해 주세요/);
     assert.match(cards[1].textContent, /※ 건물 단위 실태조사/);
     assert.ok(cards[0].querySelector(".sos-acts button"), "'여기로 안내' 버튼이 있어야 한다");
+  });
+  check("식당 탭 — 근처 장애인 화장실 한 줄 (v1.56.0): own / nearby 이름·거리·운영시간", () => {
+    const cards = [...$("sosList").querySelectorAll(".sos-card")];
+    assert.match(cards[0].querySelector(".sos-toilet").textContent, /🚻 장애인 화장실 있음\(등록\)/);
+    assert.match(cards[1].querySelector(".sos-toilet").textContent, /가게 화장실 정보 없음 · 근처 장애인 화장실: 공원 공중화장실 44m \(24시간\)/);
+    assert.ok(!cards[0].querySelector(".sos-toilet").classList.contains("unknown"));
   });
   $("sosCancelBtn").dispatchEvent(new window.Event("click"));
 }
