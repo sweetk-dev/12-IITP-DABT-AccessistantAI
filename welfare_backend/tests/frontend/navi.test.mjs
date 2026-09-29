@@ -1526,6 +1526,47 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
   assert.match(HTML, /echoTailActive\(\) && looksLikeEcho\(tr, lastAiText\)/, "STT 에코 억제 없음");
 });
 
+// ── v1.57.0 연속 횡단보도 체인 한 문장 발화 ──
+{
+  const NV = window.NAVI._internals();
+  NV.resetTrip();
+  const Q = (k) => [37.3891 - 0.0001 * k, 126.9487 - 0.0001 * k];
+  const cw = (i, id, m, k) => ({ idx: i, maneuver: "crossing", link_type: "crossing", instruction: "횡단보도를 건너 " + m + "m 이동합니다.", distance_m: m, coord: Q(k), warnings: [], crosswalk_id: id });
+  NV.showRoute({ status: "success", route_id: "r_chain", destination: { poi_id: "TBF-CH" }, routes: [{
+    summary: { total_distance_m: 622, duration_sec: 600, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 7, warnings: [] },
+    geometry: [Q(0), Q(1), Q(2), Q(3), Q(4), Q(5), Q(6), Q(7), Q(8), Q(9)],
+    steps: [
+      { idx: 0, maneuver: "straight", instruction: "89m 직진합니다.", distance_m: 89, coord: Q(0), warnings: [] },
+      cw(1, "2024120776", 11, 1), cw(2, "2024120776", 6, 2),
+      cw(3, "2024120778", 27, 3), cw(4, "2024120778", 20, 4),
+      cw(5, "2024120783", 15, 5), cw(6, "2024120783", 12, 6), cw(7, "2024120783", 8, 7),
+      { idx: 8, maneuver: "right", instruction: "우회전 후 434m 이동합니다.", distance_m: 434, coord: Q(8), warnings: [] },
+      { idx: 9, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: Q(9), warnings: [] },
+    ] }] }, "횡단보도 체인 테스트");
+  check("횡단보도 체인 — 첫 조각에서 개수·총거리 한 문장, 같은 횡단보도 조각은 무음, 다음 횡단보도 진입만 짧게 (v1.57.0)", () => {
+    assert.equal(NV.stepUtterance(1), "횡단보도 3개를 교통섬을 거쳐 연달아 건넙니다. 총 99m입니다.");
+    assert.equal(NV.stepUtterance(2), "");
+    assert.equal(NV.stepUtterance(3), "다음 횡단보도입니다.");
+    assert.equal(NV.stepUtterance(4), "");
+    assert.equal(NV.stepUtterance(5), "다음 횡단보도입니다.");
+    assert.equal(NV.stepUtterance(6), "");
+    assert.equal(NV.stepUtterance(7), "");
+    assert.equal(NV.stepUtterance(8), "우회전 후 434m 이동합니다.");
+  });
+  // crosswalk_id 가 없으면(경로 서비스 구버전) 조각 수로 세되, 한 조각뿐인 횡단보도는 종전 문장 그대로
+  NV.showRoute({ status: "success", route_id: "r_chain2", destination: { poi_id: "TBF-CH2" }, routes: [{
+    summary: { total_distance_m: 60, duration_sec: 60, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 1, warnings: [] },
+    geometry: [Q(0), Q(1), Q(2)],
+    steps: [
+      { idx: 0, maneuver: "straight", instruction: "20m 직진합니다.", distance_m: 20, coord: Q(0), warnings: [] },
+      { idx: 1, maneuver: "crossing", link_type: "crossing", instruction: "횡단보도를 건너 14m 이동합니다.", distance_m: 14, coord: Q(1), warnings: [] },
+      { idx: 2, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: Q(2), warnings: [] },
+    ] }] }, "단일 횡단보도");
+  check("횡단보도 하나뿐이면 종전 문장 그대로 (v1.57.0)", () => {
+    assert.equal(NV.stepUtterance(1), "횡단보도를 건너 14m 이동합니다.");
+  });
+}
+
 // ── v1.43.0 안내 발화 큐 · 횡단보도 병합 발화 · 진행거리 기준 전환 ──
 {
   const NV = window.NAVI._internals();
