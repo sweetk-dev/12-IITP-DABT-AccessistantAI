@@ -922,13 +922,15 @@ from live_bridge import handle_live_chat
 
 
 @app.websocket("/ws/live-chat")
-async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str = None):
+async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str = None,
+                              sid: str = None, resume: int = 0):
     """클라이언트 ↔ Gemini Live API ↔ DB 도구 실시간 중계.
 
     Query 파라미터:
       voice — Gemini Live prebuilt voice 이름(예: Charon, Kore) 또는 카테고리(male/female).
               미지정 시 기본값(여성 Kore).
       mode  — 세션 시작 화면. "navi"(이동·관광 길안내)면 경로 안내용 인사말을 사용.
+      sid   — 단말이 만든 세션 식별자. resume=1 과 함께 오면 끊기기 전 대화를 이어받는다(v1.59.0).
 
     클라이언트 메시지 포맷:
       {"type":"audio_chunk", "data":"<base64 PCM 16kHz>"}
@@ -954,7 +956,8 @@ async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str
     # 실증 참여자 계정이면 대화·음성 기록기를 붙인다(#318) — 다른 계정은 None 이라 아무 일도 없다
     _trial = trial_recorder.session_for_ws(websocket)
     try:
-        await handle_live_chat(websocket, ai_client, _embed, voice=voice, mode=mode)
+        await handle_live_chat(websocket, ai_client, _embed, voice=voice, mode=mode,
+                               sid=sid, resume=bool(resume))
     finally:
         if _trial is not None:
             _trial.close()

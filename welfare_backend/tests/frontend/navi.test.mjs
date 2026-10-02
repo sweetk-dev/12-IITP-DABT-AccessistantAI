@@ -503,7 +503,7 @@ check("세션 미연결 상태의 텍스트 질문은 안내문으로 거절", (
   assert.match($("naviStatus").textContent, /상담 세션이 아직 연결되지 않았습니다/);
 });
 check("마이크 게이트 barge-in 배선 존재 (소스 레벨 가드)", () => {
-  assert.match(HTML, /naviBargeHit\(m\.rms \|\| 0\)/);   // v1.45.0 창 판정
+  assert.match(HTML, /naviBargeHit\(\(m\.rms \|\| 0\) \/ gk\)/);   // v1.45.0 창 판정 · v1.59.0 헤드셋이면 기준 절반
   assert.match(HTML, /NAVI\.bargeStop/);
   assert.doesNotMatch(HTML, /if \(window\.__NAVI_SPEAKING\) return;   \/\/ 길안내 음성 발화 중에도 동일하게 차단/);
 });
@@ -1521,7 +1521,7 @@ check("에코 판정: 직전 상담원 발화 끝말과 같은 짧은 전사만 
   assert.equal(TN.looksLikeEcho("", "안내해 드릴게요"), false);
 });
 check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화만 통과 (소스 레벨 가드)", () => {
-  assert.match(HTML, /if \(aiAudioActive\(\)\) \{[\s\S]*?LOCAL_TTS_BARGE_RMS/, "상담 화면에도 barge-in 게이트가 적용돼야 한다");
+  assert.match(HTML, /if \(!forced && aiAudioActive\(\)\) \{[\s\S]*?LOCAL_TTS_BARGE_RMS/, "상담 화면에도 barge-in 게이트가 적용돼야 한다");
   assert.doesNotMatch(HTML, /aiAudioActive\(\) && document\.getElementById\("view-navi"\)/, "navi 화면 한정 게이트가 남아 있다");
   assert.match(HTML, /AI_ECHO_TAIL_MS = 800/);
   assert.match(HTML, /echoTailActive\(\) && looksLikeEcho\(msg\.content, lastAiText\)/, "user_transcript 에코 억제 없음");
