@@ -14,9 +14,12 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.Process
 import android.text.InputType
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.webkit.GeolocationPermissions
 import android.webkit.HttpAuthHandler
@@ -28,10 +31,12 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
+import android.webkit.WebViewDatabase
 import android.webkit.WebViewClient
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.Toast
 import org.json.JSONObject
 
 /**
@@ -85,9 +90,40 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         root = FrameLayout(this).apply { setBackgroundColor(Color.WHITE) }
         setContentView(root)
+        fitSystemBars()
         createWebView()
         // 권한을 먼저 받고 나서 화면을 연다 — 화면의 마이크·위치 요청과 겹치지 않게
         if (!askRuntimePermissions()) openService()
+    }
+
+    /**
+     * 화면을 상태 표시줄·내비게이션 바·키보드 안쪽에 맞춘다.
+     *
+     * 최신 안드로이드는 앱 화면을 시스템 바 밑까지 깔아 그린다. 그대로 두면 화면 맨 위가 상태 표시줄과,
+     * 맨 아래 입력 줄이 내비게이션 바와 겹쳐 누를 수 없다. 시스템이 알려 주는 여백만큼 안쪽으로 들인다.
+     */
+    private fun fitSystemBars() {
+        window.statusBarColor = Color.WHITE
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) window.navigationBarColor = Color.WHITE
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false)
+            val light = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            window.insetsController?.setSystemBarsAppearance(light, light)   // 흰 바탕에 어두운 아이콘
+            root.setOnApplyWindowInsetsListener { v, insets ->
+                val b = insets.getInsets(
+                    WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime()
+                )
+                v.setPadding(b.left, b.top, b.right, b.bottom)
+                WindowInsets.CONSUMED
+            }
+            root.requestApplyInsets()
+        } else {
+            // 이전 버전은 시스템이 화면을 바 안쪽에 맞춰 준다 — 아이콘 색만 맞춘다
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or
+                (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR else 0)
+        }
     }
 
     private fun openService() {
@@ -297,6 +333,12 @@ class MainActivity : Activity() {
             runOnUiThread { if (onServicePage()) this@MainActivity.setBusy(on) }
         }
 
+        /** 접속 계정 바꾸기 — 저장한 계정을 지우고 앱을 닫는다. 다시 열면 계정을 묻는다. */
+        @JavascriptInterface
+        fun logout() {
+            runOnUiThread { if (onServicePage()) confirmLogout() }
+        }
+
         @JavascriptInterface
         fun reload() {
             runOnUiThread { if (Prefs.hasLogin(this@MainActivity)) loadStart(null) }
@@ -402,6 +444,27 @@ class MainActivity : Activity() {
     }
 
     // ───────────────────────── 접속 계정 ─────────────────────────
+
+    private fun confirmLogout() {
+        if (isFinishing) return
+        if (busy) {
+            Toast.makeText(this, "안내를 끝낸 뒤에 계정을 바꿀 수 있습니다.", Toast.LENGTH_LONG).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("접속 계정 바꾸기")
+            .setMessage("지금 계정(" + Prefs.user(this) + ")을 지우고 앱을 닫습니다. 앱을 다시 열면 새 아이디와 비밀번호를 묻습니다.")
+            .setNegativeButton("취소", null)
+            .setPositiveButton("바꾸기") { _, _ ->
+                setBusy(false)
+                Prefs.clearLogin(this)
+                try { WebViewDatabase.getInstance(this).clearHttpAuthUsernamePassword() } catch (_: Exception) {}
+                // 화면 엔진이 기억한 계정은 프로세스가 끝나야 지워진다 — 앱을 완전히 닫는다
+                finishAndRemoveTask()
+                handler.postDelayed({ Process.killProcess(Process.myPid()) }, 800)
+            }
+            .show()
+    }
 
     private fun showLogin(message: String?) {
         if (loginShowing || isFinishing) return

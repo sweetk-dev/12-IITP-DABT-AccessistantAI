@@ -859,6 +859,7 @@ async def handle_live_chat(
     mode: str = None,
     sid: str = None,
     resume: bool = False,
+    greet: bool = True,
 ):
     # 환경변수 우선, 기본은 안정 GA 모델
     if model_name is None:
@@ -1103,6 +1104,10 @@ async def handle_live_chat(
             if reconnect_count == 0 and _client_resumed:
                 # 단말이 다시 붙은 것 — 인사말 없이 조용히 이어 간다 (v1.59.0)
                 logger.info("✅ Gemini Live 세션 연결됨 — 단말 재접속 이어받기 (model=%s, %dms)",
+                            model_name, _connect_elapsed_ms)
+            elif reconnect_count == 0 and not greet:
+                # 화면이 곧바로 경로 안내를 시작한다(이어서 안내·넘겨받은 목적지) — 인사말이 안내 음성과 겹치지 않게 생략 (v2.0.1)
+                logger.info("✅ Gemini Live 세션 연결됨 — 인사말 생략 (model=%s, %dms)",
                             model_name, _connect_elapsed_ms)
             elif reconnect_count == 0:
                 logger.info("✅ Gemini Live 세션 연결됨 (model=%s, %dms)",
@@ -1581,7 +1586,7 @@ async def handle_live_chat(
                     session_id=str(session_id),
                     extract_sources=_extract_sources,
                     prior_history=list(convo_history),
-                    greet=(len(convo_history) == 0),
+                    greet=(greet and len(convo_history) == 0),
                     session_mode=mode,
                 )
                 await sess.run()

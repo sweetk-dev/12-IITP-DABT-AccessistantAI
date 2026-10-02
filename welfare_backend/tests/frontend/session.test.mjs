@@ -200,6 +200,7 @@ function boot(preset) {
     assert.ok((w.__fetchLog || []).some((u) => u.includes("plan_accessible_route") && u.includes("destination_poi_id=T1")));
     assert.equal(w.NAVI.isBusy(), true);
   });
+  check("이어서 안내로 시작한 세션은 인사말을 받지 않는다 (v2.0.1)", () => assert.match(w.__sockets[0].url, /greet=0/));
   w.close();
 }
 {
