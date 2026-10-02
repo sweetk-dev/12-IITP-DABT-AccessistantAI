@@ -1915,6 +1915,12 @@ window.NAVI = (function(){
     if(m){ warn = " (" + m[1] + ")"; head = head.slice(0, m.index); }
     head = head.replace(/횡단보도를 건너세요\.?/, "").trim();
     var nx = String(steps[i+1].instruction || "").trim();
+    // 직진으로 지나는 교차로의 옆길 횡단보도(경로 서비스 v1.34.0, crossing_ahead) — 노드 문장이 이미 건너감을 말한다.
+    // "횡단보도를 건넌 뒤"를 덧붙이면 한쪽 보도에만 있는 횡단보도까지 건너라는 말이 된다 (v1.59.1)
+    if(st.crossing_ahead && steps[i+1].maneuver !== "crossing"){
+      if(mark) _spokenAhead[i+1] = true;
+      return (head + warn + " " + nx).replace(/\s+/g, " ").trim();   // 경고는 횡단보도 문장 바로 뒤에
+    }
     var chainBody = (steps[i+1].maneuver === "crossing") ? _chainBody(i+1) : null;   // 노드 스텝 뒤가 체인이면 체인 문장으로
     if(chainBody){
       // 체인이면 "횡단보도가 있습니다"는 빼고(중복) 체인 문장만, 경고는 노드 스텝 + 체인 전체의 합집합
