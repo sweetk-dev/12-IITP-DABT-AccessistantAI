@@ -35,7 +35,7 @@ object AppUpdater {
     @Volatile
     private var working = false
 
-    /** 안내 중이 아닐 때만 부른다. force=false 면 6시간에 한 번만 확인한다. */
+    /** 안내 중이 아닐 때만 부른다. force=false 면 6시간에 한 번만 확인한다(앱을 새로 열 때는 force). */
     fun check(activity: Activity, force: Boolean = false) {
         if (working) return
         val auth = Prefs.basicAuth(activity) ?: return

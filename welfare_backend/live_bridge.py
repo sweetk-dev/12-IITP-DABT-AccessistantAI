@@ -1105,7 +1105,9 @@ async def handle_live_chat(
                 # 단말이 다시 붙은 것 — 인사말 없이 조용히 이어 간다 (v1.59.0)
                 logger.info("✅ Gemini Live 세션 연결됨 — 단말 재접속 이어받기 (model=%s, %dms)",
                             model_name, _connect_elapsed_ms)
-            elif reconnect_count == 0 and not greet:
+            elif reconnect_count == 0 and (not greet or resume):
+                # resume: 단말은 끊긴 대화를 잇는 중이다. 서버가 그사이 다시 떠서 이어받을 정보가 없더라도
+                # 인사말로 끼어들지 않는다 — 안내 도중 갑자기 첫 인사말이 나왔다 (v2.0.2)
                 # 화면이 곧바로 경로 안내를 시작한다(이어서 안내·넘겨받은 목적지) — 인사말이 안내 음성과 겹치지 않게 생략 (v2.0.1)
                 logger.info("✅ Gemini Live 세션 연결됨 — 인사말 생략 (model=%s, %dms)",
                             model_name, _connect_elapsed_ms)

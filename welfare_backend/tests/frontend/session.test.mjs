@@ -32,8 +32,8 @@ const ROUTE = { status: "success", route_id: "r_s", ui_action: { action: "show_r
   ] }] } } };
 const SPOTS = { status: "success", results: [{ poi_id: "T1", name: "테스트 박물관", addr: "안양시", facilities: [], score: 0.9 }] };
 
-function boot(preset) {
-  const dom = new JSDOM(HTML, { runScripts: "dangerously", pretendToBeVisual: true, url: "https://example.test/navi",
+function boot(preset, url) {
+  const dom = new JSDOM(HTML, { runScripts: "dangerously", pretendToBeVisual: true, url: url || "https://example.test/navi",
     beforeParse(w) {
       if (preset) preset(w);
       const sockets = [];
@@ -68,7 +68,7 @@ function boot(preset) {
 
 // ───────── 1) 2) 조용한 재연결 ─────────
 {
-  const w = boot();
+  const w = boot(null, "https://example.test/policy");
   const $ = (id) => w.document.getElementById(id);
   await sleep(50); w.document.dispatchEvent(new w.Event("DOMContentLoaded")); await sleep(150);
   w.document.querySelector('[data-go="text"]').click();
@@ -116,7 +116,7 @@ function boot(preset) {
 
 // ───────── 연결 준비 중 종료 ─────────
 {
-  const w = boot();
+  const w = boot(null, "https://example.test/policy");
   const $ = (id) => w.document.getElementById(id);
   await sleep(50); w.document.dispatchEvent(new w.Event("DOMContentLoaded")); await sleep(150);
   let release; w.__TRIAL = { enabled: false, wsQuery: () => new Promise((r) => { release = r; }), ev() {} };
@@ -130,7 +130,7 @@ function boot(preset) {
 
 // ───────── 3) 뒤로 가기 ─────────
 {
-  const w = boot();
+  const w = boot(null, "https://example.test/policy");
   const $ = (id) => w.document.getElementById(id);
   await sleep(50); w.document.dispatchEvent(new w.Event("DOMContentLoaded")); await sleep(150);
   check("상담 전에는 뒤로 가기를 가로채지 않는다", () => assert.equal(w.__BACK.armed(), false));
@@ -181,7 +181,11 @@ function boot(preset) {
   w.history.back(); await sleep(60);
   check("안내 중 뒤로 가기 → 길안내 종료 확인 창", () => assert.equal($("naviEndModal").hidden, false));
   $("naviEndConfirmBtn").click(); await sleep(60);
-  check("확인하면 안내·세션 종료 + 저장된 여정 삭제", () => { assert.equal(w.NAVI.isBusy(), false); assert.equal(w.localStorage.getItem("acc_trip_v1"), null); assert.ok($("view-mode").classList.contains("active")); });
+  check("확인하면 안내를 끝내고 경로·저장된 여정을 지운다 — 화면과 세션은 그대로 (v2.0.2)", () => {
+    assert.equal(w.NAVI.isBusy(), false); assert.equal(w.localStorage.getItem("acc_trip_v1"), null);
+    assert.ok($("view-navi").classList.contains("active")); assert.ok(!$("view-mode").classList.contains("active"));
+    assert.equal(N().routeLines().length, 0); assert.ok($("controls").classList.contains("active"));
+  });
   w.close();
 }
 {
