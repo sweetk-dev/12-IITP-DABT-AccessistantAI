@@ -129,7 +129,10 @@ class MainActivity : Activity() {
     private fun openService() {
         if (opened) return
         opened = true
-        if (Prefs.hasLogin(this)) loadStart(intent) else showLogin(null)
+        if (Prefs.hasLogin(this)) {
+            loadStart(intent)
+            AppUpdater.check(this, force = true)     // 앱을 새로 열 때마다 새 버전을 확인한다 (2.0.2)
+        } else showLogin(null)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -499,6 +502,7 @@ class MainActivity : Activity() {
                 } else {
                     Prefs.saveLogin(this, u, pass.text.toString())
                     loadStart(intent)
+                    AppUpdater.check(this, force = true)
                 }
             }
             .show()

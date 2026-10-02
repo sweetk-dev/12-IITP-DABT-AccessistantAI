@@ -488,8 +488,21 @@ check("상단 종료 버튼 — 안내 중엔 '안내 종료', 누르면 안내�
   eb.dispatchEvent(new window.Event("click"));
   assert.ok($("naviSpots"), "종료 후 목록 패널로 복귀하지 않음");
   assert.equal(eb.disabled, false, "종료 후 비활성 — 항시 활성이어야 함");
-  assert.equal(eb.textContent, "종료", "안내 종료 후엔 서비스 종료 모드여야 함");
+  assert.equal(eb.textContent, "초기화", "안내 종료 후엔 초기화 모드여야 함");
 });
+check("안내 종료는 지도의 경로와 도착지까지 지운다 (v2.0.2)", () => {
+  assert.equal(window.NAVI._internals().routeLines().length, 0, "경로선이 남아 있음");
+  assert.equal(window.NAVI._internals().tripDest(), null, "도착지가 남아 있음");
+});
+// 뒤 검증(도착지가 정해진 상태의 지도 조작)을 위해 같은 도착지로 경로만 다시 만든다
+{
+  await sleep(120);
+  window.document.querySelectorAll("#naviSpots .spot")[0].dispatchEvent(new window.Event("click"));
+  await sleep(20);
+  const again = [...window.document.querySelectorAll(".spot-choice__btn")].find((b) => /여기로 가기/.test(b.textContent));
+  if (again) again.dispatchEvent(new window.Event("click"));
+  await sleep(80);
+}
 check("음성안내 토글은 스텝 카드로 이동 (상단 토글 제거)", () => {
   assert.equal(window.document.getElementById("naviVoiceBtn"), null);
   assert.match(HTML, /음성 끄기/);
@@ -1087,42 +1100,46 @@ check("신고 버튼 축소 — 짧은 라벨 + 절반 크기 패딩 (지도 가
   assert.match(HTML, /\.reportbtn\{[^}]*padding:9px 10px/);
 });
 
-// 평시(안내 없음) 종료 버튼 = 서비스 종료 -> 홈(모드 선택)
-check("평시 종료 버튼 활성 + '종료' 라벨", () => {
+// 평시(안내 없음) 버튼 = 초기화 — 화면·세션은 그대로 두고 경로만 지운다 (v2.0.2)
+check("평시 버튼 활성 + '초기화' 라벨", () => {
   const eb = $("naviEndBtn");
   assert.equal(eb.disabled, false);
-  assert.equal(eb.textContent, "종료");
+  assert.equal(eb.textContent, "초기화");
 });
-// v1.37.0: 홈으로 나가는 것은 세션을 닫는 동작 — 확인 팝업을 한 번 거친다
 $("naviEndBtn").dispatchEvent(new window.Event("click"));
-check("평시 종료 클릭 -> 곧바로 나가지 않고 확인 팝업이 뜬다 (v1.37.0)", () => {
+check("평시 초기화 클릭 -> 확인 창 없이 이 화면에 머문다 · 세션 유지 (v2.0.2)", () => {
   const m = $("naviEndModal");
   assert.ok(m, "종료 확인 팝업이 없음");
-  assert.equal(m.hidden, false, "팝업이 뜨지 않음");
-  assert.ok($("view-navi").classList.contains("active"), "확인 전에 화면을 떠남");
+  assert.equal(m.hidden, true, "평시 초기화에 확인 창이 떴다");
+  assert.ok($("view-navi").classList.contains("active"), "화면을 떠남");
+  assert.equal($("naviAskwrap").hidden, false, "질문 바가 사라짐(세션이 끝남)");
+  assert.equal(window.NAVI._internals().routeLines().length, 0, "경로선이 남아 있음");
 });
-check("확인 팝업 문구·구조가 '상담 종료' 팝업과 같은 형식", () => {
+check("확인 팝업 문구·구조 (뒤로 가기용)", () => {
   const m = $("naviEndModal");
   assert.equal(m.getAttribute("class"), "modal-backdrop");
   const card = m.querySelector(".modal-card");
   assert.equal(card.getAttribute("role"), "dialog");
   assert.equal(card.getAttribute("aria-modal"), "true");
   assert.equal(card.getAttribute("aria-labelledby"), "naviEndTitle");
+  assert.equal($("naviEndTitle").textContent, "안내를 끝낼까요?");
   assert.equal($("naviEndCancelBtn").textContent, "취소");
   assert.equal($("naviEndConfirmBtn").textContent, "확인");
 });
+$("naviEndModal").hidden = false;
 $("naviEndCancelBtn")?.dispatchEvent(new window.Event("click"));
 check("취소 -> 팝업만 닫히고 안내 화면에 그대로 머문다", () => {
   assert.equal($("naviEndModal").hidden, true, "팝업이 닫히지 않음");
   assert.ok($("view-navi").classList.contains("active"), "취소했는데 화면을 떠남");
   assert.equal($("naviAskwrap").hidden, false, "취소했는데 질문 바가 사라짐");
 });
-$("naviEndBtn").dispatchEvent(new window.Event("click"));
+$("naviEndModal").hidden = false;
 $("naviEndConfirmBtn")?.dispatchEvent(new window.Event("click"));
-check("확인 -> 상담 화면 경유 없이 바로 홈(모드 선택)으로", () => {
+check("확인 -> 시작 화면으로 나가지 않고 이 화면에 머문다 · 세션 유지 (v2.0.2)", () => {
   assert.equal($("naviEndModal").hidden, true, "팝업이 남아 있음");
-  assert.ok($("view-mode").classList.contains("active"), "홈 화면으로 가지 않음");
-  assert.equal($("naviAskwrap").hidden, true, "질문 바가 남아 있음");
+  assert.ok($("view-navi").classList.contains("active"), "길안내 화면을 떠남");
+  assert.ok(!$("view-mode").classList.contains("active"), "시작 화면으로 나갔다");
+  assert.equal($("naviAskwrap").hidden, false, "질문 바가 사라짐(세션이 끝남)");
 });
 
 // 경로 이탈 -> 자동 재탐색 -> 안내 자동 재개
@@ -1199,7 +1216,7 @@ await sleep(700);   // 상태 갱신 틱을 최소 한 번 지나게 한다
 check("평시에도 종료 버튼은 상태 갱신 틱이 돌아도 잠기지 않는다", () => {
   const eb = $("naviEndBtn");
   assert.equal(eb.disabled, false, "600ms 틱이 종료 버튼을 다시 잠갔음");
-  assert.ok(["종료", "안내 종료"].includes(eb.textContent), "라벨이 두 상태 중 하나가 아님");
+  assert.ok(["초기화", "안내 종료"].includes(eb.textContent), "라벨이 두 상태 중 하나가 아님");
 });
 
 // ── 신고: '기타 문제' 프롬프트를 취소하면 아무것도 보내지 않는다 ──
@@ -1896,7 +1913,7 @@ check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 
     assert.equal(NV.routeLines().length, 0, "경로선이 남아 있음");
     assert.equal(NV.tripDest(), null, "도착지가 남아 있음");
     assert.match($("naviStatus").textContent, /도착해 안내를 종료했습니다/);
-    assert.equal($("naviEndBtn").textContent, "종료");
+    assert.equal($("naviEndBtn").textContent, "초기화");
   });
   // 지도 재시도 — 실패 상태를 만든 뒤 재시도 → 복원
   check("지도 로드 실패 시 10초→20초→40초→60초 재시도 + 온라인 복귀 즉시 (소스 가드)", () => {

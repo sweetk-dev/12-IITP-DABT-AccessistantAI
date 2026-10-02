@@ -93,6 +93,7 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   w.document.querySelector('[data-go="text"]').click(); await sleep(50);
   const s0 = w.__sockets[0]; await s0._open(); await sleep(20);
   check("정책상담: 세션 주소에 navi 모드가 없다", () => assert.doesNotMatch(s0.url, /mode=navi/));
+  check("정책상담: 상담 중에는 뒤로 가기를 붙잡는다(종전대로)", () => { assert.equal(w.__BACK.busy(), true); assert.equal(w.__BACK.armed(), true); assert.equal(w.__reconnectNavi(), false); });
   const dest = { name: "안양시청", kind: "building", lat: 37.3943, lng: 126.9568 };
   await s0._msg({ type: "ui_action", action: "handoff_navi", payload: { action: "handoff_navi", dest, profile: "visual" } });
   const btn = () => [...w.document.querySelectorAll("#chat .bubble--nav .navjump")].pop();
@@ -206,6 +207,35 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   await w.__sockets[0]._msg({ type: "ui_action", action: "show_toilets", payload: { action: "show_toilets", items: [] } });
   check("결과(ui_action)가 오면 꺼진다", () => assert.ok(!st.classList.contains("navi-status--busy")));
   check("목적지가 없는 넘겨받기는 무시", () => { assert.equal(w.NAVI.handoff({}), false); assert.equal(w.NAVI.handoff({ dest: { name: "x" } }), false); });
+  // 진행 중 판정 · 끝내기 (v2.0.2)
+  check("이동경로 안내: 세션만 열려 있으면 '진행 중'이 아니다(뒤로 가기를 붙잡지 않는다)", () => { assert.equal(w.__BACK.busy(), false); assert.equal(w.__BACK.armed(), false); });
+  {
+    const N2 = w.NAVI._internals();
+    await sleep(900);   // 경로 요청 결과 반영
+    N2.startGuidance(); await sleep(1200);
+    check("안내가 시작되면 뒤로 가기를 붙잡는다", () => { assert.equal(w.__BACK.busy(), true); assert.equal(w.__BACK.armed(), true); });
+    w.history.back(); await sleep(60);
+    check("안내 중 뒤로 가기 → '안내를 끝낼까요?'", () => { assert.equal($("naviEndModal").hidden, false); assert.equal($("naviEndTitle").textContent, "안내를 끝낼까요?"); });
+    $("naviEndConfirmBtn").click(); await sleep(1200);
+    check("확인 → 경로를 지우고 이 화면에 머문다 · 세션 유지 · 뒤로 가기 놓음", () => {
+      assert.ok($("view-navi").classList.contains("active")); assert.equal(N2.routeLines().length, 0);
+      assert.ok($("controls").classList.contains("active")); assert.equal(w.__BACK.armed(), false);
+      assert.equal($("naviEndBtn").textContent, "초기화");
+    });
+    // 세션이 끝난 채 화면에 머무는 경우 — 화면을 만지면 조용히 다시 붙는다
+    const n0 = w.__sockets.length;
+    await w.__sockets[n0 - 1]._msg({ type: "auto_close", message: "응답이 없어 종료합니다." });   // 오래 말이 없어 서버가 끝낸 경우
+    w.__sockets[n0 - 1].readyState = 3; w.__sockets[n0 - 1].onclose && w.__sockets[n0 - 1].onclose({ code: 1000, wasClean: true }); await sleep(80);
+    check("세션이 끝나도 길안내 화면에 머문다", () => { assert.ok($("view-navi").classList.contains("active")); assert.ok(!$("controls").classList.contains("active")); });
+    const re1 = w.__reconnectNavi(); await sleep(150);
+    check("화면을 만지면 인사말 없이 다시 붙는다", () => {
+      assert.equal(re1, true);
+      const sN = w.__sockets[w.__sockets.length - 1];
+      assert.ok(w.__sockets.length > n0, "새 연결 없음"); assert.match(sN.url, /mode=navi/); assert.match(sN.url, /greet=0/);
+      assert.equal(w.__reconnectNavi(), false, "연달아 다시 붙으려 함");
+    });
+    await w.__sockets[w.__sockets.length - 1]._open(); await sleep(30);
+  }
   // 통화
   const N = w.NAVI._internals();
   w.__spoken = [];
