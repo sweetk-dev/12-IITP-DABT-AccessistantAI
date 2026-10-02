@@ -692,6 +692,8 @@ AUTO_TRANSIT_MIN_M = 700     # 이 직선거리 미만이면 자동 모드는 �
 DEFAULT_PROFILE = "wheelchair_electric"
 # 지원 이동 방식 — walk_subway 는 버스 없이 지하철만 쓴다(02 v1.25.0, #294)
 ROUTE_MODES = ("walk", "walk_subway", "walk_bus", "walk_bus_subway")
+# 넘기기 주소에 실을 수 있는 프로필 (v2.0.0) — 화면의 HANDOFF_PROFILES 와 같다
+HANDOFF_PROFILES = ("wheelchair_electric", "wheelchair_manual", "crutch", "visual", "walk")
 
 
 def _mode_label(mode: str) -> str:
@@ -762,8 +764,13 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                                      low_floor: Optional[bool] = None,
                                      origin_station: str = "",
                                      origin_travel: str = "",
-                                     log_ctx: Optional[dict] = None) -> dict:
+                                     log_ctx: Optional[dict] = None,
+                                     handoff: bool = False) -> dict:
     """현재 위치(또는 말로 지정한 출발지)에서 목적지까지 무장애 경로.
+
+    handoff(v2.0.0): 정책상담 세션이 보낸 요청이다. 길안내는 이동경로 안내가 맡으므로 경로를
+    만들지 않고, 목적지만 확정해 화면이 넘기기 버튼을 띄우게 한다. 세션이 주입하는 값이라
+    모델이 고를 수 없다(도구 선언에 없다).
 
     origin_station/origin_travel(02 v1.28.0, #300): 이용자가 역 안(승강장)에 있다고 답했을 때
     역 이름과 타고 온 열차의 진행 방향(north|south|빈값=모름). 이 경우 도보로만 계획한다 —
@@ -814,6 +821,26 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
             "ai_instruction": (
                 "어디로 가시는지 목적지를 알 수 없다고 짧게 되묻고, 경로 안내는 %s 안에서만 "
                 "가능하다는 점을 함께 알리세요. 경로를 추측하지 마세요." % SERVICE_AREA
+            ),
+        }
+
+    if handoff:
+        hd = {"name": (dest_label or destination_place or "").strip() or "목적지",
+              "kind": destination_type or ("tour" if destination_poi_id else "building")}
+        if destination_poi_id:
+            hd["poi_id"] = destination_poi_id
+        if dest_coord is not None:
+            hd["lat"], hd["lng"] = dest_coord["lat"], dest_coord["lng"]
+        return {
+            "status": "handoff",
+            "tool_name": "plan_accessible_route",
+            "destination": hd,
+            "ui_action": {"action": "handoff_navi", "dest": hd,
+                          "profile": profile if profile in HANDOFF_PROFILES else ""},
+            "ai_instruction": (
+                "길안내는 이동경로 안내에서 이어진다고 한 문장으로 알리고, 화면에 나온 "
+                "'이동경로 안내에서 안내 받기' 버튼을 눌러 달라고 하세요. 거리·시간·경로를 "
+                "말하지 마세요(여기서는 계산하지 않았습니다)."
             ),
         }
 
@@ -1738,13 +1765,21 @@ async def tool_get_station_facilities(station: str = "") -> dict:
 # ─────────────────────────────────────────────────────────────
 # 도구 #9 — 화면 이동 (#215)
 # ─────────────────────────────────────────────────────────────
-async def tool_open_navi_screen() -> dict:
+async def tool_open_navi_screen(handoff: bool = False) -> dict:
     """이동·관광(지도) 화면으로 전환한다.
 
     사용자가 '지도로 이동해줘', '지도 화면 보여줘' 처럼 화면 이동 자체를
     명시적으로 요청한 경우에만 호출된다 — 이때는 사용자가 원한 전환이므로
     (#213 의 자동전환 금지와 달리) 프런트가 즉시 화면을 바꾼다.
     """
+    if handoff:
+        # 정책상담 세션(v2.0.0) — 화면을 바꾸지 않고 이동경로 안내를 여는 버튼을 띄운다
+        return {
+            "status": "success",
+            "tool_name": "open_navi_screen",
+            "ui_action": {"action": "open_navi"},
+            "ai_instruction": "화면에 나온 '이동경로 안내 열기' 버튼을 누르면 지도와 길안내가 열린다고 한 문장으로만 알리세요.",
+        }
     return {
         "status": "success",
         "tool_name": "open_navi_screen",

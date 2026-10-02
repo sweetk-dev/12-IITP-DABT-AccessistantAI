@@ -109,6 +109,59 @@ _static_dir = _pl.Path(__file__).parent / "static"
 if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
+# ─────────────────────────────────────────────────────────────
+# 제품 분리 (v2.0.0) — 정책상담 / 이동경로 안내. 화면 파일은 하나이고 주소만 다르다.
+# 화면이 주소(/navi 여부)를 보고 어느 제품인지 정한다.
+# ─────────────────────────────────────────────────────────────
+import re as _re
+from fastapi import HTTPException as _HTTPException
+from fastapi.responses import FileResponse as _FileResponse
+
+
+def _front_page():
+    page = _static_dir / "accessistant.html"
+    if not page.exists():
+        raise _HTTPException(status_code=404, detail="화면 파일이 없습니다")
+    return _FileResponse(str(page), media_type="text/html; charset=utf-8",
+                         headers={"Cache-Control": "no-store"})
+
+
+@app.get("/policy", include_in_schema=False)
+async def page_policy():
+    return _front_page()
+
+
+@app.get("/navi", include_in_schema=False)
+async def page_navi():
+    return _front_page()
+
+
+# 이동경로 안내 앱 배포본 — 앱이 새 버전 유무를 확인하고 내려받는다.
+# APP_RELEASE_DIR 에 latest.json 과 설치 파일을 두면 된다(이미지를 다시 만들 필요 없음).
+_APP_RELEASE_DIR = _pl.Path(os.environ.get("APP_RELEASE_DIR", "/data/app"))
+_APK_NAME = _re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}\.apk$")
+
+
+@app.get("/app/latest.json", include_in_schema=False)
+async def app_latest():
+    f = _APP_RELEASE_DIR / "latest.json"
+    if not f.is_file():
+        raise _HTTPException(status_code=404, detail="배포본 정보가 없습니다")
+    return _FileResponse(str(f), media_type="application/json",
+                         headers={"Cache-Control": "no-store"})
+
+
+@app.get("/app/download/{name}", include_in_schema=False)
+async def app_download(name: str):
+    if not _APK_NAME.match(name or ""):
+        raise _HTTPException(status_code=400, detail="잘못된 파일 이름")
+    f = _APP_RELEASE_DIR / name
+    if not f.is_file():
+        raise _HTTPException(status_code=404, detail="파일이 없습니다")
+    return _FileResponse(str(f), media_type="application/vnd.android.package-archive",
+                         filename=name, headers={"Cache-Control": "no-store"})
+
+
 # 관리자 콘솔 라우터 (검토 큐 v1-1)
 try:
     from admin_router import router as _admin_router
@@ -929,7 +982,8 @@ async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str
     Query 파라미터:
       voice — Gemini Live prebuilt voice 이름(예: Charon, Kore) 또는 카테고리(male/female).
               미지정 시 기본값(여성 Kore).
-      mode  — 세션 시작 화면. "navi"(이동·관광 길안내)면 경로 안내용 인사말을 사용.
+      mode  — 세션 종류. "navi" 면 이동경로 안내(경로 안내용 인사말, 경로 도구 사용),
+              그 밖은 정책상담 — 길안내 요청은 이동경로 안내로 넘긴다(v2.0.0).
       sid   — 단말이 만든 세션 식별자. resume=1 과 함께 오면 끊기기 전 대화를 이어받는다(v1.59.0).
 
     클라이언트 메시지 포맷:

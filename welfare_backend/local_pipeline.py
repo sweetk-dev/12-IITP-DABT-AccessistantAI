@@ -37,7 +37,7 @@ from starlette.websockets import WebSocketState
 import trial_recorder
 
 from nav_context import (update_nav_state, current_guidance_result,
-                         note_new_route, inject_nav_defaults)
+                         note_new_route, inject_nav_defaults, inject_handoff)
 
 logger = logging.getLogger(__name__)
 
@@ -326,7 +326,7 @@ def _ollama_route_tools() -> list:
 # ─────────────────────────────────────────────────────────────
 async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                         nav_state: dict = None, user_location: dict = None,
-                        on_ui_action=None) -> str:
+                        on_ui_action=None, session_mode: str = None) -> str:
     """messages(대화 누적)에 사용자 발화가 추가된 상태로 호출.
     도구호출을 최대 4회까지 처리하고 최종 한국어 답변 텍스트를 반환.
     messages 는 in-place 로 갱신(assistant/tool 메시지 append)되어 맥락 유지."""
@@ -373,6 +373,7 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                         fargs.pop("origin_lat", None)
                         fargs.pop("origin_lng", None)
                 fargs = inject_nav_defaults(fname, fargs, _nav, _loc)
+                fargs = inject_handoff(fname, fargs, session_mode)   # 정책상담이면 넘기기 (v2.0.0)
 
                 if fname == "get_current_guidance":
                     # 세션 상태만 읽는 도구 — 디스패처를 거치지 않는다
@@ -423,8 +424,9 @@ class LocalVoiceSession:
     def __init__(self, websocket: WebSocket, dispatcher: dict, embed_fn: Callable,
                  system_instruction: str, tracker_factory: Callable, session_id: str,
                  extract_sources: Callable, prior_history: Optional[list] = None,
-                 greet: bool = True):
+                 greet: bool = True, session_mode: str = None):
         self.ws = websocket
+        self.session_mode = session_mode      # "navi" 면 이동경로 안내 세션 (v2.0.0)
         self.dispatcher = dispatcher
         self.embed_fn = embed_fn
         self.system_instruction = system_instruction
@@ -523,7 +525,7 @@ class LocalVoiceSession:
             try:
                 answer = await _run_llm_turn(self.messages, self.dispatcher, tracker, self._send_sources,
                                              self.nav_state, self.user_location,
-                                             self._send_ui_action)
+                                             self._send_ui_action, self.session_mode)
             except Exception as e:
                 logger.exception("[로컬] LLM 처리 실패: %s", e)
                 answer = "죄송합니다. 지금은 정확히 안내드리기 어렵습니다. 보건복지부 129로 문의해 주세요."
@@ -608,7 +610,7 @@ class LocalVoiceSession:
                         try:
                             answer = await _run_llm_turn(self.messages, self.dispatcher, tracker, self._send_sources,
                                              self.nav_state, self.user_location,
-                                             self._send_ui_action)
+                                             self._send_ui_action, self.session_mode)
                         except Exception as e:
                             logger.exception("[로컬] LLM(text) 실패: %s", e)
                             answer = "죄송합니다. 지금은 정확히 안내드리기 어렵습니다. 보건복지부 129로 문의해 주세요."

@@ -33,7 +33,7 @@ const ROUTE = { status: "success", route_id: "r_s", ui_action: { action: "show_r
 const SPOTS = { status: "success", results: [{ poi_id: "T1", name: "테스트 박물관", addr: "안양시", facilities: [], score: 0.9 }] };
 
 function boot(preset) {
-  const dom = new JSDOM(HTML, { runScripts: "dangerously", pretendToBeVisual: true, url: "https://example.test/static/accessistant.html",
+  const dom = new JSDOM(HTML, { runScripts: "dangerously", pretendToBeVisual: true, url: "https://example.test/navi",
     beforeParse(w) {
       if (preset) preset(w);
       const sockets = [];
