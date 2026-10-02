@@ -63,7 +63,7 @@ class GuideWebView(context: Context) : WebView(context) {
  *   · 화면이 꺼지거나 다른 앱으로 가도 안내가 이어지게 한다(GuideService)
  *   · 접속 계정을 한 번만 입력하게 한다
  *   · 위치·마이크 권한을 앱 권한으로 한 번에 받는다
- *   · 뒤로 가기 키를 화면의 종료 확인으로 넘긴다
+ *   · 뒤로 가기 키: 안내 중이면 화면의 "안내를 끝낼까요?", 그 밖에는 "앱을 종료할까요?"
  *   · 통화가 시작되면 안내를 멈추고 끝나면 잇는다
  *   · 정책상담 화면이 넘겨준 목적지를 받는다(accessnavi://navi?...)
  *   · 새 버전을 확인해 설치한다(AppUpdater)
@@ -77,6 +77,8 @@ class MainActivity : Activity() {
     private var geoAsked = false
     private var authTries = 0
     private var loginShowing = false
+    private var exitShowing = false
+    private var backAsking = false
     private var pendingWebPermission: PermissionRequest? = null
     private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
     private val handler = Handler(Looper.getMainLooper())
@@ -174,15 +176,34 @@ class MainActivity : Activity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        // 뒤로 가기 — 먼저 화면에 묻는다. 안내 중이면 화면이 "안내를 끝낼까요?"를 띄우고(true),
+        // 그 밖(안내 전·대화 중·연결 실패 화면)에는 앱 종료를 묻는다.
+        if (loginShowing) return                 // 접속 창에는 닫기 버튼이 있다 — 그 위에 겹쳐 묻지 않는다
         val w = web
-        if (w != null && w.canGoBack()) {
-            w.goBack()                 // 상담·안내 중이면 화면이 종료 확인 창을 띄운다
-        } else if (busy) {
-            moveTaskToBack(true)       // 안내 중에는 닫지 않고 뒤로 보낸다
-        } else {
-            @Suppress("DEPRECATION")
-            super.onBackPressed()
+        if (w == null || !pageReady) { confirmExit(); return }
+        if (backAsking) return                   // 앞선 물음의 답을 기다리는 중
+        backAsking = true
+        // 화면이 멈춰 답이 오지 않으면 앱이 직접 종료를 묻는다
+        val fallback = Runnable { if (backAsking) { backAsking = false; confirmExit() } }
+        handler.postDelayed(fallback, 700)
+        w.evaluateJavascript("(function(){try{return !!(window.NAVI&&NAVI.backKey&&NAVI.backKey());}catch(e){return false;}})()") { r ->
+            if (!backAsking) return@evaluateJavascript      // 이미 대신 물었다
+            backAsking = false
+            handler.removeCallbacks(fallback)
+            if (r != "true") confirmExit()
         }
+    }
+
+    private fun confirmExit() {
+        if (exitShowing || isFinishing) return
+        exitShowing = true
+        AlertDialog.Builder(this)
+            .setTitle("앱을 종료할까요?")
+            .setMessage("이동경로 안내를 닫습니다.")
+            .setNegativeButton("취소", null)
+            .setPositiveButton("종료") { _, _ -> finishAndRemoveTask() }   // 뒤에 남기지 않고 완전히 닫는다
+            .setOnDismissListener { exitShowing = false }
+            .show()
     }
 
     // ───────────────────────── 주소 ─────────────────────────
@@ -451,14 +472,14 @@ class MainActivity : Activity() {
     private fun confirmLogout() {
         if (isFinishing) return
         if (busy) {
-            Toast.makeText(this, "안내를 끝낸 뒤에 계정을 바꿀 수 있습니다.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "안내를 끝낸 뒤에 로그아웃할 수 있습니다.", Toast.LENGTH_LONG).show()
             return
         }
         AlertDialog.Builder(this)
-            .setTitle("접속 계정 바꾸기")
-            .setMessage("지금 계정(" + Prefs.user(this) + ")을 지우고 앱을 닫습니다. 앱을 다시 열면 새 아이디와 비밀번호를 묻습니다.")
+            .setTitle("로그아웃")
+            .setMessage("지금 계정(" + Prefs.user(this) + ")을 지우고 앱을 닫습니다. 앱을 다시 열면 아이디와 비밀번호를 묻습니다.")
             .setNegativeButton("취소", null)
-            .setPositiveButton("바꾸기") { _, _ ->
+            .setPositiveButton("로그아웃") { _, _ ->
                 setBusy(false)
                 Prefs.clearLogin(this)
                 try { WebViewDatabase.getInstance(this).clearHttpAuthUsernamePassword() } catch (_: Exception) {}

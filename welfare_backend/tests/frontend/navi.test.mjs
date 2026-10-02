@@ -486,6 +486,10 @@ check("상단 종료 버튼 — 안내 중엔 '안내 종료', 누르면 안내�
   assert.equal(eb.disabled, false, "안내 중인데 비활성");
   assert.equal(eb.textContent, "안내 종료");
   eb.dispatchEvent(new window.Event("click"));
+  // v2.0.3: 안내 중에는 먼저 묻는다 — 확인을 눌러야 끝난다
+  assert.equal($("naviEndModal").hidden, false, "안내 종료에 확인 창이 뜨지 않음");
+  assert.ok(window.NAVI.isBusy(), "확인 전에 안내가 끝났다");
+  $("naviEndConfirmBtn").dispatchEvent(new window.Event("click"));
   assert.ok($("naviSpots"), "종료 후 목록 패널로 복귀하지 않음");
   assert.equal(eb.disabled, false, "종료 후 비활성 — 항시 활성이어야 함");
   assert.equal(eb.textContent, "초기화", "안내 종료 후엔 초기화 모드여야 함");
@@ -1075,6 +1079,7 @@ watchCb({ coords: { latitude: 37.3902, longitude: 126.9502, accuracy: 5 } });
 watchCb({ coords: { latitude: 37.3905, longitude: 126.9506, accuracy: 5 } });
 await sleep(20);
 $("naviEndBtn").dispatchEvent(new window.Event("click"));
+$("naviEndConfirmBtn").dispatchEvent(new window.Event("click"));   // v2.0.3: 안내 중에는 먼저 묻는다
 await sleep(40);
 check("안내 종료 -> 주행 트랙 업로드 (points + outcome=canceled + 경로선)", () => {
   const posts = navPosts.filter((x) => x.url.includes("/nav/track"));
@@ -1210,6 +1215,7 @@ await sleep(60);
 // 구 코드는 이 조건(guiding=false)에서 버튼을 다시 잠갔다.
 if ($("naviEndBtn").textContent === "안내 종료") {
   $("naviEndBtn").dispatchEvent(new window.Event("click"));
+  $("naviEndConfirmBtn").dispatchEvent(new window.Event("click"));
   await sleep(20);
 }
 await sleep(700);   // 상태 갱신 틱을 최소 한 번 지나게 한다

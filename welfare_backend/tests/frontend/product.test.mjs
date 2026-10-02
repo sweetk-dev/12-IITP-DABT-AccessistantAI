@@ -295,16 +295,40 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   const w = boot("https://example.test/navi", { ua: "Mozilla/5.0 (Linux; Android 14) AccessNaviApp/2.0.0", preset: (win) => { win.AccessNaviApp = { setBusy: (b) => calls.push(b) }; } });
   await ready(w, 1300);
   check("앱 안: 넘겨받은 것이 없어도 바로 길안내 화면으로 · 상태를 앱에 알린다", () => { assert.equal(w.__sockets.length, 1); assert.ok(calls.length >= 1); });
-  check("앱에 계정 바꾸기 기능이 없으면 버튼도 없다", () => assert.equal(w.document.getElementById("appAccountBtn"), null));
+  check("앱에 로그아웃 기능이 없으면 버튼을 보이지 않는다", () => assert.equal(w.document.getElementById("naviLogoutBtn").hidden, true));
+  check("앱 안에서는 화면이 뒤로 가기를 붙잡지 않는다(앱이 직접 묻는다)", () => { w.__BACK.arm(); assert.equal(w.__BACK.armed(), false); });
   w.close();
 }
 {
-  // 앱 안 — 접속 계정 바꾸기 · 첫 측위에 지도 옮기기
+  // 앱 안 — 로그아웃 버튼 · 뒤로 가기 키 (v2.0.3)
   let out = 0;
-  const w = boot("https://example.test/navi", { ua: "Mozilla/5.0 (Linux; Android 15) AccessNaviApp/2.0.1", preset: (win) => { win.AccessNaviApp = { setBusy() {}, logout: () => { out++; } }; } });
-  await ready(w, 300);
-  const ab = w.document.getElementById("appAccountBtn");
-  check("앱 안: 시작 화면에 '접속 계정 바꾸기'", () => { assert.ok(ab); assert.equal(ab.textContent, "접속 계정 바꾸기"); ab.click(); assert.equal(out, 1); });
+  const w = boot("https://example.test/navi", { ua: "Mozilla/5.0 (Linux; Android 15) AccessNaviApp/2.0.3", preset: (win) => { win.AccessNaviApp = { setBusy() {}, logout: () => { out++; } }; } });
+  const $ = (id) => w.document.getElementById(id);
+  await ready(w, 700);
+  await w.__sockets[0]._open(); await sleep(30);
+  const lo = $("naviLogoutBtn");
+  check("앱 안: 길안내 화면 위쪽에 '로그아웃' — 초기화 버튼 바로 앞, 같은 모양", () => {
+    assert.equal(lo.hidden, false); assert.equal(lo.textContent, "로그아웃");
+    assert.equal(lo.className, $("naviEndBtn").className); assert.equal(lo.nextElementSibling, $("naviEndBtn"));
+    lo.click(); assert.equal(out, 1);
+  });
+  check("뒤로 가기 키: 안내 중이 아니면 화면이 처리하지 않는다 → 앱이 종료를 묻는다", () => { assert.equal(w.NAVI.backKey(), false); assert.equal($("naviEndModal").hidden, true); });
+  $("naviSosBtn").click(); await sleep(20);
+  check("뒤로 가기 키: 열려 있는 창(긴급·편의)부터 닫는다", () => { assert.equal($("sosSheet").hidden, false); assert.equal(w.NAVI.backKey(), true); assert.equal($("sosSheet").hidden, true); assert.equal(w.NAVI.backKey(), false); });
+  const N3 = w.NAVI._internals();
+  N3.setHere({ lat: P(0)[0], lng: P(0)[1] });
+  N3.showRoute(ROUTE.ui_action.route, "테스트"); await sleep(30);
+  N3.startGuidance(); await sleep(30);
+  check("뒤로 가기 키: 안내 중이면 '안내를 끝낼까요?'", () => { assert.equal(w.NAVI.backKey(), true); assert.equal($("naviEndModal").hidden, false); assert.ok(w.NAVI.isBusy()); });
+  check("뒤로 가기 키: 확인 창이 떠 있으면 닫는다(안내 유지)", () => { assert.equal(w.NAVI.backKey(), true); assert.equal($("naviEndModal").hidden, true); assert.ok(w.NAVI.isBusy()); });
+  $("naviEndBtn").click();
+  lo.click();
+  check("안내 중에는 로그아웃을 막는다", () => { assert.equal(out, 1); assert.match($("naviStatus").textContent, /안내를 끝낸 뒤에 로그아웃/); });
+  check("안내 종료 버튼도 먼저 묻는다", () => { assert.equal($("naviEndModal").hidden, false); assert.ok(w.NAVI.isBusy(), "묻지 않고 끝냈다"); });
+  $("naviEndCancelBtn").click();
+  check("취소하면 안내가 이어진다", () => { assert.equal($("naviEndModal").hidden, true); assert.ok(w.NAVI.isBusy()); });
+  $("naviEndBtn").click(); $("naviEndConfirmBtn").click(); await sleep(30);
+  check("확인하면 끝내고 경로를 지운다 · 버튼은 '초기화'", () => { assert.equal(w.NAVI.isBusy(), false); assert.equal(N3.routeLines().length, 0); assert.equal($("naviEndBtn").textContent, "초기화"); });
   w.close();
 }
 {
@@ -314,7 +338,7 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   w.kakao.maps.LatLng = function (a, b) { this.a = a; this.b = b; };
   const N = w.NAVI._internals();
   const map = N.map ? N.map() : null;
-  check("브라우저: 계정 바꾸기 버튼 없음", () => assert.equal(w.document.getElementById("appAccountBtn"), null));
+  check("브라우저: 로그아웃 버튼은 보이지 않는다", () => assert.equal(w.document.getElementById("naviLogoutBtn").hidden, true));
   check("첫 측위에 한 번만 내 위치로 옮긴다(소스)", () => {
     assert.match(HTML, /if\(!firstFixCentered && _naviOn\)\{[^\n]*\n\s*firstFixCentered = true;\s*if\(followMe && !guiding && !simActive && !routeLine && !originOverride\) recenter\(\);/);
   });
