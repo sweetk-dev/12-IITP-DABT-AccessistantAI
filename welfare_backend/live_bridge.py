@@ -799,6 +799,56 @@ async def _send_answer_card(ai_client, websocket, text: str) -> None:
         logger.debug("answer_card 구조화 생략: %s", e)
 
 
+# ─────────────────────────────────────────────────────────────
+# 단말 재접속 이어받기 (v1.59.0)
+# 통신 전환·화면 꺼짐으로 단말↔서버 연결이 끊겼다가 다시 붙을 때, 같은 sid 로 오면
+# Gemini 세션 handle 과 최근 대화를 이어받아 인사말 없이 계속한다. 프로세스 메모리에만 둔다 —
+# 서버 프로세스가 하나일 때만 통한다(워커를 늘리면 다른 프로세스로 들어온 재접속은 새 세션이 된다).
+# ─────────────────────────────────────────────────────────────
+import re as _re
+import time as _time
+
+_CLIENT_RESUME = {}
+_CLIENT_RESUME_TTL = 15 * 60
+_CLIENT_RESUME_MAX = 200
+_SID_RE = _re.compile(r"^[A-Za-z0-9]{6,40}$")
+
+
+def _resume_key(websocket, sid):
+    """sid 는 계정별로 따로 본다 — 다른 계정이 남의 sid 로 대화를 이어받지 못하게."""
+    if not sid or not _SID_RE.match(str(sid)):
+        return None
+    user = (websocket.headers.get("x-remote-user") or "").strip().lower()
+    return (user, str(sid))
+
+
+def _client_resume_put(key, handle, history):
+    if not key:
+        return
+    now = _time.time()
+    if len(_CLIENT_RESUME) >= _CLIENT_RESUME_MAX:
+        for k in [k for k, v in _CLIENT_RESUME.items() if now - v["ts"] > _CLIENT_RESUME_TTL]:
+            _CLIENT_RESUME.pop(k, None)
+        while len(_CLIENT_RESUME) >= _CLIENT_RESUME_MAX:
+            _CLIENT_RESUME.pop(min(_CLIENT_RESUME, key=lambda k: _CLIENT_RESUME[k]["ts"]), None)
+    _CLIENT_RESUME[key] = {"handle": handle, "history": list(history[-16:]), "ts": now}
+
+
+def _client_resume_get(key):
+    ent = _CLIENT_RESUME.get(key) if key else None
+    if not ent:
+        return None
+    if _time.time() - ent["ts"] > _CLIENT_RESUME_TTL:
+        _CLIENT_RESUME.pop(key, None)
+        return None
+    return ent
+
+
+def _client_resume_drop(key):
+    if key:
+        _CLIENT_RESUME.pop(key, None)
+
+
 async def handle_live_chat(
     websocket: WebSocket,
     ai_client,
@@ -806,6 +856,8 @@ async def handle_live_chat(
     model_name: str = None,
     voice: str = None,
     mode: str = None,
+    sid: str = None,
+    resume: bool = False,
 ):
     # 환경변수 우선, 기본은 안정 GA 모델
     if model_name is None:
@@ -877,13 +929,16 @@ async def handle_live_chat(
         # 감도 enum — SDK 버전마다 명칭 약간 다를 수 있어 안전하게 시도
         try:
             aad_kwargs["start_of_speech_sensitivity"] = (
-                types.StartSensitivity.START_SENSITIVITY_MEDIUM
+                types.StartSensitivity.START_SENSITIVITY_LOW
             )
             aad_kwargs["end_of_speech_sensitivity"] = (
                 types.EndSensitivity.END_SENSITIVITY_LOW
             )
-        except AttributeError:
-            pass
+        except AttributeError as e:
+            # 조용히 삼키면 기본값(가장 민감)으로 돌아가 주변 소리에 반응한다 — 반드시 남긴다 (v1.59.0)
+            aad_kwargs.pop("start_of_speech_sensitivity", None)
+            aad_kwargs.pop("end_of_speech_sensitivity", None)
+            logger.warning("⚠️ AAD 감도 enum 을 찾지 못해 기본 감도로 동작: %s", e)
         # 음절 클리핑 방지 패딩 (200ms) + 한국어 호흡 고려 침묵 길이 (1200ms)
         aad_kwargs["prefix_padding_ms"] = 200
         aad_kwargs["silence_duration_ms"] = 1200
@@ -1001,6 +1056,19 @@ async def handle_live_chat(
     reseed_context = False              # 새 세션에 맥락 re-seed 필요 여부
     _BASE_SYS = SYSTEM_INSTRUCTION
     RESEED_MAX_TURNS = 8                # 주입할 최근 대화 턴 수(컨텍스트 비대화 방지)
+    # 단말 재접속 이어받기 (v1.59.0) — 같은 sid 로 다시 붙었으면 handle·대화를 물려받고 인사말을 생략한다
+    _rkey = _resume_key(websocket, sid)
+    _client_resumed = False
+    if resume and _rkey:
+        _ent = _client_resume_get(_rkey)
+        if _ent:
+            session_handle = _ent.get("handle")
+            convo_history = list(_ent.get("history") or [])
+            _client_resumed = True
+            if session_handle is None and convo_history:
+                reseed_context = True
+            logger.info("🔁 단말 재접속 — 세션 이어받음 (handle=%s, 대화 %d턴)",
+                        "있음" if session_handle else "없음", len(convo_history))
 
     try:
       while True:
@@ -1031,7 +1099,11 @@ async def handle_live_chat(
         _connect_t0 = asyncio.get_event_loop().time()
         async with ai_client.aio.live.connect(model=model_name, config=config) as session:
             _connect_elapsed_ms = int((asyncio.get_event_loop().time() - _connect_t0) * 1000)
-            if reconnect_count == 0:
+            if reconnect_count == 0 and _client_resumed:
+                # 단말이 다시 붙은 것 — 인사말 없이 조용히 이어 간다 (v1.59.0)
+                logger.info("✅ Gemini Live 세션 연결됨 — 단말 재접속 이어받기 (model=%s, %dms)",
+                            model_name, _connect_elapsed_ms)
+            elif reconnect_count == 0:
                 logger.info("✅ Gemini Live 세션 연결됨 (model=%s, %dms)",
                             model_name, _connect_elapsed_ms)
                 # ── 세션 시작 인사말 트리거 (DB 도구 호출 없이 지정 문장만 발화) ──
@@ -1109,6 +1181,9 @@ async def handle_live_chat(
                                 update_nav_state(nav_state, msg)
                             except Exception:
                                 logger.warning("잘못된 nav_state 메시지 무시")
+                        elif msg.get("type") == "bye":
+                            # 이용자가 끝냈다 — 이어받기 정보를 바로 지운다 (v1.59.0)
+                            _client_resume_drop(_rkey)
                         elif msg.get("type") == "activity":
                             # 길안내 화면의 상호작용/안내 진행 신호 — 발화가 없어도
                             # 서비스 이용 중이므로 유휴 종료(IDLE/AUTO_CLOSE) 대상이 아니다.
@@ -1144,6 +1219,7 @@ async def handle_live_chat(
                                 new_h = getattr(sru, "new_handle", None) or getattr(sru, "handle", None)
                                 if new_h:
                                     session_handle = new_h
+                                    _client_resume_put(_rkey, session_handle, convo_history)
                                     logger.debug("📌 session_resumption handle 갱신 (앞 16자: %s...)",
                                                  str(new_h)[:16])
 
@@ -1179,6 +1255,7 @@ async def handle_live_chat(
                                     # 대화 이력은 사람이 읽는 표기(숫자)로 남긴다 (v1.40.0)
                                     convo_history.append(("model", normalize_numbers(_ai_buf.strip())))
                                     echo_ref["ai_text"] = _ai_buf
+                                _client_resume_put(_rkey, session_handle, convo_history)
                                 # 정책 카드 폴백 (#205→#208): 도구 기반 선표시 카드를 이번 턴에
                                 # 시도하지 않았을 때만 전사 기반으로 생성(도구 없이 답한 정책 설명 커버)
                                 _card_src = _ai_buf.strip()
@@ -1469,6 +1546,15 @@ async def handle_live_chat(
         # 재연결 불가 오류(결제 크레딧 소진·권한·quota 등). 원문(예: "prepayment credits
         # depleted")은 이용자에게 절대 노출 금지 — silent 처리. 로컬 폴백이 켜져 있고 ws 가
         # 살아있으면 온프레미스 음성 파이프라인으로 조용히 전환한다.
+        if _client_resumed and reconnect_count == 0 and not session_progressed and session_handle is not None:
+            logger.warning("⚠️ 물려받은 handle 로 연결 실패 — handle 을 버리고 단말 재접속을 기다린다: %s", e)
+            _client_resume_put(_rkey, None, convo_history)
+            try:
+                if websocket.client_state == WebSocketState.CONNECTED:
+                    await websocket.close(code=4001)
+            except Exception:
+                pass
+            return
         logger.exception("Gemini Live 연결 실패 (재연결 불가능한 오류): %s", e)
         emsg = str(e).lower()
         nonretryable = any(k in emsg for k in (
