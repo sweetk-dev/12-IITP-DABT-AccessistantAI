@@ -14,7 +14,7 @@
 
 화면과 주고받는 것
 
-- 화면 → 앱: `AccessNaviApp.setBusy(bool)` (상담·안내 진행 여부), `AccessNaviApp.micGranted()`, `AccessNaviApp.reload()`
+- 화면 → 앱: `AccessNaviApp.setBusy(bool)` (상담·안내 진행 여부), `AccessNaviApp.micGranted()`, `AccessNaviApp.logout()`(접속 계정 바꾸기), `AccessNaviApp.reload()`
 - 앱 → 화면: `NAVI.handoff(...)` (새 목적지), `__APP.onAudioFocus(bool)` (통화 시작·끝)
 - 앱 안에서 열린 화면은 사용자 에이전트에 `AccessNaviApp/<버전>` 이 붙는다
 

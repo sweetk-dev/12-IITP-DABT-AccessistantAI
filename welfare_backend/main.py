@@ -976,7 +976,7 @@ from live_bridge import handle_live_chat
 
 @app.websocket("/ws/live-chat")
 async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str = None,
-                              sid: str = None, resume: int = 0):
+                              sid: str = None, resume: int = 0, greet: int = 1):
     """클라이언트 ↔ Gemini Live API ↔ DB 도구 실시간 중계.
 
     Query 파라미터:
@@ -984,6 +984,7 @@ async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str
               미지정 시 기본값(여성 Kore).
       mode  — 세션 종류. "navi" 면 이동경로 안내(경로 안내용 인사말, 경로 도구 사용),
               그 밖은 정책상담 — 길안내 요청은 이동경로 안내로 넘긴다(v2.0.0).
+      greet — 0 이면 시작 인사말을 생략한다. 화면이 곧바로 경로 안내를 시작할 때(이어서 안내·넘겨받은 목적지) 쓴다(v2.0.1).
       sid   — 단말이 만든 세션 식별자. resume=1 과 함께 오면 끊기기 전 대화를 이어받는다(v1.59.0).
 
     클라이언트 메시지 포맷:
@@ -1011,7 +1012,7 @@ async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str
     _trial = trial_recorder.session_for_ws(websocket)
     try:
         await handle_live_chat(websocket, ai_client, _embed, voice=voice, mode=mode,
-                               sid=sid, resume=bool(resume))
+                               sid=sid, resume=bool(resume), greet=bool(greet))
     finally:
         if _trial is not None:
             _trial.close()

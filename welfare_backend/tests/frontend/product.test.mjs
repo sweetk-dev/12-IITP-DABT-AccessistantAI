@@ -125,6 +125,8 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   check("관광지·편의시설 결과 → '이동경로 안내 열기' 버튼", () => assert.match(btn().textContent, /이동경로 안내 열기/));
   await s0._msg({ type: "ui_action", action: "route_unavailable", payload: { action: "route_unavailable", reason: "place_not_found", place: "어디" } });
   check("경로 불가 알림은 화면을 건드리지 않는다", () => assert.ok($("view-chat").classList.contains("active")));
+  await s0._msg({ type: "tool_call", name: "plan_accessible_route", args: {} });
+  check("정책상담 화면에는 '찾는 중' 막대를 켜지 않는다", () => assert.ok(!$("naviStatus").classList.contains("navi-status--busy")));
   await s0._msg({ type: "ui_action", action: "handoff_navi", payload: { action: "handoff_navi", dest, profile: "hacker" } });
   btn().click();
   check("모르는 프로필 값은 싣지 않는다", () => assert.equal(opened[opened.length - 1].profile, ""));
@@ -177,7 +179,7 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   check("브라우저에서는 저절로 시작하지 않는다", () => assert.equal(w.__sockets.length, 0));
   $("modeNaviBtn").click(); await sleep(80);
   await w.__sockets[0]._open(); await sleep(30);
-  check("이동경로 안내: 세션은 navi 모드", () => assert.match(w.__sockets[0].url, /mode=navi/));
+  check("이동경로 안내: 세션은 navi 모드 · 평소에는 인사말을 받는다", () => { assert.match(w.__sockets[0].url, /mode=navi/); assert.doesNotMatch(w.__sockets[0].url, /greet=0/); });
   check("길안내 화면이 열린다", () => assert.ok($("view-navi").classList.contains("active")));
   // 떠 있는 화면에 새 목적지
   w.NAVI._internals().setHere({ lat: P(0)[0], lng: P(0)[1] });
@@ -191,6 +193,18 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
     assert.equal(q.get("destination_lat"), "37.3943"); assert.equal(q.get("destination_type"), "building");
     assert.equal(q.get("destination_place"), "안양시청"); assert.equal(q.get("profile"), "visual");
   });
+  // 찾는 중 표시
+  const st = $("naviStatus");
+  const before = st.textContent;
+  await w.__sockets[0]._msg({ type: "tool_call", name: "plan_accessible_route", args: {} });
+  check("말로 경로를 물으면 '찾는 중' 막대가 켜진다", () => { assert.ok(st.classList.contains("navi-status--busy")); assert.equal(st.textContent, "경로를 찾는 중입니다…"); assert.equal(st.getAttribute("aria-busy"), "true"); });
+  await w.__sockets[0]._msg({ type: "ai_transcript", content: "경로를 찾았어요." });
+  check("답변이 시작되면 꺼지고 문구를 되돌린다", () => { assert.ok(!st.classList.contains("navi-status--busy")); assert.equal(st.textContent, before); assert.equal(st.getAttribute("aria-busy"), null); });
+  await w.__sockets[0]._msg({ type: "tool_call", name: "search_by_keyword", args: {} });
+  check("정책 검색 도구에는 켜지 않는다", () => assert.ok(!st.classList.contains("navi-status--busy")));
+  await w.__sockets[0]._msg({ type: "tool_call", name: "find_toilet", args: {} });
+  await w.__sockets[0]._msg({ type: "ui_action", action: "show_toilets", payload: { action: "show_toilets", items: [] } });
+  check("결과(ui_action)가 오면 꺼진다", () => assert.ok(!st.classList.contains("navi-status--busy")));
   check("목적지가 없는 넘겨받기는 무시", () => { assert.equal(w.NAVI.handoff({}), false); assert.equal(w.NAVI.handoff({ dest: { name: "x" } }), false); });
   // 통화
   const N = w.NAVI._internals();
@@ -218,6 +232,7 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   await w.__sockets[0]._open(); await sleep(30);
   w.NAVI._internals().setHere({ lat: P(0)[0], lng: P(0)[1] });
   await sleep(700);
+  check("넘겨받아 시작하는 세션은 인사말을 받지 않는다", () => assert.match(w.__sockets[0].url, /greet=0/));
   check("시작하면 넘겨받은 목적지로 경로를 찾는다(poi·프로필)", () => {
     const u = (w.__fetchLog || []).filter((x) => x.includes("plan_accessible_route")).pop();
     assert.ok(u, "경로 요청 없음");
@@ -250,6 +265,29 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   const w = boot("https://example.test/navi", { ua: "Mozilla/5.0 (Linux; Android 14) AccessNaviApp/2.0.0", preset: (win) => { win.AccessNaviApp = { setBusy: (b) => calls.push(b) }; } });
   await ready(w, 1300);
   check("앱 안: 넘겨받은 것이 없어도 바로 길안내 화면으로 · 상태를 앱에 알린다", () => { assert.equal(w.__sockets.length, 1); assert.ok(calls.length >= 1); });
+  check("앱에 계정 바꾸기 기능이 없으면 버튼도 없다", () => assert.equal(w.document.getElementById("appAccountBtn"), null));
+  w.close();
+}
+{
+  // 앱 안 — 접속 계정 바꾸기 · 첫 측위에 지도 옮기기
+  let out = 0;
+  const w = boot("https://example.test/navi", { ua: "Mozilla/5.0 (Linux; Android 15) AccessNaviApp/2.0.1", preset: (win) => { win.AccessNaviApp = { setBusy() {}, logout: () => { out++; } }; } });
+  await ready(w, 300);
+  const ab = w.document.getElementById("appAccountBtn");
+  check("앱 안: 시작 화면에 '접속 계정 바꾸기'", () => { assert.ok(ab); assert.equal(ab.textContent, "접속 계정 바꾸기"); ab.click(); assert.equal(out, 1); });
+  w.close();
+}
+{
+  const w = boot("https://example.test/navi");
+  await ready(w, 300);
+  let centered = 0;
+  w.kakao.maps.LatLng = function (a, b) { this.a = a; this.b = b; };
+  const N = w.NAVI._internals();
+  const map = N.map ? N.map() : null;
+  check("브라우저: 계정 바꾸기 버튼 없음", () => assert.equal(w.document.getElementById("appAccountBtn"), null));
+  check("첫 측위에 한 번만 내 위치로 옮긴다(소스)", () => {
+    assert.match(HTML, /if\(!firstFixCentered && _naviOn\)\{[^\n]*\n\s*firstFixCentered = true;\s*if\(followMe && !guiding && !simActive && !routeLine && !originOverride\) recenter\(\);/);
+  });
   w.close();
 }
 
