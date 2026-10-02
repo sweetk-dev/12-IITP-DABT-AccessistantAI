@@ -1586,6 +1586,21 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
     assert.equal(NV.stepUtterance(1, true), "횡단보도 2개를 교통섬을 거쳐 연달아 건넙니다. 총 38m입니다. (턱낮춤 미상, 경사 4.6도 구간)");
     assert.equal(NV.stepUtterance(3, true), "다음 횡단보도입니다.");
   });
+  // 직진으로 지나는 교차로의 옆길 횡단보도(crossing_ahead) — "건넌 뒤"를 덧붙이지 않고 노드 문장 + 다음 문장
+  NV.showRoute({ status: "success", route_id: "r_ahead", destination: { poi_id: "TBF-AH" }, routes: [{
+    summary: { total_distance_m: 220, duration_sec: 200, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+    geometry: [Q(0), Q(1), Q(2), Q(3)],
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "안양로를 따라 100m 앞으로 이동합니다.", distance_m: 100, coord: Q(0), warnings: [] },
+      { idx: 1, maneuver: "crossing_point", instruction: "교차로입니다. 왼쪽 보도로 가는 중이면 옆길 횡단보도를 건넙니다. (턱낮춤 없음)", distance_m: 0, coord: Q(1), warnings: ["턱낮춤 없음"], crossing_ahead: true, crossing_side: "left", crossing_length_m: 18, crosswalk_ids: ["K1"] },
+      { idx: 2, maneuver: "straight", instruction: "안양로를 따라 120m 직진합니다.", distance_m: 120, coord: Q(1), warnings: [] },
+      { idx: 3, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: Q(3), warnings: [] },
+    ] }] }, "옆길 횡단보도");
+  check("직진 교차로의 옆길 횡단보도 — '건넌 뒤' 없이 잇고 다음 스텝은 무음 표시 (v1.59.1)", () => {
+    const u = NV.stepUtterance(1, true);
+    assert.equal(u, "교차로입니다. 왼쪽 보도로 가는 중이면 옆길 횡단보도를 건넙니다. (턱낮춤 없음) 안양로를 따라 120m 직진합니다.");
+    assert.ok(!/건넌 뒤/.test(u));
+  });
   // 모퉁이 ㄷ자 횡단 — 경계에서 방향이 90° 꺾이면 "교통섬을 거쳐"를 말하지 않는다
   const R = [[37.3891, 126.9487], [37.3891, 126.9489], [37.3893, 126.9489], [37.3895, 126.9489]];
   NV.showRoute({ status: "success", route_id: "r_corner", destination: { poi_id: "TBF-CR" }, routes: [{
