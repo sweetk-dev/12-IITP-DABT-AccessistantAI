@@ -23,7 +23,7 @@ from starlette.websockets import WebSocketState
 
 from nav_context import (annotate_route_failure,
                          update_nav_state, current_guidance_result,
-                         inject_nav_defaults, note_new_route)
+                         inject_nav_defaults, inject_handoff, note_new_route)
 from text_normalize import looks_like_echo, normalize_numbers
 from tool_handlers import get_tool_dispatcher
 from unresolved_logger import TurnTracker
@@ -259,6 +259,7 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
   - `out_of_service_area` — 장소는 찾았지만 안양시 밖입니다. "아직 안양시 안에서만 안내할 수 있다"고 정확히 말하고 안양시 안의 장소를 여쭤 보세요.
   - `place_not_found` — 말씀하신 이름을 찾지 못한 것입니다. **"안양시 밖"이라고 말하면 안 됩니다.** 안양시청·복지관·도서관처럼 안양시 안에 있는 곳도 이름이 조금 다르면 여기에 해당합니다. 더 정확한 이름을 여쭙거나, 이동·관광 화면 지도에서 그 지점을 직접 눌러 목적지로 지정할 수 있다고 안내하세요.
   두 경우 모두 "서비스 장애"가 아닙니다. `need_destination` / `need_location` 도 같은 태도로 답합니다.
+- **도구 결과의 `status` 가 `handoff` 이면** 이 화면(정책상담)에서는 길안내를 하지 않고 이동경로 안내로 넘긴다는 뜻입니다. `ai_instruction` 대로 화면의 버튼을 눌러 달라고만 안내하고, 거리·시간·경로를 지어내지 마세요. 실패나 장애가 아닙니다.
 - **도구 결과에 `active_guidance` 가 있으면** 지금 진행 중인 길안내가 그대로 계속된다는 뜻입니다. 새 목적지를 안내하지 못했다고만 말하고 끝내지 말고, 진행 중인 안내가 계속된다는 사실을 반드시 한 문장으로 덧붙이세요. 안내가 멈췄다고 말하지 마세요.
 - 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 목적지 `poi_id` 를 모르면 사용자가 말한 이름을 `destination_place` 에 담습니다 — poi_id 를 지어내지 마세요. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
 - **이동 방식**: 사용자가 "버스로", "지하철 타고", "대중교통으로" 처럼 방식을 말하면 `plan_accessible_route` 의 `mode` 에 담습니다(walk_subway / walk_bus / walk_bus_subway). **"지하철로", "전철 타고", "버스 말고 지하철"** 처럼 지하철만 원하면 `mode: "walk_subway"` 입니다 — 버스 조합을 만들지 않습니다. **"도보로", "걸어서", "걸어갈게", "휠체어로만", "타지 않고"** 처럼 도보만 원한다고 말하면 반드시 `mode: "walk"` 로 담습니다(자동 추천에 맡기면 거리에 따라 버스 조합으로 바뀝니다). 방식을 말하지 않았을 때만 비워 두세요 — 자동 추천이 적용되고 결과의 `mode_used`/`mode_label` 이 알려 줍니다. 결과에 `transit` 이 있으면 **노선 번호·유형·방면(end_station)·정거장 수**를 함께 말합니다. `low_floor_note` 가 있으면 그 문장(저상버스 실시간 확인 결과)을 그대로 전하고, 없으면 **저상버스 정차는 보장되지 않으므로 실시간 도착정보 확인이 필요**하다고 알립니다. 대중교통 포함 소요시간은 대기 미포함 추정(`eta_note`)임을 밝힙니다.
@@ -1348,6 +1349,7 @@ async def handle_live_chat(
                                             fargs.pop("origin_lng", None)
                                     # 세션이 아는 사실(현재 구간·현재 위치)을 기본값으로 주입 (#248)
                                     fargs = inject_nav_defaults(fname, fargs, nav_state, user_location)
+                                    fargs = inject_handoff(fname, fargs, mode)   # 정책상담이면 넘기기 (v2.0.0)
                                     if fname == "get_current_guidance":
                                         # 세션 상태만 읽는 도구 — 디스패처를 거치지 않는다
                                         result = current_guidance_result(nav_state)
@@ -1580,6 +1582,7 @@ async def handle_live_chat(
                     extract_sources=_extract_sources,
                     prior_history=list(convo_history),
                     greet=(len(convo_history) == 0),
+                    session_mode=mode,
                 )
                 await sess.run()
             except Exception as e2:

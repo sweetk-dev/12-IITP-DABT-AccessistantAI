@@ -362,6 +362,13 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .leg-card .lg-fac{font-size:.8rem;color:#1E40AF;margin-top:3px;}
 .step-now .live{margin-top:6px;padding:6px 8px;border-radius:8px;background:#ECFDF5;color:#166534;font-size:.9rem;font-weight:700;}
 .step-now .live.off{background:#FEF3C7;color:#92400E;font-weight:600;}
+/* 제품 분리 (v2.0.0) — 정책상담 / 이동경로 안내. 화면 사이 탭은 없앤다 */
+.modebar{display:none !important;}
+html[data-product="navi"] #modes .mode-voice,html[data-product="navi"] #modes [data-go="text"]{display:none;}
+html[data-product="navi"] #view-mode .pick{display:none;}
+html[data-product="navi"] #modeNaviBtn{background:var(--c-primary);color:#fff;}
+html[data-product="navi"] #modeNaviBtn .av svg{stroke:#fff;}
+.handoff-note{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#EFF6FF;color:#1E3A8A;font-weight:700;}
 </style>
 <link rel="manifest" href="/static/manifest.webmanifest">
 <meta name="theme-color" content="#2563EB">
@@ -383,7 +390,41 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 // ===== additive view shell (separate from grafted WS script) =====
 var fs=3;
 function setFont(d){fs=Math.min(5,Math.max(1,fs+d));document.documentElement.setAttribute("data-fontsize",fs);document.querySelectorAll(".fontctl .dots").forEach(function(g){g.querySelectorAll("i").forEach(function(el,i){el.classList.toggle("on",i<fs);});});}
+// 제품 구분 (v2.0.0) — 같은 화면 코드를 정책상담(기본)과 이동경로 안내(/navi)로 나눠 쓴다
+var PRODUCT=(/^\/navi(\/|$)/.test(location.pathname)||/[?&]product=navi(&|$)/.test(location.search))?"navi":"policy";
+window.__PRODUCT=PRODUCT;
+document.documentElement.setAttribute("data-product",PRODUCT);
+window.__APP_SHELL=/AccessNaviApp\//.test(navigator.userAgent);   // 이동경로 안내 앱 안에서 열렸다
 function show(id){document.querySelectorAll(".view").forEach(function(v){v.classList.toggle("active",v.id===id);});}
+// 정책상담 → 이동경로 안내 넘기기 (v2.0.0) — 목적지·프로필만 주소에 실어 앱(없으면 웹)을 연다.
+// 넘어가 있는 동안 정책상담은 마이크·음성을 멈춘다(한 번에 한쪽만 듣고 말한다).
+window.__HANDOFF=(function(){
+  var SCHEME="accessnavi", PKG="kr.co.sweetk.accessnavi";
+  function query(h){
+    h=h||{}; var d=h.dest||{}, q=[];
+    function add(k,v){ if(v!==undefined&&v!==null&&v!=="") q.push(k+"="+encodeURIComponent(String(v))); }
+    add("dest_name",d.name); add("dest_poi",d.poi_id); add("dest_kind",d.kind);
+    if(d.lat!=null&&d.lng!=null&&isFinite(+d.lat)&&isFinite(+d.lng)){ add("dest_lat",(+d.lat).toFixed(6)); add("dest_lng",(+d.lng).toFixed(6)); }
+    add("profile",h.profile);
+    return q.join("&");
+  }
+  function webUrl(h){ var q=query(h); return location.origin+"/navi"+(q?"?"+q:""); }
+  function appUrl(h){
+    var q=query(h);
+    return "intent://navi"+(q?"?"+q:"")+"#Intent;scheme="+SCHEME+";package="+PKG+";S.browser_fallback_url="+encodeURIComponent(webUrl(h))+";end";
+  }
+  function isAndroid(){ return /Android/i.test(navigator.userAgent); }
+  function open(h){
+    var u=isAndroid()?appUrl(h):webUrl(h);
+    try{ if(window.__CHAT&&window.__CHAT.hold) window.__CHAT.hold(true,"handoff"); }catch(e){}
+    try{
+      if(isAndroid()) location.href=u;
+      else { var w=window.open(u,"_blank"); if(!w) location.href=u; }
+    }catch(e){}
+    return u;
+  }
+  return {open:open, webUrl:webUrl, appUrl:appUrl, query:query};
+})();
 // 뒤로 가기 — 상담·안내 중에는 페이지를 떠나지 않고 종료 확인을 띄운다 (v1.59.0)
 (function(){
   var armed=false, skip=false;
@@ -394,7 +435,12 @@ function show(id){document.querySelectorAll(".view").forEach(function(v){v.class
   }
   function arm(){ if(armed) return; try{ history.pushState({acc:1},""); armed=true; }catch(e){} }
   function disarm(){ if(!armed) return; armed=false; skip=true; try{ history.back(); }catch(e){ skip=false; } }
-  window.__BACK={arm:arm, disarm:disarm, armed:function(){return armed;}};
+  window.__BACK={arm:arm, disarm:disarm, armed:function(){return armed;}, busy:busy};
+  // 앱 안에서는 상담·안내 중인지 앱에 알려, 화면이 꺼지거나 다른 앱으로 가도 안내가 이어지게 한다 (v2.0.0)
+  if(window.AccessNaviApp&&window.AccessNaviApp.setBusy){
+    var _lastBusy=null;
+    setInterval(function(){ var b=busy(); if(b!==_lastBusy){ _lastBusy=b; try{ window.AccessNaviApp.setBusy(b); }catch(e){} } },1000);
+  }
   window.addEventListener("popstate",function(){
     if(skip){ skip=false; return; }
     if(!armed) return;
@@ -440,13 +486,18 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     el.addEventListener("click",function(){
       var go=el.getAttribute("data-go");
       if(go==="navi"){
+        // 정책상담에서는 길안내를 하지 않는다 — 이동경로 안내(앱)를 연다 (v2.0.0)
+        if(PRODUCT!=="navi"){ if(window.__HANDOFF) window.__HANDOFF.open(null); return; }
         // 이동·관광 모드도 상담 세션 위에서 동작한다(대화 컨텍스트 공유).
         (async function(){
           var g=false;
           try{ if(navigator.permissions&&navigator.permissions.query){ var st=await navigator.permissions.query({name:"microphone"}); g=(st.state==="granted"); } }catch(e){}
+          // 앱 안에서는 브라우저식 권한 조회가 맞지 않는다 — 앱이 받은 권한을 따른다 (v2.0.0)
+          try{ if(window.AccessNaviApp&&window.AccessNaviApp.micGranted) g=!!window.AccessNaviApp.micGranted(); }catch(e){}
           window.__sessionMode="navi";   // 길안내 화면 시작 — 백엔드가 경로 안내용 인사말 사용
           if(g){ setVoiceMode("female"); connect("female",false); } else { connect("male",true); }
           if(window.NAVI) window.NAVI.openNavi();
+          if(window.NAVI&&window.NAVI.afterStart) window.NAVI.afterStart();   // 넘겨받은 목적지가 있으면 이어서 경로를 찾는다 (v2.0.0)
         })();
         return;
       }
@@ -476,6 +527,22 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     var _c=document.getElementById("endCancelBtn"); if(_c)_c.addEventListener("click",function(){_endModal.hidden=true;});
     var _ok=document.getElementById("endConfirmBtn"); if(_ok)_ok.addEventListener("click",function(){_endModal.hidden=true;var r=document.getElementById("endBtn");if(r)r.click();});
   }
+  // 제품별 시작 화면 문구 (v2.0.0)
+  (function(){
+    var vm=document.getElementById("view-mode"); if(!vm) return;
+    var nb=document.getElementById("modeNaviBtn"), lab=nb?nb.querySelector(".lab"):null;
+    if(PRODUCT==="navi"){
+      var h=vm.querySelector("h1"), sub=vm.querySelector(".sub"), disc=vm.querySelector(".disc"), nm=vm.querySelector(".nm-plain");
+      if(h) h.textContent="이동경로 안내";
+      if(sub) sub.textContent="휠체어·시각장애 이용자를 위한 길안내입니다";
+      if(disc) disc.textContent="안내는 참고용입니다. 현장 상황을 함께 살펴 주세요. 이동 중에도 복지 정책을 물어볼 수 있습니다.";
+      if(nm) nm.textContent="이동경로 안내";
+      if(lab) lab.textContent="길안내 시작";
+      try{ document.title="이동경로 안내"; }catch(e){}
+    } else if(lab){
+      lab.textContent="이동경로 안내 (앱 열기)";
+    }
+  })();
   // splash -> mode-select
   setFont(0);
   show("view-splash");
@@ -858,20 +925,25 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   // ────── 이동·관광 화면 이동 버튼 (#213) ──────
   // 관광지·경로 결과가 준비돼도 화면을 자동 전환하지 않고,
   // 출처 표시처럼 대화 하단에 버튼을 띄워 사용자가 직접 이동을 선택하게 한다.
-  const addNaviJumpBubble = (label) => {
+  const addNaviJumpBubble = (label, handoff) => {
     const el = document.createElement("div");
     el.className = "bubble bubble--nav";
     const lbl = document.createElement("span");
     lbl.className = "label";
-    lbl.textContent = "🧭 이동·관광";
+    lbl.textContent = handoff ? "🧭 이동경로 안내" : "🧭 이동·관광";
     el.appendChild(lbl);
     const btn = document.createElement("button");
     btn.type = "button"; btn.className = "navjump";
     btn.textContent = label;
-    btn.addEventListener("click", () => { if (window.NAVI) window.NAVI.showPreparedView(); });
+    btn.addEventListener("click", () => {
+      if (handoff) { if (window.__HANDOFF) window.__HANDOFF.open(handoff); return; }   // 정책상담 → 앱 (v2.0.0)
+      if (window.NAVI) window.NAVI.showPreparedView();
+    });
     el.appendChild(btn);
     $("chat").appendChild(el);
     $("chat").scrollTop = $("chat").scrollHeight;
+    // 넘기기 버튼은 바로 누를 수 있게 초점을 옮긴다(글을 쓰는 중이면 그대로 둔다)
+    if (handoff && document.activeElement !== $("textInput")) { try { btn.focus({ preventScroll: true }); } catch (e) {} }
   };
   window.__CHAT.addNaviJumpBubble = addNaviJumpBubble;   // 테스트 노출 (정의 이후에 추가)
 
@@ -904,6 +976,10 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   let wsSid = null, wsVoice = null, wsReconnecting = false, wsConnecting = false, wsRetry = 0, wsRetryTimer = null, wsNoReconnect = false;
   let wsGen = 0;   // 세션 세대 — 연결 준비(비동기) 중에 세션이 끝났으면 뒤늦게 소켓을 열지 않는다
   let wakeLock = null, micForceUntil = 0, micHeadset = false;
+  // 멈춤 사유("handoff"|"call") — 하나라도 걸려 있으면 듣지도 말하지도 않는다. 사유마다 따로 걸고 푼다 (v2.0.0)
+  const holds = new Set();
+  let micHold = "", holdWentHidden = false, holdTimer = null, handoffAt = 0;
+  const syncHold = () => { micHold = holds.has("call") ? "call" : (holds.has("handoff") ? "handoff" : ""); };
   let audioCtx = null, playbackCtx = null;
   let micStream = null, micNode = null, micProcessor = null;
   let pendingPlayback = Promise.resolve();
@@ -988,7 +1064,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           // 상담원 끝말 에코("요")는 사용자 발화로 그리지 않는다 (v1.40.0)
           if (!sttActive && !(echoTailActive() && looksLikeEcho(msg.content, lastAiText))) appendUserTranscript(msg.content);
           break;  // #105 STT 활성 시 중복 억제
-        case "ui_action":       { const _act = window.NAVI ? window.NAVI.onUiAction(msg) : null; if (_act && _act.label) addNaviJumpBubble(_act.label); } break;   // 지도 이동은 사용자가 버튼으로 선택 (#213)
+        case "ui_action":       { const _act = window.NAVI ? window.NAVI.onUiAction(msg) : null; if (_act && _act.label) addNaviJumpBubble(_act.label, _act.handoff); } break;   // 지도 이동은 사용자가 버튼으로 선택 (#213)
         case "ai_transcript":   appendAiTranscript(msg.content); if (window.NAVI && window.NAVI.onAiText) window.NAVI.onAiText(msg.content); if (pendingSources.length) { clearTimeout(srcFlushTimer); srcFlushTimer = setTimeout(flushSources, 800); } break;
         case "text":            appendAiTranscript(msg.content); break;
         case "answer_card":     applyAnswerCard(msg.content); break;   // 정책 템플릿 카드 (#205)
@@ -996,6 +1072,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           // 서버(상담원) 음성이 오면 기기 내장 음성은 즉시 멈춘다 — 중첩 재생 방지 (#217)
           if (ttsSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking)) stopLocalTts();
           micForceUntil = 0;   // 답변 음성이 시작되면 차단을 되살린다 (v1.59.0)
+          if (micHold) break;   // 멈춘 동안 온 음성은 내지 않는다 (v2.0.0)
           turnHadAudio = true; await playAudioChunk(msg.data, msg.mime_type); break;
         case "tool_call":
           break;  // 도구 호출 칩은 사용자에게 비노출
@@ -1063,6 +1140,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     if (wsRetryTimer) { clearTimeout(wsRetryTimer); wsRetryTimer = null; }
     wsGen++;
     wsReconnecting = false; wsRetry = 0; wsNoReconnect = false; wsSid = null; micForceUntil = 0;
+    holds.clear(); syncHold(); holdWentHidden = false; handoffAt = 0; clearTimeout(holdTimer);
     if (lost || (e && e.code && e.code !== 1000 && !e.wasClean)) {
       addBubble("err", `⚠ 연결이 끊어져 다시 이어 붙이지 못했습니다${e && e.reason ? ` (${e.reason})` : ""}. 상담원을 다시 선택하면 이어서 상담할 수 있습니다.`);
     } else {
@@ -1088,10 +1166,35 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   };
   window.addEventListener("online", wsRetryNow);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
+    if (document.visibilityState !== "visible") {
+      if (holds.has("handoff")) holdWentHidden = true;
+      // 앱이 늦게 열려 멈춤이 이미 풀린 뒤라도, 넘긴 직후(20초 안) 화면이 가려지면 다시 멈춘다
+      else if (handoffAt && Date.now() - handoffAt < 20000) { holdChat(true, "handoff"); holdWentHidden = true; }
+      return;
+    }
     wsRetryNow();
     if (ws) keepAwake();
+    if (holds.has("handoff") && holdWentHidden) { holdChat(false, "handoff"); handoffAt = 0; }   // 앱에서 돌아왔다 — 상담을 잇는다
   });
+  // 멈춤 — 이동경로 안내로 넘어가 있거나 통화 중일 때 (v2.0.0)
+  const holdChat = (on, why) => {
+    why = why || "handoff";
+    if (on) {
+      holds.add(why); syncHold(); micForceUntil = 0;
+      try { stopLocalTts(); } catch (e) {}
+      try { stopAllPlayback(); } catch (e) {}
+      if (why === "handoff") {
+        handoffAt = Date.now(); holdWentHidden = false;
+        clearTimeout(holdTimer);
+        // 앱이 열리지 않아 화면이 그대로면 멈춘 채로 두지 않는다
+        holdTimer = setTimeout(() => { if (holds.has("handoff") && !holdWentHidden && document.visibilityState === "visible") holdChat(false, "handoff"); }, 5000);
+      }
+      return;
+    }
+    if (!holds.has(why)) return;
+    holds.delete(why); syncHold();
+    if (why === "handoff") { holdWentHidden = false; clearTimeout(holdTimer); }
+  };
   // 상담·안내 중에는 화면이 꺼지지 않게 한다 (v1.59.0) — 화면이 꺼지면 브라우저가 위치·연결을 멈춘다
   const keepAwake = async () => {
     try { if (navigator.wakeLock && document.visibilityState === "visible") wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
@@ -1107,6 +1210,15 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   };
   window.__CHAT.endSession = endSessionNow;
   window.__CHAT.openMic = openMicNow;
+  window.__CHAT.hold = holdChat;
+  window.__CHAT.held = () => micHold;
+  // 앱이 부른다 — 통화 등으로 소리를 낼 수 없게 됐을 때/되돌아왔을 때 (v2.0.0)
+  window.__APP = {
+    onAudioFocus: (gain) => {
+      holdChat(!gain, "call");
+      try { if (window.NAVI && window.NAVI.onAudioFocus) window.NAVI.onAudioFocus(!!gain); } catch (e) {}
+    },
+  };
   window.__CHAT._net = () => ({ sid: wsSid, reconnecting: wsReconnecting, retry: wsRetry, open: !!ws, headset: micHeadset, forced: Date.now() < micForceUntil });
 
   // ────── 마이크 (AudioWorklet) ──────
@@ -1177,6 +1289,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     micProcessor.port.onmessage = (e) => {
       const m = e.data;
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (micHold) return;                             // 넘어가 있거나 통화 중 — 보내지 않는다 (v2.0.0)
       const gk = micHeadset ? 0.5 : 1;                 // 헤드셋이면 기준 절반
       const forced = Date.now() < micForceUntil;       // '지금 말하기' 동안은 모든 프레임을 보낸다
       if (forced) { localBargeRun = 0; naviBargeReset(); naviAiRun = 0; naviAiOpen = true; }
@@ -1774,6 +1887,7 @@ window.NAVI = (function(){
     return p;
   }
   function speak(text, opts){
+    if(appMuted) return;          // 통화 중 — 소리를 낼 수 없다. 끝나면 직전 안내로 돌아온다 (v2.0.0)
     if(!voiceOn || !text){ if(text) _tev("navi_muted", {text:text}); return; }
     opts = opts || {};
     cancelResume();               // 새 발화가 시작되면 예약된 안내 복귀는 폐기 (#248)
@@ -4314,10 +4428,94 @@ window.NAVI = (function(){
   }
 
   /* ── 상담 세션에서 온 UI 액션 ── */
+  /* ── 제품 분리 (v2.0.0) ── */
+  var IS_NAVI = (window.__PRODUCT === "navi");
+  var pendingHandoff = null, _handoffTimer = null, appMuted = false;
+  var HANDOFF_PROFILES = {wheelchair_electric:1, wheelchair_manual:1, crutch:1, visual:1, walk:1};
+  // 정책상담 화면 — 지도·경로를 그리지 않고 이동경로 안내(앱)로 넘기는 버튼만 만든다
+  function policyUiAction(msg, p){
+    var a = msg.action || (p && p.action);
+    if(a === "handoff_navi"){
+      var d = (p && p.dest) || {};
+      return {label: "🧭 이동경로 안내에서 안내 받기" + (d.name ? " — " + d.name : ""),
+              handoff: {dest: d, profile: HANDOFF_PROFILES[p.profile] ? p.profile : ""}};
+    }
+    if(a === "show_route"){
+      var rd = (p && p.route && p.route.destination) || {};
+      var dd = {name: rd.name || "", kind: rd.poi_id ? "tour" : "building"};
+      if(rd.poi_id) dd.poi_id = rd.poi_id;
+      if(rd.lat != null && rd.lng != null){ dd.lat = rd.lat; dd.lng = rd.lng; }
+      return {label: "🧭 이동경로 안내에서 안내 받기", handoff: (dd.poi_id || dd.lat != null) ? {dest: dd} : {}};
+    }
+    if(a === "show_tour_spots" || a === "show_support" || a === "show_toilets" || a === "show_restaurants" || a === "open_navi"){
+      return {label: "🧭 이동경로 안내 열기", handoff: {}};
+    }
+    return null;
+  }
+  // 주소(또는 앱)가 넘겨준 목적지 — 이름·좌표·poi 만 받는다
+  function parseHandoff(search){
+    var q; try{ q = new URLSearchParams(search || ""); }catch(e){ return null; }
+    var poi = (q.get("dest_poi") || "").slice(0, 64);
+    var lat = parseFloat(q.get("dest_lat")), lng = parseFloat(q.get("dest_lng"));
+    var hasXY = isFinite(lat) && isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+    if(!poi && !hasXY) return null;
+    var kind = q.get("dest_kind");
+    var d = {name: (q.get("dest_name") || "목적지").slice(0, 80),
+             kind: kind === "transit_station" ? "transit_station" : (poi ? "tour" : (kind === "coord" ? "coord" : "building"))};
+    if(poi) d.poi_id = poi;
+    if(hasXY){ d.lat = lat; d.lng = lng; }
+    var prof = q.get("profile") || "";
+    return {dest: d, profile: HANDOFF_PROFILES[prof] ? prof : ""};
+  }
+  function cancelHandoff(){ if(_handoffTimer){ clearInterval(_handoffTimer); _handoffTimer = null; } }
+  function sessionOn(){ var c = $("controls"); return !!(c && c.classList.contains("active")); }
+  // 넘겨받은 목적지로 경로를 찾는다 — 길안내 화면이 열리고 현재 위치가 잡힐 때까지 기다린다
+  function startHandoff(){
+    var h = pendingHandoff; if(!h) return;
+    pendingHandoff = null; cancelHandoff();
+    var note = $("handoffNote"); if(note) note.remove();
+    if(h.profile){
+      profile = h.profile; typeConfirmed = true;
+      if(WHEEL_PROFILES[h.profile]){ wheelProfile = h.profile; try{ renderProfBadge(); }catch(e){} }
+    }
+    status((h.dest.name || "목적지") + " 까지 안내를 준비하는 중입니다…");
+    var tries = 0, t = _handoffTimer = setInterval(function(){
+      tries++;
+      if(t !== _handoffTimer){ clearInterval(t); return; }
+      var navi = false; try{ navi = $("view-navi").classList.contains("active"); }catch(e){}
+      if(navi && activeOrigin()){ cancelHandoff(); if(!typeConfirmed) typeConfirmed = true; requestRoute(h.dest); }
+      else if(tries > 60){ cancelHandoff(); status("현재 위치를 확인하지 못했습니다. 위치 권한을 확인하거나 도착지를 다시 골라 주세요."); }
+    }, 500);
+  }
+  // 목적지를 넘겨받았다 — 주소로 열렸거나, 떠 있는 앱에 새로 들어온 경우
+  function handoff(h){
+    if(!IS_NAVI || !h || !h.dest || !(h.dest.poi_id || (h.dest.lat != null && h.dest.lng != null))) return false;
+    pendingHandoff = h;
+    cancelTripResume(); clearTrip();                    // 새 목적지가 '이어서 안내'보다 앞선다
+    var rm = $("tripResumeModal"); if(rm) rm.remove();
+    if(sessionOn()){ openNavi(); startHandoff(); return true; }
+    var vm = $("view-mode"), home = vm ? vm.querySelector(".home") : null, old = $("handoffNote");
+    if(old) old.remove();
+    if(home){
+      var n = document.createElement("p"); n.className = "handoff-note"; n.id = "handoffNote";
+      n.textContent = (h.dest.name || "목적지") + "까지 안내를 준비했습니다. '길안내 시작'을 눌러 주세요.";
+      var modes = $("modes"); home.insertBefore(n, modes || null);
+    }
+    if(window.__APP_SHELL){ var go = $("modeNaviBtn"); if(go) setTimeout(function(){ if(pendingHandoff && !sessionOn()) go.click(); }, 300); }
+    return true;
+  }
+  // 앱이 알려 주는 소리 사용 가능 여부 — 통화 중에는 안내 음성을 내지 않는다
+  function onAudioFocus(gain){
+    appMuted = !gain;
+    if(!gain){ cancelResume(); stopSpeak(); }
+    else if(guiding) scheduleResume(800);
+  }
+
   function onUiAction(msg){
     var p = msg.payload || {};
     // 서버는 도구 결과의 ui_action 전체를 payload 로 보낸다 — 카드형 액션은 그 안에 payload 가 한 겹 더 있다
     if(p && p.payload && typeof p.payload === "object" && !Array.isArray(p.payload)) p = p.payload;
+    if(!IS_NAVI) return policyUiAction(msg, p);   // 정책상담 화면 (v2.0.0)
     // 화면을 강제로 전환하지 않는다(#213) — 갑작스러운 화면 이동은 혼란을 준다.
     // 데이터만 준비해 두고, 상담 화면에 뜨는 버튼으로 사용자가 직접 이동을 선택한다.
     if(msg.action === "show_tour_spots"){
@@ -4461,6 +4659,7 @@ window.NAVI = (function(){
     if(!feat.route && !feat.tour){ return; }   // 기능 플래그 OFF -> 진입점 자체를 노출하지 않음
     var mb=$("modeNaviBtn"); if(mb) mb.style.display="";
     var cb=$("chatModebar"); if(cb) cb.style.display="";
+    if(!IS_NAVI) return;   // 정책상담에서는 지도·위치를 쓰지 않는다 — 길안내는 이동경로 안내가 맡는다 (v2.0.0)
 
     await loadKakao();
     initMap();
@@ -4649,7 +4848,16 @@ window.NAVI = (function(){
       openNavi();
       if(!typeConfirmed) renderTypeSelectPanel();   // 어느 경로로 들어와도 첫 진입은 유형 선택부터 (#202)
     }); });
-    offerTripResume();   // 안내 도중 닫혔다면 이어서 안내할지 묻는다 (v1.59.0)
+    // 넘겨받은 목적지가 주소에 있으면 그것부터 — 없으면 안내 도중 닫혔던 여정을 이어갈지 묻는다
+    var _h = null; try{ _h = parseHandoff(location.search); }catch(e){}
+    if(_h){
+      try{ history.replaceState(null, "", location.pathname); }catch(e){}   // 새로 고침으로 되풀이되지 않게
+      handoff(_h);
+    } else {
+      offerTripResume();   // (v1.59.0)
+      // 앱에서는 눌러야 할 것을 줄인다 — 이어갈 여정이 없으면 바로 길안내 화면으로
+      if(window.__APP_SHELL && !$("tripResumeModal")){ var _go = $("modeNaviBtn"); if(_go) setTimeout(function(){ if(!sessionOn()) _go.click(); }, 300); }
+    }
 
     // 유형 칩은 makeChips()가 상태 기반으로 렌더·바인딩한다 (#202)
   }
@@ -4714,12 +4922,16 @@ window.NAVI = (function(){
     noteUserSpeech: noteUserSpeech,
     isBusy: function(){ return !!(guiding || simActive); },
     onSessionClosed: function(){
-      cancelResume(); cancelTripResume(); wsRef = null;
+      cancelResume(); cancelTripResume(); cancelHandoff(); wsRef = null;
       var aw = $("naviAskwrap"); if(aw) aw.hidden = true;
     },
     onAiText: onAiText,
     onAiTurnComplete: onAiTurnComplete,
     showPreparedView: showPreparedView,
+    handoff: handoff,                                   // 앱·주소가 넘겨준 목적지 (v2.0.0)
+    parseHandoff: parseHandoff,
+    afterStart: function(){ if(pendingHandoff) startHandoff(); },
+    onAudioFocus: onAudioFocus,
     // 첫 진입은 장애유형 선택 게이트를 먼저 — 선택 완료 후 목록 로드 (#202)
     openNavi: function(){ openNavi(); if(typeConfirmed) loadSpots(); else renderTypeSelectPanel(); },
     // 테스트용 노출

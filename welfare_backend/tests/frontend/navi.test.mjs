@@ -154,7 +154,7 @@ function check(name, fn) {
   catch (e) { results.push(["FAIL", name + " — " + e.message]); }
 }
 
-const dom = new JSDOM(HTML, { runScripts: "dangerously", pretendToBeVisual: true, url: "https://example.test/static/accessistant.html" });
+const dom = new JSDOM(HTML, { runScripts: "dangerously", pretendToBeVisual: true, url: "https://example.test/navi" });
 const { window } = dom;
 
 // ── 외부 의존성 스텁 ──
