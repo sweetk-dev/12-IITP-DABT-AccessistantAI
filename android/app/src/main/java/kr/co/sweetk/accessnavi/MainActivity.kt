@@ -94,6 +94,10 @@ class MainActivity : Activity() {
         setContentView(root)
         fitSystemBars()
         createWebView()
+        // 시험용(디버그 빌드에서만) — 임시 저장소의 update.apk 로 설치 화면을 바로 열어 본다
+        if (BuildConfig.DEBUG && intent?.getBooleanExtra("test_install", false) == true) {
+            AppUpdater.installFile(this, ApkProvider.file(this))
+        }
         // 권한을 먼저 받고 나서 화면을 연다 — 화면의 마이크·위치 요청과 겹치지 않게
         if (!askRuntimePermissions()) openService()
     }
@@ -158,6 +162,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (busy && !GuideService.running) GuideService.start(this)   // 화면이 꺼진 사이 시작하지 못했으면 지금
+        AppUpdater.resume(this)       // 출처 허용 설정에서 돌아왔으면 설치를 잇는다
         if (!busy && Prefs.hasLogin(this)) AppUpdater.check(this)
     }
 
@@ -199,7 +204,7 @@ class MainActivity : Activity() {
         exitShowing = true
         AlertDialog.Builder(this)
             .setTitle("앱을 종료할까요?")
-            .setMessage("이동경로 안내를 닫습니다.")
+            .setMessage("이동경로 안내를 닫습니다.\n\n버전 " + BuildConfig.VERSION_NAME)
             .setNegativeButton("취소", null)
             .setPositiveButton("종료") { _, _ -> finishAndRemoveTask() }   // 뒤에 남기지 않고 완전히 닫는다
             .setOnDismissListener { exitShowing = false }

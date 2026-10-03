@@ -2,12 +2,9 @@ package kr.co.sweetk.accessnavi
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.app.PendingIntent
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageInstaller
-import android.os.Build
+import android.net.Uri
+import android.provider.Settings
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
@@ -24,8 +21,8 @@ import java.security.MessageDigest
  *   {"versionCode": 20001, "versionName": "2.0.1", "file": "accessnavi-2.0.1.apk",
  *    "sha256": "<설치 파일 해시>", "notes": "바뀐 점"}
  *
- * 내려받은 파일은 해시가 맞을 때만 설치로 넘긴다. 설치는 시스템 확인 화면을 거치고,
- * 서명이 다른 파일은 시스템이 거부한다.
+ * 내려받은 파일(앱 전용 임시 저장소의 update.apk)은 해시가 맞을 때만 설치로 넘긴다.
+ * 설치는 시스템 설치 화면을 거치고, 서명이 다른 파일은 시스템이 거부한다.
  */
 object AppUpdater {
     private const val CHECK_EVERY_MS = 6L * 60 * 60 * 1000
@@ -87,7 +84,7 @@ object AppUpdater {
 
     private fun ask(activity: Activity, info: Info, auth: String) {
         if (MainActivity.busy) { working = false; return }      // 안내 중에는 묻지 않는다
-        val msg = "새 버전 " + info.versionName + " 이(가) 있습니다." +
+        val msg = "새 버전 " + info.versionName + " 이(가) 있습니다. (지금 " + BuildConfig.VERSION_NAME + ")" +
             (if (info.notes.isNotBlank()) "\n\n" + info.notes else "") + "\n\n지금 설치할까요?"
         AlertDialog.Builder(activity)
             .setTitle("업데이트")
@@ -102,8 +99,13 @@ object AppUpdater {
         Toast.makeText(activity, "새 버전을 내려받는 중입니다…", Toast.LENGTH_LONG).show()
         val app = activity.applicationContext
         Thread {
-            val out = File(app.cacheDir, "update.apk")
+            val out = ApkProvider.file(app)
             try {
+                // 이미 받아 둔 파일이 같은 것이면 다시 받지 않는다(설치 화면에서 취소했다가 다시 누른 경우)
+                if (out.isFile && sha256(out) == info.sha256) {
+                    ui.post { if (!activity.isFinishing && !activity.isDestroyed) installFile(activity, out) }
+                    return@Thread
+                }
                 val c = open("/app/download/" + info.file, auth)
                 c.readTimeout = 120_000
                 try {
@@ -128,7 +130,9 @@ object AppUpdater {
                 } finally {
                     c.disconnect()
                 }
-                install(app, out)
+                ui.post {
+                    if (!activity.isFinishing && !activity.isDestroyed) installFile(activity, out)
+                }
             } catch (_: Exception) {
                 out.delete()
                 ui.post { Toast.makeText(app, "업데이트를 내려받지 못했습니다. 다음에 다시 시도합니다.", Toast.LENGTH_LONG).show() }
@@ -140,48 +144,58 @@ object AppUpdater {
 
     private const val MAX_APK_BYTES = 80L * 1024 * 1024
 
-    /** 시스템 설치기에 넘긴다 — 확인 화면은 InstallReceiver 가 띄운다. */
-    private fun install(app: Context, apk: File) {
-        val installer = app.packageManager.packageInstaller
-        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-        params.setAppPackageName(app.packageName)
-        val id = installer.createSession(params)
-        installer.openSession(id).use { session ->
-            session.openWrite("base.apk", 0, apk.length()).use { os ->
-                apk.inputStream().use { it.copyTo(os) }
-                session.fsync(os)
+    private fun sha256(f: File): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        f.inputStream().use { ins ->
+            val buf = ByteArray(64 * 1024)
+            while (true) {
+                val n = ins.read(buf)
+                if (n < 0) break
+                md.update(buf, 0, n)
             }
-            var flags = PendingIntent.FLAG_UPDATE_CURRENT
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) flags = flags or PendingIntent.FLAG_MUTABLE
-            val pi = PendingIntent.getBroadcast(
-                app, id, Intent(app, InstallReceiver::class.java).setAction(InstallReceiver.ACTION), flags
-            )
-            session.commit(pi.intentSender)
         }
-        apk.delete()
+        return md.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    // '이 출처 허용' 설정 화면으로 보낸 상태 — 돌아오면 설치를 잇는다
+    @Volatile
+    private var waitingSource = false
+
+    /** 화면으로 돌아올 때 부른다. 출처 허용을 켜고 돌아왔으면 설치 화면을 바로 연다. */
+    fun resume(activity: Activity) {
+        if (!waitingSource) return
+        waitingSource = false
+        if (activity.packageManager.canRequestPackageInstalls()) installFile(activity, ApkProvider.file(activity))
+    }
+
+    /**
+     * 시스템 설치 화면을 연다 (2.0.4).
+     *
+     * 종전에는 설치 세션을 만들고 확인 화면은 알림 수신기가 띄우게 했는데, 실기기(Android 16)에서 내려받기까지만 되고
+     * 확인 화면이 뜨지 않았다. 화면에 떠 있는 우리 액티비티가 설치 화면을 직접 여는 표준 방식으로 바꾼다.
+     */
+    fun installFile(activity: Activity, apk: File) {
+        if (!apk.isFile) return
+        val pm = activity.packageManager
+        // "이 앱이 설치하는 것을 허용"이 꺼져 있으면 그 설정 화면부터 연다 — 허용하고 돌아오면 resume() 이 잇는다
+        if (!pm.canRequestPackageInstalls()) {
+            Toast.makeText(activity, "설정에서 '이 출처 허용'을 켜고 돌아오면 설치가 이어집니다.", Toast.LENGTH_LONG).show()
+            waitingSource = true
+            try {
+                activity.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + activity.packageName)))
+            } catch (_: Exception) {}
+            return
+        }
+        val view = Intent(Intent.ACTION_VIEW)
+            .setDataAndType(ApkProvider.uri(activity), ApkProvider.MIME)
+            // 설치 화면은 별도 태스크로 — 덮어쓰는 동안 우리 앱이 종료돼도 설치 화면은 남는다
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            activity.startActivity(view)
+        } catch (_: Exception) {
+            Toast.makeText(activity, "설치 화면을 열지 못했습니다.", Toast.LENGTH_LONG).show()
+        }
     }
 }
 
-/** 설치 진행 알림을 받는다 — 이용자 확인이 필요하면 시스템 확인 화면을 연다. */
-class InstallReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != ACTION) return
-        when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
-            PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                @Suppress("DEPRECATION")
-                val confirm: Intent? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                    intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
-                else intent.getParcelableExtra(Intent.EXTRA_INTENT)
-                if (confirm != null) {
-                    try { context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {}
-                }
-            }
-            PackageInstaller.STATUS_SUCCESS -> Unit
-            else -> Toast.makeText(context, "업데이트를 설치하지 못했습니다.", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    companion object {
-        const val ACTION = "kr.co.sweetk.accessnavi.INSTALL_STATUS"
-    }
-}
