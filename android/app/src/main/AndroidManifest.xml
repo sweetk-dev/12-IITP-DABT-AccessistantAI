@@ -49,8 +49,11 @@
             android:exported="false"
             android:foregroundServiceType="location|microphone" />
 
-        <receiver
-            android:name=".InstallReceiver"
-            android:exported="false" />
+        <!-- 내려받은 설치 파일을 시스템 설치 화면에 넘기는 통로(그 화면에만 읽기 권한을 잠깐 준다) -->
+        <provider
+            android:name=".ApkProvider"
+            android:authorities="${applicationId}.apk"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>
