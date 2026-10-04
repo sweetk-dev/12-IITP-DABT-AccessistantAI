@@ -1767,6 +1767,10 @@ window.NAVI = (function(){
   var originMarker=null;
   var outOfArea=false;
   var inAreaFixSeen=false;   // 서비스 지역 안 측위를 한 번이라도 받았는가 — '현재 위치를 확인했습니다'는 처음 한 번만 알린다
+  // 위치 오류 콜백이 상태 줄에 쓴 문구(null = 띄운 적 없음). 측위 성공 콜백은 "첫 측위"와 "범위 밖 → 안"일 때만
+  // 상태 줄을 쓰므로, 한 번 위치를 잡은 뒤에 난 오류(권한 거부·위치 확인 불가)의 문구는 측위가 다시 성공해도
+  // 그대로 남는다. 오류 문구를 띄웠다는 사실을 기억해 두었다가 다음 측위 성공 때 한 번만 되돌린다.
+  var locErrMsg=null;
 
   // 실제 출발지 — 직접 지정한 곳이 있으면 그것이 우선한다(현재 위치가 안양 밖일 수 있으므로)
   function activeOrigin(){ return originOverride || here; }
@@ -1795,7 +1799,7 @@ window.NAVI = (function(){
     cancelResume(); cancelTripResume(); cancelHandoff(); stopSpeak(); clearTrip();
     resetTrip();                  // 도착지·역 안내 선택 상태 초기화 — 세션에 알리기 전에 먼저 비운다
     clearRouteDisplay();          // 경로선·스텝·모의 주행·도착 확인 정리 + 세션의 안내 상태 비움
-    autoResumeGuide = false;
+    cancelPendingReroute();       // 응답을 기다리던 이탈 재탐색을 무효로 — 이후 시작하는 다른 안내를 덮지 못하게 (자동 재개 예약도 함께 지운다)
     routeBusy(false);
     renderSpotsPanel();
     setFollow(true); recenter();
@@ -2320,6 +2324,15 @@ window.NAVI = (function(){
       here = {lat: pos.coords.latitude, lng: pos.coords.longitude};
       lastFixAcc = (pos.coords.accuracy != null) ? +pos.coords.accuracy : null;
       drawMe();
+      // 위치 오류 문구를 띄운 뒤 처음 성공한 측위 — 문구를 한 번 되돌리고 표식을 내린다.
+      // 상태 줄이 아직 그 오류 문구일 때만 바꾼다(그 사이 다른 안내로 바뀌었으면 그 안내를 덮지 않는다).
+      // 경고 색이 켜진 채 오류 문구로 덮였던 경우를 위해 색도 함께 푼다. 표식을 내리므로 이후 측위에서는
+      // 상태 줄을 다시 쓰지 않는다(측위마다 덮어쓰지 않는 기존 동작 유지). 범위 밖이면 바로 아래 분기가 범위 안내로 바꾼다.
+      if(locErrMsg !== null){
+        var _stEl = $("naviStatus");
+        if(_stEl && _stEl.textContent === locErrMsg){ setStatusWarn(false); status("현재 위치를 확인했습니다."); }
+        locErrMsg = null;
+      }
       if(!inServiceArea(here)){
         // 서비스 지역 밖 — 경로를 만들 수 없다. 지도에서 출발지를 고르게 안내한다.
         var first = (outOfArea === false);
@@ -2358,15 +2371,18 @@ window.NAVI = (function(){
       //   2 = 위치 확인 불가       → 기기 위치 기능(GPS)이 꺼졌거나 신호를 못 받는 경우. 출발지 직접 지정도 안내한다
       //   3 = 시간 초과(timeout)   → 실내·역 안에서 흔하다. 권한 문제가 아니므로 "찾는 중"으로만 알린다
       var code = err && err.code;
+      // 여기서 상태 줄에 쓴 문구는 locErrMsg 에 남긴다 — 다음 측위 성공 때 한 번 되돌리기 위한 표식이다.
+      var emsg = null;
       if(code === 3){
         // 이미 위치를 한 번 잡았다면 마지막 위치로 계속 동작하므로 상태 줄을 건드리지 않는다 —
         // 시간 초과는 10초마다 되풀이될 수 있어, 매번 쓰면 다른 안내(이탈 경고 등)를 덮는다.
-        if(!here) status("현재 위치를 찾는 중입니다. 실내나 역 안에서는 시간이 걸릴 수 있습니다. 지도를 눌러 출발지를 지정할 수도 있습니다.");
+        if(!here) emsg = "현재 위치를 찾는 중입니다. 실내나 역 안에서는 시간이 걸릴 수 있습니다. 지도를 눌러 출발지를 지정할 수도 있습니다.";
       } else if(code === 2){
-        status("현재 위치를 확인할 수 없습니다. 기기의 위치 기능이 켜져 있는지 확인하거나 지도를 눌러 출발지를 지정해 주세요.");
+        emsg = "현재 위치를 확인할 수 없습니다. 기기의 위치 기능이 켜져 있는지 확인하거나 지도를 눌러 출발지를 지정해 주세요.";
       } else {
-        status("위치 권한이 없어 현재 위치를 알 수 없습니다. 권한을 허용해 주세요.");
+        emsg = "위치 권한이 없어 현재 위치를 알 수 없습니다. 권한을 허용해 주세요.";
       }
+      if(emsg){ status(emsg); locErrMsg = emsg; }
     }, {enableHighAccuracy:true, maximumAge:5000, timeout:10000});
   }
   function sendLocation(){
@@ -2392,6 +2408,32 @@ window.NAVI = (function(){
      REROUTE_STALE_MS — 응답이 끝내 오지 않는 요청을 '진행 중'으로 붙잡아 두는 한도. '찾는 중' 표시의 최대
                         시간(60초)과 같게 둔다. 이 시간이 지나면 다음 이탈 판정에서 새로 요청할 수 있다. */
   var rerouteStartTs = 0, rerouteToken = 0, REROUTE_STALE_MS = 60000;
+  /* 재탐색 요청 한 건의 응답 대기 한도(ms). 이 시간이 지나면 요청을 끊고 통신 예외와 같게 처리한다
+     (기존 경로로 계속 안내 + 실패 고지).
+     근거: 서버의 경로 계획은 경로 서비스 호출 한 건에 6초 제한 × 2회 시도 = 최대 12초를 쓴다. 정상 응답과
+     서버가 스스로 돌려주는 실패 응답은 그 안에 온다. 여기에 이동통신 왕복 여유를 더해 20초로 둔다.
+     이보다 짧으면 재시도 끝에 성공한 응답을 버리게 되고, 제한이 없으면 응답이 끝내 오지 않는 요청
+     (기지국 전환·터널)이 REROUTE_STALE_MS(60초) 동안 '찾는 중' 표시와 재탐색 대기 상태를 붙잡는다. */
+  var REROUTE_FETCH_TIMEOUT_MS = 20000;
+  /* 이탈 경고(좌표 목적지의 이탈 안내·재탐색 실패 고지)로 상태 줄에 쓴 문구(null = 띄운 적 없음).
+     경로 위로 돌아온 것이 확인되면 maybeReroute 가 이 표식을 보고 경고를 한 번 되돌린다. */
+  var offRouteWarnMsg = null;
+  /* cancelPendingReroute() — 진행 중인 이탈 재탐색을 무효로 만든다.
+     하는 일: 토큰을 올려 아직 오지 않은 재탐색 응답이 화면을 바꾸지 못하게 하고, '진행 중' 시각과
+              안내 자동 재개 예약을 지우고, 재탐색이 켠 '찾는 중' 표시를 끈다.
+     왜: 재탐색 응답을 기다리는 사이에 이용자가 안내를 끝내고 다른 도착지 안내를 시작하거나, 도착 처리가 되거나,
+         다른 도착지 경로를 요청하거나, 말로 요청한 경로가 표시될 수 있다. 토큰이 재탐색을 보낼 때만 오르면
+         늦게 온 이전 도착지의 재탐색 응답이 새 경로를 덮어쓴다.
+     부르는 곳: 재탐색이 아닌 경로 표시(showRoute)·경로 요청(requestRoute) 진입부, 안내 끝내기(endTrip),
+               도착 처리(advanceStep), 모의 주행 시작(startSimulation).
+     인자·반환값 없음. 진행 중인 재탐색이 없을 때 불러도 부작용이 없다('찾는 중' 표시는 재탐색이 진행 중일 때만 끈다). */
+  function cancelPendingReroute(){
+    var pending = !!rerouteStartTs;
+    rerouteToken++;
+    rerouteStartTs = 0;
+    autoResumeGuide = false;
+    if(pending) routeBusy(false);
+  }
   var REROUTE_FAIL_MSG = "새 경로를 찾지 못해 기존 경로로 계속 안내합니다.";
   // 재탐색 실패 뒤 추가로 쉬는 시간 — 쿨다운 30초에 더해 총 90초 뒤에 다시 시도한다(실패 안내의 반복 간격).
   var REROUTE_FAIL_EXTRA_MS = 60000;
@@ -2436,7 +2478,21 @@ window.NAVI = (function(){
     var cur = steps[stepIdx] || {};
     if(/_board$/.test(String(cur.maneuver||""))){ offRouteCnt = 0; offRouteSince = 0; return; }   // 승차 구간 (v1.44.0)
     if(cur.maneuver === "station_start"){ offRouteCnt = 0; offRouteSince = 0; return; }   // 역 안 출발 — 측위 불가(#300)
-    if(offRouteDistM(here) <= OFF_ROUTE_M || beforeRouteStart(here)){ offRouteCnt = 0; offRouteSince = 0; return; }
+    if(offRouteDistM(here) <= OFF_ROUTE_M || beforeRouteStart(here)){
+      offRouteCnt = 0; offRouteSince = 0;
+      // 경로 위로 돌아왔다 — 이탈 경고를 띄워 둔 상태면 경고 색을 풀고 상태 줄을 한 번 되돌린다.
+      // 되돌리지 않으면 "경로에서 벗어났습니다"·"새 경로를 찾지 못해…" 문구가 경로로 복귀한 뒤에도 계속 남는다.
+      // 표식을 내리므로 이후 측위에서는 다시 쓰지 않는다. 상태 줄이 그 사이 다른 안내로 바뀌었으면 건드리지 않는다.
+      if(offRouteWarnMsg !== null){
+        var _ws = $("naviStatus");
+        if(_ws && _ws.textContent === offRouteWarnMsg){
+          setStatusWarn(false);
+          status("안내 경로로 돌아왔습니다. " + (routeDestName || (tripDest && tripDest.name) || "목적지") + " 안내를 계속합니다.");
+        }
+        offRouteWarnMsg = null;
+      }
+      return;
+    }
     if(lastFixAcc != null && lastFixAcc > OFF_ROUTE_ACC_MAX) return;   // 부정확한 점은 세지 않는다 (v1.44.0)
     if(!offRouteSince) offRouteSince = Date.now();
     offRouteCnt += 1;
@@ -2447,7 +2503,8 @@ window.NAVI = (function(){
     if(!tripDest || !tripDest.poi_id){
       // 좌표 목적지는 카드 재요청이 불가 — 경고만 하고 안내는 유지한다
       setStatusWarn(true);
-      status("안내 경로에서 벗어났습니다. 경로 방향으로 이동해 주세요.");
+      offRouteWarnMsg = "안내 경로에서 벗어났습니다. 경로 방향으로 이동해 주세요.";   // 경로 복귀 때 되돌릴 표식
+      status(offRouteWarnMsg);
       speak("안내 경로에서 벗어나셨어요. 경로 방향으로 이동해 주세요.");
       return;
     }
@@ -2458,7 +2515,8 @@ window.NAVI = (function(){
     if(inServiceArea(here)) originOverride = null;   // 실제로 이동한 현재 위치가 출발지
     status("안내 경로에서 벗어났습니다. 현재 위치에서 경로를 다시 찾습니다…");
     speak("경로를 벗어나셨어요. 현재 위치에서 다시 안내할게요.");
-    autoResumeGuide = true;              // 새 경로가 오면 안내를 자동으로 이어간다
+    // 안내 자동 재개는 전역 예약(autoResumeGuide)으로 걸지 않는다. 전역 예약은 응답을 기다리는 사이 시작된
+    // 다른 경로 표시가 가져가, 누르지 않은 안내가 시작된다. 재탐색 성공 분기(requestRoute)가 showRoute 에 직접 넘긴다.
     routeReason = "off_route";
     var token = ++rerouteToken;
     rerouteStartTs = Date.now();
@@ -2469,13 +2527,13 @@ window.NAVI = (function(){
      서버가 경로를 만들지 못한 경우와 통신 예외 모두 여기로 온다. 경로선·스텝·안내 상태는 건드리지 않는다.
      다음 시도는 이탈 판정이 다시 성립하고 실패 시각에서 약 90초(REROUTE_COOLDOWN_MS + REROUTE_FAIL_EXTRA_MS)가 지난 뒤에 나간다. */
   function rerouteFailed(){
-    autoResumeGuide = false;      // 이번 재탐색용 자동 재개 예약이 다음 수동 경로 요청에 새지 않게
     // 실패한 뒤에는 다음 재탐색을 평소(30초)보다 늦춘다. 경로 서비스가 계속 응답하지 못하는 동안
     // 이탈 상태가 이어지면 "경로를 벗어나셨어요"·"새 경로를 찾지 못해…" 안내가 30초마다 되풀이되어
     // 기존 경로의 구간 안내를 가린다. lastRerouteTs 를 앞으로 밀어 REROUTE_FAIL_EXTRA_MS 만큼 더 쉰다.
     lastRerouteTs = Date.now() + REROUTE_FAIL_EXTRA_MS;
     setStatusWarn(true);
     var msg = REROUTE_FAIL_MSG + " 경로 방향으로 이동해 주세요.";
+    offRouteWarnMsg = msg;        // 경로 복귀 때 되돌릴 표식
     status(msg); speak(msg);
     if(guiding) scheduleResume(1500);   // 고지가 끝나면 현재 구간 안내 문장으로 돌아온다
   }
@@ -3348,6 +3406,13 @@ window.NAVI = (function(){
      반환값 없음(Promise). 예외는 밖으로 내보내지 않는다. */
   async function requestRoute(spot, opts){
     var rerouteTok = (opts && opts.reroute) || 0;
+    if(!rerouteTok){
+      // 재탐색이 아닌 경로 요청 — 응답을 기다리던 이탈 재탐색이 있으면 무효로 만든다(늦게 온 응답이 이 요청의 결과를 덮지 않게).
+      // 이 요청을 부른 쪽이 직전에 건 안내 자동 재개 예약(이어서 안내·저상 정보 만료·역 안 출발)은 그대로 살린다.
+      var keepResume = autoResumeGuide;
+      cancelPendingReroute();
+      autoResumeGuide = keepResume;
+    }
     cancelTripResume();   // 다른 경로 요청이 시작되면 '이어서 안내' 대기는 버린다 (v1.59.0)
     pickMode = null;   // 경로 요청이 시작되면 선택 모드는 항상 끝난 것 (잔존 방지)
     var prevDest = tripDest;
@@ -3357,11 +3422,13 @@ window.NAVI = (function(){
     if(!o){
       status("현재 위치를 확인할 수 없습니다. 위치 권한을 허용하거나 지도를 눌러 출발지를 지정해 주세요.");
       speak("현재 위치를 확인할 수 없습니다. 지도를 눌러 출발지를 지정해 주세요.");
+      autoResumeGuide = false;   // 요청을 보내지 못했다 — 걸어 둔 안내 자동 재개 예약이 다음 수동 경로로 새지 않게 한다
       return;
     }
     if(!inServiceArea(o)){
       status("현재 위치가 " + regionName() + " 밖입니다. 지도를 눌러 출발지를 지정해 주세요.");
       speak("현재 위치가 " + regionName() + " 밖입니다. 지도를 눌러 출발지를 지정해 주세요.");
+      autoResumeGuide = false;   // 위와 같은 이유 — 요청 없이 끝나는 경로에서는 예약을 지운다
       return;
     }
     sendActivity("route_request");
@@ -3396,13 +3463,28 @@ window.NAVI = (function(){
       qs.set("destination_type", spot.kind === "building" ? "building" : "coord");
       qs.set("destination_place", spot.name || "");
     }
+    // 재탐색 요청에만 응답 대기 한도를 건다(REROUTE_FETCH_TIMEOUT_MS). 한도를 넘기면 요청을 끊고,
+    // 아래 catch 가 통신 예외와 같게 처리한다. AbortController 가 없는 환경에서는 한도 없이 종전대로 동작한다.
+    var abortCtl = null, abortTimer = null;
+    if(rerouteTok && typeof AbortController === "function"){
+      try{
+        abortCtl = new AbortController();
+        abortTimer = setTimeout(function(){ try{ abortCtl.abort(); }catch(e){} }, REROUTE_FETCH_TIMEOUT_MS);
+      }catch(e){ abortCtl = null; }
+    }
     try{
-      var r = await fetch("/api/v1/tools/plan_accessible_route?" + qs.toString());
+      var planUrl = "/api/v1/tools/plan_accessible_route?" + qs.toString();
+      var r = await (abortCtl ? fetch(planUrl, {signal: abortCtl.signal}) : fetch(planUrl));
       var data = await r.json();
+      if(abortTimer){ clearTimeout(abortTimer); abortTimer = null; }
       if(rerouteTok && (rerouteTok !== rerouteToken || !guiding)){
-        // 기다리는 사이 상황이 바뀌었다 — 이용자가 안내를 끝냈거나, 도착했거나, 다른 경로가 표시됐거나,
-        // 더 새로운 재탐색이 나갔다. 늦게 온 이 응답으로 화면을 바꾸지 않는다.
-        if(rerouteTok === rerouteToken){ routeBusy(false); autoResumeGuide = false; }
+        // 기다리는 사이 상황이 바뀌었다. 늦게 온 이 응답으로 화면을 바꾸지 않는다.
+        //   · 토큰이 다르다 — 더 새로운 재탐색이 나갔거나, cancelPendingReroute 가 불렸다(안내 끝내기, 도착,
+        //     모의 주행 시작, 다른 경로 요청, 말로 요청한 경로 표시). 이때 '찾는 중' 표시는 무효화한 쪽이
+        //     이미 정리했고 상태 줄은 그쪽 흐름의 것이므로 여기서는 아무것도 건드리지 않는다.
+        //   · 토큰은 같은데 안내 중이 아니다 — 위 진입점을 거치지 않고 안내가 내려간 경우의 방어. 이 재탐색이 켠
+        //     '찾는 중' 표시만 끈다.
+        if(rerouteTok === rerouteToken) routeBusy(false);
         return;
       }
       routeBusy(false);
@@ -3437,14 +3519,16 @@ window.NAVI = (function(){
       lastModeLabel = data.mode_label || null;     // 자동 추천이 고른 방식의 표시 이름 (#251)
       if(rerouteTok){
         // 새 경로를 받았다 — 이제 기존 안내를 내리고 교체한다(종전에는 요청 전에 내렸다).
-        // showRoute 가 autoResumeGuide 를 보고 새 경로로 안내를 곧바로 이어 시작한다.
+        // 안내 자동 재개는 showRoute 에 직접 넘긴다({autoResume:true}) — 이 응답으로만 재개되고 다른 경로 표시로 새지 않는다.
         guiding = false; cancelResume(); stopSpeak();
+        offRouteWarnMsg = null;   // 새 경로로 바뀌었다 — 이전 경로의 이탈 경고 표식은 더 볼 필요가 없다
       }
-      showRoute(data.ui_action.route, spot.name);
+      showRoute(data.ui_action.route, spot.name, rerouteTok ? {autoResume: true} : null);
     }catch(e){
+      if(abortTimer){ clearTimeout(abortTimer); abortTimer = null; }
       if(rerouteTok){
-        // 통신 예외(기지국 전환·터널 등) — 더 새로운 요청이 없고 아직 안내 중이면 기존 경로로 계속 안내한다
-        if(rerouteTok === rerouteToken){ routeBusy(false); if(guiding) rerouteFailed(); else autoResumeGuide = false; }
+        // 통신 예외(기지국 전환·터널 등)·응답 대기 한도 초과 — 무효화되지 않았고 아직 안내 중이면 기존 경로로 계속 안내한다
+        if(rerouteTok === rerouteToken){ routeBusy(false); if(guiding) rerouteFailed(); }
         return;
       }
       routeBusy(false); autoResumeGuide = false; status("경로 서비스에 연결하지 못했습니다.");
@@ -3457,7 +3541,17 @@ window.NAVI = (function(){
     var mode = kinds.subway ? (kinds.bus ? "walk_bus_subway" : "walk_subway") : (kinds.bus ? "walk_bus" : ((legs||[]).length ? "walk" : (fallbackMode||"walk")));
     return {mode: mode, label: ({walk:"도보", walk_bus:"도보+버스", walk_subway:"도보+지하철", walk_bus_subway:"버스+지하철"})[mode] || mode};
   }
-  function showRoute(routeData, destName){
+  /* showRoute(routeData, destName, opts) — 받은 경로를 화면에 표시한다.
+       opts : {autoResume:true} — 이탈 재탐색이 성공해 requestRoute 가 부른 경우에만 준다. 표시 직후 안내를 이어 시작한다.
+              그 밖의 호출(직접 고른 도착지의 경로, 말로 요청한 경로)은 주지 않는다. */
+  function showRoute(routeData, destName, opts){
+    var viaReroute = !!(opts && opts.autoResume);
+    // 표시 뒤 안내를 곧바로 시작할지 — 재탐색 성공이거나, 이 경로를 요청한 흐름이 걸어 둔 예약(이어서 안내·저상 정보 만료·역 안 출발)이 있을 때.
+    var resumeNow = viaReroute || autoResumeGuide;
+    // 재탐색 성공이 아닌 경로 표시 — 응답을 기다리던 이탈 재탐색을 무효로 만든다. 그러지 않으면 늦게 온
+    // 이전 도착지의 재탐색 응답이 지금 표시하는 경로를 덮어쓴다. 예약은 위에서 읽었으므로 여기서 함께 지운다.
+    if(!viaReroute) cancelPendingReroute();
+    autoResumeGuide = false;
     if(guiding) trackUpload("canceled");   // 안내 중 재탐색 — 이전 세션 트랙 마감 (v1.34.0)
     route = routeData;
     // 음성 대화(ui_action)로 온 경로도 카드 재요청이 되도록 목적지를 동기화한다(리뷰 #5a).
@@ -3511,7 +3605,7 @@ window.NAVI = (function(){
     drawRouteLines(true);
     renderSummary(primary, destName);
     status((destName||"목적지") + " 경로를 표시했습니다.");
-    if(autoResumeGuide){ autoResumeGuide = false; _lmKeepOnStart = true; startGuidance(); }   // 이탈 재탐색 — 안내 자동 재개 (v1.35.0)
+    if(resumeNow){ _lmKeepOnStart = true; startGuidance(); }   // 이탈 재탐색 등 — 안내 자동 재개 (v1.35.0)
     sendNavState();   // 경로 준비 상태(안내 전)도 세션에 알린다 (#248)
   }
 
@@ -4450,6 +4544,8 @@ window.NAVI = (function(){
       stepIdx += 1;
       renderStep();
       _announceStep(stepIdx);
+      // 도착 — 응답을 기다리던 이탈 재탐색을 무효로 만든다('찾는 중' 표시가 도착 뒤에 남거나, 다음 도착지 경로를 덮지 않게)
+      if(steps[stepIdx].maneuver === "arrive") cancelPendingReroute();
       if(steps[stepIdx].maneuver === "arrive"){ guiding = false; clearTrip(); stationAnswered = {}; trackUpload("arrived"); setEndBtn("home"); stopArrivalPolling(); scheduleArrivalReset(); }
       sendNavState();   // 구간 전환·도착을 세션에 알린다 (#248)
     }
@@ -4557,6 +4653,7 @@ window.NAVI = (function(){
     setEndBtn("guide");   // (#251, v1.35.0)
     if(!steps.length || !routeGeom.length){ status("경로가 없어 모의 주행을 시작할 수 없습니다."); return; }
     try{ if(window.__BACK) window.__BACK.arm(); }catch(e){}   // 안내 중 뒤로 가기는 끝낼지 묻는다 (v2.0.2)
+    cancelPendingReroute();   // 실제 주행의 이탈 재탐색을 기다리던 중이면 무효로 — 늦게 온 응답이 모의 주행 경로를 바꾸지 않게
     stopSimulation();
     simActive=true; guiding=true; stepIdx=0; simDist=0; _interimDone = {}; _lmDone = {}; _lmLastTs = 0; _lmPassCnt = {};
     setFollow(true);
@@ -5183,7 +5280,7 @@ window.NAVI = (function(){
                                      stationHint:function(){return stationHint;},
                                      maybeAutoExit:maybeAutoExit, stationWait:stationWait, undoAutoExit:undoAutoExit,
                                      setFixAcc:function(a){ lastFixAcc=a; },
-                                     rerouting:function(){ return !!rerouteStartTs; }, exitFix:function(){ return exitFixN; },
+                                     rerouting:function(){ return !!rerouteStartTs; }, setRerouteTimeout:function(ms){ REROUTE_FETCH_TIMEOUT_MS=ms; }, exitFix:function(){ return exitFixN; },
                                      setWs:function(w){ wsRef=w; }, setExitGap:function(ms, span){ EXIT_FIX_GAP_MS=ms; if(span!=null) EXIT_SPAN_MS=span; },
                                      undoExitOpen:undoExitOpen, setTap:function(w, t){ lastTap={where:w, ts:t}; },
                                      setAdvanceTs:function(t){ _lastAdvanceTs=t; }}; }

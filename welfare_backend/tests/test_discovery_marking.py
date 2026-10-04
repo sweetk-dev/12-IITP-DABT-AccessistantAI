@@ -7,7 +7,8 @@ DB·LLM 없이 동작한다(조회·분류·초안·보강·표시를 대역으�
   2) 초안 생성 실패, 보강 실패(ok: False), 분류 응답에서 빠진 군집의 질의는 표시하지 않는다
      — 다음 회차에 다시 대상이 된다
   3) 초안을 얻지 못한 군집은 후보 파일을 만들지 않는다(회차마다 중복 후보가 쌓이지 않게)
-  4) 발굴 산출물이 참조 중인 질의 id 는 보존기간 파기에서 빠진다(반려된 후보 제외)
+  4) 검토 대기 중인 발굴 산출물이 참조하는 질의 id 는 보존기간 파기에서 빠진다
+     (반려·승인으로 검토가 끝난 후보, 반영·반려가 끝난 보강 제안은 제외)
   5) 인앱 스케줄러에 일 1회 파기 잡이 등록된다
 """
 import json
@@ -136,11 +137,59 @@ def test_referenced_query_ids_collects_live_references(tmp_path, monkeypatch):
     monkeypatch.setattr(dc, "_CAND_DIR", cand)
     monkeypatch.setattr(dc, "_STAGING_DIR", stag)
     _write(cand / "C1.json", {"status": "pending", "query_ids": [1, 2]})
-    _write(cand / "C2.json", {"status": "approved", "query_ids": [3]})
+    _write(cand / "C2.json", {"status": "approved", "query_ids": [3]})       # 승인 → 등록 완료, 참조 아님
     _write(cand / "C3.json", {"status": "rejected", "query_ids": [4]})       # 반려 → 참조 아님
+    _write(cand / "C4.json", {"query_ids": [9]})                             # 상태 없음 → 대기로 보고 남긴다
     _write(stag / "B001_disc1.disc.json", {"query_ids": [5, "6"]})            # 검토 대기 보강 제안
     _write(stag / ".rejected" / "B002_disc1.disc.json", {"query_ids": [7]})   # 반려된 제안 → 참조 아님
-    assert dc.referenced_query_ids() == {1, 2, 3, 5, 6}
+    _write(stag / ".applied" / "B003_disc1.disc.json", {"query_ids": [8]})    # 반영된 제안 → 참조 아님
+    assert dc.referenced_query_ids() == {1, 2, 5, 6, 9}
+
+
+def _review_env(tmp_path, monkeypatch):
+    """검토 큐(review_core)를 임시 디렉터리로 돌린다. 반환: (rc, items 경로, staging 경로)."""
+    pdb = _APP / "policy_db"
+    if str(pdb) not in sys.path:
+        sys.path.insert(0, str(pdb))
+    rc = pytest.importorskip("crawler.review_core")
+    items, stag = tmp_path / "items", tmp_path / "staging"
+    monkeypatch.setattr(rc.ca, "ITEMS_DIR", items)
+    monkeypatch.setattr(rc.ca, "STAGING_DIR", stag)
+    monkeypatch.setattr(rc.ca, "BACKUPS_DIR", items / ".backups")
+    monkeypatch.setattr(rc.ca, "SCHEMA", tmp_path / "no_schema.json")     # 스키마 검증 생략
+    monkeypatch.setattr(rc.ca, "_advance_baselines", lambda staged: None)   # 스냅샷 계층은 범위 밖
+    monkeypatch.setattr(dc, "_STAGING_DIR", stag)
+    monkeypatch.setattr(dc, "_CAND_DIR", tmp_path / "candidates")
+    _write(items / "B001_sample.json", {"id": "B001", "title": "기존", "faq": []})
+    _write(stag / "B001_disc1.staged.json", {"id": "B001", "title": "기존", "faq": [{"q": "a", "a": "b"}]})
+    for ext, body in ((".sources.json", {}), (".review.json", {}), (".triage.json", {}),
+                      (".disc.json", {"source": "discovery_gap", "query_ids": [11, 12]})):
+        _write(stag / ("B001_disc1" + ext), body)
+    return rc, items, stag
+
+
+def test_apply_moves_disc_sidecar_so_queries_become_purgeable(tmp_path, monkeypatch):
+    """반영이 끝난 보강 제안의 .disc.json 이 staging 에 남으면 그 질의는 계속 파기에서 빠진다."""
+    rc, items, stag = _review_env(tmp_path, monkeypatch)
+    assert dc.referenced_query_ids() == {11, 12}            # 검토 대기 중에는 남긴다
+    r = rc.apply_selected("B001", ["faq"], reingest=False)
+    assert r["ok"] is True and r["applied_keys"] == ["faq"], r
+    assert json.loads((items / "B001_sample.json").read_text(encoding="utf-8"))["faq"]
+    left = sorted(p.name for p in stag.iterdir() if p.is_file())
+    assert left == [], "staging 에 남은 파일: %s" % left
+    moved = sorted(p.name for p in (stag / ".applied").iterdir())
+    assert moved == ["B001_disc1.disc.json", "B001_disc1.review.json", "B001_disc1.sources.json",
+                     "B001_disc1.staged.json", "B001_disc1.triage.json"], moved
+    assert dc.referenced_query_ids() == set()               # 반영 뒤에는 파기 예외에서 빠진다
+
+
+def test_reject_still_moves_disc_sidecar_and_returns_query_ids(tmp_path, monkeypatch):
+    """반려 경로는 종전과 같다 — .disc.json 을 옮기고 되돌릴 질의 id 를 돌려준다."""
+    rc, _items, stag = _review_env(tmp_path, monkeypatch)
+    r = rc.reject("B001")
+    assert r["ok"] is True and r["reopen_query_ids"] == [11, 12], r
+    assert (stag / ".rejected" / "B001_disc1.disc.json").exists()
+    assert dc.referenced_query_ids() == set()
 
 
 def test_referenced_query_ids_empty_when_no_outputs(tmp_path, monkeypatch):
@@ -357,3 +406,49 @@ def test_admin_background_reingest_logs_failure_and_does_not_raise(monkeypatch, 
     with caplog.at_level("ERROR"):
         admin._reingest_job(["B002"])          # 스레드 본체에서 예외가 새어 나가면 안 된다
     assert any("B002" in r.getMessage() for r in caplog.records)
+
+
+# ── 크롤 타겟 파일 손상 시의 관리자 API 응답 ─────────────────
+def _break_targets_file(admin, tmp_path, monkeypatch, body):
+    """오버레이 파일을 임시 경로의 깨진 파일로 돌린다(실제 데이터는 건드리지 않는다)."""
+    f = tmp_path / "crawl_targets.local.json"
+    if body is None:
+        f.mkdir()                       # 디렉터리 → 읽기 자체가 실패(OSError)
+    else:
+        f.write_text(body, encoding="utf-8")
+    monkeypatch.setattr(admin.tsync, "LOCAL_TARGETS", f)
+    monkeypatch.setattr(admin.tsync, "SNAPSHOTS_DIR", tmp_path / "snapshots")
+    return f
+
+
+@pytest.mark.parametrize("body", ['{"targets": [{"target_id": "auto_b930_1_a"', "[]", None])
+def test_admin_crawl_coverage_reports_broken_targets_file(tmp_path, monkeypatch, body):
+    """타겟 파일이 깨져 있으면 원인을 담은 오류 응답을 준다(예외가 그대로 올라가지 않는다)."""
+    admin, HTTPException = _admin_module()
+    _break_targets_file(admin, tmp_path, monkeypatch, body)
+    with pytest.raises(HTTPException) as ei:
+        admin.policy_crawl_coverage()
+    d = ei.value.detail
+    assert ei.value.status_code == 500 and d["ok"] is False, d
+    assert "crawl_targets.local.json" in d["error"], d
+    assert str(tmp_path) not in d["error"], "서버 경로가 응답에 실림: %s" % d["error"]
+
+
+@pytest.mark.parametrize("body", ['{"targets": [', None])
+def test_admin_register_crawl_reports_broken_targets_file(tmp_path, monkeypatch, body):
+    admin, HTTPException = _admin_module()
+    f = _break_targets_file(admin, tmp_path, monkeypatch, body)
+    monkeypatch.setattr(admin.pc, "get_policy", lambda pid: {
+        "id": "B930", "title": "t", "sources": [{"url": "https://a.go.kr/x", "title": "s"}]})
+
+    def must_not_run(*a, **k):
+        raise AssertionError("등록에 실패했는데 baseline 확정이 실행됐다")
+
+    monkeypatch.setattr(admin.ops, "run_init_baseline", must_not_run)
+    with pytest.raises(HTTPException) as ei:
+        admin.policy_register_crawl("B930")
+    d = ei.value.detail
+    assert ei.value.status_code == 500 and d["ok"] is False, d
+    assert "crawl_targets.local.json" in d["error"] and str(tmp_path) not in d["error"], d
+    if body is not None:
+        assert f.read_text(encoding="utf-8") == body, "깨진 파일을 덮어썼다"

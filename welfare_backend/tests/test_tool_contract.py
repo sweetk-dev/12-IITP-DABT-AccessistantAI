@@ -12,8 +12,11 @@
      필수로 두지 않는다(세션이 채운다) — Live·폴백 동일
   3) 세션이 주입하는 인자(좌표·route_id·station_wait·handoff 등)는 걸러지지 않는다
   4) 핸들러가 모르는 인자는 걸러지고(TypeError 없음) 이름만 경고 로그에 남는다
-  5) 실행 상한을 넘기면 예외 대신 status="error" 값을 돌려준다. 예외도 값으로 돌려준다
-  6) get_bus_arrivals 는 route_name 으로 결과를 추리고, 없으면 전체 + 그 사실을 표시한다
+  5) 실행 상한을 넘기면 예외 대신 status="error" 값을 돌려준다. 예외도 값으로 돌려준다.
+     핸들러 안에서 난 TimeoutError 는 상한 초과로 기록하지 않는다
+  6) get_bus_arrivals 는 route_name 으로 결과를 추리고, 없으면 전체 + 그 사실을 표시한다.
+     route_id 로 좁힌 조회에 물은 번호가 없으면 정류장 전체를 다시 조회해 추린다.
+     번호 정규화는 "마을버스"·"버스"·"번"을 위치와 무관하게 뗀다
   7) explain_route_segment 는 route_id 가 없으면 '안내한 경로 없음' 상태를 돌려준다
   8) 결과 로그 요약에는 상태 키만 있고 본문 값은 없다
 """
@@ -279,6 +282,54 @@ def t_run_tool_exception_returns_error_value():
     assert r == {"error": "깨짐"}, r
 
 
+def t_run_tool_handler_timeouterror_is_not_logged_as_limit_exceeded():
+    """핸들러가 스스로 올린 TimeoutError 는 '실행 상한 초과'가 아니다.
+
+    asyncio.TimeoutError 와 내장 TimeoutError 는 같은 클래스라, 구분하지 않으면 곧바로 실패한
+    호출이 "N초를 넘겨 중단"으로 기록되고 응답도 timeout 형식이 된다.
+    """
+    async def inner_timeout():
+        raise TimeoutError("외부 호출 시간 초과")
+
+    async def inner_timeout_no_message():
+        raise TimeoutError()
+
+    cap = _Capture()
+    tool_handlers.logger.addHandler(cap)
+    saved = tool_handlers.logger.propagate
+    tool_handlers.logger.propagate = False        # 예상된 예외의 트레이스로 출력이 어지럽지 않게
+    try:
+        r = _run(tool_handlers.run_tool({"x": inner_timeout}, "x", {}))
+        r_blank = _run(tool_handlers.run_tool({"x": inner_timeout_no_message}, "x", {}))
+    finally:
+        tool_handlers.logger.propagate = saved
+        tool_handlers.logger.removeHandler(cap)
+    assert r == {"error": "외부 호출 시간 초과"}, r
+    assert r_blank == {"error": "TimeoutError"}, "문구 없는 예외도 error 값이 비면 안 된다: %r" % (r_blank,)
+    msgs = [m for _, m in cap.lines]
+    assert not any("넘겨 중단" in m for m in msgs), "상한 초과로 기록됨: %s" % msgs
+    assert sum("도구 실행 실패" in m for m in msgs) == 2, msgs
+
+
+def t_run_tool_limit_exceeded_is_logged_as_such():
+    """상한을 실제로 넘긴 경우의 로그·응답은 종전과 같다."""
+    async def slow():
+        await asyncio.sleep(5)
+    cap = _Capture()
+    tool_handlers.logger.addHandler(cap)
+    saved = tool_handlers.TOOL_TIMEOUT_ROUTE_SEC
+    tool_handlers.TOOL_TIMEOUT_ROUTE_SEC = 0.05
+    try:
+        r = _run(tool_handlers.run_tool({"find_toilet": slow}, "find_toilet", {}))
+    finally:
+        tool_handlers.TOOL_TIMEOUT_ROUTE_SEC = saved
+        tool_handlers.logger.removeHandler(cap)
+    assert r["status"] == "error" and r["error"] == "timeout" and r["tool_name"] == "find_toilet", r
+    warn = [m for lv, m in cap.lines if lv == logging.WARNING]
+    assert len(warn) == 1 and "넘겨 중단" in warn[0], cap.lines
+    assert not any("도구 실행 실패" in m for _, m in cap.lines), cap.lines
+
+
 def t_local_fallback_dispatch_filters_and_times_out():
     """온프레미스 폴백의 도구 루프도 같은 실행부를 쓴다 — 모르는 인자·시간 초과가 턴을 깨지 않는다."""
     import httpx
@@ -376,6 +427,103 @@ def t_bus_arrivals_route_name_not_found_returns_all_and_says_so():
     assert r["status"] == "success" and r["route_name_matched"] is False, r
     assert r["count"] == 3 and r["next_low_floor"]["route_name"] == "5"
     assert "900번은" in r["ai_instruction"] and "도착정보에 없습니다" in r["ai_instruction"]
+
+
+def t_bus_no_strips_words_anywhere():
+    """번호 정규화 — "마을버스"·"버스"·"번"은 어디에 있든 떼고 번호만 남긴다."""
+    for said, want in (("5번 마을버스", "5"), ("마을버스 5", "5"), ("마을버스 5번", "5"),
+                       ("5번마을버스", "5"), ("버스 51번", "51"), ("51번 버스", "51"),
+                       ("51번", "51"), ("51", "51"), (" 5 - 1 번 ", "5-1"), ("5-1번", "5-1"),
+                       ("m5333번", "M5333"), ("M5333", "M5333"), ("9-3번 버스", "9-3"),
+                       ("버스", ""), ("", ""), (None, "")):
+        assert tool_handlers._bus_no(said) == want, "%r → %r (기대 %r)" % (
+            said, tool_handlers._bus_no(said), want)
+
+
+def t_bus_arrivals_village_bus_wording_matches_exactly():
+    """"5번 마을버스"·"마을버스 5" 는 5번만 고른다 — 51·5-1 에는 걸리지 않는다."""
+    for said in ("5번 마을버스", "마을버스 5", "마을버스 5번", "5번"):
+        r = _arrivals(route_name=said)
+        assert r["route_name_matched"] is True, (said, r)
+        assert [i["route_name"] for i in r["items"]] == ["5"], (said, r["items"])
+    r = _arrivals(route_name="마을버스 5-1")
+    assert [i["route_name"] for i in r["items"]] == ["5-1"], r["items"]
+
+
+# 안내 중 세션 주입: 승차 정류장 + 안내 노선(9-3)의 route_id 가 함께 들어온다.
+# 경로 서비스는 route_id 가 있으면 그 노선만, 없으면 정류장 전체를 돌려준다.
+_ARR_STOP = {"status": "success", "station_id": "208000069", "items": [
+    {"route_id": "R93", "route_name": "9-3", "route_type": "일반형시내버스", "end_station": "A",
+     "vehicles": [{"predict_min": 12, "stops_away": 8, "low_floor": True}]},
+    {"route_id": "R51", "route_name": "51", "route_type": "일반형시내버스", "end_station": "충훈부",
+     "vehicles": [{"predict_min": 3, "stops_away": 2, "low_floor": False},
+                  {"predict_min": 15, "stops_away": 11, "low_floor": True}]},
+], "next_low_floor": {"route_name": "9-3", "route_type": "일반형시내버스", "end_station": "A",
+                       "predict_min": 12, "stops_away": 8, "plate_no": "x"}}
+
+
+def _arrivals_guided(fail_requery=None, **kw):
+    """route_id 로 좁혀 주는 경로 서비스 대역. 반환: (도구 결과, 조회 기록)."""
+    calls = []
+
+    async def fake(station_id, route_id=""):
+        calls.append((station_id, route_id))
+        if not route_id:
+            if fail_requery is not None:
+                return fail_requery
+            return _ARR_STOP
+        only = [it for it in _ARR_STOP["items"] if it["route_id"] == route_id]
+        return {"status": "success", "station_id": station_id, "items": only,
+                "next_low_floor": _ARR_STOP["next_low_floor"] if route_id == "R93" else None}
+    orig = route_client.bus_arrivals
+    route_client.bus_arrivals = fake
+    try:
+        r = _run(tool_handlers.tool_get_bus_arrivals(station_id="208000069", route_id="R93",
+                                                     station_name="안양역", **kw))
+    finally:
+        route_client.bus_arrivals = orig
+    return r, calls
+
+
+def t_bus_arrivals_other_route_asked_during_bus_leg_requeries_whole_stop():
+    """9-3번 승차 안내 중 "51번 언제 와?" — 주입된 route_id 에 막히지 않고 51번을 찾아 준다."""
+    r, calls = _arrivals_guided(route_name="51")
+    assert calls == [("208000069", "R93"), ("208000069", "")], calls
+    assert r["status"] == "success" and r["route_name_matched"] is True, r
+    assert [i["route_name"] for i in r["items"]] == ["51"], r["items"]
+    assert r["items"][0]["vehicles"][0]["predict_min"] == 3
+    # 저상 차량은 51번 안에서 고른다(안내 노선 9-3 의 차량이 아니다)
+    assert r["next_low_floor"]["route_name"] == "51" and r["next_low_floor"]["predict_min"] == 15, r
+    # 정류장 전체 기준 결과다 — 특정 노선(route_id)만 조회했다는 표시는 빠진다
+    assert r["route_id"] is None and "특정 노선" not in r["ai_instruction"], r
+    assert "도착정보에 없습니다" not in r["ai_instruction"]
+
+
+def t_bus_arrivals_same_route_id_and_name_queries_once():
+    """route_id 와 route_name 이 같은 노선이면 종전과 같다 — 한 번 조회, 그 노선만."""
+    r, calls = _arrivals_guided(route_name="9-3번")
+    assert calls == [("208000069", "R93")], calls
+    assert r["route_name_matched"] is True and r["route_id"] == "R93", r
+    assert [i["route_name"] for i in r["items"]] == ["9-3"] and "특정 노선" in r["ai_instruction"]
+    # route_name 없이 route_id 만 온 경우도 재조회하지 않는다
+    r, calls = _arrivals_guided()
+    assert calls == [("208000069", "R93")] and r["route_name_matched"] is None and r["route_id"] == "R93"
+
+
+def t_bus_arrivals_requery_still_not_found_says_so():
+    """정류장 전체에도 없는 번호면 전체 목록 + '없다'는 표시(종전의 일치 없음 동작)."""
+    r, calls = _arrivals_guided(route_name="900")
+    assert len(calls) == 2 and r["route_name_matched"] is False, (calls, r)
+    assert r["count"] == 2 and "도착정보에 없습니다" in r["ai_instruction"], r
+
+
+def t_bus_arrivals_requery_failure_is_reported_not_guessed():
+    """재조회가 실패하면 '없다'고 답하지 않는다 — 조회 실패로 알린다."""
+    r, _ = _arrivals_guided(fail_requery={"status": "unavailable", "reason": "HTTP 503"},
+                            route_name="51")
+    assert r["status"] == "unavailable" and r["reason"] == "HTTP 503", r
+    r, _ = _arrivals_guided(fail_requery={"status": "error", "message": "연결 실패"}, route_name="51")
+    assert r["status"] == "error", r
 
 
 def t_bus_arrivals_without_route_name_unchanged():
