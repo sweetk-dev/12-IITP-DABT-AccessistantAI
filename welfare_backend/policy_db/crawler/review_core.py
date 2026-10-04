@@ -211,7 +211,11 @@ def apply_selected(policy_id, selected_keys, reingest=True):
     applied = ca.STAGING_DIR / ".applied"
     applied.mkdir(parents=True, exist_ok=True)
     shutil.move(str(staged), str(applied / staged.name))
-    for ext in (".sources.json", ".review.json", ".triage.json"):
+    # 사이드카를 본체와 함께 .applied 로 옮긴다. .disc.json(발굴 보강 제안의 원 질의 id)도
+    # 포함한다 — staging 에 남기면 discovery_core.referenced_query_ids 가 staging 의
+    # *.disc.json 을 모두 "검토 대기 중"으로 읽으므로, 반영이 끝난 제안의 질의 행이
+    # 보존기간 파기에서 계속 빠진다. 반려(reject)와 같은 방식으로 옮긴다.
+    for ext in (".sources.json", ".review.json", ".triage.json", ".disc.json"):
         side = _sidecar(staged, ext)
         if side.exists():
             shutil.move(str(side), str(applied / side.name))

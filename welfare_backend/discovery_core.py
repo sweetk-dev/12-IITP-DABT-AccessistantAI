@@ -523,10 +523,17 @@ def referenced_query_ids():
 
     보존기간 파기(scripts/purge_old_queries)가 지우면 안 되는 행을 가려내는 데 쓴다.
     참조로 보는 것:
-      - 신규 후보 파일(candidates/C*.json)의 query_ids — 상태가 rejected 가 아닌 것.
-        (반려된 후보의 질의는 재분류 대기로 되돌려지므로 더 이상 근거가 아니다.)
+      - 신규 후보 파일(candidates/C*.json)의 query_ids — 검토가 끝나지 않은 것
+        (상태가 rejected·approved 가 아닌 것).
+        · 반려된 후보의 질의는 재분류 대기로 되돌려지므로 더 이상 근거가 아니다.
+        · 승인된 후보는 정책으로 등록이 끝났고, 승인 뒤에 query_ids 로 질의 행을 다시 읽는
+          처리가 없다(id 를 쓰는 곳은 반려 시 재분류 대기로 되돌리는 것뿐이다). 후보 파일이
+          질의 문장(cluster_queries)을 따로 갖고 있어 화면 표시에도 행이 필요하지 않다.
+          승인분까지 남기면 그 질의 행은 보존기간이 지나도 파기되지 않는다.
+        · 상태가 없거나 알 수 없는 값이면 검토 대기로 보고 남긴다(지우지 않는 쪽).
       - 검토 대기 중인 보강 제안(staging/*.disc.json)의 query_ids.
-        (반려 시 이 id 로 원 질의를 재분류 대기로 되돌린다.)
+        (반려 시 이 id 로 원 질의를 재분류 대기로 되돌린다. 반영·반려가 끝난 제안의
+        파일은 .applied/.rejected 로 옮겨져 여기서 읽히지 않는다.)
 
     반환: int id 의 set.
     실패: 후보·제안 파일을 읽거나 해석하지 못하면 예외(OSError/ValueError)를 그대로 올린다.
@@ -547,7 +554,8 @@ def referenced_query_ids():
     if _CAND_DIR.is_dir():
         for f in sorted(_CAND_DIR.glob("C*.json")):
             d = json.loads(f.read_text(encoding="utf-8"))
-            if isinstance(d, dict) and d.get("status") != "rejected":
+            # 검토가 끝난 후보(반려·승인)는 참조로 보지 않는다 — 근거는 위 docstring
+            if isinstance(d, dict) and d.get("status") not in ("rejected", "approved"):
                 _add(d.get("query_ids"))
     if _STAGING_DIR.is_dir():
         for f in sorted(_STAGING_DIR.glob("*.disc.json")):

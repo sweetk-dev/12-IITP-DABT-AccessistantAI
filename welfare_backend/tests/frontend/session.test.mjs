@@ -12,6 +12,8 @@
  *   9) 경로 이탈 재탐색이 실패해도 기존 경로로 안내를 계속한다
  *  10) 이동경로 안내에서 말로 요청한 화장실·식당·긴급지원 결과는 시트가 바로 열린다
  *  11) 측위·위치 오류 안내 문구 · 경로 요약 '목록으로'의 경로선 정리
+ *  12) 이탈 재탐색 응답을 기다리는 사이 다른 경로가 시작되면 늦게 온 응답을 버린다 · 재탐색 요청의 응답 대기 한도
+ *  13) 경로로 복귀하면 이탈·재탐색 실패 경고를 되돌린다
  */
 import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
@@ -52,11 +54,12 @@ function boot(preset, url) {
       }
       FakeWS.OPEN = 1; FakeWS.CONNECTING = 0; FakeWS.CLOSED = 3;
       w.WebSocket = FakeWS; w.__sockets = sockets;
-      w.fetch = async (url) => { const u = String(url);
+      w.fetch = async (url, init) => { const u = String(url);
         const body = u.includes("/api/v1/config") ? (w.__cfg || CONFIG) : u.includes("find_bf_tour_spots") ? SPOTS : u.includes("plan_accessible_route") ? ROUTE : {};
         (w.__fetchLog = w.__fetchLog || []).push(u);
         // 경로 요청만 가로채는 훅 — 실패 응답·통신 예외·지연 응답을 흉내 낸다(없으면 기본 ROUTE)
-        if (u.includes("plan_accessible_route") && w.__planHook) return w.__planHook(u);
+        // init 은 요청 옵션(signal 등) — 응답 대기 한도 검증에서 중단 신호를 받는 데 쓴다
+        if (u.includes("plan_accessible_route") && w.__planHook) return w.__planHook(u, init);
         return { ok: true, json: async () => body }; };
       w.navigator.geolocation = { watchPosition: (ok, err) => { w.__watch = ok; w.__watchErr = err; return 1; }, clearWatch: () => {} };
       w.navigator.mediaDevices = { getUserMedia: async () => { throw new Error("no mic"); } };
@@ -560,6 +563,26 @@ function boot(preset, url) {
     assert.equal(st().textContent, "현재 위치를 확인했습니다."); assert.ok(!st().classList.contains("navi-status--warn"));
   });
 
+  // 위치를 잡은 뒤에 난 위치 오류 — 문구가 뜨고, 측위가 다시 성공하면 한 번 되돌린다
+  w.__watchErr({ code: 2, message: "Position unavailable" });
+  check("(준비) 위치를 잡은 뒤의 위치 확인 불가(code 2)는 문구로 알린다", () => assert.match(st().textContent, /현재 위치를 확인할 수 없습니다/));
+  fixIn();
+  check("위치 오류(code 2) 뒤 측위가 성공하면 '현재 위치를 확인했습니다'로 되돌린다", () => assert.equal(st().textContent, "현재 위치를 확인했습니다."));
+  st().textContent = "다른 안내 문구"; fixIn();
+  check("되돌린 뒤 이어지는 측위는 상태 줄을 다시 쓰지 않는다", () => assert.equal(st().textContent, "다른 안내 문구"));
+  // 경고 색이 켜진 채 오류 문구로 덮인 경우 — 복구 때 경고 색도 함께 푼다
+  st().classList.add("navi-status--warn");
+  w.__watchErr({ code: 1, message: "User denied Geolocation" });
+  check("(준비) 권한 거부(code 1) 문구 표시", () => assert.match(st().textContent, /위치 권한이 없어/));
+  fixIn();
+  check("위치 오류(code 1) 뒤 측위가 성공하면 문구를 되돌리고 경고 색을 푼다", () => {
+    assert.equal(st().textContent, "현재 위치를 확인했습니다."); assert.ok(!st().classList.contains("navi-status--warn"));
+  });
+  // 오류 문구가 그 사이 다른 안내로 바뀌었으면 그 안내를 덮지 않는다
+  w.__watchErr({ code: 2, message: "Position unavailable" });
+  st().textContent = "경로를 만들지 못했습니다."; fixIn();
+  check("위치 오류 뒤 상태 줄이 다른 안내로 바뀌었으면 측위 성공이 그 안내를 덮지 않는다", () => assert.equal(st().textContent, "경로를 만들지 못했습니다."));
+
   // 경로 요약 '목록으로' — 구간별 경로선(도보·버스·도보 3줄)을 모두 지운다
   const MM = JSON.parse(JSON.stringify(ROUTE));
   MM.ui_action.route.routes[0].legs = [
@@ -572,6 +595,214 @@ function boot(preset, url) {
   const back = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "목록으로");
   back.click(); await sleep(30);
   check("'목록으로' — 구간 경로선을 전부 지운다", () => assert.equal(N().routeLines().length, 0));
+  w.close();
+}
+
+// ───────── 12) 재탐색 응답 대기 중 다른 경로가 시작됨 — 늦게 온 응답을 버린다 ─────────
+{
+  // A = 테스트 박물관(T1) 안내 중 이탈 → 재탐색 응답 보류. 그 사이 B = 둘째 전시관(T2) 경로가 시작된다.
+  const SPOT_A = { poi_id: "T1", name: "테스트 박물관" }, SPOT_B = { poi_id: "T2", name: "둘째 전시관" };
+  const ROUTE_B = JSON.parse(JSON.stringify(ROUTE)); ROUTE_B.route_id = "r_b"; ROUTE_B.ui_action.route.route_id = "r_b";
+  ROUTE_B.ui_action.route.routes[0].steps[0].instruction = "둘째 전시관 방향으로 80m 앞으로 이동합니다.";
+  const ROUTE_A2 = JSON.parse(JSON.stringify(ROUTE)); ROUTE_A2.route_id = "r_a2"; ROUTE_A2.ui_action.route.route_id = "r_a2";
+  ROUTE_A2.ui_action.route.routes[0].steps[0].instruction = "박물관 쪽으로 다시 찾은 길로 70m 이동합니다.";
+  // 안내 A 를 시작하고 이탈시켜 재탐색 응답을 붙잡아 둔 상태까지 만든다. hold.release 로 늦은 응답을 푼다.
+  const prepare = async () => {
+    const w = boot();
+    const $ = (id) => w.document.getElementById(id);
+    await sleep(50); w.document.dispatchEvent(new w.Event("DOMContentLoaded")); await sleep(200);
+    const N = () => w.NAVI._internals();
+    w.document.querySelector('[data-go="navi"]').click(); await sleep(80);
+    await w.__sockets[0]._open(); await sleep(30);
+    w.__watch({ coords: { latitude: P(0)[0], longitude: P(0)[1], accuracy: 5 } });
+    await N().requestRoute(SPOT_A); await sleep(30);
+    N().startGuidance(); await sleep(30);
+    const hold = { release: null };
+    // 이탈 재탐색(reason=off_route)만 붙잡고, 그 밖의 경로 요청은 B 경로로 바로 답한다
+    w.__planHook = (u) => (u.includes("reason=off_route")
+      ? new Promise((r) => { hold.release = () => r({ ok: true, json: async () => ROUTE_A2 }); })
+      : Promise.resolve({ ok: true, json: async () => ROUTE_B }));
+    const realNow = w.Date.now; let vnow = realNow();
+    w.Date.now = () => vnow;
+    for (let i = 0; i < 4; i++) { w.__watch({ coords: { latitude: 37.3935 + 0.00001 * i, longitude: 126.9520, accuracy: 5 } }); vnow += 5000; }
+    w.Date.now = realNow;
+    await sleep(50);
+    return { w, $, N, hold };
+  };
+  const showsB = (N, label) => {
+    assert.match(N().steps[0].instruction, /둘째 전시관 방향/, label + ": B 경로가 아님");
+    assert.equal(N().tripDest().poi_id, "T2", label + ": 도착지가 B 가 아님");
+  };
+  const lateA = async (hold) => { if (hold.release) hold.release(); await sleep(150); };
+
+  // (가) 안내를 끝내고 다른 도착지 B 의 경로를 요청
+  {
+    const { w, $, N, hold } = await prepare();
+    check("(준비·가) 이탈 재탐색 응답 대기 중", () => { assert.ok(hold.release, "재탐색 요청이 나가지 않음"); assert.equal(N().rerouting(), true); });
+    w.history.back(); await sleep(60);
+    $("naviEndConfirmBtn").click(); await sleep(60);
+    check("안내를 끝내면 재탐색 대기 상태·'찾는 중' 표시가 풀린다", () => {
+      assert.equal(N().rerouting(), false); assert.ok(!$("naviStatus").classList.contains("navi-status--busy"));
+    });
+    await N().requestRoute(SPOT_B); await sleep(50);
+    check("안내를 끝낸 뒤 고른 B 는 경로만 표시하고 안내를 자동으로 시작하지 않는다", () => { showsB(N, "끝내기 뒤"); assert.equal(w.NAVI.isBusy(), false, "누르지 않은 안내가 시작됨"); });
+    N().startGuidance(); await sleep(30);   // 이용자가 B 안내를 직접 시작
+    await lateA(hold);
+    check("늦게 온 A 재탐색 응답이 시작한 B 안내를 덮어쓰지 않는다(안내 끝내기 뒤)", () => {
+      showsB(N, "늦은 응답 뒤"); assert.equal(w.NAVI.isBusy(), true, "B 안내가 멈춤");
+      assert.match(w.document.querySelector(".step-now").textContent, /둘째 전시관 방향/);
+    });
+    w.close();
+  }
+  // (나) 도착 처리 뒤 다음 도착지 B 를 고름
+  {
+    const { w, $, N, hold } = await prepare();
+    for (const k of [1, 7, 8]) { N().stopSpeak(); w.__watch({ coords: { latitude: P(k)[0], longitude: P(k)[1], accuracy: 5 } }); await sleep(40); }
+    check("(준비·나) 재탐색 응답 대기 중에 도착 처리됨", () => { assert.ok(hold.release, "재탐색 요청이 나가지 않음"); assert.equal(N().stepIdx, 3); assert.equal(w.NAVI.isBusy(), false); });
+    check("도착하면 재탐색 대기 상태·'찾는 중' 표시가 풀린다", () => {
+      assert.equal(N().rerouting(), false); assert.ok(!$("naviStatus").classList.contains("navi-status--busy"), "'찾는 중' 표시가 남음");
+    });
+    N().cancelArrivalReset();
+    await N().requestRoute(SPOT_B); await sleep(50);
+    check("도착 뒤 고른 B 는 경로만 표시하고 안내를 자동으로 시작하지 않는다", () => { showsB(N, "도착 뒤"); assert.equal(w.NAVI.isBusy(), false, "누르지 않은 안내가 시작됨"); });
+    await lateA(hold);
+    check("늦게 온 A 재탐색 응답이 B 경로를 덮어쓰지 않는다(도착 뒤)", () => { showsB(N, "늦은 응답 뒤"); assert.equal(w.NAVI.isBusy(), false); });
+    w.close();
+  }
+  // (다) 안내 중에 직접 다른 도착지 B 의 경로를 요청
+  {
+    const { w, $, N, hold } = await prepare();
+    await N().requestRoute(SPOT_B); await sleep(50);
+    check("재탐색 대기 중 직접 요청한 B 는 경로만 표시하고 안내를 자동으로 시작하지 않는다", () => {
+      assert.ok(hold.release, "재탐색 요청이 나가지 않음"); showsB(N, "직접 요청"); assert.equal(w.NAVI.isBusy(), false, "누르지 않은 안내가 시작됨");
+      assert.equal(N().rerouting(), false);
+    });
+    await lateA(hold);
+    check("늦게 온 A 재탐색 응답이 B 경로를 덮어쓰지 않는다(직접 요청 뒤)", () => { showsB(N, "늦은 응답 뒤"); assert.equal(w.NAVI.isBusy(), false); });
+    w.close();
+  }
+  // (라) 말로 요청한 경로 B 가 표시됨(ui_action show_route)
+  {
+    const { w, $, N, hold } = await prepare();
+    const RB = JSON.parse(JSON.stringify(ROUTE_B.ui_action.route)); RB.destination = { type: "tour", poi_id: "T2", lat: P(8)[0], lng: P(8)[1] };
+    await w.__sockets[0]._msg({ type: "ui_action", action: "show_route", payload: { action: "show_route", route: RB } });
+    await sleep(50);
+    check("재탐색 대기 중 말로 요청한 B 경로는 표시만 하고 안내를 자동으로 시작하지 않는다", () => {
+      assert.ok(hold.release, "재탐색 요청이 나가지 않음"); showsB(N, "말로 요청"); assert.equal(w.NAVI.isBusy(), false, "누르지 않은 안내가 시작됨");
+      assert.equal(N().rerouting(), false); assert.ok(!$("naviStatus").classList.contains("navi-status--busy"), "'찾는 중' 표시가 남음");
+    });
+    await lateA(hold);
+    check("늦게 온 A 재탐색 응답이 B 경로를 덮어쓰지 않는다(말로 요청한 경로 뒤)", () => { showsB(N, "늦은 응답 뒤"); assert.equal(w.NAVI.isBusy(), false); });
+    w.close();
+  }
+  // (마) 응답이 끝내 오지 않는 재탐색 — 응답 대기 한도를 넘기면 요청을 끊고 기존 경로로 계속 안내한다
+  {
+    const w2 = boot();
+    const $2 = (id) => w2.document.getElementById(id);
+    await sleep(50); w2.document.dispatchEvent(new w2.Event("DOMContentLoaded")); await sleep(200);
+    const N2 = () => w2.NAVI._internals();
+    w2.document.querySelector('[data-go="navi"]').click(); await sleep(80);
+    await w2.__sockets[0]._open(); await sleep(30);
+    w2.__watch({ coords: { latitude: P(0)[0], longitude: P(0)[1], accuracy: 5 } });
+    await N2().requestRoute(SPOT_A); await sleep(30);
+    N2().startGuidance(); await sleep(30);
+    if (N2().setRerouteTimeout) N2().setRerouteTimeout(80);   // 검증용으로 한도를 80ms 로 줄인다
+    let gotSignal = false, aborted = false;
+    // 응답하지 않는 서버 — 중단 신호를 받았을 때만 예외로 끝난다(브라우저 fetch 의 동작과 같다)
+    w2.__planHook = (u, init) => new Promise((res, rej) => {
+      if (init && init.signal) { gotSignal = true; init.signal.addEventListener("abort", () => { aborted = true; rej(new Error("aborted")); }); }
+    });
+    const realNow = w2.Date.now; let vnow = realNow();
+    w2.Date.now = () => vnow;
+    for (let i = 0; i < 4; i++) { w2.__watch({ coords: { latitude: 37.3935 + 0.00001 * i, longitude: 126.9520, accuracy: 5 } }); vnow += 5000; }
+    w2.Date.now = realNow;
+    await sleep(30);
+    check("(준비·마) 재탐색 요청에 중단 신호가 실려 나간다", () => { assert.ok(gotSignal, "signal 없음"); assert.equal(N2().rerouting(), true); });
+    await sleep(300);
+    check("응답 대기 한도를 넘기면 재탐색을 끊고 대기 상태·'찾는 중' 표시를 푼다", () => {
+      assert.ok(aborted, "요청이 중단되지 않음"); assert.equal(N2().rerouting(), false);
+      assert.ok(!$2("naviStatus").classList.contains("navi-status--busy"));
+    });
+    check("응답 대기 한도 초과 — 기존 경로로 안내를 계속하고 실패를 알린다", () => {
+      assert.equal(w2.NAVI.isBusy(), true); assert.equal(N2().steps.length, 4); assert.equal(N2().tripDest().poi_id, "T1");
+      assert.match($2("naviStatus").textContent, /새 경로를 찾지 못해 기존 경로로 계속 안내합니다/);
+    });
+    w2.close();
+  }
+  // (바) 중단 기능(AbortController)이 없는 환경 — 한도 없이 종전대로 재탐색이 동작한다
+  {
+    const w = boot((win) => { try { delete win.AbortController; } catch (e) {} win.AbortController = undefined; });
+    await sleep(50); w.document.dispatchEvent(new w.Event("DOMContentLoaded")); await sleep(200);
+    const N = () => w.NAVI._internals();
+    w.document.querySelector('[data-go="navi"]').click(); await sleep(80);
+    await w.__sockets[0]._open(); await sleep(30);
+    w.__watch({ coords: { latitude: P(0)[0], longitude: P(0)[1], accuracy: 5 } });
+    await N().requestRoute(SPOT_A); await sleep(30);
+    N().startGuidance(); await sleep(30);
+    let inits = [];
+    w.__planHook = async (u, init) => { inits.push(init); return { ok: true, json: async () => ROUTE_A2 }; };
+    const realNow = w.Date.now; let vnow = realNow();
+    w.Date.now = () => vnow;
+    for (let i = 0; i < 4; i++) { w.__watch({ coords: { latitude: 37.3935 + 0.00001 * i, longitude: 126.9520, accuracy: 5 } }); vnow += 5000; }
+    w.Date.now = realNow;
+    await sleep(150);
+    check("중단 기능이 없는 환경에서도 재탐색이 성공하고 안내를 자동으로 잇는다", () => {
+      assert.equal(inits.length, 1); assert.equal(inits[0], undefined, "옵션 없이 요청해야 함");
+      assert.match(N().steps[0].instruction, /다시 찾은 길/); assert.equal(w.NAVI.isBusy(), true); assert.equal(N().rerouting(), false);
+    });
+    w.close();
+  }
+}
+
+// ───────── 13) 경로 복귀 — 이탈·재탐색 실패 경고를 되돌린다 ─────────
+{
+  const w = boot();
+  const $ = (id) => w.document.getElementById(id);
+  await sleep(50); w.document.dispatchEvent(new w.Event("DOMContentLoaded")); await sleep(200);
+  const N = () => w.NAVI._internals();
+  const st = () => $("naviStatus");
+  w.document.querySelector('[data-go="navi"]').click(); await sleep(80);
+  await w.__sockets[0]._open(); await sleep(30);
+  w.__watch({ coords: { latitude: P(0)[0], longitude: P(0)[1], accuracy: 5 } });
+  const realNow = w.Date.now; let vnow = realNow();
+  const offRoute = () => {
+    w.Date.now = () => vnow;
+    for (let i = 0; i < 4; i++) { w.__watch({ coords: { latitude: 37.3935 + 0.00001 * i, longitude: 126.9520, accuracy: 5 } }); vnow += 5000; }
+    w.Date.now = realNow;
+  };
+  const onRoute = () => w.__watch({ coords: { latitude: 37.3904, longitude: 126.9500, accuracy: 5 } });   // 첫 구간 위(출발점에서 약 44m)
+
+  // (가) 재탐색 실패 고지 뒤 경로로 복귀
+  await N().requestRoute({ poi_id: "T1", name: "테스트 박물관" }); await sleep(30);
+  N().startGuidance(); await sleep(30);
+  w.__planHook = async () => ({ ok: true, json: async () => ({ status: "error", message: "경로를 만들지 못했습니다." }) });
+  offRoute(); await sleep(150);
+  check("(준비) 재탐색 실패 경고가 떠 있음", () => { assert.match(st().textContent, /새 경로를 찾지 못해/); assert.ok(st().classList.contains("navi-status--warn")); });
+  onRoute(); await sleep(30);
+  check("경로로 복귀하면 재탐색 실패 경고 색을 풀고 상태 줄을 되돌린다", () => {
+    assert.ok(!st().classList.contains("navi-status--warn"), "경고 색이 남음");
+    assert.match(st().textContent, /안내 경로로 돌아왔습니다/); assert.match(st().textContent, /테스트 박물관 안내를 계속합니다/);
+    assert.equal(w.NAVI.isBusy(), true);
+  });
+  st().textContent = "다른 안내 문구"; onRoute(); await sleep(30);
+  check("복귀 문구는 한 번만 쓴다 — 이어지는 측위가 상태 줄을 덮어쓰지 않는다", () => assert.equal(st().textContent, "다른 안내 문구"));
+
+  // (나) 좌표 목적지(재탐색 불가)의 이탈 경고 뒤 경로로 복귀
+  w.history.back(); await sleep(60);
+  $("naviEndConfirmBtn").click(); await sleep(60);
+  w.__planHook = null;
+  await N().requestRoute({ poi_id: "", name: "지도에서 지정한 지점", lat: P(8)[0], lng: P(8)[1], kind: "coord" }); await sleep(30);
+  N().startGuidance(); await sleep(30);
+  vnow += 200000; offRoute(); await sleep(50);
+  check("(준비) 좌표 목적지 이탈 경고가 떠 있음", () => { assert.match(st().textContent, /안내 경로에서 벗어났습니다\. 경로 방향으로 이동해 주세요/); assert.ok(st().classList.contains("navi-status--warn")); });
+  onRoute(); await sleep(30);
+  check("경로로 복귀하면 이탈 경고 색을 풀고 상태 줄을 되돌린다(좌표 목적지)", () => {
+    assert.ok(!st().classList.contains("navi-status--warn"), "경고 색이 남음"); assert.match(st().textContent, /안내 경로로 돌아왔습니다/);
+  });
+  // 경고가 그 사이 다른 안내로 바뀌었으면 복귀 때 그 안내를 덮지 않는다
+  vnow += 200000; offRoute(); await sleep(50);
+  st().textContent = "다른 경고 문구"; onRoute(); await sleep(30);
+  check("이탈 경고가 다른 안내로 바뀐 뒤의 복귀는 그 안내를 덮지 않는다", () => assert.equal(st().textContent, "다른 경고 문구"));
   w.close();
 }
 

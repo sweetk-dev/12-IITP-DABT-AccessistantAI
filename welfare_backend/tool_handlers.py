@@ -1720,9 +1720,23 @@ def _arrival_line(it: dict) -> dict:
 
 
 def _bus_no(text) -> str:
-    """버스 번호 비교용 정규화 — 공백·'번'·'버스'를 떼고 대문자로 ('51번 버스' → '51')."""
+    """버스 번호 비교용 정규화 — 번호 부분만 남기고 대문자로 ('51번 버스' → '51').
+
+    인자: text — 이용자가 말한 번호 표현 또는 도착정보의 노선 이름(None 허용).
+    반환: 공백과 "마을버스"·"버스"·"번"·노선 유형어(일반·광역·좌석·직행·시내·저상)를 뗀 대문자 문자열. 남는 것이 없으면 "".
+
+    뗄 말을 끝에서만 찾으면 말의 순서에 따라 번호가 남지 않는다:
+      "5번 마을버스" → "5번마을",  "마을버스 5" → "마을버스5"
+    둘 다 도착정보의 노선 이름 "5" 와 일치하지 않아, 정류장에 있는 노선을 없다고 답하게 된다.
+    그래서 위치와 무관하게 뗀다. 긴 말("마을버스")을 먼저 떼야 "마을"이 남지 않는다.
+    번호 자체는 건드리지 않는다 — "5-1"·"M5333" 의 '-' 와 영문자는 노선을 가르는 부분이고,
+    비교는 호출부에서 완전 일치로만 하므로 "5" 가 "51"·"5-1" 에 걸리지 않는다.
+    """
     s = re.sub(r"\s+", "", str(text or ""))
-    s = re.sub(r"(번)?(버스)?$", "", s)
+    s = re.sub(r"마을버스|버스|번", "", s)
+    # 노선 유형을 붙여 말한 경우("일반 51번", "광역버스 3330") — 유형어는 번호가 아니므로 뗀다.
+    # 도착정보의 노선 이름에는 유형어가 없어(숫자·영문자·'-' 뿐) 이 치환이 번호를 깎지 않는다.
+    s = re.sub(r"마을|일반|광역|좌석|직행|시내|저상", "", s)
     return s.upper()
 
 
@@ -1815,27 +1829,53 @@ async def tool_get_bus_arrivals(station_id: str = "", route_id: str = "", place:
         base_label = "%s 정류장%s" % (stop.get("name"),
                                    "(%s)" % stop["mobile_no"] if stop.get("mobile_no") else "")
 
-    data = await route_client.bus_arrivals(station_id, route_id=route_id or "")
-    if isinstance(data, dict) and data.get("status") == "error":
-        return data
-    if data.get("status") != "success":
+    def _unavailable(d: dict) -> dict:
+        # 경로 서비스가 도착정보를 주지 못한 경우의 응답(첫 조회·정류장 전체 재조회 공통)
         return {
             "status": "unavailable",
             "tool_name": "get_bus_arrivals",
             "station_id": station_id,
             "base_label": base_label,
-            "reason": data.get("reason"),
+            "reason": d.get("reason"),
             "ai_instruction": (
                 "지금은 실시간 도착정보를 받아오지 못했다고 짧게 알리고, 정류장 안내판이나 "
                 "잠시 뒤 다시 물어봐 달라고 안내하세요. 저상 여부를 추측하지 마세요."
             ),
         }
+
+    data = await route_client.bus_arrivals(station_id, route_id=route_id or "")
+    if isinstance(data, dict) and data.get("status") == "error":
+        return data
+    if data.get("status") != "success":
+        return _unavailable(data)
     items = [_arrival_line(it) for it in (data.get("items") or [])]
     nlf = data.get("next_low_floor")
     nlf_brief = _brief_low_floor(nlf) if nlf else None
     # 이용자가 물은 노선 번호로 거른다(없으면 그대로). matched: None=거르지 않음
     route_name = str(route_name or "").strip()
     items, matched = _filter_arrivals_by_route_name(items, route_name)
+    if matched is False and route_id:
+        # route_id 로 좁힌 조회에서 물은 번호가 나오지 않은 경우 — 정류장 전체를 다시 조회한다.
+        #   상황: 버스 구간 안내 중에는 세션이 승차 정류장(station_id)과 안내 노선(route_id)을
+        #         함께 넣는다. 이때 이용자가 다른 번호를 물으면(9-3번 승차 안내 중 "51번 언제 와?")
+        #         경로 서비스는 route_id 노선만 돌려주므로 이름 필터가 항상 "일치 없음"이 되고,
+        #         곧 도착하는 51번을 "이 정류장 도착정보에 없다"고 답하게 된다.
+        #   처리: route_id 없이 같은 정류장을 한 번 더 조회해 이름으로 거른다. route_id 와
+        #         route_name 이 같은 노선이면 첫 조회에서 일치하므로 이 분기에 오지 않는다
+        #         (조회 횟수·결과 모두 종전과 같다).
+        #   재조회가 실패하면 "없다"고 말할 근거가 없다 — 물은 노선이 있는지 확인하지 못한
+        #   것이므로 조회 실패 응답을 돌려준다(첫 조회 결과로 "없다"고 답하지 않는다).
+        data = await route_client.bus_arrivals(station_id, route_id="")
+        if isinstance(data, dict) and data.get("status") == "error":
+            return data
+        if data.get("status") != "success":
+            return _unavailable(data)
+        # 이 뒤의 결과는 정류장 전체 기준이다 — 응답의 route_id 와 "특정 노선만 조회" 문구를 뺀다
+        route_id = ""
+        items = [_arrival_line(it) for it in (data.get("items") or [])]
+        nlf = data.get("next_low_floor")
+        nlf_brief = _brief_low_floor(nlf) if nlf else None
+        items, matched = _filter_arrivals_by_route_name(items, route_name)
     if matched:
         # 거른 뒤의 저상 차량은 그 노선 안에서 다시 고른다(전체 기준 값은 다른 노선일 수 있다)
         nlf_brief = _low_floor_from_lines(items)
@@ -2206,7 +2246,8 @@ async def run_tool(dispatcher: dict, name: str, fargs: dict, log_prefix: str = "
       - 핸들러가 받지 않는 인자는 버리고, 버린 이름을 경고 로그에 남긴다(값은 남기지 않는다)
       - tool_timeout_sec(name) 안에 끝나지 않으면 취소하고 status="error" 응답을 돌려준다.
         상한이 없으면 외부 호출이 멈췄을 때 모델·이용자가 끝없이 기다린다
-      - 그 밖의 예외 → {"error": 예외 문구}
+      - 그 밖의 예외 → {"error": 예외 문구}. 핸들러 안에서 난 TimeoutError(외부 호출의
+        자체 시간 초과 등)도 여기에 든다 — 실행 상한 초과와 구분해 기록한다
     """
     handler = dispatcher.get(name) if isinstance(dispatcher, dict) else None
     if handler is None:
@@ -2215,11 +2256,25 @@ async def run_tool(dispatcher: dict, name: str, fargs: dict, log_prefix: str = "
     if dropped:
         logger.warning("%s도구 %s — 핸들러가 받지 않는 인자를 버림: %s", log_prefix, name, dropped)
     sec = tool_timeout_sec(name)
+    # 실행 상한은 asyncio.timeout 컨텍스트로 건다(wait_for 와 같이 상한에서 핸들러를 취소한다).
+    # asyncio.TimeoutError 는 내장 TimeoutError 와 같은 클래스라, except 절만으로는
+    # "상한을 넘겨 취소됨"과 "핸들러 안에서 TimeoutError 가 올라옴"을 가를 수 없다.
+    # 둘을 한데 묶으면 0.1초 만에 실패한 호출도 "N초를 넘겨 중단"으로 기록되어 로그가 사실과
+    # 다르다. 컨텍스트의 expired() 는 상한이 실제로 지나 취소했을 때만 True 다.
+    deadline = asyncio.timeout(sec)
     try:
-        return await asyncio.wait_for(handler(**kwargs), timeout=sec)
-    except asyncio.TimeoutError:
-        logger.warning("%s도구 %s 실행이 %g초를 넘겨 중단", log_prefix, name, sec)
-        return _tool_timeout_result(name, sec)
+        async with deadline:
+            return await handler(**kwargs)
+    except TimeoutError as e:
+        if deadline.expired():
+            logger.warning("%s도구 %s 실행이 %g초를 넘겨 중단", log_prefix, name, sec)
+            return _tool_timeout_result(name, sec)
+        # 상한 안에 핸들러가 스스로 올린 TimeoutError — 다른 예외와 같은 형식으로 돌려준다.
+        # TimeoutError 는 문구 없이 올라오는 일이 많아, 빈 문자열이면 예외 이름을 싣는다
+        # (error 값이 비면 호출부가 실패로 읽지 못한다).
+        logger.exception("%s도구 실행 실패 %s (핸들러 내부 시간 초과, 실행 상한 %g초 이전): %s",
+                         log_prefix, name, sec, e)
+        return {"error": str(e) or type(e).__name__}
     except Exception as e:
         logger.exception("%s도구 실행 실패 %s: %s", log_prefix, name, e)
         return {"error": str(e)}
