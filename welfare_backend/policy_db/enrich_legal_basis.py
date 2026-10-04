@@ -26,7 +26,7 @@ enrich_legal_basis.py — 정책 데이터 legal_basis 표준 매핑(법령ID) �
 이력: 2026-07-30 — target=law 검색 XML 의 아이템 태그가 <법령> 이 아니라 <law> 임을
       실측으로 확인해 수정(admrul/ordin 은 기존 태그 유지). 미수정 시 법령 전건 not_found.
 """
-import argparse, json, glob, os, re, sys, time, datetime
+import argparse, json, glob, os, re, time, datetime
 from collections import Counter, OrderedDict
 
 # ── 1. 표기 정제 ────────────────────────────────────────────────
@@ -152,7 +152,6 @@ STD_FIELDS = ("law_id", "law_serial_no", "law_ref_type",
 def enrich(items_dir, oc=None, apply=False, report_path=None):
     files = sorted(glob.glob(os.path.join(items_dir, "B*.json")))
     dist_names = OrderedDict()   # normalized_name -> {target, raws:set}
-    rows = []
     tcount = Counter()
     for fp in files:
         with open(fp, encoding="utf-8") as f:

@@ -346,7 +346,8 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
 }
 
 // ───────── 소스 가드 ─────────
-check("화면 사이 탭은 감춘다", () => assert.match(HTML, /\.modebar\{display:none !important;\}/));
+// 정책상담·이동경로 안내는 따로 여는 제품이라 화면 사이를 오가는 탭(마크업·스타일·핸들러)을 두지 않는다
+check("화면 사이 탭은 두지 않는다", () => assert.doesNotMatch(HTML, /modebar|id="bar(Chat|Navi)C?"/));
 check("멈춘 동안 마이크 프레임을 보내지 않는다", () => assert.match(HTML, /if \(micHold\) return;/));
 check("멈춘 동안 온 음성은 내지 않는다", () => assert.match(HTML, /if \(micHold\) break;/));
 

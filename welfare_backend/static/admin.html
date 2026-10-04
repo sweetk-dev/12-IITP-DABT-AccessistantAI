@@ -672,7 +672,7 @@ async function runOp(name){
   }catch(e){ alert("오류: "+e); }
 }
 const UAPI="/admin/api/unresolved";
-let uOffset=0, uReasonsLoaded=false, uReflectedCounts=null;
+let uReasonsLoaded=false, uReflectedCounts=null;
 const UPAGE=100; let uPage=0, uTotal=0;
 async function loadUnresolved(reset){
   if(reset){ uPage=0; }

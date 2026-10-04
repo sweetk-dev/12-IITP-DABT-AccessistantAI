@@ -245,8 +245,7 @@ def _read_prev_chunks(snapshot_dir: Path) -> list:
     if not f.exists():
         return []
     try:
-        import json as _json
-        return _json.loads(f.read_text(encoding="utf-8"))
+        return json.loads(f.read_text(encoding="utf-8"))
     except Exception:
         return []
 

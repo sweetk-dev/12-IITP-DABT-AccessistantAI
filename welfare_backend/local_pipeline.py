@@ -27,13 +27,11 @@ import base64
 import json
 import logging
 import os
-import struct
 import threading
 from typing import Callable, Optional
 
 import numpy as np
 from fastapi import WebSocket, WebSocketDisconnect
-from starlette.websockets import WebSocketState
 
 import trial_recorder
 
@@ -491,8 +489,8 @@ class LocalVoiceSession:
         self.ws = websocket
         self.session_mode = session_mode      # "navi" 면 이동경로 안내 세션 (v2.0.0)
         self.dispatcher = dispatcher
-        self.embed_fn = embed_fn
-        self.system_instruction = system_instruction
+        # embed_fn·system_instruction 은 받기만 하고 쓰지 않는다 — 호출부와 인자 형식을 맞추기 위해
+        # 시그니처에 남겨 둔 것이다. 프롬프트는 아래의 로컬 전용 프롬프트(LOCAL_SYSTEM_PROMPT)를 쓴다.
         self.tracker_factory = tracker_factory
         self.session_id = session_id
         self.extract_sources = extract_sources
@@ -514,7 +512,6 @@ class LocalVoiceSession:
         # 앞 턴이 처리 중이면 끝난 발화가 버퍼에서 기다린다 — 그동안 무음 구간 자르기를
         # 하면 기다리던 발화가 잘려 나가므로, 이 값이 True 인 동안은 자르지 않는다.
         self._speech_pending = False
-        self._closed = False
 
     async def _send(self, payload: dict) -> bool:
         _tr = trial_recorder.of(self.ws)            # 실증 참여자 계정 기록(#318)
@@ -725,5 +722,3 @@ class LocalVoiceSession:
             logger.info("[로컬] 클라이언트 WebSocket 종료")
         except Exception as e:
             logger.exception("[로컬] 세션 오류: %s", e)
-        finally:
-            self._closed = True

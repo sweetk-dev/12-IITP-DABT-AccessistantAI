@@ -203,7 +203,6 @@ const $ = (id) => window.document.getElementById(id);
 // 1) 진입점 노출
 check("기능 플래그 ON -> '이동·관광' 모드 버튼 노출", () => {
   assert.equal($("modeNaviBtn").style.display, "");
-  assert.equal($("chatModebar").style.display, "");
 });
 
 // 위치 확보
@@ -990,8 +989,7 @@ check("손잡이 터치 영역이 앱 최소 기준(--tap-min)을 따른다", ()
   assert.doesNotMatch(HTML, /\.sheet\.collapsed\{max-height:38px/);
 });
 
-check("하단 탭바는 세로 공간이 부족해도 줄어들지 않는다(flex:none)", () => {
-  assert.match(HTML, /\.modebar\{flex:none;/);
+check("상단바는 세로 공간이 부족해도 줄어들지 않는다(flex:none)", () => {
   assert.match(HTML, /#view-navi>\.appbar\{flex:none;\}/);
 });
 

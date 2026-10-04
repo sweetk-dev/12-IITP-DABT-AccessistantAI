@@ -328,15 +328,6 @@ class TurnTracker:
     # 이 turn 이 끝난 시점에 길안내가 진행 중이었는지 (live_bridge 가 세팅).
     guiding: bool = False
 
-    def reset(self) -> None:
-        """다음 turn 을 위해 상태 초기화."""
-        self.user_text_parts.clear()
-        self.ai_text_parts.clear()
-        self.tool_steps.clear()
-        self.grounding_info = None
-        self.asr_raw_parts.clear()
-        self.guiding = False
-
     # ─ 이벤트 hook ─────────────────────────────────────────
     def on_user_transcript(self, text: Optional[str], raw: Any = None) -> None:
         if text:
