@@ -139,11 +139,17 @@ def t_restaurants_place_resolved():
     orig_p = tool_handlers._resolve_place
     tool_handlers._resolve_place = place
     orig = _patch("food_nearby", fake)
+    # 기준 장소는 서비스 범위 판정을 거친다 — 범위(bbox)를 "모름"으로 고정해 경로 서비스를
+    # 실제로 부르지 않게 한다(범위를 모르면 '밖'으로 단정하지 않는다).
+    saved_bbox = dict(tool_handlers._SERVICE_BBOX)
+    tool_handlers._SERVICE_BBOX.update({"value": None, "checked": True})
     try:
         r = _run(tool_handlers.tool_find_accessible_restaurants(place="안양역", lat=1.0, lng=2.0))
     finally:
         route_client.food_nearby = orig
         tool_handlers._resolve_place = orig_p
+        tool_handlers._SERVICE_BBOX.clear()
+        tool_handlers._SERVICE_BBOX.update(saved_bbox)
     assert seen == [(37.40, 126.92)] and r["base_label"] == "안양역"
 
 

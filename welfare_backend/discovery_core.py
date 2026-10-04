@@ -251,7 +251,9 @@ def _parse_json(raw):
 
 def _existing_titles():
     out = []
-    for f in glob.glob(str(_ITEMS / "B0*.json")):
+    # 'B + 숫자' 로 시작하는 항목 전체 — "B0*" 로 두면 B100 이상이 기존 정책 목록에서 빠져
+    # 이미 있는 주제가 '신규'로 분류된다.
+    for f in glob.glob(str(_ITEMS / "B[0-9]*.json")):
         try:
             d = json.loads(open(f, encoding="utf-8").read())
             out.append((d.get("id"), d.get("title"), d.get("category")))
@@ -295,8 +297,34 @@ def _mark_processed(ids, excluded=False):
     con.commit(); con.close()
 
 
+def _cluster_idx(c, n):
+    """분류 응답 항목 c 의 idx 를 군집 번호(0 ≤ idx < n)로 해석한다. 해석 불가면 None.
+
+    LLM 응답이라 idx 가 문자열("3")로 오거나 범위를 벗어날 수 있다. 음수는 파이썬
+    인덱싱에서 뒤에서부터 세어 엉뚱한 군집을 가리키므로 받지 않는다.
+    """
+    v = c.get("idx") if isinstance(c, dict) else None
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, str) and v.strip().isdigit():
+        v = int(v.strip())
+    if isinstance(v, int) and 0 <= v < n:
+        return v
+    return None
+
+
 def run_discovery():
-    """미답변 질의 → 군집 → 분류 → 신규 후보 초안 저장. 반환: 요약."""
+    """미답변 질의 → 군집 → 분류 → 신규 후보 초안 저장. 반환: 요약.
+
+    '발굴 처리됨' 표시는 결과가 확정된 군집의 질의에만 한다:
+      - 정책 무관으로 판정              → 제외됨(excluded)
+      - 기존 정책이 이미 답함(covered)  → 처리됨
+      - 신규(new) 이고 후보 파일 저장됨 → 처리됨
+      - 보강(gap) 이고 staging 적재됨   → 처리됨
+    그 밖(초안 생성 실패, 보강 실패·추가 내용 없음, 분류 응답에서 빠진 군집, 해석할 수
+    없는 분류)은 표시하지 않아 다음 회차에 다시 대상이 된다. 실패한 군집까지 표시하면
+    그 질의는 후보도 보강 제안도 없이 발굴 대상에서 영구히 빠진다.
+    """
     if not GEMINI_API_KEY:
         return {"error": "GEMINI_API_KEY 없음"}
     try:
@@ -328,16 +356,32 @@ def run_discovery():
     except Exception as e:
         return {"clusters": len(clusters), "candidates": 0, "error": f"분류 실패: {e}"}
 
+    if not isinstance(clf, list):
+        # 배열이 아닌 응답은 군집별 판정으로 쓸 수 없다. 아무 질의도 표시하지 않고 끝낸다.
+        return {"clusters": len(clusters), "candidates": 0, "error": "분류 실패: 응답이 배열이 아님"}
+    # 군집 번호를 해석할 수 있는 항목만 쓴다. 같은 번호가 두 번 오면 먼저 온 것을 쓴다.
+    by_idx = {}
+    for c in clf:
+        k = _cluster_idx(c, len(clusters))
+        if k is not None and k not in by_idx:
+            by_idx[k] = c
+
     enums = _schema_enums()
-    new_cl = [c for c in clf if c.get("policy_related") and c.get("klass") == "new"]
-    gap_cl = [c for c in clf if c.get("policy_related") and c.get("klass") == "gap" and c.get("covered_by")]
+    new_cl = [(k, c) for k, c in by_idx.items() if c.get("policy_related") and c.get("klass") == "new"]
+    gap_cl = [(k, c) for k, c in by_idx.items()
+              if c.get("policy_related") and c.get("klass") == "gap" and c.get("covered_by")]
+    # 결과가 확정된 군집 번호 — 아래 '처리됨' 표시의 유일한 근거.
+    done_idx = set()       # 처리됨(covered / 후보 저장 / 보강 적재)
+    excluded_idx = set()   # 정책 무관으로 판정
+    for k, c in by_idx.items():
+        if not c.get("policy_related"):
+            excluded_idx.add(k)
+        elif c.get("klass") == "covered":
+            done_idx.add(k)
     _CAND_DIR.mkdir(parents=True, exist_ok=True)
     created = []
-    for c in new_cl:
-        try:
-            cl = clusters[c["idx"]]
-        except (KeyError, IndexError):
-            continue
+    for k, c in new_cl:
+        cl = clusters[k]
         topic = c.get("topic", "")
         member_qs = [m["q"] for m in cl["members"]]
         member_ids = [m["id"] for m in cl["members"]]
@@ -371,38 +415,57 @@ def run_discovery():
             draft = _parse_json(_gemini(draft_prompt, grounding=True, model=_model_for("draft")))
         except Exception as e:
             logger.warning("초안 실패(topic=%s): %s", topic, e)
-        if isinstance(draft, dict):
-            draft = _coerce_schema_shapes(draft)
+        if not isinstance(draft, dict) or not draft:
+            # 초안을 얻지 못한 군집은 후보로 저장하지 않고 '처리됨' 표시도 하지 않는다.
+            # 초안 없는 후보를 저장하면서 표시만 하면 그 질의는 승인할 수 없는 후보에 묶인 채
+            # 발굴 대상에서 빠지고, 저장하면서 표시를 안 하면 회차마다 같은 후보가 중복 생성된다.
+            # → 이번 회차는 건너뛰고 다음 회차에 초안 생성을 다시 시도한다.
+            logger.warning("초안 없음 — 후보 저장 생략, 다음 회차 재시도(topic=%s)", topic)
+            continue
+        draft = _coerce_schema_shapes(draft)
         cid = "C" + datetime.now().strftime("%Y%m%d%H%M%S%f")[:18]
         cand = {"candidate_id": cid, "topic": topic, "cluster_queries": member_qs,
                 "query_ids": member_ids, "classification": c, "draft_item": draft, "status": "pending",
                 "created_at": datetime.now().isoformat(timespec="seconds")}
-        (_CAND_DIR / f"{cid}.json").write_text(json.dumps(cand, ensure_ascii=False, indent=2), encoding="utf-8")
+        try:
+            (_CAND_DIR / f"{cid}.json").write_text(json.dumps(cand, ensure_ascii=False, indent=2), encoding="utf-8")
+        except OSError as e:
+            # 후보 파일을 쓰지 못했으면 저장된 것이 없으므로 표시하지 않는다(다음 회차 재시도).
+            logger.warning("후보 저장 실패(topic=%s): %s", topic, e)
+            continue
         created.append(cid)
+        done_idx.add(k)
 
     # 보강(gap): 기존 정책 B0xx 누락 세부를 채워 기존 검토 큐(staging)로 적재(사람 승인 필요)
     gaps = []
-    for c in gap_cl:
-        try:
-            cl = clusters[c["idx"]]
-        except (KeyError, IndexError):
-            continue
+    for k, c in gap_cl:
+        cl = clusters[k]
         try:
             r = _make_gap_staged(c.get("covered_by"), [m["q"] for m in cl["members"]],
                                  [m["id"] for m in cl["members"]],
                                  c.get("gap_detail") or c.get("topic") or "")
             if r.get("ok"):
                 gaps.append({"policy_id": r["policy_id"], "changed": r.get("changed")})
+                done_idx.add(k)
+            else:
+                # ok: False — 응답 없음·파싱 실패·스키마 검증 실패·대상 정책 없음·추가 내용 없음.
+                # staging 에 적재된 것이 없으므로 표시하지 않는다(다음 회차 재시도).
+                logger.info("보강 미적재(pid=%s): %s", c.get("covered_by"), r.get("error"))
         except Exception as e:
             logger.warning("보강 staged 실패(pid=%s): %s", c.get("covered_by"), e)
 
-    # 처리한 질의는 '발굴됨'으로 표시 → 다음 발굴에서 제외(중복 후보 방지)
-    # 이때 정책과 무관하다고 분류된 군집은 '제외됨'으로 따로 표시해 콘솔에서 구분되게 한다.
-    excluded_idx = {c.get("idx") for c in clf if not c.get("policy_related")}
-    excluded_ids, processed_ids = [], []
+    # 결과가 확정된 군집의 질의만 '발굴됨'으로 표시 → 다음 발굴에서 제외(중복 후보 방지).
+    # 정책과 무관하다고 분류된 군집은 '제외됨'으로 따로 표시해 콘솔에서 구분되게 한다.
+    # done_idx·excluded_idx 어디에도 없는 군집(실패·누락)은 표시하지 않고 남겨 둔다.
+    excluded_ids, processed_ids, retry_ids = [], [], []
     for k, cl in enumerate(clusters):
         ids = [m["id"] for m in cl["members"]]
-        (excluded_ids if k in excluded_idx else processed_ids).extend(ids)
+        if k in excluded_idx:
+            excluded_ids.extend(ids)
+        elif k in done_idx:
+            processed_ids.extend(ids)
+        else:
+            retry_ids.extend(ids)
     try:
         _mark_processed(processed_ids, excluded=False)
         _mark_processed(excluded_ids, excluded=True)
@@ -412,11 +475,14 @@ def run_discovery():
     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
     summary = {"date": date.today().isoformat(), "clusters": len(clusters),
                "classified": clf, "new": len(new_cl), "gap": len(gap_cl), "candidates": created,
-               "gaps": gaps, "excluded": len(excluded_ids)}
+               "gaps": gaps, "excluded": len(excluded_ids),
+               # 이번 회차에 결과를 내지 못해 다음 회차에 다시 대상이 되는 질의 수
+               "retry": len(retry_ids)}
     (_REPORT_DIR / f"{date.today().isoformat()}.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     return {"clusters": len(clusters), "new_candidates": len(created), "gap_staged": len(gaps),
-            "processed": len(processed_ids), "excluded": len(excluded_ids)}
+            "processed": len(processed_ids), "excluded": len(excluded_ids),
+            "retry": len(retry_ids)}
 
 
 def list_candidates():
@@ -451,6 +517,45 @@ def candidate_query_index():
             if q not in idx or info.get("status") == "approved":
                 idx[q] = info
     return idx
+
+
+def referenced_query_ids():
+    """발굴 산출물이 근거로 참조 중인 미답변 질의 id 집합을 돌려준다.
+
+    보존기간 파기(scripts/purge_old_queries)가 지우면 안 되는 행을 가려내는 데 쓴다.
+    참조로 보는 것:
+      - 신규 후보 파일(candidates/C*.json)의 query_ids — 상태가 rejected 가 아닌 것.
+        (반려된 후보의 질의는 재분류 대기로 되돌려지므로 더 이상 근거가 아니다.)
+      - 검토 대기 중인 보강 제안(staging/*.disc.json)의 query_ids.
+        (반려 시 이 id 로 원 질의를 재분류 대기로 되돌린다.)
+
+    반환: int id 의 set.
+    실패: 후보·제안 파일을 읽거나 해석하지 못하면 예외(OSError/ValueError)를 그대로 올린다.
+          읽지 못한 파일을 건너뛰면 그 파일이 참조하는 행이 파기 대상에 들어가므로,
+          호출자(파기 스크립트)는 예외 시 파기를 중단한다.
+    """
+    ids = set()
+
+    def _add(values):
+        for v in (values or []):
+            if isinstance(v, bool):
+                continue
+            if isinstance(v, int):
+                ids.add(v)
+            elif isinstance(v, str) and v.strip().isdigit():
+                ids.add(int(v.strip()))
+
+    if _CAND_DIR.is_dir():
+        for f in sorted(_CAND_DIR.glob("C*.json")):
+            d = json.loads(f.read_text(encoding="utf-8"))
+            if isinstance(d, dict) and d.get("status") != "rejected":
+                _add(d.get("query_ids"))
+    if _STAGING_DIR.is_dir():
+        for f in sorted(_STAGING_DIR.glob("*.disc.json")):
+            d = json.loads(f.read_text(encoding="utf-8"))
+            if isinstance(d, dict):
+                _add(d.get("query_ids"))
+    return ids
 
 
 def get_candidate(cid):

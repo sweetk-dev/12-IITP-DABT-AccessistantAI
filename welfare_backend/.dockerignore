@@ -1,0 +1,35 @@
+# Docker 빌드 컨텍스트(welfare_backend/)에서 제외할 경로.
+# Dockerfile 의 `COPY . .` 가 이 디렉터리 전체를 이미지에 넣으므로, 비밀값과
+# 런타임 산출물이 이미지 레이어에 들어가지 않게 한다.
+# 패턴은 컨텍스트 루트 기준이다. 하위 디렉터리까지 걸려면 `**/` 를 붙인다.
+#
+# 제외하지 않는 것(이미지 안에서 실제로 읽음):
+#   policy_db/items/*.json      — 정책 항목(시작 시 데이터 볼륨으로 시드)
+#   policy_db/schema.json       — 항목 스키마
+#   policy_db/crawl_targets.json — 크롤 타겟 기준 파일
+#   static/, scripts/, requirements*.txt, docker-entrypoint.sh
+
+# 환경/시크릿 — 실행 시 환경변수·볼륨으로 주입한다
+.env
+.env.*
+
+# 런타임 로그
+logs/
+
+# Python 캐시
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+
+# 테스트(런타임 미사용)
+tests/
+
+# 크롤러·발굴 런타임 산출물 — 운영에서는 데이터 볼륨(POLICY_DATA_DIR)에 쌓인다.
+# 로컬 실행으로 코드 경로 아래에 생긴 것이 이미지에 섞여 들어가지 않게 한다.
+policy_db/crawler/snapshots/
+policy_db/crawler/staging/
+policy_db/crawler/reports/
+policy_db/crawler/manual_review_state.json
+policy_db/crawl_targets.local.json
+policy_db/discovery/
+policy_db/items/.backups/

@@ -891,6 +891,9 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     const had = turnHadAudio;
     turnHadAudio = false;                 // 다음 턴 위해 초기화
     if (had === true) return;             // 서버 음성 있었음 → 브라우저 TTS 불필요
+    // 멈춤(앱 넘김·통화) 중에는 기기 내장 음성으로도 읽지 않는다 — 통화 상대에게 답변이 들리거나
+    // 넘어간 앱의 안내 음성과 겹친다. 답변 글은 말풍선에 남아 있으므로 돌아와서 읽을 수 있다.
+    if (micHold) return;
     if (textOnly === true) return;        // 텍스트 전용 모드 → 음성 미출력
     const t = (text || "").trim();
     if (t === "") return;
@@ -1012,7 +1015,15 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   // 조용한 재연결 (v1.59.0) — 이용자가 끝낸 것이 아니면 화면·마이크·안내를 그대로 둔 채 뒤에서 다시 붙는다
   let wsSid = null, wsVoice = null, wsReconnecting = false, wsConnecting = false, wsRetry = 0, wsRetryTimer = null, wsNoReconnect = false;
   let wsGen = 0;   // 세션 세대 — 연결 준비(비동기) 중에 세션이 끝났으면 뒤늦게 소켓을 열지 않는다
-  let wakeLock = null, micForceUntil = 0, micHeadset = false;
+  // 이 세션의 소켓이 한 번이라도 열렸는가. 첫 소켓이 열리기도 전에 닫히면(기지국 전환·서버 재시작 직후 등)
+  // 재시도는 "조용한 재연결"이 아니라 "첫 연결"이다 — 컨트롤 활성화·'상담 시작'·인사말이 아직 없었기 때문이다.
+  // finishSession 에서 false 로 되돌린다.
+  let wsEverOpened = false;
+  // 첫 연결에 붙이려던 '인사말 생략(greet=0)' 요청. window.__skipGreeting 은 한 번 읽으면 지워지므로,
+  // 첫 소켓이 열리기 전의 재시도에도 같은 요청이 실리도록 연결이 성립할 때까지 보관한다.
+  let wsSkipGreet = false;
+  // wakeWanted: 화면 켜짐 유지가 필요한 상태인가(세션 중). wakePending: 요청이 진행 중인가(중복 요청 방지)
+  let wakeLock = null, wakeWanted = false, wakePending = false, micForceUntil = 0, micHeadset = false;
   // 멈춤 사유("handoff"|"call") — 하나라도 걸려 있으면 듣지도 말하지도 않는다. 사유마다 따로 걸고 푼다 (v2.0.0)
   const holds = new Set();
   let micHold = "", holdWentHidden = false, holdTimer = null, handoffAt = 0;
@@ -1068,10 +1079,13 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     aiRecvBytes = 0;
     wsVoice = voice;
     if (!wsSid) wsSid = "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-    const resumeQ = "&sid=" + wsSid + (wsReconnecting ? "&resume=1" : "");
+    // resume=1 은 서버에 "이어받기(인사말 생략)"를 뜻한다 — 한 번이라도 열렸던 세션의 재연결에만 붙인다.
+    // 첫 소켓이 열리기 전에 닫혀 다시 시도하는 경우에는 이어받을 것이 없으므로 첫 연결과 같은 주소를 쓴다.
+    const resumeQ = "&sid=" + wsSid + ((wsReconnecting && wsEverOpened) ? "&resume=1" : "");
     // 화면이 곧바로 경로 안내를 시작하는 경우(이어서 안내·넘겨받은 목적지)에는 인사말을 받지 않는다 —
     // 인사말과 경로 안내 음성이 겹쳐 나왔다 (v2.0.1)
-    const greetQ = window.__skipGreeting ? "&greet=0" : "";
+    if (window.__skipGreeting) wsSkipGreet = true;
+    const greetQ = wsSkipGreet ? "&greet=0" : "";
     window.__skipGreeting = false;
     const url = `${wsBaseUrl()}?voice=${encodeURIComponent(voice)}${window.__sessionMode ? "&mode=" + encodeURIComponent(window.__sessionMode) : ""}${trialQ}${resumeQ}${greetQ}`;
     try { ws = new WebSocket(url); } finally { wsConnecting = false; }
@@ -1079,11 +1093,17 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     ws.onopen = async () => {
       if (window.NAVI) window.NAVI.attachWs(ws);   // 현재 위치를 세션에 전달(경로 도구 출발지)
       keepAwake();
-      if (wsReconnecting) {   // 조용한 재연결 — 인사말·말풍선 없이 이어 간다 (v1.59.0)
+      // 조용한 재연결 — 인사말·말풍선 없이 이어 간다 (v1.59.0).
+      // 단, 이 세션이 한 번도 열린 적이 없으면(첫 소켓이 열리기 전에 닫혀 재시도한 경우) 아래의 일반 경로로 간다.
+      // 그 경우까지 여기서 돌아가면 컨트롤·입력창이 꺼진 채로 남아 화면이 멈춘 것처럼 보인다.
+      if (wsReconnecting && wsEverOpened) {
         wsReconnecting = false; wsRetry = 0;
         if (!micStream && !textOnly) { try { await startMic(); } catch (err) {} }
         return;
       }
+      // 첫 연결 성립 — 재시도 끝에 열린 경우를 위해 재연결 상태도 함께 푼다
+      wsEverOpened = true; wsSkipGreet = false;
+      wsReconnecting = false; wsRetry = 0;
       $("controls").classList.add("active");
       $("textInput").disabled = false;
       $("sendTextBtn").disabled = false;
@@ -1113,8 +1133,11 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           // 서버(상담원) 음성이 오면 기기 내장 음성은 즉시 멈춘다 — 중첩 재생 방지 (#217)
           if (ttsSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking)) stopLocalTts();
           micForceUntil = 0;   // 답변 음성이 시작되면 차단을 되살린다 (v1.59.0)
+          // 서버 음성이 "왔다"는 사실은 멈춤 여부와 무관하게 먼저 기록한다. 멈춤 때문에 재생을 건너뛴 턴을
+          // turn_complete 가 "서버 음성이 없던 턴"으로 보면 기기 내장 음성이 답변 전체를 읽는다.
+          turnHadAudio = true;
           if (micHold) break;   // 멈춘 동안 온 음성은 내지 않는다 (v2.0.0)
-          turnHadAudio = true; await playAudioChunk(msg.data, msg.mime_type); break;
+          await playAudioChunk(msg.data, msg.mime_type); break;
         case "tool_call":
           // 도구 호출 칩은 사용자에게 비노출. 길안내 화면에는 '찾는 중' 표시만 켠다 (v2.0.1)
           try { if (window.NAVI && window.NAVI.onToolCall) window.NAVI.onToolCall(msg.name); } catch (e) {}
@@ -1147,7 +1170,10 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           addBubble("sys", `⏱ ${msg.message || "응답이 없어 상담이 자동 종료됩니다."}`);
           break;
         case "error":
-          wsNoReconnect = true;
+          // 서버가 세션을 유지한 채 보내는 오류에는 "fatal": false 가 붙는다 — 이때는 재연결을 끄지 않는다.
+          // 끄면 이후 연결이 끊겼을 때 다시 붙지 못하고 세션이 끝난다.
+          // fatal 필드가 없거나 true 면 종전처럼 세션을 끝내는 오류로 본다(구버전 서버 호환).
+          if (msg.fatal !== false) wsNoReconnect = true;
           addBubble("err", "⚠ " + msg.message);
           break;
       }
@@ -1183,6 +1209,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     if (wsRetryTimer) { clearTimeout(wsRetryTimer); wsRetryTimer = null; }
     wsGen++;
     wsReconnecting = false; wsRetry = 0; wsNoReconnect = false; wsSid = null; micForceUntil = 0;
+    wsEverOpened = false; wsSkipGreet = false;   // 다음 세션은 다시 '첫 연결'부터
     holds.clear(); syncHold(); holdWentHidden = false; handoffAt = 0; clearTimeout(holdTimer);
     if (lost || (e && e.code && e.code !== 1000 && !e.wasClean)) {
       addBubble("err", `⚠ 연결이 끊어져 다시 이어 붙이지 못했습니다${e && e.reason ? ` (${e.reason})` : ""}. 상담원을 다시 선택하면 이어서 상담할 수 있습니다.`);
@@ -1239,10 +1266,26 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     if (why === "handoff") { holdWentHidden = false; clearTimeout(holdTimer); }
   };
   // 상담·안내 중에는 화면이 꺼지지 않게 한다 (v1.59.0) — 화면이 꺼지면 브라우저가 위치·연결을 멈춘다
+  // keepAwake(): 화면 켜짐 유지(WakeLock)를 요청한다. 반환값 없음. 지원하지 않거나 거부되면 조용히 넘어간다.
+  //  - 재연결(onopen)·화면 복귀(visibilitychange)마다 불린다. 매번 새로 요청해 변수만 덮어쓰면 앞서 받은 것은
+  //    놓을 방법이 없어져 세션이 끝난 뒤에도 화면이 꺼지지 않는다. → 살아 있는 것이 있으면 다시 요청하지 않는다.
+  //  - 화면이 가려지면 브라우저가 스스로 해제한다(released=true). 그때는 다음 호출에서 새로 받는다.
+  //  - 요청은 비동기라 겹쳐 불릴 수 있다(wakePending 으로 한 번만), 기다리는 사이 세션이 끝났으면
+  //    (wakeWanted=false) 방금 받은 것을 바로 놓는다.
   const keepAwake = async () => {
-    try { if (navigator.wakeLock && document.visibilityState === "visible") wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
+    wakeWanted = true;
+    if (wakePending) return;
+    if (wakeLock && !wakeLock.released) return;
+    if (!navigator.wakeLock || document.visibilityState !== "visible") return;
+    wakePending = true;
+    try {
+      const got = await navigator.wakeLock.request("screen");
+      if (wakeWanted) wakeLock = got;
+      else { try { got.release(); } catch (e) {} }
+    } catch (e) {} finally { wakePending = false; }
   };
-  const releaseAwake = () => { try { if (wakeLock) wakeLock.release(); } catch (e) {} wakeLock = null; };
+  // releaseAwake(): 세션 종료 때 화면 켜짐 유지를 놓는다. 진행 중인 요청이 뒤늦게 끝나도 keepAwake 가 바로 놓는다.
+  const releaseAwake = () => { wakeWanted = false; try { if (wakeLock) wakeLock.release(); } catch (e) {} wakeLock = null; };
   // '지금 말하기' — 누르면 8초 동안 마이크 차단을 풀고 나오던 음성을 멈춘다 (v1.59.0)
   const openMicNow = () => {
     micForceUntil = Date.now() + 8000;
@@ -1262,7 +1305,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       try { if (window.NAVI && window.NAVI.onAudioFocus) window.NAVI.onAudioFocus(!!gain); } catch (e) {}
     },
   };
-  window.__CHAT._net = () => ({ sid: wsSid, reconnecting: wsReconnecting, retry: wsRetry, open: !!ws, headset: micHeadset, forced: Date.now() < micForceUntil });
+  window.__CHAT._net = () => ({ sid: wsSid, reconnecting: wsReconnecting, retry: wsRetry, open: !!ws, headset: micHeadset, forced: Date.now() < micForceUntil, everOpened: wsEverOpened, noReconnect: wsNoReconnect });
 
   // ────── 마이크 (AudioWorklet) ──────
   // v1.45.0 — 실기기(2026-09-03 오후)에서 안내 중 질문이 전혀 인식되지 않았다. 0.035 를 6청크 **연속**으로 요구하면
@@ -1738,6 +1781,7 @@ window.NAVI = (function(){
   var originOverride=null;      // 지도에서 직접 지정한 출발지 (서비스 지역 밖일 때 사용)
   var originMarker=null;
   var outOfArea=false;
+  var inAreaFixSeen=false;   // 서비스 지역 안 측위를 한 번이라도 받았는가 — '현재 위치를 확인했습니다'는 처음 한 번만 알린다
 
   // 실제 출발지 — 직접 지정한 곳이 있으면 그것이 우선한다(현재 위치가 안양 밖일 수 있으므로)
   function activeOrigin(){ return originOverride || here; }
@@ -2301,9 +2345,15 @@ window.NAVI = (function(){
           if(first) recenter();
         }
       } else {
-        outOfArea = false;
-        setStatusWarn(false);
-        if(!originOverride) status("현재 위치를 확인했습니다.");
+        // 문구·경고 해제는 "첫 측위 성공"과 "범위 밖 → 안"으로 바뀐 순간에만 한다.
+        // 측위는 몇 초마다 들어온다. 그때마다 상태 줄을 덮어쓰면 이탈 경고·경로 실패 사유·신고 접수 안내가
+        // 읽기도 전에 사라지고, 상태 줄이 role=status 라 화면낭독기가 같은 문장을 되풀이해 읽을 수 있다.
+        var enteredArea = (!inAreaFixSeen || outOfArea === true);
+        outOfArea = false; inAreaFixSeen = true;
+        if(enteredArea){
+          setStatusWarn(false);
+          if(!originOverride) status("현재 위치를 확인했습니다.");
+        }
         // 첫 측위 — 지도는 지역 기본 중심(시청)에서 시작한다. 위치가 화면을 연 뒤에 잡히면 그대로 시청에
         // 머물러 "위치를 못 잡는다"로 보인다. 지도를 끌지 않았고 경로도 없을 때 한 번만 내 위치로 옮긴다 (v2.0.1)
         var _naviOn = false; try{ _naviOn = $("view-navi").classList.contains("active"); }catch(e){}
@@ -2316,8 +2366,22 @@ window.NAVI = (function(){
       if(guiding && !simActive){ trackPush(pos.coords); maybeReroute(); }
       // 위치로 역을 나섰다고 본 측위에서는 다음 단계 판정을 쉰다 — 한 번에 두 단계를 건너뛰지 않게 (v1.52.1)
       if(guiding && !simActive){ if(!maybeAutoExit()) advanceStep(); followCamera(); }
-    }, function(){
-      status("위치 권한이 없어 현재 위치를 알 수 없습니다. 권한을 허용해 주세요.");
+    }, function(err){
+      // 위치 오류는 사유가 셋이다(GeolocationPositionError.code). 전부 "권한 없음"으로 말하면
+      // 권한을 이미 허용한 이용자가 설정을 다시 뒤지게 된다.
+      //   1 = 권한 거부            → 권한 허용을 안내한다
+      //   2 = 위치 확인 불가       → 기기 위치 기능(GPS)이 꺼졌거나 신호를 못 받는 경우. 출발지 직접 지정도 안내한다
+      //   3 = 시간 초과(timeout)   → 실내·역 안에서 흔하다. 권한 문제가 아니므로 "찾는 중"으로만 알린다
+      var code = err && err.code;
+      if(code === 3){
+        // 이미 위치를 한 번 잡았다면 마지막 위치로 계속 동작하므로 상태 줄을 건드리지 않는다 —
+        // 시간 초과는 10초마다 되풀이될 수 있어, 매번 쓰면 다른 안내(이탈 경고 등)를 덮는다.
+        if(!here) status("현재 위치를 찾는 중입니다. 실내나 역 안에서는 시간이 걸릴 수 있습니다. 지도를 눌러 출발지를 지정할 수도 있습니다.");
+      } else if(code === 2){
+        status("현재 위치를 확인할 수 없습니다. 기기의 위치 기능이 켜져 있는지 확인하거나 지도를 눌러 출발지를 지정해 주세요.");
+      } else {
+        status("위치 권한이 없어 현재 위치를 알 수 없습니다. 권한을 허용해 주세요.");
+      }
     }, {enableHighAccuracy:true, maximumAge:5000, timeout:10000});
   }
   function sendLocation(){
@@ -2337,6 +2401,15 @@ window.NAVI = (function(){
      현재 위치에서 같은 목적지로 자동 재탐색하고 안내를 이어간다.
      GPS 튐 1~2회는 무시(연속 카운트), 재탐색은 30초에 1번으로 제한. */
   var offRouteCnt = 0, offRouteSince = 0, lastRerouteTs = 0, autoResumeGuide = false;
+  /* 이탈 재탐색 요청의 진행 상태.
+     rerouteStartTs — 요청을 보낸 시각(0 = 진행 중인 요청 없음). 응답을 기다리는 동안 같은 요청을 또 보내지 않는다.
+     rerouteToken   — 요청마다 1씩 늘린다. 늦게 온 이전 요청의 응답이 지금 상태를 바꾸지 못하게 대조한다.
+     REROUTE_STALE_MS — 응답이 끝내 오지 않는 요청을 '진행 중'으로 붙잡아 두는 한도. '찾는 중' 표시의 최대
+                        시간(60초)과 같게 둔다. 이 시간이 지나면 다음 이탈 판정에서 새로 요청할 수 있다. */
+  var rerouteStartTs = 0, rerouteToken = 0, REROUTE_STALE_MS = 60000;
+  var REROUTE_FAIL_MSG = "새 경로를 찾지 못해 기존 경로로 계속 안내합니다.";
+  // 재탐색 실패 뒤 추가로 쉬는 시간 — 쿨다운 30초에 더해 총 90초 뒤에 다시 시도한다(실패 안내의 반복 간격).
+  var REROUTE_FAIL_EXTRA_MS = 60000;
   /* v1.44.0 완화 — 실증(2026-09-03): ① 버스 탑승 중 정류장을 이은 개략선에서 30m 만 벗어나도 계속 알림
      ② 출발지가 보행망 노드로 스냅돼 경로 시작점이 30m 밖이면 안내 시작 1~2초 만에 재탐색(12:14·12:19 각 2초).
      → 45m 를 4회 연속·12초 이상 벗어나야 이탈, 승차 구간(_board 스텝)은 판정 제외,
@@ -2373,6 +2446,8 @@ window.NAVI = (function(){
   }
   function maybeReroute(){
     if(!guiding || simActive || !here) return;
+    // 재탐색 응답을 기다리는 중 — 같은 요청을 겹쳐 보내지 않는다(응답이 없는 요청은 REROUTE_STALE_MS 뒤 포기)
+    if(rerouteStartTs && Date.now() - rerouteStartTs < REROUTE_STALE_MS) return;
     var cur = steps[stepIdx] || {};
     if(/_board$/.test(String(cur.maneuver||""))){ offRouteCnt = 0; offRouteSince = 0; return; }   // 승차 구간 (v1.44.0)
     if(cur.maneuver === "station_start"){ offRouteCnt = 0; offRouteSince = 0; return; }   // 역 안 출발 — 측위 불가(#300)
@@ -2392,13 +2467,32 @@ window.NAVI = (function(){
       return;
     }
     trackUpload("rerouted");             // 이탈 시점까지의 트랙 마감 (분석: 이탈 클러스터 원천)
-    guiding = false; cancelResume(); stopSpeak();
+    // 여기서 안내 상태(guiding)를 내리지 않는다. 요청 전에 내리면 재탐색이 실패했을 때(서버 오류·통신 두절)
+    // 경로선과 스텝이 지워지고 안내가 끝난 상태로 남아, 이동 중인 이용자가 아무 안내도 받지 못한다.
+    // 기존 경로와 안내는 그대로 두고, 새 경로를 받았을 때만 requestRoute 가 교체한다.
     if(inServiceArea(here)) originOverride = null;   // 실제로 이동한 현재 위치가 출발지
     status("안내 경로에서 벗어났습니다. 현재 위치에서 경로를 다시 찾습니다…");
     speak("경로를 벗어나셨어요. 현재 위치에서 다시 안내할게요.");
     autoResumeGuide = true;              // 새 경로가 오면 안내를 자동으로 이어간다
     routeReason = "off_route";
-    requestRoute(tripDest);
+    var token = ++rerouteToken;
+    rerouteStartTs = Date.now();
+    var done = function(){ if(token === rerouteToken) rerouteStartTs = 0; };   // 끝난 요청만 '진행 중'을 푼다
+    requestRoute(tripDest, {reroute: token}).then(done, done);
+  }
+  /* 이탈 재탐색이 실패했을 때 — 기존 경로로 안내를 계속한다는 사실을 상태 줄과 음성으로 알린다.
+     서버가 경로를 만들지 못한 경우와 통신 예외 모두 여기로 온다. 경로선·스텝·안내 상태는 건드리지 않는다.
+     다음 시도는 이탈 판정이 다시 성립하고 실패 시각에서 약 90초(REROUTE_COOLDOWN_MS + REROUTE_FAIL_EXTRA_MS)가 지난 뒤에 나간다. */
+  function rerouteFailed(){
+    autoResumeGuide = false;      // 이번 재탐색용 자동 재개 예약이 다음 수동 경로 요청에 새지 않게
+    // 실패한 뒤에는 다음 재탐색을 평소(30초)보다 늦춘다. 경로 서비스가 계속 응답하지 못하는 동안
+    // 이탈 상태가 이어지면 "경로를 벗어나셨어요"·"새 경로를 찾지 못해…" 안내가 30초마다 되풀이되어
+    // 기존 경로의 구간 안내를 가린다. lastRerouteTs 를 앞으로 밀어 REROUTE_FAIL_EXTRA_MS 만큼 더 쉰다.
+    lastRerouteTs = Date.now() + REROUTE_FAIL_EXTRA_MS;
+    setStatusWarn(true);
+    var msg = REROUTE_FAIL_MSG + " 경로 방향으로 이동해 주세요.";
+    status(msg); speak(msg);
+    if(guiding) scheduleResume(1500);   // 고지가 끝나면 현재 구간 안내 문장으로 돌아온다
   }
 
   /* ── 수집 장치화 (v1.34.0): 주행 트랙 + 접근성 신고 ── */
@@ -3261,12 +3355,20 @@ window.NAVI = (function(){
   }
 
   /* ── 경로 요청·표시 ── */
-  async function requestRoute(spot){
+  /* requestRoute(spot, opts) — 도착지 spot 까지의 경로를 서버에 요청해 화면에 표시한다.
+       spot : {poi_id, name, kind} 또는 {lat, lng, name, kind}
+       opts : {reroute: 토큰} — 안내 중 경로 이탈로 인한 자동 재탐색일 때만 준다(maybeReroute 가 발급).
+              이때는 응답을 기다리는 동안 기존 경로·안내를 유지하고, 새 경로를 받았을 때만 교체한다.
+              실패(서버 오류 응답·통신 예외·출발지 확인 불가)하면 기존 경로로 계속 안내하고 그 사실을 알린다.
+     반환값 없음(Promise). 예외는 밖으로 내보내지 않는다. */
+  async function requestRoute(spot, opts){
+    var rerouteTok = (opts && opts.reroute) || 0;
     cancelTripResume();   // 다른 경로 요청이 시작되면 '이어서 안내' 대기는 버린다 (v1.59.0)
     pickMode = null;   // 경로 요청이 시작되면 선택 모드는 항상 끝난 것 (잔존 방지)
     var prevDest = tripDest;
     tripDest = spot;   // 어떤 경로로 안내가 시작됐든 이 도착지를 기억한다 (#210)
     var o = activeOrigin();
+    if(rerouteTok && (!o || !inServiceArea(o))){ rerouteFailed(); return; }   // 재탐색 출발지를 쓸 수 없다 — 기존 안내 유지
     if(!o){
       status("현재 위치를 확인할 수 없습니다. 위치 권한을 허용하거나 지도를 눌러 출발지를 지정해 주세요.");
       speak("현재 위치를 확인할 수 없습니다. 지도를 눌러 출발지를 지정해 주세요.");
@@ -3312,7 +3414,14 @@ window.NAVI = (function(){
     try{
       var r = await fetch("/api/v1/tools/plan_accessible_route?" + qs.toString());
       var data = await r.json();
+      if(rerouteTok && (rerouteTok !== rerouteToken || !guiding)){
+        // 기다리는 사이 상황이 바뀌었다 — 이용자가 안내를 끝냈거나, 도착했거나, 다른 경로가 표시됐거나,
+        // 더 새로운 재탐색이 나갔다. 늦게 온 이 응답으로 화면을 바꾸지 않는다.
+        if(rerouteTok === rerouteToken){ routeBusy(false); autoResumeGuide = false; }
+        return;
+      }
       routeBusy(false);
+      if(rerouteTok && (data.status !== "success" || !data.ui_action)){ rerouteFailed(); return; }
       if(data.status !== "success" || !data.ui_action){
         // "범위 밖"과 "이름을 못 찾음"은 다른 사유다 — 섞어 말하면 서비스 범위를 오해한다
         var oos = (data.status === "out_of_service_area");
@@ -3342,8 +3451,20 @@ window.NAVI = (function(){
       setStatusWarn(false);
       lastModeUsed = data.mode_used || null;      // 자동 추천이 고른 방식 (#251)
       lastModeLabel = data.mode_label || null;
+      if(rerouteTok){
+        // 새 경로를 받았다 — 이제 기존 안내를 내리고 교체한다(종전에는 요청 전에 내렸다).
+        // showRoute 가 autoResumeGuide 를 보고 새 경로로 안내를 곧바로 이어 시작한다.
+        guiding = false; cancelResume(); stopSpeak();
+      }
       showRoute(data.ui_action.route, spot.name);
-    }catch(e){ routeBusy(false); autoResumeGuide = false; status("경로 서비스에 연결하지 못했습니다."); }
+    }catch(e){
+      if(rerouteTok){
+        // 통신 예외(기지국 전환·터널 등) — 더 새로운 요청이 없고 아직 안내 중이면 기존 경로로 계속 안내한다
+        if(rerouteTok === rerouteToken){ routeBusy(false); if(guiding) rerouteFailed(); else autoResumeGuide = false; }
+        return;
+      }
+      routeBusy(false); autoResumeGuide = false; status("경로 서비스에 연결하지 못했습니다.");
+    }
   }
 
   function modeLabelFromLegs(legs, fallbackMode){
@@ -3586,7 +3707,9 @@ window.NAVI = (function(){
     var sim = document.createElement("button"); sim.type="button"; sim.className="btn outline"; sim.textContent="모의 주행";
     sim.addEventListener("click", startSimulation);
     var back = document.createElement("button"); back.type="button"; back.className="btn outline"; back.textContent="목록으로";
-    back.addEventListener("click", function(){ stopSimulation(); if(routeLine){routeLine.setMap(null); routeLine=null;} renderSpotsPanel(); });
+    // 경로선은 구간(도보·버스·지하철)마다 한 줄씩 그린다(routeLines[]). routeLine 은 그중 첫 줄일 뿐이라
+    // 그것만 지우면 나머지 구간 선이 지도에 남는다 — 전부 지운다.
+    back.addEventListener("click", function(){ stopSimulation(); clearRouteLines(); renderSpotsPanel(); });
     acts.appendChild(go); acts.appendChild(sim); acts.appendChild(back);
     body.appendChild(acts);
     try{ prefetchTts(); }catch(e){}   // 경로를 보는 동안 안내 문장을 미리 합성해 둔다 (v1.43.1)
@@ -3665,11 +3788,16 @@ window.NAVI = (function(){
       status("지도에서 " + regionName() + " 안의 출발지를 눌러 주세요.");
       speak("지도에서 출발지를 눌러 주세요.");
     });
-    var b2=document.createElement("button");
-    b2.type="button"; b2.className="navi-note__btn"; b2.id="naviBackToChat";
-    b2.textContent="정책 상담으로 돌아가기";
-    b2.addEventListener("click", function(){ openChat(); });
-    acts.appendChild(b1); acts.appendChild(b2);
+    acts.appendChild(b1);
+    // 이동경로 안내 제품에는 화면 탭이 없어 상담(채팅) 화면으로 가면 길안내 화면으로 돌아올 방법이 없다.
+    // 이 제품에서는 '정책 상담으로 돌아가기' 버튼을 만들지 않는다.
+    if(!IS_NAVI){
+      var b2=document.createElement("button");
+      b2.type="button"; b2.className="navi-note__btn"; b2.id="naviBackToChat";
+      b2.textContent="정책 상담으로 돌아가기";
+      b2.addEventListener("click", function(){ openChat(); });
+      acts.appendChild(b2);
+    }
     box.appendChild(t); box.appendChild(d); box.appendChild(acts);
     return box;
   }
@@ -4639,11 +4767,17 @@ window.NAVI = (function(){
       handleRouteUnavailable(p);
       return null;
     } else if(msg.action === "show_support" || msg.action === "show_toilets" || msg.action === "show_restaurants"){
-      // 긴급·편의 질의 결과(#296) — 시트에 담아 두고 버튼으로 연다(화면 강제 전환 없음)
+      // 긴급·편의 질의 결과(#296) — 결과를 시트에 담고 곧바로 연다.
+      // 여기는 이동경로 안내 제품만 온다(정책상담은 위에서 policyUiAction 으로 돌아갔다). 이 제품에는 화면 탭이
+      // 없어 상담(채팅) 화면에 붙는 '보기' 버튼을 누를 방법이 없다 — 버튼만 만들면 말로 요청한 결과를 볼 수 없다.
+      // 관광지 목록·경로(show_tour_spots·show_route)가 길안내 화면에 바로 그려지는 것과 같은 방식으로 맞춘다.
+      // 시트는 길안내 화면 위에 뜨는 창이라 진행 중인 안내(guiding)·경로는 건드리지 않는다.
       var k = fillSosFromAction(msg.action, p);
-      sosKind = k; sosPending = true;
-      return {label: (k==="toilet" ? "🚻 지도에서 화장실 보기" : k==="food" ? "🍽 지도에서 식당 보기" : "🆘 지도에서 " + SOS_LABEL[k] + " 보기")
-                     + (((p||{}).items||[]).length ? " (" + p.items.length + "곳)" : "")};
+      sosKind = k;
+      var naviOn = false; try{ naviOn = $("view-navi").classList.contains("active"); }catch(e){}
+      if(naviOn){ sosPending = false; openSosSheet(k, true); }   // viaVoice=true — 말로 연 것이므로 버튼 사용 기록(sos_open)은 남기지 않는다
+      else { sosPending = true; showPreparedView(); }            // 길안내 화면이 아직 아니면 화면을 연 뒤 시트를 연다
+      return null;   // 상담 화면용 이동 버튼은 만들지 않는다
     } else if(msg.action === "station_position"){
       onStationVoice(p.where, p.travel);   // 말로 한 역 안/밖·출구 답 (v1.52.0)
       return null;
@@ -5078,7 +5212,8 @@ window.NAVI = (function(){
                                      egressWhere:function(){return egressWhere;}, gotoStep:gotoStep,
                                      stationHint:function(){return stationHint;},
                                      maybeAutoExit:maybeAutoExit, stationWait:stationWait, undoAutoExit:undoAutoExit,
-                                     setFixAcc:function(a){ lastFixAcc=a; }, exitFix:function(){ return exitFixN; },
+                                     setFixAcc:function(a){ lastFixAcc=a; },
+                                     rerouting:function(){ return !!rerouteStartTs; }, exitFix:function(){ return exitFixN; },
                                      setWs:function(w){ wsRef=w; }, setExitGap:function(ms, span){ EXIT_FIX_GAP_MS=ms; if(span!=null) EXIT_SPAN_MS=span; },
                                      undoExitOpen:undoExitOpen, setTap:function(w, t){ lastTap={where:w, ts:t}; },
                                      setAdvanceTs:function(t){ _lastAdvanceTs=t; }}; }

@@ -1,5 +1,22 @@
 """단말 재접속 이어받기 저장소 (v1.59.0) — sid 는 계정별로 따로, 만료·상한 정리."""
-import live_bridge as lb
+import sys
+from pathlib import Path
+
+import pytest
+
+# 어느 디렉터리에서 실행해도 대상 모듈을 찾게 한다(스크립트로 직접 실행할 때 포함)
+_APP = Path(__file__).resolve().parents[1]
+if str(_APP) not in sys.path:
+    sys.path.insert(0, str(_APP))
+
+# live_bridge 는 Gemini SDK·DB 계층·수치 라이브러리를 import 한다 — 없는 환경에서는 건너뛴다
+pytest.importorskip("google.genai")
+pytest.importorskip("sqlalchemy.orm")
+pytest.importorskip("pgvector")
+pytest.importorskip("asyncpg")
+pytest.importorskip("numpy")
+
+import live_bridge as lb                                 # noqa: E402
 
 
 class _WS:
@@ -46,3 +63,7 @@ def test_store_is_bounded_and_history_is_trimmed():
 def test_no_key_is_noop():
     lb._client_resume_put(None, "H", [])
     assert lb._CLIENT_RESUME == {}
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main([__file__, "-q"]))

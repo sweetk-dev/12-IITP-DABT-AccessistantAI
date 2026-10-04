@@ -49,6 +49,16 @@ def check(name, fn):
         print("  ERROR %s — %r" % (name, e))
 
 
+# (이름, 함수) 등록 순서대로 실행한다. 정의 직후 바로 실행하지 않고 모아 두는 이유:
+# 모듈 최상위에서 실행하면 pytest 가 이 파일을 import(수집)할 때 검사가 돌고 맨 끝의
+# sys.exit 로 전체 테스트 실행이 끝난다. pytest 에서는 t_* 함수가 각각 테스트로 수집된다.
+CASES = []
+
+
+def case(name, fn):
+    CASES.append((name, fn))
+
+
 def read_events(rid):
     p = os.path.join(tr.rid_dir(rid), "events.jsonl")
     with open(p, encoding="utf-8") as f:
@@ -74,7 +84,7 @@ def t_enabled():
         os.environ["TRIAL_RECORD_CLIENTS"] = old
 
 
-check("설정된 계정만 기록 대상(대소문자·공백 무시), 설정 없으면 없음", t_enabled)
+case("설정된 계정만 기록 대상(대소문자·공백 무시), 설정 없으면 없음", t_enabled)
 
 
 def t_base_dir_default():
@@ -87,7 +97,7 @@ def t_base_dir_default():
         os.environ.pop("ROUTE_CLIENT_LOG_PATH", None)
 
 
-check("기록 폴더 기본값 = 경로 호출 로그와 같은 볼륨의 trial/", t_base_dir_default)
+case("기록 폴더 기본값 = 경로 호출 로그와 같은 볼륨의 trial/", t_base_dir_default)
 
 
 # 2) 사건
@@ -106,7 +116,7 @@ def t_events():
     assert tr.append_events(rid, "notalist", "client") == 0
 
 
-check("사건 기록: 서버 시각·출처·계정 부착, 잘못된 type/rid 거부, 큰 값 자르기", t_events)
+case("사건 기록: 서버 시각·출처·계정 부착, 잘못된 type/rid 거부, 큰 값 자르기", t_events)
 
 
 # 3) 웹소켓 기록기
@@ -141,7 +151,7 @@ def t_ws_session():
     assert not any(e.get("content") == "닫힌 뒤" for e in ev)
 
 
-check("웹소켓 기록기: 상담원 음성 파일·바이트 위치, 받은 마이크 파일, 사건 선별, 닫힌 뒤 무시", t_ws_session)
+case("웹소켓 기록기: 상담원 음성 파일·바이트 위치, 받은 마이크 파일, 사건 선별, 닫힌 뒤 무시", t_ws_session)
 
 
 def t_ws_not_target():
@@ -153,7 +163,7 @@ def t_ws_not_target():
     assert tr.session_for_ws(ws2) is None
 
 
-check("대상 아닌 계정: 기록기 없음·폴더도 만들지 않음", t_ws_not_target)
+case("대상 아닌 계정: 기록기 없음·폴더도 만들지 않음", t_ws_not_target)
 
 
 def t_ws_bad_rid():
@@ -163,7 +173,7 @@ def t_ws_bad_rid():
     s.close()
 
 
-check("잘못된 rid 는 서버가 새로 만든다(경로 탈출 차단)", t_ws_bad_rid)
+case("잘못된 rid 는 서버가 새로 만든다(경로 탈출 차단)", t_ws_bad_rid)
 
 
 # 4) 마이크 조각
@@ -181,7 +191,7 @@ def t_mic_part():
     assert ev[0]["type"] == "mic_part" and ev[0]["t0"] == 1 and ev[0]["mime"] == "audio/webm"
 
 
-check("단말 마이크 조각: 저장·검증·크기 상한", t_mic_part)
+case("단말 마이크 조각: 저장·검증·크기 상한", t_mic_part)
 
 
 # 5) 상한
@@ -205,7 +215,7 @@ def t_budget():
         os.environ.pop("TRIAL_RECORD_MAX_MB", None)
 
 
-check("음성 누적 상한: 음성 저장 중단·사건은 계속", t_budget)
+case("음성 누적 상한: 음성 저장 중단·사건은 계속", t_budget)
 
 
 # 6) 실패 삼키기
@@ -223,7 +233,7 @@ def t_fail_quiet():
         os.environ["TRIAL_RECORD_DIR"] = old
 
 
-check("저장 실패는 조용히 — 예외 없이 0/False/None", t_fail_quiet)
+case("저장 실패는 조용히 — 예외 없이 0/False/None", t_fail_quiet)
 
 
 # 7) 타임라인·믹스
@@ -260,7 +270,7 @@ def t_timeline():
     assert np.abs(x[:, 0]).max() == 0, "단말 녹음이 없으면 왼쪽은 비어야 한다"
 
 
-check("타임라인: 전사 잇기·길안내·끊김·버린 문장 + 스테레오 믹스에 상담원 음성 배치", t_timeline)
+case("타임라인: 전사 잇기·길안내·끊김·버린 문장 + 스테레오 믹스에 상담원 음성 배치", t_timeline)
 
 
 def t_clock_offset():
@@ -271,7 +281,10 @@ def t_clock_offset():
     assert tl.event_time(evs[2], 4050.0) == 1.0
 
 
-check("단말 시계 보정: 도착-단말 시각 차의 최솟값", t_clock_offset)
+case("단말 시계 보정: 도착-단말 시각 차의 최솟값", t_clock_offset)
 
-print("\n%d failed" % len(FAILS))
-sys.exit(1 if FAILS else 0)
+if __name__ == "__main__":
+    for _name, _fn in CASES:
+        check(_name, _fn)
+    print("\n%d failed" % len(FAILS))
+    sys.exit(1 if FAILS else 0)

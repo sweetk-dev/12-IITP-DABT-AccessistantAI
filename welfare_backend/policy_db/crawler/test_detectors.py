@@ -120,3 +120,77 @@ if __name__ == "__main__":
         fn()
         print("PASS " + fn.__name__)
     print("\n%d passed" % len(fns))
+
+
+# ── last_modified_field: 비교 키를 만들 수 없는 경우 ─────────
+class _FakeResp:
+    def __init__(self, content: bytes, headers=None, status_code=200):
+        self.content = content
+        self.headers = headers or {}
+        self.status_code = status_code
+
+
+class _FakeClient:
+    """httpx.AsyncClient 대역 — 항상 같은 응답을 돌려준다(네트워크 없음)."""
+    def __init__(self, resp):
+        self._resp = resp
+
+    async def get(self, url, **kwargs):
+        return self._resp
+
+
+def _run_last_modified(html: str, headers=None, snapshot_dir=None, revalidate=False):
+    import asyncio
+    try:
+        from .detectors import detect_last_modified_field
+    except ImportError:
+        from crawler.detectors import detect_last_modified_field  # type: ignore
+    client = _FakeClient(_FakeResp(html.encode("utf-8"), headers))
+    with tempfile.TemporaryDirectory() as d:
+        snap = Path(snapshot_dir or d)
+        return asyncio.run(detect_last_modified_field(
+            {"target_id": "t", "url": "https://example.go.kr/law"}, snap,
+            client=client, revalidate=revalidate))
+
+
+_BODY_NO_DATE = "<html><body><p>" + ("장애인 지원 제도 안내 본문입니다. " * 30) + "</p></body></html>"
+
+
+def test_last_modified_without_any_key_is_detect_failed():
+    """헤더·본문 어디에도 수정일이 없으면 '변경 없음'이 아니라 감지 실패로 돌려준다."""
+    res = _run_last_modified(_BODY_NO_DATE)
+    assert res.status == "detect_failed"
+    assert res.changed is False, "변경으로 치면 LLM 갱신 호출로 이어진다"
+    assert res.new_hash is None, "상수 키의 해시가 비교 기준으로 저장되면 안 된다"
+    assert res.new_content is None
+    assert "last_modified" in res.reason
+
+
+def test_last_modified_without_key_stays_failed_even_with_old_constant_baseline():
+    """상수 키("|")의 해시가 이미 기준으로 저장돼 있어도 '변경 없음'으로 보고하지 않는다."""
+    with tempfile.TemporaryDirectory() as d:
+        snap = Path(d)
+        save_snapshot(snap, "last_modified_field",
+                      ChangeResult(True, "x", None, _hash_bytes("|".encode("utf-8"))))
+        res = _run_last_modified(_BODY_NO_DATE, snapshot_dir=snap)
+        assert res.status == "detect_failed"
+        assert res.reason != "변경 없음"
+
+
+def test_last_modified_detect_failed_passes_body_on_revalidate():
+    res = _run_last_modified(_BODY_NO_DATE, revalidate=True)
+    assert res.status == "detect_failed"
+    assert res.new_content is not None, "재검증 모드에서는 받은 본문을 넘겨야 한다"
+
+
+def test_last_modified_with_body_date_still_works():
+    html = "<html><body><p>시행일 2026-01-01</p><p>" + ("본문 " * 100) + "</p></body></html>"
+    res = _run_last_modified(html)
+    assert res.status == "ok"
+    assert res.changed is True and res.reason == "최초 스냅샷"
+    assert res.new_hash
+
+
+def test_last_modified_with_header_only_still_works():
+    res = _run_last_modified(_BODY_NO_DATE, headers={"Last-Modified": "Wed, 01 Jan 2026 00:00:00 GMT"})
+    assert res.status == "ok" and res.new_hash

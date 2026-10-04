@@ -321,6 +321,26 @@ def t_call_log_summary_and_ctx():
     assert route_client._log_ctx() == {}
 
 
+def t_realtime_low_floor_without_predict_min_does_not_fail():
+    """실시간 응답의 predict_min 이 None 이어도 경로 안내가 실패하지 않는다 — 분을 말하지 않을 뿐이다."""
+    resp = _transit_resp()
+    bus = resp["routes"][0]["legs"][1]
+    bus["board"]["poi_id"] = "208000069"
+    bus["realtime"] = {"status": "success", "items": [{"route_id": "241253001"}],
+                       "next_low_floor": {"route_id": "241253001", "route_name": "2",
+                                          "predict_min": None, "stops_away": 2}}
+    r = _plan("walk_bus_subway", _Recorder([resp]))
+    assert r["status"] == "success", r
+    note = r["low_floor_note"]
+    assert note and "저상버스 2번" in note and "None" not in note and "분 뒤" not in note, note
+    assert r["transit"][0]["next_low_floor"]["predict_min"] is None
+
+    # 숫자면 종전 문구 그대로
+    bus["realtime"]["next_low_floor"]["predict_min"] = 4
+    r = _plan("walk_bus_subway", _Recorder([resp]))
+    assert r["low_floor_note"] == "승차 정류장에 저상버스 2번이 약 4분 뒤 도착 예정", r["low_floor_note"]
+
+
 if __name__ == "__main__":
     for nm, fn in sorted((k, v) for k, v in list(globals().items()) if k.startswith("t_")):
         check(nm, fn)

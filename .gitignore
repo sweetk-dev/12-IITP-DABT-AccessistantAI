@@ -37,7 +37,9 @@ launcher.py
 server.py
 build.bat
 policy_data.txt
-requirements.txt
+# 루트 한정 — 앞의 '/' 가 없으면 welfare_backend/requirements.txt 까지 무시되어
+# 클론만으로는 Docker 빌드(COPY requirements.txt)가 실패한다.
+/requirements.txt
 disability_voice_qa.html
 
 # 데모 빌드 산출물

@@ -25,7 +25,8 @@
   "properties": {
     "id": {
       "type": "string",
-      "description": "항목 고유 ID. 형식: B001 ~ B040 (전단지 항목 순서)."
+      "pattern": "^B[0-9]{3,}$",
+      "description": "항목 고유 ID. 형식: B + 숫자 3자리 이상 (예: B001, B051, B100)."
     },
     "leaflet_section": {
       "type": "string",

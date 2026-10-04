@@ -6,6 +6,8 @@
   3) 감지가 불가능한 출처(도메인 루트)를 page_hash 로 등록해 오탐을 만들지 않는다
   4) 같은 URL 을 여러 정책이 쓸 때 타겟을 중복 생성하지 않는다
   5) 여러 번 실행해도 결과가 같다(멱등)
+  6) 같은 순번·같은 호스트의 출처 URL 을 바꾸면 그 타겟이 새 URL 을 감시한다
+  7) 오버레이 파일이 깨져 있으면 빈 값으로 덮어쓰지 않는다
 """
 import json
 import sys
@@ -26,6 +28,8 @@ import target_sync as ts  # noqa: E402
 def overlay(tmp_path, monkeypatch):
     """오버레이 파일을 임시 경로로 돌려 실제 데이터를 건드리지 않는다."""
     monkeypatch.setattr(ts, "LOCAL_TARGETS", tmp_path / "crawl_targets.local.json")
+    # 출처 URL 갱신 시 비교 기준(스냅샷)을 지우므로 스냅샷 위치도 임시 경로로 돌린다.
+    monkeypatch.setattr(ts, "SNAPSHOTS_DIR", tmp_path / "snapshots")
     return tmp_path
 
 
@@ -172,3 +176,115 @@ def test_real_base_targets_cover_the_handcrafted_policies():
     covered = ts.covered_policy_ids()
     for pid in ("B001", "B020", "B043"):
         assert pid in covered, f"{pid} 가 크롤 대상에서 빠졌다"
+
+
+# ── 출처 URL 교체 ────────────────────────────────────────────
+def _local_target(tid):
+    return [t for t in ts.load_local()["targets"] if t["target_id"] == tid][0]
+
+
+def test_register_updates_url_when_same_slot_points_to_new_page(overlay):
+    """같은 순번·같은 호스트의 다른 페이지로 바꾸면 target_id 는 그대로이고 URL 이 갱신된다."""
+    first = ts.register_policy(_policy("B920", "https://a.go.kr/old-page"))
+    tid = first["added"][0]
+    r = ts.register_policy(_policy("B920", "https://a.go.kr/new-page"))
+    assert r["updated"] == [tid]
+    assert r["added"] == [] and tid not in r["skipped"]
+    assert len(ts.load_local()["targets"]) == 1, "타겟이 늘어나면 안 된다(id 유지)"
+    t = _local_target(tid)
+    assert t["url"] == "https://a.go.kr/new-page"
+    assert t["used_by_items"] == ["B920"]
+    # 다시 등록하면 변화 없음(멱등)
+    again = ts.register_policy(_policy("B920", "https://a.go.kr/new-page"))
+    assert again["updated"] == [] and again["added"] == []
+
+
+def test_register_url_update_also_refreshes_detection_method(overlay):
+    """감지 방식은 URL 로 추정하는 값이므로 URL 과 함께 바뀌어야 한다."""
+    tid = ts.register_policy(_policy("B921", "https://a.go.kr/guide"))["added"][0]
+    assert _local_target(tid)["change_detection_method"] == "page_hash"
+    ts.register_policy(_policy("B921", "https://a.go.kr/files/guide_2026.pdf"))
+    assert _local_target(tid)["change_detection_method"] == "pdf_hash"
+
+
+def test_register_url_update_resets_baseline_snapshot(overlay):
+    """옛 URL 기준으로 저장된 비교 기준은 새 URL 에 맞지 않으므로 지운다."""
+    tid = ts.register_policy(_policy("B922", "https://a.go.kr/old"))["added"][0]
+    snap = ts.SNAPSHOTS_DIR / tid
+    snap.mkdir(parents=True)
+    (snap / "page_hash.txt").write_text("old-hash", encoding="utf-8")
+    (snap / "chunks.json").write_text("[]", encoding="utf-8")
+    other = ts.SNAPSHOTS_DIR / "another_target"
+    other.mkdir()
+    (other / "page_hash.txt").write_text("keep", encoding="utf-8")
+
+    ts.register_policy(_policy("B922", "https://a.go.kr/new"))
+    assert not snap.exists(), "옛 페이지의 해시가 새 페이지의 비교 기준으로 남으면 안 된다"
+    assert (other / "page_hash.txt").exists(), "다른 타겟의 기준은 건드리지 않는다"
+
+
+def test_register_unchanged_url_keeps_baseline_snapshot(overlay):
+    tid = ts.register_policy(_policy("B923", "https://a.go.kr/same"))["added"][0]
+    snap = ts.SNAPSHOTS_DIR / tid
+    snap.mkdir(parents=True)
+    (snap / "page_hash.txt").write_text("h", encoding="utf-8")
+    ts.register_policy(_policy("B923", "https://a.go.kr/same"))
+    assert (snap / "page_hash.txt").exists()
+
+
+def test_register_url_update_handles_shifted_sources(overlay):
+    """앞에 새 출처가 끼어들어 순번이 밀려도 옛 URL 이 감시 대상에서 빠지지 않는다."""
+    ts.register_policy(_policy("B924", "https://a.go.kr/one"))
+    r = ts.register_policy(_policy("B924", "https://a.go.kr/zero", "https://a.go.kr/one"))
+    assert len(r["updated"]) == 1 and len(r["added"]) == 1
+    urls = sorted(t["url"] for t in ts.load_local()["targets"])
+    assert urls == ["https://a.go.kr/one", "https://a.go.kr/zero"]
+
+
+def test_register_url_update_drops_links_of_other_policies(overlay):
+    """옛 URL 을 공유하던 다른 정책이 새 URL 의 타겟에 연결된 채 남지 않는다."""
+    tid = ts.register_policy(_policy("B925", "https://a.go.kr/shared"))["added"][0]
+    ts.register_policy(_policy("B926", "https://a.go.kr/shared"))        # B926 이 같은 타겟에 연결됨
+    r = ts.register_policy(_policy("B925", "https://a.go.kr/moved"))
+    assert r["unlinked"] == [{"target_id": tid, "policy_ids": ["B926"]}]
+    used = [t["used_by_items"] for t in ts.load_all()["targets"] if t["target_id"] == tid][0]
+    assert used == ["B925"]
+
+
+# ── 오버레이 파일 손상 ───────────────────────────────────────
+def test_corrupt_overlay_raises_instead_of_returning_empty(overlay):
+    ts.LOCAL_TARGETS.write_text('{"targets": [{"target_id": "auto_b930_1_a"', encoding="utf-8")  # 잘린 JSON
+    with pytest.raises(ts.TargetsFileError):
+        ts.load_local()
+    with pytest.raises(ts.TargetsFileError):
+        ts.load_all()
+
+
+def test_register_does_not_overwrite_corrupt_overlay(overlay):
+    """깨진 오버레이 위에 새 타겟만 써서 기존 등록분을 잃으면 안 된다."""
+    broken = '{"targets": [{"target_id": "auto_b931_1_a", "url": "https://a.go.kr/x"}'
+    ts.LOCAL_TARGETS.write_text(broken, encoding="utf-8")
+    with pytest.raises(ts.TargetsFileError):
+        ts.register_policy(_policy("B932", "https://b.go.kr/page"))
+    assert ts.LOCAL_TARGETS.read_text(encoding="utf-8") == broken, "깨진 파일은 복구를 위해 그대로 남긴다"
+
+
+def test_overlay_with_non_object_top_level_is_rejected(overlay):
+    ts.LOCAL_TARGETS.write_text("[]", encoding="utf-8")
+    with pytest.raises(ts.TargetsFileError):
+        ts.load_local()
+
+
+def test_overlay_write_failure_keeps_previous_file(overlay, monkeypatch):
+    """저장 도중 실패해도 직전 오버레이가 온전히 남는다(임시 파일 → 교체)."""
+    ts.register_policy(_policy("B933", "https://a.go.kr/keep"))
+    before = ts.LOCAL_TARGETS.read_text(encoding="utf-8")
+
+    def boom(src, dst):
+        raise OSError("교체 실패")
+
+    monkeypatch.setattr(ts.ca.os, "replace", boom)
+    with pytest.raises(OSError):
+        ts.register_policy(_policy("B934", "https://b.go.kr/new"))
+    assert ts.LOCAL_TARGETS.read_text(encoding="utf-8") == before
+    assert [p.name for p in overlay.iterdir() if p.name.endswith(".tmp")] == []
