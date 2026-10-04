@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -33,6 +34,13 @@ DEFAULT_CFG = {
     "discovery_cron": {"day": "1,15", "hour": 4, "minute": 0},   # 신규 발굴(B) — 04:00(09시가 늦어 조정)
     "backup_cron": {"hour": 4, "minute": 0},
     "embed_cron": {"minute": "*/15"},  # 미답변 질의 임베딩 백필(발굴 전처리)
+    # 미답변 질의 보존기간 파기 — 매일 03:40.
+    # 시각 근거: 이용이 거의 없는 새벽이면서 다른 잡과 겹치지 않는 분.
+    #   임베딩 백필은 매시 0·15·30·45분, 백업·발굴은 04:00, 크롤·재검증은 09:00 에 돈다.
+    #   04:00 백업보다 앞이라 그날 백업에는 파기 후 상태가 담긴다.
+    "purge_cron": {"hour": 3, "minute": 40},
+    # 미답변 질의 보존 일수 — scripts/purge_old_queries 의 기본값(90일)과 같은 값.
+    "unresolved_retention_days": 90,
     "backup_retention_days": 30,
 }
 
@@ -41,6 +49,7 @@ _status = {
     "backup": {"running": False, "last_run": None, "last_status": None, "last_output": None},
     "discovery": {"running": False, "last_run": None, "last_status": None, "last_output": None},
     "embed": {"running": False, "last_run": None, "last_status": None, "last_output": None},
+    "purge": {"running": False, "last_run": None, "last_status": None, "last_output": None},
 }
 _lock = threading.Lock()
 _sched = None
@@ -123,8 +132,11 @@ def _run_embed():
         _status["embed"]["running"] = True
     logger.info("미답변 임베딩 백필 시작")
     try:
-        cmd = ["python", "-m", "scripts.backfill_embeddings", "--batch-size", "50", "--max-rows", "500"]
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        # sys.executable + cwd 지정: "python" 이름과 현재 작업 디렉터리에 기대면, 서버를
+        # 가상환경의 인터프리터로 띄웠거나 다른 디렉터리에서 기동한 경우 다른 파이썬이
+        # 실행되거나 scripts 패키지를 찾지 못한다(-m 은 cwd 기준으로 모듈을 찾는다).
+        cmd = [sys.executable, "-m", "scripts.backfill_embeddings", "--batch-size", "50", "--max-rows", "500"]
+        r = subprocess.run(cmd, cwd=str(_APP), capture_output=True, text=True, timeout=1800)
         combined = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
         out = "\n".join(combined.splitlines()[-8:])
         st = "ok" if r.returncode == 0 else f"exit {r.returncode}"
@@ -135,6 +147,45 @@ def _run_embed():
         with _lock:
             _status["embed"].update(running=False, last_run=_now(), last_status="error", last_output=str(e)[:500])
         logger.exception("임베딩 백필 실패: %s", e)
+
+
+def _run_purge():
+    """미답변 질의 보존기간 파기 잡 — scripts.purge_old_queries 를 하위 프로세스로 실행한다.
+
+    스크립트는 보존기간이 지난 unresolved_queries 행을 지운다(발굴 후보가 근거로 참조
+    중인 행은 남긴다). 스케줄에 이 잡이 없으면 스크립트를 따로 cron 에 걸지 않은 배포에서는
+    파기가 한 번도 실행되지 않아 사용자 발화 텍스트가 기한 없이 쌓인다.
+
+    결과는 다른 잡과 같이 _status["purge"] 에 남는다(콘솔 운영 상태 API 로 확인 가능).
+    실패(종료 코드 0 아님·시간 초과·실행 불가)해도 예외를 밖으로 내지 않는다.
+    """
+    with _lock:
+        if _status["purge"]["running"]:
+            return
+        _status["purge"]["running"] = True
+    logger.info("미답변 질의 보존기간 파기 시작")
+    try:
+        try:
+            days = int(_load_cfg().get("unresolved_retention_days", 90))
+        except (TypeError, ValueError):
+            days = 90
+        if days < 1:
+            # 0 이하이면 전 행이 대상이 된다. 설정 파일 오기로 보고 기본값을 쓴다.
+            days = 90
+        cmd = [sys.executable, "-m", "scripts.purge_old_queries", "--days", str(days)]
+        # 제한 600초: 조건이 있는 DELETE 한 번이라 보통 수 초 안에 끝난다.
+        # 10분을 넘기면 DB 잠금 대기 등 비정상 상태로 보고 중단한다.
+        r = subprocess.run(cmd, cwd=str(_APP), capture_output=True, text=True, timeout=600)
+        combined = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
+        out = "\n".join(combined.splitlines()[-8:])
+        st = "ok" if r.returncode == 0 else f"exit {r.returncode}"
+        with _lock:
+            _status["purge"].update(running=False, last_run=_now(), last_status=st, last_output=out)
+        logger.info("미답변 질의 파기 종료: %s", st)
+    except Exception as e:
+        with _lock:
+            _status["purge"].update(running=False, last_run=_now(), last_status="error", last_output=str(e)[:500])
+        logger.exception("미답변 질의 파기 실패: %s", e)
 
 
 def _start_crawl(extra_args, label):
@@ -243,5 +294,9 @@ def start():
     _sched.add_job(_run_embed, CronTrigger(minute=str(ec.get("minute", "*/15")), timezone=KST),
                    id="embed_scheduled", replace_existing=True)
     _sched.add_job(_run_embed, id="embed_startup", replace_existing=True)  # 기동 직후 1회 catch-up
+    # 미답변 질의 보존기간 파기 — 매일 1회(기본 03:40, 스케줄러 시간대 = KST)
+    pc = cfg.get("purge_cron", DEFAULT_CFG["purge_cron"])
+    _sched.add_job(_run_purge, CronTrigger(hour=pc.get("hour", 3), minute=pc.get("minute", 40), timezone=KST),
+                   id="purge_scheduled", replace_existing=True)
     _sched.start()
     logger.info("스케줄러 기동 — 해시=%s 재검증=%s 백업=%s", cc, rc, bc)

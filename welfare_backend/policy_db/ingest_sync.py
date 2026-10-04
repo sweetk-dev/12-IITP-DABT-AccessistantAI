@@ -109,8 +109,21 @@ def extract_chunks(data):
 # 3. 개별 파일 처리 (스마트 동기화 로직)
 # =====================================================================
 def process_file(file_path, file_hash, cur, conn):
-    with open(file_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+    """항목 파일 1건을 DB 에 반영한다. 반환: 성공 True / 실패 False(예외를 올리지 않는다)."""
+    # 파일 읽기·파싱 실패는 이 파일만 건너뛴다.
+    # 읽기가 try 밖에 있으면 항목 파일 하나가 잘리거나 깨졌을 때 예외가 main 까지 올라가
+    # 그 뒤 순서의 정상 항목들도 전부 반영되지 않는다.
+    # False 를 돌려주므로 main 의 실패 집계에 잡혀 종료 코드가 0 이 아니게 된다
+    # (재적재를 호출한 쪽이 실패를 인지한다).
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            raise ValueError("최상위가 객체(JSON object)가 아님")
+    except (OSError, ValueError) as e:
+        # json.JSONDecodeError·UnicodeDecodeError 는 ValueError 의 하위 클래스다.
+        logging.warning(f"[{os.path.basename(file_path)}] ⚠️ 항목 파일을 읽을 수 없어 건너뜀: {e}")
+        return False
 
     policy_id = data.get("id")
 
@@ -285,7 +298,9 @@ def main(argv=None):
         cur = conn.cursor()
     except Exception as e:
         logging.error(f"DB 접속 실패: {e}")
-        return
+        # 종료 코드 1 — 아무것도 적재하지 못했는데 0 으로 끝나면, 이 스크립트를 호출한 쪽
+        # (콘솔 재적재·--reingest)이 성공으로 판단한다.
+        sys.exit(1)
 
     # 스키마 보장(없으면 생성, --rebuild 면 재구축) — 구 ingest_v1.5.init_schema 흡수.
     # 빈 DB 도 `python ingest_sync.py --rebuild` 한 번으로 구축 가능.
@@ -299,15 +314,17 @@ def main(argv=None):
     except Exception as e:
         conn.rollback()
         logging.error(f"스키마 준비 실패: {e}")
-        return
+        # 접속 실패와 같은 이유로 0 이 아닌 종료 코드로 끝낸다.
+        sys.exit(1)
 
     cur.execute("SELECT id, version FROM welfare_policies;")
     db_versions = {row[0]: row[1] for row in cur.fetchall()}
 
     _data_root = os.environ.get("POLICY_DATA_DIR") or os.path.dirname(os.path.abspath(__file__))
-    json_files = sorted(glob.glob(os.path.join(_data_root, "items", "B0*.json")))
+    # 'B + 숫자' 로 시작하는 항목 전체 — "B0*" 로 두면 B100 이상이 적재에서 빠진다.
+    json_files = sorted(glob.glob(os.path.join(_data_root, "items", "B[0-9]*.json")))
     if not json_files:
-        logging.warning("items 폴더 내에 처리할 JSON 파일(B0*.json)이 없습니다.")
+        logging.warning("items 폴더 내에 처리할 JSON 파일(B[0-9]*.json)이 없습니다.")
         return
 
     sync_ok = 0

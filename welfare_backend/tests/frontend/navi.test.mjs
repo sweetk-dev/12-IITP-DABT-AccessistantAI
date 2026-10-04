@@ -258,20 +258,26 @@ check("목록 화면에도 유형 칩 유지 (변경 가능)", () => {
 });
 
 // 1-c) 범위 밖 안내 — 문장만이 아니라 다음에 할 동작을 함께 준다
-check("범위 밖 배너에 '출발지 지정'·'정책 상담' 두 가지 조치 버튼", () => {
+check("범위 밖 배너에 '지도에서 출발지 지정' 조치 버튼", () => {
   const note = window.document.querySelector("#naviSheetBody .navi-note");
   assert.ok(note, "배너 없음");
   assert.match(note.querySelector(".navi-note__t").textContent, /현재 위치가 안양시 밖입니다/);
   assert.ok($("naviPickOrigin"), "'지도에서 출발지 지정' 버튼 없음");
-  assert.ok($("naviBackToChat"), "'정책 상담으로 돌아가기' 버튼 없음");
+});
+check("이동경로 안내에서는 범위 밖 배너에 '정책 상담으로 돌아가기' 버튼을 만들지 않는다", () => {
+  // 이 제품에는 화면 탭이 없다 — 상담(채팅) 화면으로 넘어가면 길안내 화면으로 돌아올 수 없다
+  const note = window.document.querySelector("#naviSheetBody .navi-note");
+  assert.equal($("naviBackToChat"), null, "'정책 상담으로 돌아가기' 버튼이 있음");
+  assert.equal(note.querySelectorAll("button").length, 1, "배너의 버튼이 1개가 아님");
+  assert.ok(!/정책 상담으로 돌아가기/.test(note.textContent));
 });
 check("범위 밖 상태 표시는 경고 색으로 구분", () => {
   assert.ok($("naviStatus").classList.contains("navi-status--warn"), "경고 표시 미적용");
 });
-check("'정책 상담으로 돌아가기'로 화면 전환", () => {
-  $("naviBackToChat").dispatchEvent(new window.Event("click"));
-  assert.ok($("view-chat").classList.contains("active"), "상담 화면으로 못 감");
-  window.show("view-navi");   // 이후 검사를 위해 원래 화면으로 되돌린다
+check("범위 밖 배너의 버튼을 눌러도 길안내 화면에 머문다", () => {
+  window.document.querySelectorAll("#naviSheetBody .navi-note button").forEach((b) => b.dispatchEvent(new window.Event("click")));
+  assert.ok($("view-navi").classList.contains("active"), "길안내 화면을 떠남");
+  assert.ok(!$("view-chat").classList.contains("active"), "상담 화면으로 넘어감");
 });
 check("'지도에서 출발지 지정'은 지도를 넓히되 손잡이로 되돌릴 수 있어야 한다", () => {
   $("naviPickOrigin").dispatchEvent(new window.Event("click"));
@@ -2354,13 +2360,12 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   const act = NAV.onUiAction({ action: "show_support", payload: { items: SUPPORT.items.concat([
     { support_type: "calltaxi", type_label: "장애인콜택시", name: "경기도 광역이동지원센터", dist_m: 1500, tel: "1666-0420",
       open_hours: "24시간", open_hours_status: "known", lat: 37.39, lng: 126.95 }]), types: "charge,calltaxi", base: { lat: 37.39, lng: 126.95 } } });
-  check("상담 결과 show_support → 이동 버튼 라벨 + 시트 데이터 준비(화면 강제 전환 없음)", () => {
-    assert.ok(act && /충전소 보기 \(3곳\)/.test(act.label), JSON.stringify(act));
+  check("상담 결과 show_support → 시트 데이터 준비 + 상담 화면용 이동 버튼은 만들지 않는다", () => {
+    assert.equal(act, null, JSON.stringify(act));
     assert.equal(NAV.sosItems().calltaxi.length, 1);
   });
-  window.NAVI.showPreparedView();
   await sleep(30);
-  check("이동 버튼을 누르면 시트가 열린다 · 콜택시 카드는 전화만(안내 없음)", () => {
+  check("말로 요청한 결과는 버튼 없이 시트가 바로 열린다 · 콜택시 카드는 전화만(안내 없음)", () => {
     assert.equal($("sosSheet").hidden, false);
     $("sosTabs").querySelector("button[data-kind='calltaxi']").dispatchEvent(new window.Event("click", { bubbles: true }));
     const c = $("sosList").querySelector(".sos-card");
@@ -2947,8 +2952,10 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     { name: "안양시 만안구보건소 (건물 안 장애인화장실)", type: "국가 또는 지자체 청사", dist_m: 120, accessible: true,
       open_time: "건물 운영시간 내", facility_toilet: true, building_toilet: true, lat: 37.39, lng: 126.92 } ] } } });
   check("서버 모양 ui_action(한 겹 더 싼 payload)도 풀어서 시트에 싣는다 — 화장실", () => {
-    assert.ok(actT && /화장실 보기 \(1곳\)/.test(actT.label), JSON.stringify(actT));
+    assert.equal(actT, null, JSON.stringify(actT));
     assert.equal(NF.sosItems().toilet.length, 1);
+    assert.equal($("sosSheet").hidden, false, "화장실 시트가 바로 열리지 않음");
+    assert.equal($("sosTabs").querySelector("button[data-kind='toilet']").getAttribute("aria-pressed"), "true");
   });
   NF.openSosSheet("toilet");
   await sleep(30);
@@ -2965,11 +2972,10 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
       survey_note: "건물 단위 실태조사(사용승인 시점) 기록입니다.", lat: 37.391, lng: 126.95,
       toilet: { status: "nearby", nearby: { name: "공원 공중화장실", dist_m: 44, open_time: "24시간" } } } ],
     total: 7, confirmed: 1 } } });
-  check("show_restaurants → '식당 보기' 버튼 라벨 + 시트 데이터", () => {
-    assert.ok(actF && /🍽 지도에서 식당 보기 \(2곳\)/.test(actF.label), JSON.stringify(actF));
+  check("show_restaurants → 시트 데이터 + 버튼 없이 바로 열림", () => {
+    assert.equal(actF, null, JSON.stringify(actF));
     assert.equal(NF.sosItems().food.length, 2);
   });
-  window.NAVI.showPreparedView();
   await sleep(30);
   check("식당 탭 — 확인된 곳은 ♿ 표시·시설 목록, 정보 없음은 전화 확인·실태조사 주의문", () => {
     assert.equal($("sosSheet").hidden, false);
@@ -2992,7 +2998,6 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     { name: "옛버전식당", addr: "x", dist_m: 100, entry_status: "unknown", entry_label: "휠체어 정보 없음", facilities: [], lat: 37.39, lng: 126.95 },
     { name: "화장실없음식당", addr: "y", dist_m: 120, entry_status: "unknown", entry_label: "휠체어 정보 없음", facilities: [], lat: 37.39, lng: 126.95,
       toilet: { status: "none", nearby: null } } ], total: 2, confirmed: 0 } } });
-  window.NAVI.showPreparedView();
   await sleep(30);
   check("식당 탭 — toilet 없으면 줄 없음(정보 없음 ≠ 없음), none 이면 '확인된 화장실 없음' (v1.56.0)", () => {
     const cards = [...$("sosList").querySelectorAll(".sos-card")];

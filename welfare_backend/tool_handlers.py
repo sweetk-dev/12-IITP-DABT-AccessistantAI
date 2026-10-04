@@ -6,9 +6,11 @@
 # FastAPI 엔드포인트는 Depends(get_db) 의존성 주입 때문에 Gemini Live tools 에
 # 그대로 넣을 수 없어, 같은 DB 세션 헬퍼를 받는 일반 함수로 분리했습니다.
 import asyncio
+import inspect
 import logging
 import os
 import re
+import time
 from typing import Optional
 
 from sqlalchemy import select, or_
@@ -483,26 +485,50 @@ _ANYANG_STATIONS = {
 }
 
 
-_SERVICE_BBOX = {"value": None, "checked": False}
+# checked 는 "범위를 받아 캐시했다"는 뜻이다 — 조회에 성공했을 때만 True 가 된다.
+# retry_at 은 조회 실패 뒤 다음 조회를 허용하는 시각(time.monotonic 기준)이다.
+_SERVICE_BBOX = {"value": None, "checked": False, "retry_at": 0.0}
+
+# 범위 조회 실패 뒤 다시 조회하기까지의 간격(초).
+# 근거: 경로 클라이언트의 서킷이 연속 실패 뒤 30초 동안 호출을 막으므로, 그보다 짧게
+# 재시도해도 같은 실패만 돌아온다. 반대로 더 길게 잡으면 경로 서비스가 복구된 뒤에도
+# 범위 판정이 꺼진 채로 남는 시간이 길어진다.
+_SERVICE_BBOX_RETRY_SEC = 30.0
 
 
 async def _service_bbox() -> Optional[dict]:
-    """경로 서비스의 실제 공간 범위(보행망 bbox). 한 번만 조회해 캐시한다.
+    """경로 서비스의 실제 공간 범위(보행망 bbox). 조회에 성공한 값만 캐시한다.
 
     "지역 밖"이라는 안내는 이 범위로만 판정한다 — 이름을 못 찾은 것과 범위를
     벗어난 것은 다른 사유이고, 이용자에게 다르게 들려야 한다.
+
+    조회 실패(경로 서비스 미기동·타임아웃·오류 응답)를 캐시하면 프로세스가 다시 뜰
+    때까지 범위 판정이 꺼지고, 범위 밖 장소가 경로 API 까지 넘어가 다른 사유로
+    안내된다. 그래서 실패는 캐시하지 않고 _SERVICE_BBOX_RETRY_SEC 뒤에 다시 조회한다.
+    그 사이의 호출은 경로 서비스를 다시 부르지 않고 None 을 돌려준다(요청마다 지연이
+    쌓이지 않게).
+
+    반환: {"min_lat","max_lat","min_lng","max_lng"} 또는 None(아직 범위를 모름 —
+    호출부는 None 이면 '밖'이라고 단정하지 않는다).
     """
     if _SERVICE_BBOX["checked"]:
         return _SERVICE_BBOX["value"]
-    _SERVICE_BBOX["checked"] = True
+    now = time.monotonic()
+    if now < _SERVICE_BBOX.get("retry_at", 0.0):
+        return None
     try:
         meta = await route_client.meta_network()
         bb = (meta or {}).get("bbox") or {}
         if bb.get("min_lat") is not None:
             _SERVICE_BBOX["value"] = bb
+            _SERVICE_BBOX["checked"] = True
+            return bb
+        # 예외 없이 돌아왔지만 범위가 없다 — 경로 클라이언트는 실패를 오류 값으로 돌려준다
+        logger.warning("서비스 범위를 받지 못함 — %.0f초 뒤 다시 조회한다", _SERVICE_BBOX_RETRY_SEC)
     except Exception:
-        logger.exception("서비스 범위 조회 실패 — 범위 판정을 생략한다")
-    return _SERVICE_BBOX["value"]
+        logger.exception("서비스 범위 조회 실패 — %.0f초 뒤 다시 조회한다", _SERVICE_BBOX_RETRY_SEC)
+    _SERVICE_BBOX["retry_at"] = now + _SERVICE_BBOX_RETRY_SEC
+    return None
 
 
 async def _outside_place(hit: dict) -> bool:
@@ -642,8 +668,35 @@ def _route_unavailable_ui(reason: str, kind: str, place: str) -> dict:
             "kind": kind, "place": place, "service_area": SERVICE_AREA}
 
 
-def _place_not_found(kind: str, place: str) -> dict:
-    """이름으로 장소를 찾지 못함 — 서비스 범위와는 무관한 사유다."""
+_ROUTE_TOOL = "plan_accessible_route"
+
+
+def _place_not_found(kind: str, place: str, tool_name: str = _ROUTE_TOOL) -> dict:
+    """이름으로 장소를 찾지 못함 — 서비스 범위와는 무관한 사유다.
+
+    tool_name 이 경로 도구(기본값)면 종전 그대로 화면에 route_unavailable 을 알린다.
+    그 밖의 도구(화장실·긴급지원·식당·주변 정류장·버스 도착)는 기준 장소 이름을 못
+    찾았을 뿐 경로와 무관하므로 ui_action 을 싣지 않는다 — route_unavailable 은 화면에
+    그려진 경로를 지우는 신호라, 안내 중에 "○○ 근처 화장실"을 물었다가 이름을 못
+    찾으면 진행 중이던 경로가 화면에서 사라진다.
+    """
+    if tool_name != _ROUTE_TOOL:
+        return {
+            "status": "place_not_found",
+            "tool_name": tool_name,
+            "service_area": SERVICE_AREA,
+            "kind": kind,
+            "place": place,
+            "message": "%s '%s'의 위치를 찾지 못했습니다" % (kind, place),
+            "ai_instruction": (
+                "말씀하신 %s '%s'의 위치를 찾지 못했다고 안내하세요. %s 밖이라고 말하지 "
+                "마세요 — 범위 문제가 아니라 그 이름을 찾지 못한 것입니다. 조금 더 정확한 "
+                "이름(예: '안양역', '안양시청')을 말씀해 주시거나, 현재 위치 기준으로 찾아볼지 "
+                "여쭤 보세요. 서비스 장애나 일시적인 오류라고 말하지 말고, 위치나 결과를 "
+                "추측하지 마세요. 진행 중인 길안내가 있다면 그 안내는 그대로 계속됩니다."
+                % (kind, place, SERVICE_AREA)
+            ),
+        }
     return {
         "status": "place_not_found",
         "tool_name": "plan_accessible_route",
@@ -665,8 +718,30 @@ def _place_not_found(kind: str, place: str) -> dict:
     }
 
 
-def _out_of_service_area(kind: str, place: str) -> dict:
-    """좌표는 찾았지만 경로를 만들 수 있는 범위 밖 — 기능 범위임을 분명히 한다."""
+def _out_of_service_area(kind: str, place: str, tool_name: str = _ROUTE_TOOL) -> dict:
+    """좌표는 찾았지만 경로를 만들 수 있는 범위 밖 — 기능 범위임을 분명히 한다.
+
+    tool_name 이 경로 도구가 아니면(_place_not_found 와 같은 이유로) ui_action 없이
+    "주변 조회는 서비스 지역 안에서만 된다"는 안내만 돌려준다.
+    """
+    if tool_name != _ROUTE_TOOL:
+        return {
+            "status": "out_of_service_area",
+            "tool_name": tool_name,
+            "service_area": SERVICE_AREA,
+            "kind": kind,
+            "place": place,
+            "message": "%s '%s'는 안내가 가능한 지역(%s) 밖입니다"
+                       % (kind, place, SERVICE_AREA),
+            "ai_instruction": (
+                "말씀하신 %s '%s'는 찾았지만 안내가 가능한 지역(%s) 밖이라 그 주변은 "
+                "조회할 수 없다고 정확히 안내하세요. 현재 주변 시설·정류장 안내는 %s 안에서만 "
+                "가능하다는 점을 밝히고, %s 안의 장소를 말씀해 달라고 요청하세요. 서비스 "
+                "장애나 일시적인 오류라고 말하지 말고, 결과를 추측하지 마세요. 진행 중인 "
+                "길안내가 있다면 그 안내는 그대로 계속됩니다."
+                % (kind, place, SERVICE_AREA, SERVICE_AREA, SERVICE_AREA)
+            ),
+        }
     return {
         "status": "out_of_service_area",
         "tool_name": "plan_accessible_route",
@@ -954,8 +1029,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                 # 저상 우선 모드가 고른 구간 — 판정 문구(버스 leg 경고 첫 줄)를 그대로 쓴다
                 low_floor_note = (leg.get("warnings") or [None])[0] or _low_floor_tier_note(lj, r.get("name"))
             elif item["realtime_status"] == "success" and low_floor_note is None:
-                low_floor_note = ("승차 정류장에 저상버스 %s번이 약 %d분 뒤 도착 예정"
-                                  % (nlf.get("route_name") or r.get("name"), nlf["predict_min"])
+                low_floor_note = (_next_low_floor_note(nlf, r.get("name"))
                                   if nlf else
                                   "지금 승차 정류장에 오는 차량은 저상버스가 아닙니다")
             transit_brief.append(item)
@@ -1029,8 +1103,25 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     }
 
 
-async def tool_explain_route_segment(route_id: str, step_idx: int = None) -> dict:
-    """직전 경로의 특정 구간(또는 전체)이 왜 그렇게 안내되었는지 설명."""
+async def tool_explain_route_segment(route_id: str = "", step_idx: int = None) -> dict:
+    """직전 경로의 특정 구간(또는 전체)이 왜 그렇게 안내되었는지 설명.
+
+    route_id 는 모델이 만들지 않는다 — 세션이 아는 경로가 있으면 서버가 채운다
+    (nav_context.inject_nav_defaults). 그래서 선언에서도 필수가 아니고 기본값은 "" 이다.
+    세션에도 경로가 없어 빈 값으로 오면 경로 API 를 부르지 않고 "안내한 경로가 없다"는
+    상태(no_route)를 돌려준다 — 필수 인자로 두면 이 경우 TypeError 가 나서 모델이
+    사유를 설명할 수 없다.
+    """
+    route_id = str(route_id or "").strip()
+    if not route_id:
+        return {
+            "status": "no_route",
+            "tool_name": "explain_route_segment",
+            "ai_instruction": (
+                "아직 안내한 경로가 없어 구간을 설명할 수 없다고 짧게 알리고, 목적지를 말씀해 "
+                "주시면 경로를 안내해 드리겠다고 하세요. 경로나 사유를 추측하지 마세요."
+            ),
+        }
     data = await route_client.get_route(route_id)
     if data.get("status") == "error":
         return data
@@ -1095,11 +1186,21 @@ def _support_types_from_situation(types: str, situation: str) -> str:
 
 
 async def _resolve_base(place: str, lat, lng, tool_name: str):
-    """기준 위치 — 말한 장소 > 주입된 현재 위치. (lat, lng, label) 또는 오류 dict."""
+    """기준 위치 — 말한 장소 > 주입된 현재 위치. (lat, lng, label) 또는 오류 dict.
+
+    말한 장소를 쓸 때는 두 실패 사유를 구분해 돌려준다(둘 다 tool_name 을 담고
+    ui_action 은 없다 — _place_not_found 설명 참조).
+      - 이름을 좌표로 바꾸지 못함 → place_not_found ("안양시 밖"이라고 말하면 안 된다.
+        안양시 안의 시설도 이름이 조금 다르면 여기에 해당한다)
+      - 좌표는 얻었지만 서비스 범위 밖 → out_of_service_area
+    """
     if place:
         hit = await _resolve_place(place)
         if hit is None:
-            return _out_of_service_area("기준 위치", place)
+            return _place_not_found("기준 위치", place, tool_name)
+        if await _outside_place(hit):
+            # 범위 밖 안내에는 이용자가 말한 이름을 그대로 쓴다(경로 도구와 같은 규칙)
+            return _out_of_service_area("기준 위치", str(place).strip() or hit["label"], tool_name)
         return hit["lat"], hit["lng"], hit["label"]
     if lat is None or lng is None:
         return {
@@ -1450,9 +1551,13 @@ async def tool_find_nearby_transit(lat: float = None, lng: float = None,
     """
     base_label = None
     if place:
+        # 이름을 못 찾음 / 범위 밖을 구분한다 — _resolve_base 와 같은 규칙
         hit = await _resolve_place(place)
         if hit is None:
-            return _out_of_service_area("기준 위치", place)
+            return _place_not_found("기준 위치", place, "find_nearby_transit")
+        if await _outside_place(hit):
+            return _out_of_service_area("기준 위치", str(place).strip() or hit["label"],
+                                        "find_nearby_transit")
         lat, lng, base_label = hit["lat"], hit["lng"], hit["label"]
     if lat is None or lng is None:
         return {
@@ -1551,6 +1656,21 @@ def _low_floor_tier_note(lj: dict, route_name) -> str:
     return "실시간 저상버스 정보를 확인하지 못함"
 
 
+def _next_low_floor_note(nlf: dict, route_name) -> str:
+    """승차 정류장에 오는 저상버스 한 문장 — 도착 예정(분)을 모르면 분을 말하지 않는다.
+
+    실시간 응답의 predict_min 은 None 일 수 있다(차량 위치는 잡혔지만 도착 예정 시간이
+    아직 계산되지 않은 경우). "%d" 서식에 None 이 들어가면 TypeError 로 경로 안내 전체가
+    실패하므로, 숫자로 바꿀 수 있을 때만 분을 넣는다.
+    """
+    name = nlf.get("route_name") or route_name or ""
+    try:
+        minutes = int(nlf.get("predict_min"))
+    except (TypeError, ValueError):
+        return "승차 정류장에 저상버스 %s번이 오고 있습니다(도착 예정 시간은 확인되지 않음)" % name
+    return "승차 정류장에 저상버스 %s번이 약 %d분 뒤 도착 예정" % (name, minutes)
+
+
 def _brief_low_floor(nlf: dict) -> dict:
     return {"route_name": nlf.get("route_name"), "route_type": nlf.get("route_type"),
             "end_station": nlf.get("end_station"), "predict_min": nlf.get("predict_min"),
@@ -1603,10 +1723,62 @@ def _arrival_line(it: dict) -> dict:
     }
 
 
+def _bus_no(text) -> str:
+    """버스 번호 비교용 정규화 — 공백·'번'·'버스'를 떼고 대문자로 ('51번 버스' → '51')."""
+    s = re.sub(r"\s+", "", str(text or ""))
+    s = re.sub(r"(번)?(버스)?$", "", s)
+    return s.upper()
+
+
+def _filter_arrivals_by_route_name(items: list, route_name: str):
+    """도착 항목을 이용자가 물은 노선 번호로 거른다.
+
+    인자: items — _arrival_line 결과 목록, route_name — 이용자가 말한 번호("51", "51번").
+    반환: (목록, matched)
+      - route_name 이 비어 있으면 (items, None) — 거르지 않았다는 뜻
+      - 일치하는 노선이 있으면 (그 노선들만, True)
+      - 일치하는 노선이 없으면 (items 전체, False) — 빈 목록을 주면 모델이 "버스가 없다"고
+        단정하므로 전체를 돌려주고, 호출부가 그 사실을 응답에 표시한다
+    번호는 완전 일치로만 본다 — '5' 가 '51'·'5-1' 에 걸리면 다른 노선을 안내하게 된다.
+    """
+    want = _bus_no(route_name)
+    if not want:
+        return items, None
+    hit = [it for it in items if _bus_no(it.get("route_name")) == want]
+    if hit:
+        return hit, True
+    return items, False
+
+
+def _low_floor_from_lines(lines: list) -> Optional[dict]:
+    """거른 노선들 안에서 가장 먼저 오는 저상 차량 — next_low_floor 와 같은 모양.
+
+    경로 서비스가 주는 next_low_floor 는 정류장 전체 기준이라, 노선 번호로 거른 뒤에는
+    그 노선의 차량이 아닐 수 있다. 거른 목록의 차량(노선당 최대 2대)에서 다시 고른다.
+    도착 예정(분)을 모르는 차량은 뒤로 보낸다. 없으면 None.
+    """
+    best = None
+    for ln in lines:
+        for v in (ln.get("vehicles") or []):
+            if not v.get("low_floor"):
+                continue
+            pm = v.get("predict_min")
+            key = pm if isinstance(pm, (int, float)) else float("inf")
+            if best is None or key < best[0]:
+                best = (key, {"route_name": ln.get("route_name"), "route_type": ln.get("route_type"),
+                              "end_station": ln.get("end_station"), "predict_min": pm,
+                              "stops_away": v.get("stops_away"), "plate_no": None})
+    return best[1] if best else None
+
+
 async def tool_get_bus_arrivals(station_id: str = "", route_id: str = "", place: str = "",
                                 station_name: str = "", lat: float = None, lng: float = None,
-                                profile: str = DEFAULT_PROFILE) -> dict:
+                                profile: str = DEFAULT_PROFILE, route_name: str = "") -> dict:
     """정류장의 실시간 도착정보 — "저상버스 언제 와", "다음 버스 저상이야?".
+
+    route_name 은 이용자가 물은 버스 번호다("51번 몇 분 남았어" → "51"). 도구 선언에 있는
+    인자라 모델이 보내며, 값이 있으면 도착 항목을 그 번호로 걸러 돌려준다. 일치하는 노선이
+    없으면 전체를 돌려주고 route_name_matched=False 로 표시한다.
 
     정류장은 (1) station_id (2) 안내 중 버스 구간의 승차 정류장(세션 주입)
     (3) place 로 말한 장소 근처 (4) 현재 위치 근처 순으로 정한다.
@@ -1616,9 +1788,14 @@ async def tool_get_bus_arrivals(station_id: str = "", route_id: str = "", place:
     base_label = station_name or None
     if not station_id:
         if place:
+            # 이름을 못 찾음 / 범위 밖을 구분한다 — _resolve_base 와 같은 규칙.
+            # 도구 이름을 담고 ui_action 은 싣지 않는다(화면의 경로를 지우지 않는다).
             hit = await _resolve_place(place)
             if hit is None:
-                return _place_not_found("기준 위치", place)
+                return _place_not_found("기준 위치", place, "get_bus_arrivals")
+            if await _outside_place(hit):
+                return _out_of_service_area("기준 위치", str(place).strip() or hit["label"],
+                                            "get_bus_arrivals")
             lat, lng = hit["lat"], hit["lng"]
             base_label = hit["label"]
         if lat is None or lng is None:
@@ -1659,17 +1836,31 @@ async def tool_get_bus_arrivals(station_id: str = "", route_id: str = "", place:
         }
     items = [_arrival_line(it) for it in (data.get("items") or [])]
     nlf = data.get("next_low_floor")
+    nlf_brief = _brief_low_floor(nlf) if nlf else None
+    # 이용자가 물은 노선 번호로 거른다(없으면 그대로). matched: None=거르지 않음
+    route_name = str(route_name or "").strip()
+    items, matched = _filter_arrivals_by_route_name(items, route_name)
+    if matched:
+        # 거른 뒤의 저상 차량은 그 노선 안에서 다시 고른다(전체 기준 값은 다른 노선일 수 있다)
+        nlf_brief = _low_floor_from_lines(items)
+        nlf = nlf_brief
     return {
         "status": "success",
         "tool_name": "get_bus_arrivals",
         "station_id": station_id,
         "route_id": route_id or None,
+        "route_name": route_name or None,
+        "route_name_matched": matched,
         "base_label": base_label,
         "count": len(items),
         "items": items[:6],
-        "next_low_floor": _brief_low_floor(nlf) if nlf else None,
+        "next_low_floor": nlf_brief,
         "ai_instruction": (
             ("%s 기준입니다. " % base_label if base_label else "")
+            + (("물으신 %s번만 추린 결과입니다. " % _bus_no(route_name)) if matched else
+               ("물으신 %s번은 지금 이 정류장 도착정보에 없습니다 — 그 사실을 먼저 말하고, "
+                "아래는 이 정류장의 다른 노선이라고 밝히세요. " % _bus_no(route_name))
+               if matched is False else "")
             + ("가장 빨리 오는 저상버스를 먼저 말하세요: next_low_floor 의 노선 번호·유형·"
                "방면(end_station)·도착 예정(분)·몇 정거장 전. "
                if nlf else
@@ -1890,12 +2081,20 @@ async def tool_report_accessibility(reason: str = "etc", detail: str = "",
 # ─────────────────────────────────────────────────────────────
 def get_tool_dispatcher(embed_fn):
     """embed_fn 을 주입한 디스패처 dict 를 반환."""
+    def _with_embed(handler):
+        # embed_fn 을 묶은 래퍼. __wrapped__ 로 원래 핸들러를 가리켜 두면
+        # inspect.signature 가 원래 시그니처를 읽는다 — 인자 대조(tool_accepted_params)의 근거.
+        def _call(**kw):
+            return handler(embed_fn=embed_fn, **kw)
+        _call.__wrapped__ = handler
+        return _call
+
     return {
         "search_policies_by_metadata": tool_search_policies_by_metadata,
-        "search_by_keyword": lambda **kw: tool_search_by_keyword(embed_fn=embed_fn, **kw),
+        "search_by_keyword": _with_embed(tool_search_by_keyword),
         "get_policy_details": tool_get_policy_details,
         "check_eligibility_criteria": tool_check_eligibility_criteria,
-        "find_operating_agencies": lambda **kw: tool_find_operating_agencies(embed_fn=embed_fn, **kw),
+        "find_operating_agencies": _with_embed(tool_find_operating_agencies),
         # 이동경로·관광 (02-Route 연동) — 기능 플래그가 꺼져 있으면 선언 자체를 하지 않는다
         "find_bf_tour_spots": tool_find_bf_tour_spots,
         "plan_accessible_route": tool_plan_accessible_route,
@@ -1913,3 +2112,138 @@ def get_tool_dispatcher(embed_fn):
         "report_accessibility_issue": tool_report_accessibility,
         "report_station_position": tool_report_station_position,
     }
+
+
+# ─────────────────────────────────────────────────────────────
+# 도구 실행 공통부 — Live(live_bridge)·온프레미스 폴백(local_pipeline)이 같이 쓴다
+#   1) 핸들러가 받지 않는 인자 걸러내기  2) 실행 상한 시간  3) 실패를 값으로 돌려주기
+#   4) 로그에 남길 요약(원문 대신 이름·키·상태만)
+# ─────────────────────────────────────────────────────────────
+# 서버가 묶어 넣는 인자 — 모델이 보내면 래퍼의 embed_fn 과 겹쳐 TypeError 가 난다
+_SERVER_BOUND_PARAMS = frozenset({"embed_fn"})
+
+# 정책·조회 도구(DB 조회 + 임베딩)의 실행 상한(초).
+# 근거: 평소 1초 안팎이고, 가장 느린 경로는 질의 확장(EXPAND_TIMEOUT_S 기본 3초) +
+# 임베딩 + 벡터 검색이다. 그 몇 배의 여유를 두되, 음성 대화에서 20초를 넘는 침묵은
+# 고장으로 느껴지므로 그 전에 "잠시 후 다시"를 말하게 한다.
+TOOL_TIMEOUT_POLICY_SEC = 20.0
+# 경로·관광·주변 조회 도구(경로 서비스 호출)의 실행 상한(초).
+# 근거: 경로 클라이언트는 호출 1건에 타임아웃 6초(ROUTE_API_TIMEOUT 기본값) × 2회 시도
+# = 최대 12초를 쓰고, 연속 3건이 실패해야 서킷이 열려 이후 호출이 즉시 실패한다. 도구
+# 하나가 호출을 여러 번 잇는 경우(장소 이름 해석 → 경로 계획) 서킷이 열리기까지 최악
+# 36초가 걸리므로 그보다 여유 있게 45초로 둔다. 이보다 짧으면 경로 클라이언트가 스스로
+# 돌려줄 사유별 안내문(연결 실패·범위 밖 등)을 받기 전에 잘라 버리게 된다.
+TOOL_TIMEOUT_ROUTE_SEC = 45.0
+# 정책·조회 도구 이름 — 여기에 없는 도구는 경로 서비스 호출 도구로 본다(긴 상한)
+POLICY_TOOL_NAMES = frozenset({
+    "search_policies_by_metadata", "search_by_keyword", "get_policy_details",
+    "check_eligibility_criteria", "find_operating_agencies",
+})
+
+
+def tool_timeout_sec(name: str) -> float:
+    """도구 이름에 맞는 실행 상한(초). 값은 호출 시점의 모듈 상수를 읽는다."""
+    return TOOL_TIMEOUT_POLICY_SEC if name in POLICY_TOOL_NAMES else TOOL_TIMEOUT_ROUTE_SEC
+
+
+def tool_accepted_params(handler) -> Optional[set]:
+    """핸들러가 키워드로 받을 수 있는 인자 이름 집합.
+
+    반환: 이름 집합. 핸들러가 **kwargs 를 받거나 시그니처를 읽을 수 없으면 None
+    (= 무엇이든 받으므로 거르지 않는다). 서버가 묶어 넣는 인자(embed_fn)는 뺀다.
+    """
+    try:
+        sig = inspect.signature(handler)
+    except (TypeError, ValueError):
+        return None
+    names = set()
+    for p in sig.parameters.values():
+        if p.kind is inspect.Parameter.VAR_KEYWORD:
+            return None
+        if p.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY):
+            names.add(p.name)
+    return names - _SERVER_BOUND_PARAMS
+
+
+def filter_tool_args(handler, fargs: dict):
+    """핸들러 시그니처에 없는 인자를 걸러낸다.
+
+    모델은 도구 선언에 없는 인자를 만들어 보내기도 한다(예: 다른 도구의 인자 이름을
+    섞음). 그대로 넘기면 TypeError 로 도구가 실패하고 모델에는 파이썬 오류 문구만
+    돌아간다. 받는 인자만 남기고 나머지는 버린다.
+    세션이 주입하는 인자(좌표·route_id·station_wait·handoff 등)는 전부 핸들러
+    시그니처에 있으므로 걸러지지 않는다(test_tool_contract 가 대조한다).
+
+    반환: (남긴 인자 dict, 버린 인자 이름 목록 — 정렬됨)
+    """
+    if not isinstance(fargs, dict):
+        return {}, []
+    accepted = tool_accepted_params(handler)
+    if accepted is None:
+        return dict(fargs), []
+    kept = {k: v for k, v in fargs.items() if k in accepted}
+    dropped = sorted(str(k) for k in fargs if k not in accepted)
+    return kept, dropped
+
+
+def _tool_timeout_result(name: str, sec: float) -> dict:
+    """실행 상한을 넘긴 도구의 응답 — 모델이 "잠시 후 다시"를 말할 수 있게 값으로 돌려준다."""
+    return {
+        "status": "error",
+        "error": "timeout",
+        "tool_name": name,
+        "message": "조회가 %d초 안에 끝나지 않았습니다" % int(sec),
+        "ai_instruction": (
+            "지금은 조회가 오래 걸려 답을 가져오지 못했다고 짧게 알리고, 잠시 후 다시 "
+            "말씀해 달라고 안내하세요. 결과를 추측해서 말하지 마세요."
+        ),
+    }
+
+
+async def run_tool(dispatcher: dict, name: str, fargs: dict, log_prefix: str = "") -> dict:
+    """디스패처의 도구를 실행한다 — 예외를 올리지 않고 항상 값을 돌려준다.
+
+    인자: dispatcher — get_tool_dispatcher 결과, name — 도구 이름, fargs — 세션 주입까지
+          끝난 인자, log_prefix — 로그 구분용 머리말(예: "[로컬] ").
+    동작:
+      - 등록되지 않은 도구 → {"error": "unknown tool: ..."}
+      - 핸들러가 받지 않는 인자는 버리고, 버린 이름을 경고 로그에 남긴다(값은 남기지 않는다)
+      - tool_timeout_sec(name) 안에 끝나지 않으면 취소하고 status="error" 응답을 돌려준다.
+        상한이 없으면 외부 호출이 멈췄을 때 모델·이용자가 끝없이 기다린다
+      - 그 밖의 예외 → {"error": 예외 문구}
+    """
+    handler = dispatcher.get(name) if isinstance(dispatcher, dict) else None
+    if handler is None:
+        return {"error": f"unknown tool: {name}"}
+    kwargs, dropped = filter_tool_args(handler, fargs)
+    if dropped:
+        logger.warning("%s도구 %s — 핸들러가 받지 않는 인자를 버림: %s", log_prefix, name, dropped)
+    sec = tool_timeout_sec(name)
+    try:
+        return await asyncio.wait_for(handler(**kwargs), timeout=sec)
+    except asyncio.TimeoutError:
+        logger.warning("%s도구 %s 실행이 %g초를 넘겨 중단", log_prefix, name, sec)
+        return _tool_timeout_result(name, sec)
+    except Exception as e:
+        logger.exception("%s도구 실행 실패 %s: %s", log_prefix, name, e)
+        return {"error": str(e)}
+
+
+def summarize_tool_result(result) -> str:
+    """도구 결과의 로그용 요약 — 상태 키만 남긴다.
+
+    결과 본문에는 이용자가 말한 장소 이름·좌표·정책 본문이 들어 있어 그대로 남기면
+    운영 로그에 대화 내용이 쌓인다. 상태(status)·오류 여부·건수와 최상위 키 이름만 적는다.
+    """
+    if not isinstance(result, dict):
+        return "type=%s" % type(result).__name__
+    parts = []
+    if "status" in result:
+        parts.append("status=%s" % result.get("status"))
+    if result.get("error"):
+        parts.append("error=yes")
+    for k in ("count", "matched_count", "total"):
+        if isinstance(result.get(k), int):
+            parts.append("%s=%d" % (k, result[k]))
+    parts.append("keys=%s" % sorted(str(k) for k in result.keys()))
+    return " ".join(parts)

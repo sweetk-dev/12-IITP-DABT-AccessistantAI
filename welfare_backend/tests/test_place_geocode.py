@@ -133,12 +133,14 @@ def _with_spy(fn, **kw):
     tool_handlers.kakao_local = types.SimpleNamespace(search=spy.kakao_search)
     tool_handlers._SERVICE_BBOX["value"] = None
     tool_handlers._SERVICE_BBOX["checked"] = False
+    tool_handlers._SERVICE_BBOX["retry_at"] = 0.0      # 조회 실패 뒤 재시도 대기도 초기화
     try:
         return fn(spy)
     finally:
         tool_handlers.route_client, tool_handlers.kakao_local = orig_rc, orig_kk
         tool_handlers._SERVICE_BBOX["value"] = None
         tool_handlers._SERVICE_BBOX["checked"] = False
+        tool_handlers._SERVICE_BBOX["retry_at"] = 0.0      # 조회 실패 뒤 재시도 대기도 초기화
 
 
 def t_institution_name_resolves_via_kakao():

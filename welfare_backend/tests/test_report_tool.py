@@ -103,12 +103,31 @@ async def main():
     check("디스패처에 report_accessibility_issue 등재", "report_accessibility_issue" in disp)
 
 
-asyncio.run(main())
+def test_report_tool():
+    """pytest 진입점 — main() 의 검사 전체를 돌리고 FAIL 이 하나라도 있으면 실패한다.
 
-failed = 0
-for st, name in results:
-    print(f"  {st}  {name}")
-    if st == "FAIL":
-        failed += 1
-print("\nALL PASSED" if not failed else f"\n{failed} FAILED")
-sys.exit(1 if failed else 0)
+    main() 은 route_client.report_accessibility 를 가짜로 바꾼다. 한 프로세스에서 다른
+    테스트와 함께 돌 때 그 가짜가 남지 않게 끝나면 되돌린다.
+    """
+    saved = getattr(route_client, "report_accessibility", None)
+    del results[:]
+    try:
+        asyncio.run(main())
+    finally:
+        route_client.report_accessibility = saved
+    failed = [name for st, name in results if st == "FAIL"]
+    assert not failed, failed
+
+
+# 실행부는 스크립트로 직접 돌릴 때만 탄다. 모듈 최상위에 두면 pytest 가 이 파일을
+# import(수집)하는 순간 sys.exit 가 불려 전체 테스트 실행이 수집 단계에서 끝난다.
+if __name__ == "__main__":
+    asyncio.run(main())
+
+    failed = 0
+    for st, name in results:
+        print(f"  {st}  {name}")
+        if st == "FAIL":
+            failed += 1
+    print("\nALL PASSED" if not failed else f"\n{failed} FAILED")
+    sys.exit(1 if failed else 0)

@@ -64,6 +64,12 @@ except ImportError:
     sys.path.insert(0, str(ROOT))
     from crawler.detectors import DETECTORS, save_content_snapshot, save_baseline_snapshot, ChangeResult  # type: ignore
 
+# 정책 항목·스테이징 파일 glob 접두부("B[0-9]*").
+# confirm_apply.ITEM_GLOB_PREFIX 와 같은 값이어야 한다. confirm_apply 를 import 하지 않고
+# 값을 따로 두는 이유: 그 모듈은 import 시점에 자체 경로 상수를 만들기 때문에, 감지만 하는
+# 크롤 실행에 불필요한 의존을 만들지 않기 위함.
+ITEM_GLOB_PREFIX = "B[0-9]*"
+
 
 def _load_targets() -> dict:
     """기준 crawl_targets.json ⊕ 영속 오버레이(crawl_targets.local.json) 병합 결과.
@@ -81,7 +87,8 @@ def _load_targets() -> dict:
 def _items_index() -> dict:
     """B0XX → 파일 경로 매핑."""
     idx = {}
-    for jf in sorted(ITEMS_DIR.glob("B0*.json")):
+    # 'B + 숫자' 로 시작하는 항목 전체 — "B0*" 로 두면 B100 이상이 크롤 대상에서 빠진다.
+    for jf in sorted(ITEMS_DIR.glob(f"{ITEM_GLOB_PREFIX}.json")):
         try:
             data = json.loads(jf.read_text(encoding="utf-8"))
             pid = data.get("id")
@@ -149,7 +156,7 @@ def _purge_staging(scope_pids):
     rej = STAGING_DIR / ".rejected"
     rej.mkdir(parents=True, exist_ok=True)
     n = 0
-    for f in list(STAGING_DIR.glob("B0*.staged.json")):
+    for f in list(STAGING_DIR.glob(f"{ITEM_GLOB_PREFIX}.staged.json")):
         pid = f.name.split("_")[0]
         if scope_pids and pid not in scope_pids:
             continue
@@ -246,7 +253,13 @@ async def run(args):
             })
         if getattr(r, "status", "ok") != "ok":
             failures.append({"target_id": tid, "reason": r.reason, "url": t.get("url")})
-            continue
+            # detect_failed = 본문은 받았지만 비교 키를 만들지 못한 경우(예: last_modified_field
+            # 에서 수정일을 찾지 못함). 리포트의 실패 목록에 올려 감지 방식 점검을 유도한다.
+            # 정기 해시 검사에서는 여기서 끝낸다(변경으로 치지 않으므로 LLM 호출 없음).
+            # 재검증(--revalidate)은 해시와 무관하게 현재 본문으로 정책을 다시 확인하는
+            # 모드이므로, 받은 본문은 그대로 재검증 입력으로 넘긴다.
+            if not (r.status == "detect_failed" and getattr(args, "revalidate", False)):
+                continue
         if t.get("change_detection_method") == "manual_review":
             manual_targets.append({
                 "target_id": tid,
@@ -295,7 +308,7 @@ async def run(args):
                 item_to_changes[pid].append(ch)
 
         # 이미 staging 대기 중인 정책은 LLM 재호출 생략 (#27 A안 — 미확정 변경 중복 비용 방지)
-        pending_pids = {p.name.split("_")[0] for p in STAGING_DIR.glob("B0*.staged.json")}
+        pending_pids = {p.name.split("_")[0] for p in STAGING_DIR.glob(f"{ITEM_GLOB_PREFIX}.staged.json")}
 
         for pid, related_changes in item_to_changes.items():
             jf = items_idx.get(pid)

@@ -708,6 +708,10 @@ async def explain_route_segment(
     route_id: str = Query(...),
     step_idx: int = Query(None),
 ):
+    # route_id 는 경로 서비스의 URL 경로에 들어간다 — 형식이 다르면 호출 전에 거절한다
+    # (형식 근거는 route_client._PATH_ID_RE 주석).
+    if not route_client.valid_path_id(route_id):
+        raise HTTPException(status_code=422, detail="route_id 형식이 올바르지 않습니다")
     return await tool_handlers.tool_explain_route_segment(route_id=route_id, step_idx=step_idx)
 
 
@@ -999,7 +1003,8 @@ async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str
       {"type":"turn_complete"}
       {"type":"idle_warning", "message":"..."}
       {"type":"auto_close", "message":"..."}
-      {"type":"error", "message":"..."}
+      {"type":"error", "message":"..."}                 (fatal 필드 없음 = 치명, 세션 종료)
+      {"type":"error", "fatal":false, "message":"..."}  (비치명 — 연결 유지, 화면은 재연결을 끄지 않는다)
     """
     if ai_client is None:
         await websocket.accept()

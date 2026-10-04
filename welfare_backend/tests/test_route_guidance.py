@@ -117,7 +117,7 @@ def t_transient_keeps_wording():
 def t_circuit_open_is_transient():
     route_client._open_until = 9e18
     try:
-        r = asyncio.get_event_loop().run_until_complete(route_client._call("GET", "/profiles"))
+        r = asyncio.run(route_client._call("GET", "/profiles"))
     finally:
         route_client._open_until = 0.0
     assert r["status"] == "error"
@@ -179,7 +179,9 @@ class _Spy(object):
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    # 호출마다 새 루프를 만든다 — 한 프로세스에서 다른 테스트의 asyncio.run 이 먼저 돌면
+    # 현재 루프가 닫혀 있어 get_event_loop() 가 실패한다.
+    return asyncio.run(coro)
 
 
 def _with_spy(fn):
@@ -191,12 +193,14 @@ def _with_spy(fn):
     tool_handlers.route_client = stub
     tool_handlers._SERVICE_BBOX["value"] = None      # 범위 캐시는 테스트마다 새로 조회
     tool_handlers._SERVICE_BBOX["checked"] = False
+    tool_handlers._SERVICE_BBOX["retry_at"] = 0.0      # 조회 실패 뒤 재시도 대기도 초기화
     try:
         return fn(spy)
     finally:
         tool_handlers.route_client = orig
         tool_handlers._SERVICE_BBOX["value"] = None
         tool_handlers._SERVICE_BBOX["checked"] = False
+        tool_handlers._SERVICE_BBOX["retry_at"] = 0.0      # 조회 실패 뒤 재시도 대기도 초기화
 
 
 def t_out_of_area_destination():
