@@ -188,6 +188,23 @@ def current_guidance_result(nav: dict) -> dict:
     }
 
 
+HANDOFF_TOOLS = ("plan_accessible_route", "open_navi_screen")
+
+
+def inject_handoff(fname: str, fargs: dict, session_mode) -> dict:
+    """정책상담 세션이면 길안내 도구를 '넘기기'로 돌린다 (v2.0.0).
+
+    세션 종류는 서버가 아는 사실이다 — 모델이 보낸 handoff 값은 믿지 않고 항상 덮어쓴다.
+    이동경로 안내 세션(mode == "navi")에서는 종전대로 경로를 만든다.
+    """
+    if fname in HANDOFF_TOOLS:
+        if (session_mode or "") == "navi":
+            fargs.pop("handoff", None)
+        else:
+            fargs["handoff"] = True
+    return fargs
+
+
 def inject_nav_defaults(fname: str, fargs: dict, nav: dict, user_location: dict) -> dict:
     """도구 호출 인자에 세션이 아는 사실을 주입한다 — 모델이 지어내지 못하게.
 

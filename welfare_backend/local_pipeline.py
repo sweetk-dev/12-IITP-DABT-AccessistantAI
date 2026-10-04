@@ -27,20 +27,37 @@ import base64
 import json
 import logging
 import os
-import struct
+import threading
 from typing import Callable, Optional
 
 import numpy as np
 from fastapi import WebSocket, WebSocketDisconnect
-from starlette.websockets import WebSocketState
+
+import trial_recorder
 
 from nav_context import (update_nav_state, current_guidance_result,
-                         note_new_route, inject_nav_defaults)
+                         note_new_route, inject_nav_defaults, inject_handoff)
+from tool_handlers import run_tool, summarize_tool_result
 
 logger = logging.getLogger(__name__)
 
 TARGET_TTS_RATE = 24000   # 클라이언트가 기대하는 출력 PCM 레이트 (기존 프로토콜과 동일)
 INPUT_RATE = 16000        # 클라이언트가 보내는 입력 PCM 레이트
+
+# 발화가 시작되기 전(무음) 구간에서 입력 버퍼에 남겨 둘 길이(초).
+# 단말은 무음에도 PCM 을 계속 보내므로, 자르지 않으면 이용자가 말하지 않는 동안
+# 버퍼가 끝없이 커진다(16kHz 16bit 기준 1분에 약 1.9MB, 그 전체가 STT 로 넘어간다).
+# 근거: VAD 의 발화 시작 판정은 실제 첫 음절보다 늦다(32ms 프레임 판정 + 단말이 묶어
+# 보내는 청크 길이 + 약하게 시작하는 첫 자음). 2초를 남기면 첫 음절이 잘리지 않고,
+# STT 가 앞 무음을 스스로 걸러내기에도 충분히 짧다.
+PRE_SPEECH_KEEP_SEC = 2.0
+PRE_SPEECH_KEEP_BYTES = int(PRE_SPEECH_KEEP_SEC * INPUT_RATE) * 2   # 16bit mono
+
+# 대화 이력에 남길 최근 사용자 턴 수(시스템 프롬프트는 항상 보존).
+# 근거: 턴마다 도구 결과 JSON(수 KB)이 이력에 쌓이고 매 요청에 전부 다시 실려 간다.
+# 자르지 않으면 긴 세션에서 요청이 계속 커져 응답이 느려지고 모델 문맥 한도를 넘는다.
+# 8 은 Live 쪽이 세션 복구 때 넘기는 최근 대화 턴 수(RESEED_MAX_TURNS)와 같은 값이다.
+LOCAL_HISTORY_MAX_TURNS = 8
 GREETING = ("안녕하세요! 장애인 복지 정책에 대해 궁금한 점이 있으신가요? "
             "필요하신 정보를 정확하게 안내해 드릴게요. 편하게 말씀해 주세요.")
 
@@ -79,27 +96,41 @@ def local_fallback_enabled() -> bool:
 _stt_model = None
 _vad_model = None
 _tts_engine = None
+# STT·VAD 로드는 작업 스레드에서 실행된다(이벤트 루프를 막지 않으려고 asyncio.to_thread 로
+# 부른다). 두 세션이 동시에 폴백으로 넘어오면 같은 모델을 두 번 올릴 수 있으므로 잠근다.
+_model_load_lock = threading.Lock()
 
 
 def _get_stt():
     global _stt_model
     if _stt_model is None:
-        from faster_whisper import WhisperModel
-        name = os.environ.get("LOCAL_STT_MODEL", "medium")
-        device = os.environ.get("LOCAL_STT_DEVICE", "cpu")
-        compute = os.environ.get("LOCAL_STT_COMPUTE", "int8")
-        logger.info("🧠 STT 로드: faster-whisper %s (device=%s, compute=%s)", name, device, compute)
-        _stt_model = WhisperModel(name, device=device, compute_type=compute)
+        with _model_load_lock:
+            if _stt_model is None:
+                from faster_whisper import WhisperModel
+                name = os.environ.get("LOCAL_STT_MODEL", "medium")
+                device = os.environ.get("LOCAL_STT_DEVICE", "cpu")
+                compute = os.environ.get("LOCAL_STT_COMPUTE", "int8")
+                logger.info("🧠 STT 로드: faster-whisper %s (device=%s, compute=%s)", name, device, compute)
+                _stt_model = WhisperModel(name, device=device, compute_type=compute)
     return _stt_model
 
 
 def _get_vad():
     global _vad_model
     if _vad_model is None:
-        from silero_vad import load_silero_vad
-        logger.info("🧠 VAD 로드: silero-vad")
-        _vad_model = load_silero_vad()
+        with _model_load_lock:
+            if _vad_model is None:
+                from silero_vad import load_silero_vad
+                logger.info("🧠 VAD 로드: silero-vad")
+                _vad_model = load_silero_vad()
     return _vad_model
+
+
+def _make_vad_iterator(silence_ms: int):
+    """VAD 반복기를 만든다 — 모듈 import 와 모델 로드가 무거워 작업 스레드에서 부른다."""
+    from silero_vad import VADIterator
+    return VADIterator(_get_vad(), sampling_rate=INPUT_RATE,
+                       min_silence_duration_ms=silence_ms)
 
 
 def _get_tts():
@@ -293,7 +324,7 @@ def _ollama_route_tools() -> list:
            "정류장의 실시간 버스 도착정보와 저상버스 여부를 확인한다. '저상버스 언제 와', '다음 버스 저상이야' "
            "질문에 사용. 안내 중이면 승차 정류장·노선이 자동 주입된다 — station_id 를 지어내지 않는다.",
            {"place": {"type": "string", "description": "사용자가 말한 정류장·장소 이름"},
-            "route_name": {"type": "string", "description": "사용자가 물은 버스 번호(참고용)"}}),
+            "route_name": {"type": "string", "description": "사용자가 물은 버스 번호. 결과를 그 번호로 추린다"}}),
         fn("get_station_facilities",
            "지하철역의 교통약자 편의시설(엘리베이터·리프트 출입구, 장애인화장실 위치, 승강장 안전발판·틈)을 "
            "알려 준다. '○○역 엘리베이터 어디 있어' 질문에 사용.",
@@ -319,12 +350,43 @@ def _ollama_route_tools() -> list:
     ]
 
 
+def trim_pre_speech(buf: bytearray, keep_bytes: int = PRE_SPEECH_KEEP_BYTES) -> None:
+    """발화 시작 전 입력 버퍼를 최근 keep_bytes 만 남기고 앞에서 잘라낸다(in-place).
+
+    호출부는 발화 중이 아닐 때만 부른다 — 발화 중 구간은 자르지 않는다.
+    16bit 샘플 경계가 어긋나지 않게 짝수 바이트만 잘라낸다.
+    """
+    excess = len(buf) - keep_bytes
+    excess -= excess % 2
+    if excess > 0:
+        del buf[:excess]
+
+
+def trim_messages(messages: list, max_turns: int = LOCAL_HISTORY_MAX_TURNS) -> None:
+    """대화 이력을 시스템 프롬프트 + 최근 max_turns 개 사용자 턴으로 줄인다(in-place).
+
+    자르는 지점은 항상 role="user" 메시지 바로 앞이다. 한 턴은 user → assistant(tool_calls)
+    → tool … → assistant 로 이어지므로, user 경계에서만 자르면 tool_calls 를 가진 assistant
+    메시지와 그 tool 응답이 서로 떨어지지 않는다(짝이 끊긴 tool 메시지를 받으면 모델
+    서버가 요청을 거절하거나 엉뚱한 답을 낸다).
+    맨 앞의 system 메시지들은 그대로 둔다. 사용자 턴이 max_turns 이하면 아무것도 하지 않는다.
+    """
+    head = 0
+    while head < len(messages) and messages[head].get("role") == "system":
+        head += 1
+    user_idx = [i for i in range(head, len(messages)) if messages[i].get("role") == "user"]
+    if len(user_idx) <= max_turns:
+        return
+    cut = user_idx[-max_turns]
+    del messages[head:cut]
+
+
 # ─────────────────────────────────────────────────────────────
 # LLM 턴 처리 — ollama gemma4 chat + 도구호출 루프
 # ─────────────────────────────────────────────────────────────
 async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                         nav_state: dict = None, user_location: dict = None,
-                        on_ui_action=None) -> str:
+                        on_ui_action=None, session_mode: str = None) -> str:
     """messages(대화 누적)에 사용자 발화가 추가된 상태로 호출.
     도구호출을 최대 4회까지 처리하고 최종 한국어 답변 텍스트를 반환.
     messages 는 in-place 로 갱신(assistant/tool 메시지 append)되어 맥락 유지."""
@@ -359,7 +421,10 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                         fargs = json.loads(fargs)
                     except Exception:
                         fargs = {}
-                logger.info("🛠 [로컬] 도구 호출: %s(%s)", fname, fargs)
+                if not isinstance(fargs, dict):
+                    fargs = {}
+                # 인자 값(말한 장소·질문 원문)은 남기지 않고 도구 이름과 인자 키만 남긴다
+                logger.info("🛠 [로컬] 도구 호출: %s (인자 키=%s)", fname, sorted(fargs))
                 # 좌표·현재 구간은 모델이 아니라 세션이 아는 값으로 채운다 (live_bridge 와 동일 규칙)
                 _nav = nav_state if nav_state is not None else {}
                 _loc = user_location if user_location is not None else {}
@@ -371,6 +436,7 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                         fargs.pop("origin_lat", None)
                         fargs.pop("origin_lng", None)
                 fargs = inject_nav_defaults(fname, fargs, _nav, _loc)
+                fargs = inject_handoff(fname, fargs, session_mode)   # 정책상담이면 넘기기 (v2.0.0)
 
                 if fname == "get_current_guidance":
                     # 세션 상태만 읽는 도구 — 디스패처를 거치지 않는다
@@ -378,11 +444,9 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                 elif fname not in dispatcher:
                     result = {"error": f"unknown tool: {fname}"}
                 else:
-                    try:
-                        result = await dispatcher[fname](**fargs)
-                    except Exception as e:
-                        logger.exception("[로컬] 도구 실행 실패 %s: %s", fname, e)
-                        result = {"error": str(e)}
+                    # Live 와 같은 실행부 — 받지 않는 인자 걸러내기·실행 상한·실패를 값으로
+                    result = await run_tool(dispatcher, fname, fargs, log_prefix="[로컬] ")
+                    logger.info("✓ [로컬] 도구 %s 결과: %s", fname, summarize_tool_result(result))
                 if (fname == "plan_accessible_route" and isinstance(result, dict)
                         and result.get("status") == "success"):
                     note_new_route(_nav, result.get("route_id"))
@@ -421,11 +485,12 @@ class LocalVoiceSession:
     def __init__(self, websocket: WebSocket, dispatcher: dict, embed_fn: Callable,
                  system_instruction: str, tracker_factory: Callable, session_id: str,
                  extract_sources: Callable, prior_history: Optional[list] = None,
-                 greet: bool = True):
+                 greet: bool = True, session_mode: str = None):
         self.ws = websocket
+        self.session_mode = session_mode      # "navi" 면 이동경로 안내 세션 (v2.0.0)
         self.dispatcher = dispatcher
-        self.embed_fn = embed_fn
-        self.system_instruction = system_instruction
+        # embed_fn·system_instruction 은 받기만 하고 쓰지 않는다 — 호출부와 인자 형식을 맞추기 위해
+        # 시그니처에 남겨 둔 것이다. 프롬프트는 아래의 로컬 전용 프롬프트(LOCAL_SYSTEM_PROMPT)를 쓴다.
         self.tracker_factory = tracker_factory
         self.session_id = session_id
         self.extract_sources = extract_sources
@@ -443,9 +508,15 @@ class LocalVoiceSession:
         self.nav_state = {}
         self.silence_ms = int(os.environ.get("LOCAL_VAD_SILENCE_MS", "1200"))
         self._turn_lock = asyncio.Lock()
-        self._closed = False
+        # 발화가 끝났지만 아직 처리(_process_turn)가 버퍼를 가져가지 않은 상태.
+        # 앞 턴이 처리 중이면 끝난 발화가 버퍼에서 기다린다 — 그동안 무음 구간 자르기를
+        # 하면 기다리던 발화가 잘려 나가므로, 이 값이 True 인 동안은 자르지 않는다.
+        self._speech_pending = False
 
     async def _send(self, payload: dict) -> bool:
+        _tr = trial_recorder.of(self.ws)            # 실증 참여자 계정 기록(#318)
+        if _tr is not None:
+            _tr.on_out(payload)
         try:
             await self.ws.send_json(payload)
             return True
@@ -488,7 +559,9 @@ class LocalVoiceSession:
         audio = _pcm16_to_float32(pcm)
         if audio.size < INPUT_RATE // 2:   # 0.5초 미만이면 무시
             return ""
-        model = _get_stt()
+        # 첫 호출은 모델 로드(수 초~수십 초)다 — 이벤트 루프에서 하면 그동안 이 프로세스의
+        # 모든 연결(다른 이용자의 상담 포함)이 멈추므로 작업 스레드에서 올린다.
+        model = await asyncio.to_thread(_get_stt)
 
         def _run():
             segments, _ = model.transcribe(audio, language="ko", vad_filter=True)
@@ -501,13 +574,16 @@ class LocalVoiceSession:
         async with self._turn_lock:
             pcm = bytes(self.audio_buf)
             self.audio_buf.clear()
+            self._speech_pending = False     # 버퍼를 가져갔다 — 무음 구간 자르기를 다시 허용
             if not pcm:
                 return
             tracker = self.tracker_factory()
             user_text = await self._transcribe(pcm)
             if not user_text:
                 return
-            logger.info("🎤 [로컬] 사용자 음성→텍스트: %s", user_text)
+            # 대화 원문은 운영 로그(INFO)에 남기지 않는다 — 길이만, 원문은 DEBUG 에서만
+            logger.info("🎤 [로컬] 사용자 음성→텍스트 수신 (%d자)", len(user_text))
+            logger.debug("🎤 [로컬] 사용자 음성→텍스트: %s", user_text)
             await self._send({"type": "user_transcript", "content": user_text})
             if tracker is not None:
                 try:
@@ -515,10 +591,11 @@ class LocalVoiceSession:
                 except Exception:
                     pass
             self.messages.append({"role": "user", "content": user_text})
+            trim_messages(self.messages)     # 시스템 프롬프트 + 최근 N턴만 유지
             try:
                 answer = await _run_llm_turn(self.messages, self.dispatcher, tracker, self._send_sources,
                                              self.nav_state, self.user_location,
-                                             self._send_ui_action)
+                                             self._send_ui_action, self.session_mode)
             except Exception as e:
                 logger.exception("[로컬] LLM 처리 실패: %s", e)
                 answer = "죄송합니다. 지금은 정확히 안내드리기 어렵습니다. 보건복지부 129로 문의해 주세요."
@@ -527,6 +604,39 @@ class LocalVoiceSession:
             if tracker is not None:
                 try:
                     # 응답 전사를 넘겨야 '정보 없음' 판정과 ai_final_answer 가 산다 (#253)
+                    tracker.on_ai_transcript(answer)
+                    await tracker.finalize_turn()
+                except Exception:
+                    pass
+
+    async def _process_text_turn(self, content: str):
+        """text 메시지 한 건을 LLM→TTS 로 처리한다 — 음성 턴과 같은 락 아래에서.
+
+        음성 턴(_process_turn)은 태스크로 따로 돌기 때문에, 락 없이 처리하면 두 턴이
+        self.messages 를 동시에 고친다(user/assistant/tool 메시지 순서가 섞이고, 모델에
+        짝이 맞지 않는 이력이 넘어간다). 같은 락으로 한 번에 한 턴만 진행시킨다.
+        """
+        async with self._turn_lock:
+            tracker = self.tracker_factory()
+            await self._send({"type": "user_transcript", "content": content})
+            if tracker is not None:
+                try:
+                    tracker.on_user_transcript(content, raw=None)
+                except Exception:
+                    pass
+            self.messages.append({"role": "user", "content": content})
+            trim_messages(self.messages)     # 시스템 프롬프트 + 최근 N턴만 유지
+            try:
+                answer = await _run_llm_turn(self.messages, self.dispatcher, tracker, self._send_sources,
+                                             self.nav_state, self.user_location,
+                                             self._send_ui_action, self.session_mode)
+            except Exception as e:
+                logger.exception("[로컬] LLM(text) 실패: %s", e)
+                answer = "죄송합니다. 지금은 정확히 안내드리기 어렵습니다. 보건복지부 129로 문의해 주세요."
+            await self._speak(answer)
+            await self._send({"type": "turn_complete"})
+            if tracker is not None:
+                try:
                     tracker.on_ai_transcript(answer)
                     await tracker.finalize_turn()
                 except Exception:
@@ -542,9 +652,8 @@ class LocalVoiceSession:
 
         vad_iter = None
         try:
-            from silero_vad import VADIterator
-            vad_iter = VADIterator(_get_vad(), sampling_rate=INPUT_RATE,
-                                   min_silence_duration_ms=self.silence_ms)
+            # VAD 모듈 import·모델 로드는 무겁다 — 이벤트 루프를 막지 않게 작업 스레드에서 한다
+            vad_iter = await asyncio.to_thread(_make_vad_iterator, self.silence_ms)
         except Exception as e:
             logger.warning("[로컬] VAD 미가용 — end_of_turn 신호에만 의존: %s", e)
 
@@ -556,6 +665,9 @@ class LocalVoiceSession:
                 raw = await self.ws.receive_text()
                 msg = json.loads(raw)
                 mtype = msg.get("type")
+                _tr = trial_recorder.of(self.ws)        # 실증 기록(#318)
+                if _tr is not None:
+                    _tr.on_in(msg)
 
                 if mtype == "audio_chunk":
                     pcm = base64.b64decode(msg["data"])
@@ -571,7 +683,13 @@ class LocalVoiceSession:
                                 speech_active = True
                             elif evt and "end" in evt and speech_active:
                                 speech_active = False
+                                self._speech_pending = True
                                 asyncio.create_task(self._process_turn())
+                        # 발화 시작 전(무음) 구간은 최근 N초만 남긴다. 발화 중이거나, 끝난
+                        # 발화가 처리를 기다리는 중이면 자르지 않는다. VAD 가 없으면 발화
+                        # 경계를 알 수 없어 자르지 않는다(end_of_turn 신호가 버퍼를 비운다).
+                        if not speech_active and not self._speech_pending:
+                            trim_pre_speech(self.audio_buf)
 
                 elif mtype == "location":
                     try:
@@ -589,29 +707,7 @@ class LocalVoiceSession:
                 elif mtype == "text":
                     content = msg.get("content", "")
                     if content.strip():
-                        tracker = self.tracker_factory()
-                        await self._send({"type": "user_transcript", "content": content})
-                        if tracker is not None:
-                            try:
-                                tracker.on_user_transcript(content, raw=None)
-                            except Exception:
-                                pass
-                        self.messages.append({"role": "user", "content": content})
-                        try:
-                            answer = await _run_llm_turn(self.messages, self.dispatcher, tracker, self._send_sources,
-                                             self.nav_state, self.user_location,
-                                             self._send_ui_action)
-                        except Exception as e:
-                            logger.exception("[로컬] LLM(text) 실패: %s", e)
-                            answer = "죄송합니다. 지금은 정확히 안내드리기 어렵습니다. 보건복지부 129로 문의해 주세요."
-                        await self._speak(answer)
-                        await self._send({"type": "turn_complete"})
-                        if tracker is not None:
-                            try:
-                                tracker.on_ai_transcript(answer)
-                                await tracker.finalize_turn()
-                            except Exception:
-                                pass
+                        await self._process_text_turn(content)
 
                 elif mtype == "end_of_turn":
                     if vad_iter is not None:
@@ -626,5 +722,3 @@ class LocalVoiceSession:
             logger.info("[로컬] 클라이언트 WebSocket 종료")
         except Exception as e:
             logger.exception("[로컬] 세션 오류: %s", e)
-        finally:
-            self._closed = True

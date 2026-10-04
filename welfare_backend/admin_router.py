@@ -6,6 +6,7 @@
 #   POST /admin/api/staging/{id}/apply   선택 필드 반영(+자동 ingest)
 #   POST /admin/api/staging/{id}/reject  staging 폐기
 #   POST /admin/api/discovery/candidate/{cid}/enrich  후보 핵심정보 보강(검토 전용)
+import logging
 import sys
 from pathlib import Path
 
@@ -27,6 +28,59 @@ import scheduler as ops  # noqa: E402
 import discovery_core as dc  # noqa: E402
 
 router = APIRouter(tags=["admin"])
+logger = logging.getLogger("admin_router")
+
+
+def _check_policy_id(policy_id):
+    """경로 파라미터의 정책 ID 형식을 확인한다. 틀리면 400.
+
+    정책 ID 는 아래 계층에서 파일 glob 패턴·파일 이름·하위 프로세스 인자로 그대로 쓰인다.
+    "*" 나 "../" 가 든 값이 거기까지 내려가지 않도록 진입점에서 거른다.
+    """
+    try:
+        return pc.validate_policy_id(policy_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+def _targets_file_http_error(e):
+    """크롤 타겟 파일을 읽지 못했을 때의 오류 응답(HTTPException)을 만든다.
+
+    인자: e — target_sync.TargetsFileError.
+    반환: 상태 500, detail={"ok": False, "error": 문구} 인 HTTPException(호출부가 raise 한다).
+          detail 모양은 다른 관리 엔드포인트의 실패 응답({"ok": False, "error": ...})과 같아
+          화면이 같은 방식으로 문구를 보여 줄 수 있다.
+
+    잡지 않으면 본문 없는 500 이 되어 운영자가 원인(어느 파일이 깨졌는지)을 알 수 없다.
+    상태 코드를 500 으로 두는 이유: 요청이 잘못된 것이 아니라 서버의 파일이 깨진 상태다.
+    문구에는 파일 이름까지만 싣는다 — 파일을 열지 못한 경우(OSError) 원인 문구에 서버의
+    전체 경로가 들어 있으므로 그때는 "<파일 이름> 을(를) 읽을 수 없음" 까지만 남긴다.
+    내용 해석 실패(JSON 오류 위치 등)는 경로가 없어 그대로 싣는다. 전체 내용은 로그에 남긴다.
+    """
+    logger.error("크롤 타겟 파일 오류: %s", e)
+    msg = str(e)
+    if isinstance(e.__cause__, OSError):
+        msg = msg.split(":", 1)[0]
+    return HTTPException(status_code=500, detail={
+        "ok": False,
+        "error": "크롤 타겟 파일을 읽지 못했습니다 — %s. 파일 내용을 복구한 뒤 다시 시도하세요." % msg,
+    })
+
+
+def _reingest_job(ids):
+    """백그라운드 재적재 스레드의 본체.
+
+    rc.trigger_reingest 는 실패를 예외가 아닌 {"ok": False, "reingest_error": ...} 로
+    돌려주고 로그를 남긴다. 그 밖의 예상하지 못한 예외도 여기서 잡아 로그에 남긴다 —
+    스레드 안에서 잡지 않은 예외는 응답(이미 "running" 으로 나감)에 실리지 않으므로
+    로그가 유일한 흔적이다.
+    """
+    try:
+        r = rc.trigger_reingest(ids)
+        if not r.get("ok"):
+            logger.error("백그라운드 DB 재적재 실패(대상 %s): %s", ids, r.get("reingest_error"))
+    except Exception:
+        logger.exception("백그라운드 DB 재적재 중 예외(대상 %s)", ids)
 
 
 def _reingest_bg(policy_ids):
@@ -35,7 +89,7 @@ def _reingest_bg(policy_ids):
     if not ids:
         return
     import threading
-    threading.Thread(target=rc.trigger_reingest, args=(ids,), daemon=True).start()
+    threading.Thread(target=_reingest_job, args=(ids,), daemon=True).start()
 
 
 @router.get("/admin/api/staging")
@@ -45,6 +99,7 @@ def staging_list():
 
 @router.get("/admin/api/staging/{policy_id}")
 def staging_review(policy_id: str):
+    _check_policy_id(policy_id)
     r = rc.get_review(policy_id)
     if r.get("error"):
         raise HTTPException(status_code=404, detail=r["error"])
@@ -53,6 +108,7 @@ def staging_review(policy_id: str):
 
 @router.post("/admin/api/staging/{policy_id}/apply")
 def staging_apply(policy_id: str, payload: dict = Body(default={})):
+    _check_policy_id(policy_id)
     want_reingest = bool(payload.get("reingest", True))
     # 파일 반영은 동기(빠름), DB 재적재(임베딩 재생성)는 느려 nginx 프록시 타임아웃(HTML 504)을
     # 유발 → 재적재는 백그라운드 스레드로 분리하고 즉시 응답.
@@ -71,6 +127,7 @@ def staging_apply(policy_id: str, payload: dict = Body(default={})):
 
 @router.post("/admin/api/staging/{policy_id}/reject")
 def staging_reject(policy_id: str):
+    _check_policy_id(policy_id)
     r = rc.reject(policy_id)
     if not r.get("ok"):
         raise HTTPException(status_code=400, detail=r)
@@ -85,6 +142,7 @@ def staging_reject(policy_id: str):
 
 @router.post("/admin/api/staging/{policy_id}/triage")
 def staging_triage(policy_id: str, payload: dict = Body(default={})):
+    _check_policy_id(policy_id)
     r = rc.set_triage(policy_id, priority=payload.get("priority"),
                       hold=payload.get("hold"), note=payload.get("note"))
     if not r.get("ok"):
@@ -104,12 +162,17 @@ def policies_list():
 @router.get("/admin/api/policy/crawl-coverage")
 def policy_crawl_coverage():
     """크롤 대상에 등록되지 않은 정책 목록 (#235)."""
-    missing = tsync.unregistered_policies()
+    # 타겟 파일(기본·오버레이)이 깨져 있으면 등록 현황을 계산할 수 없다 → 원인을 담아 응답
+    try:
+        missing = tsync.unregistered_policies()
+    except tsync.TargetsFileError as e:
+        raise _targets_file_http_error(e)
     return {"unregistered": missing, "count": len(missing)}
 
 
 @router.get("/admin/api/policy/{policy_id}")
 def policy_get(policy_id: str):
+    _check_policy_id(policy_id)
     r = pc.get_policy(policy_id)
     if r.get("error"):
         raise HTTPException(status_code=404, detail=r["error"])
@@ -118,6 +181,7 @@ def policy_get(policy_id: str):
 
 @router.put("/admin/api/policy/{policy_id}")
 def policy_update(policy_id: str, payload: dict = Body(...)):
+    _check_policy_id(policy_id)
     r = pc.update_policy(policy_id, payload)
     if not r.get("ok"):
         raise HTTPException(status_code=400, detail=r)
@@ -135,6 +199,7 @@ def policy_create(payload: dict = Body(...)):
 
 @router.post("/admin/api/policy/{policy_id}/deactivate")
 def policy_deactivate(policy_id: str):
+    _check_policy_id(policy_id)
     r = pc.deactivate(policy_id)
     if not r.get("ok"):
         raise HTTPException(status_code=400, detail=r)
@@ -143,6 +208,7 @@ def policy_deactivate(policy_id: str):
 
 @router.post("/admin/api/policy/{policy_id}/reactivate")
 def policy_reactivate(policy_id: str):
+    _check_policy_id(policy_id)
     r = pc.reactivate(policy_id)
     if not r.get("ok"):
         raise HTTPException(status_code=400, detail=r)
@@ -151,11 +217,13 @@ def policy_reactivate(policy_id: str):
 
 @router.post("/admin/api/policy/{policy_id}/crawl")
 def policy_crawl(policy_id: str):
+    _check_policy_id(policy_id)
     return ops.run_crawl_policy(policy_id)
 
 
 @router.post("/admin/api/policy/{policy_id}/init-baseline")
 def policy_init_baseline(policy_id: str):
+    _check_policy_id(policy_id)
     return ops.run_init_baseline(policy_id)
 
 
@@ -163,14 +231,21 @@ def policy_init_baseline(policy_id: str):
 # 정책의 출처가 크롤 대상에 없으면 그 정책은 변경 감지를 받지 못한다.
 @router.post("/admin/api/policy/{policy_id}/register-crawl")
 def policy_register_crawl(policy_id: str):
+    _check_policy_id(policy_id)
     d = pc.get_policy(policy_id)
     if d.get("error"):
         raise HTTPException(status_code=404, detail=d["error"])
-    r = tsync.register_policy(d)
+    # 타겟 파일이 깨져 있으면 register_policy 는 아무것도 쓰지 않고 예외를 올린다
+    # (깨진 파일 위에 새 타겟만 얹어 기존 등록을 잃지 않게). 그 사실을 원인과 함께 응답한다.
+    try:
+        r = tsync.register_policy(d)
+    except tsync.TargetsFileError as e:
+        raise _targets_file_http_error(e)
     if not r.get("ok"):
         raise HTTPException(status_code=400, detail=r)
     # 새로 등록한 출처는 비교 기준이 없어 첫 크롤에서 전부 변경으로 잡힌다 → baseline 확정
-    if r.get("added"):
+    # 출처 URL 이 바뀌어 갱신된 타겟(updated)도 옛 기준이 지워진 상태라 같은 처리가 필요하다.
+    if r.get("added") or r.get("updated"):
         try:
             r["baseline"] = ops.run_init_baseline(policy_id)
         except Exception as e:
@@ -357,6 +432,9 @@ def ops_backup_run():
 
 @router.post("/admin/api/ops/init-baseline")
 def ops_init_baseline(payload: dict = Body(default={})):
+    # policy_id 는 선택값(없으면 전체). 주어졌으면 경로 파라미터와 같은 형식 검증을 거친다.
+    if payload.get("policy_id"):
+        _check_policy_id(payload.get("policy_id"))
     return ops.run_init_baseline(payload.get("policy_id"))
 
 

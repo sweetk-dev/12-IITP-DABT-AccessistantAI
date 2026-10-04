@@ -23,12 +23,13 @@ from starlette.websockets import WebSocketState
 
 from nav_context import (annotate_route_failure,
                          update_nav_state, current_guidance_result,
-                         inject_nav_defaults, note_new_route)
+                         inject_nav_defaults, inject_handoff, note_new_route)
 from text_normalize import looks_like_echo, normalize_numbers
-from tool_handlers import get_tool_dispatcher
+from tool_handlers import get_tool_dispatcher, run_tool, summarize_tool_result
 from unresolved_logger import TurnTracker
 from database import AsyncSessionLocal
 from local_pipeline import LocalVoiceSession, local_fallback_enabled
+import trial_recorder
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,9 @@ async def _safe_send_json(websocket: WebSocket, payload: dict) -> bool:
     """
     # client_state 사전 체크는 false positive 가능 (application_state 와 unsync 시점) —
     # try/except 로 흡수하는 게 가장 안정적.
+    _tr = trial_recorder.of(websocket)          # 실증 참여자 계정 기록(#318) — 대상 아니면 None
+    if _tr is not None:
+        _tr.on_out(payload)
     try:
         await websocket.send_json(payload)
         return True
@@ -255,6 +259,7 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
   - `out_of_service_area` — 장소는 찾았지만 안양시 밖입니다. "아직 안양시 안에서만 안내할 수 있다"고 정확히 말하고 안양시 안의 장소를 여쭤 보세요.
   - `place_not_found` — 말씀하신 이름을 찾지 못한 것입니다. **"안양시 밖"이라고 말하면 안 됩니다.** 안양시청·복지관·도서관처럼 안양시 안에 있는 곳도 이름이 조금 다르면 여기에 해당합니다. 더 정확한 이름을 여쭙거나, 이동·관광 화면 지도에서 그 지점을 직접 눌러 목적지로 지정할 수 있다고 안내하세요.
   두 경우 모두 "서비스 장애"가 아닙니다. `need_destination` / `need_location` 도 같은 태도로 답합니다.
+- **도구 결과의 `status` 가 `handoff` 이면** 이 화면(정책상담)에서는 길안내를 하지 않고 이동경로 안내로 넘긴다는 뜻입니다. `ai_instruction` 대로 화면의 버튼을 눌러 달라고만 안내하고, 거리·시간·경로를 지어내지 마세요. 실패나 장애가 아닙니다.
 - **도구 결과에 `active_guidance` 가 있으면** 지금 진행 중인 길안내가 그대로 계속된다는 뜻입니다. 새 목적지를 안내하지 못했다고만 말하고 끝내지 말고, 진행 중인 안내가 계속된다는 사실을 반드시 한 문장으로 덧붙이세요. 안내가 멈췄다고 말하지 마세요.
 - 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 목적지 `poi_id` 를 모르면 사용자가 말한 이름을 `destination_place` 에 담습니다 — poi_id 를 지어내지 마세요. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
 - **이동 방식**: 사용자가 "버스로", "지하철 타고", "대중교통으로" 처럼 방식을 말하면 `plan_accessible_route` 의 `mode` 에 담습니다(walk_subway / walk_bus / walk_bus_subway). **"지하철로", "전철 타고", "버스 말고 지하철"** 처럼 지하철만 원하면 `mode: "walk_subway"` 입니다 — 버스 조합을 만들지 않습니다. **"도보로", "걸어서", "걸어갈게", "휠체어로만", "타지 않고"** 처럼 도보만 원한다고 말하면 반드시 `mode: "walk"` 로 담습니다(자동 추천에 맡기면 거리에 따라 버스 조합으로 바뀝니다). 방식을 말하지 않았을 때만 비워 두세요 — 자동 추천이 적용되고 결과의 `mode_used`/`mode_label` 이 알려 줍니다. 결과에 `transit` 이 있으면 **노선 번호·유형·방면(end_station)·정거장 수**를 함께 말합니다. `low_floor_note` 가 있으면 그 문장(저상버스 실시간 확인 결과)을 그대로 전하고, 없으면 **저상버스 정차는 보장되지 않으므로 실시간 도착정보 확인이 필요**하다고 알립니다. 대중교통 포함 소요시간은 대기 미포함 추정(`eta_note`)임을 밝힙니다.
@@ -348,9 +353,11 @@ def _route_tool_declarations() -> list:
             description="직전에 안내한 경로의 특정 구간이 왜 그렇게(우회·경사·계단) 안내되었는지 설명한다.",
             parameters=types.Schema(
                 type=types.Type.OBJECT,
-                required=["route_id"],
+                # route_id 는 필수가 아니다 — 시스템 지침이 "지어내지 말고 생략"하라고 하고,
+                # 세션이 아는 경로를 서버가 채운다. 필수로 두면 모델이 값을 만들어 넣는다.
+                # (온프레미스 폴백 선언·핸들러 기본값과 같은 계약)
                 properties={
-                    "route_id": types.Schema(type=types.Type.STRING, description="plan_accessible_route 가 반환한 route_id"),
+                    "route_id": types.Schema(type=types.Type.STRING, description="plan_accessible_route 가 반환한 route_id. 모르면 생략한다(서버가 채운다)"),
                     "step_idx": types.Schema(type=types.Type.INTEGER, description="구간 번호(생략 시 경고 구간 자동 선택)"),
                 },
             ),
@@ -471,7 +478,7 @@ def _route_tool_declarations() -> list:
                 type=types.Type.OBJECT,
                 properties={
                     "place": types.Schema(type=types.Type.STRING, description="사용자가 말한 정류장·장소 이름(예: '안양역 앞'). 미지정 시 안내 중인 승차 정류장 또는 현재 위치"),
-                    "route_name": types.Schema(type=types.Type.STRING, description="사용자가 특정 버스 번호를 물었을 때 그 번호(예: '51'). 참고용"),
+                    "route_name": types.Schema(type=types.Type.STRING, description="사용자가 특정 버스 번호를 물었을 때 그 번호(예: '51'). 결과를 그 번호로 추린다"),
                 },
             ),
         ),
@@ -665,7 +672,6 @@ def resolve_voice(requested: str | None) -> str:
 
     'male'/'female' 같은 카테고리 입력도 받아주고, 알 수 없으면 여성 기본값.
     """
-    import os
     if not requested:
         return os.environ.get("GEMINI_LIVE_VOICE", DEFAULT_VOICE_FEMALE)
     req = requested.strip()
@@ -768,7 +774,6 @@ async def _send_answer_card_from_tool(ai_client, websocket, question: str,
         md = (getattr(resp, "text", None) or "").strip()
         if not md or "NOT_POLICY" in md[:40] or md.count("## ") < 2:
             return
-        card_state["sent"] = True
         await _safe_send_json(websocket, {"type": "answer_card", "content": md})
         logger.info("🗂 정책 카드(도구 기반, 선표시) 전송 (%d자)", len(md))
     except Exception as e:
@@ -795,6 +800,110 @@ async def _send_answer_card(ai_client, websocket, text: str) -> None:
         logger.debug("answer_card 구조화 생략: %s", e)
 
 
+# ─────────────────────────────────────────────────────────────
+# 단말 재접속 이어받기 (v1.59.0)
+# 통신 전환·화면 꺼짐으로 단말↔서버 연결이 끊겼다가 다시 붙을 때, 같은 sid 로 오면
+# Gemini 세션 handle 과 최근 대화를 이어받아 인사말 없이 계속한다. 프로세스 메모리에만 둔다 —
+# 서버 프로세스가 하나일 때만 통한다(워커를 늘리면 다른 프로세스로 들어온 재접속은 새 세션이 된다).
+# ─────────────────────────────────────────────────────────────
+import re as _re
+import time as _time
+
+_CLIENT_RESUME = {}
+_CLIENT_RESUME_TTL = 15 * 60
+_CLIENT_RESUME_MAX = 200
+_SID_RE = _re.compile(r"^[A-Za-z0-9]{6,40}$")
+
+
+def _resume_key(websocket, sid):
+    """sid 는 계정별로 따로 본다 — 다른 계정이 남의 sid 로 대화를 이어받지 못하게."""
+    if not sid or not _SID_RE.match(str(sid)):
+        return None
+    user = (websocket.headers.get("x-remote-user") or "").strip().lower()
+    return (user, str(sid))
+
+
+def _client_resume_put(key, handle, history):
+    if not key:
+        return
+    now = _time.time()
+    if len(_CLIENT_RESUME) >= _CLIENT_RESUME_MAX:
+        for k in [k for k, v in _CLIENT_RESUME.items() if now - v["ts"] > _CLIENT_RESUME_TTL]:
+            _CLIENT_RESUME.pop(k, None)
+        while len(_CLIENT_RESUME) >= _CLIENT_RESUME_MAX:
+            _CLIENT_RESUME.pop(min(_CLIENT_RESUME, key=lambda k: _CLIENT_RESUME[k]["ts"]), None)
+    _CLIENT_RESUME[key] = {"handle": handle, "history": list(history[-16:]), "ts": now}
+
+
+def _client_resume_get(key):
+    ent = _CLIENT_RESUME.get(key) if key else None
+    if not ent:
+        return None
+    if _time.time() - ent["ts"] > _CLIENT_RESUME_TTL:
+        _CLIENT_RESUME.pop(key, None)
+        return None
+    return ent
+
+
+def _client_resume_drop(key):
+    if key:
+        _CLIENT_RESUME.pop(key, None)
+
+
+# silent 재연결 직후 '미완료 사용자 턴' 재개 판정 창(초).
+# 마지막 사용자 입력이 이보다 오래됐으면 이용자는 이미 답을 기다리고 있지 않다고 보고
+# 재개하지 않는다(뒤늦게 옛 질문에 답하면 엉뚱한 발화가 된다). 90초는 Gemini 재연결과
+# 도구 호출을 포함한 답변 한 턴이 끝나고도 남는 길이다.
+RESUME_WINDOW_SEC = 90
+
+
+def should_resume_answer(last_user_utterance_ts, last_ai_turn_done_ts, now,
+                         window_sec: float = RESUME_WINDOW_SEC) -> bool:
+    """재연결 직후 [SYSTEM:RESUME_ANSWER] 를 보낼지 판정한다(순수 함수).
+
+    인자(전부 같은 시계의 초 단위 시각):
+      last_user_utterance_ts — 마지막 **실제 사용자 입력**(음성 전사 수신·text 메시지·
+                               end_of_turn) 시각. 아직 입력이 없었으면 None.
+      last_ai_turn_done_ts   — 마지막 AI 턴 완료 시각.
+      now                    — 판정 시각.
+    반환: 사용자가 말한 뒤 AI 턴이 끝나지 않았고(= 답을 못 받음) 그 입력이 window_sec
+          이내면 True.
+
+    유휴 타이머용 시각(last_activity_ts)으로 판정하면 안 된다 — 그 값은 길안내 화면이
+    주기적으로 보내는 type:"activity"(하트비트·화면 조작)로도 갱신되므로, 이용자가 아무
+    말도 하지 않았는데 안내 중 재연결마다 "직전 질문에 이어서 답하라"는 신호가 나간다.
+    """
+    if last_user_utterance_ts is None:
+        return False
+    if last_user_utterance_ts <= last_ai_turn_done_ts:
+        return False
+    return (now - last_user_utterance_ts) <= window_sec
+
+
+def parse_client_message(raw):
+    """클라이언트가 보낸 텍스트 프레임 한 건을 해석·검증한다(순수 함수).
+
+    반환: (msg, None) — 처리해도 되는 dict / (None, 사유) — 버려야 하는 메시지.
+    사유 문자열에는 메시지 type(앞 20자)까지만 담는다 — 본문은 로그에 남기지 않는다.
+    검증: JSON 이어야 하고, 객체(dict)여야 하고, 본문을 바로 꺼내 쓰는 type 은 그 키가
+    문자열이어야 한다(audio_chunk.data, text.content). 그 밖의 type 은 각 처리부가
+    스스로 방어한다(location·nav_state).
+    """
+    try:
+        msg = json.loads(raw)
+    except (ValueError, TypeError):
+        return None, "JSON 아님"
+    if not isinstance(msg, dict):
+        return None, "객체 아님(%s)" % type(msg).__name__
+    mtype = msg.get("type")
+    label = str(mtype)[:20]
+    if mtype == "audio_chunk" and not isinstance(msg.get("data"), str):
+        return None, "type=%s data 없음" % label
+    if mtype == "text" and not isinstance(msg.get("content"), str):
+        return None, "type=%s content 없음" % label
+    return msg, None
+
+
 async def handle_live_chat(
     websocket: WebSocket,
     ai_client,
@@ -802,10 +911,12 @@ async def handle_live_chat(
     model_name: str = None,
     voice: str = None,
     mode: str = None,
+    sid: str = None,
+    resume: bool = False,
+    greet: bool = True,
 ):
     # 환경변수 우선, 기본은 안정 GA 모델
     if model_name is None:
-        import os
         model_name = os.environ.get("GEMINI_LIVE_MODEL", "gemini-2.0-flash-live-001")
     selected_voice = resolve_voice(voice)
     logger.info("🎙 선택된 음성: %s (요청='%s')", selected_voice, voice)
@@ -873,13 +984,16 @@ async def handle_live_chat(
         # 감도 enum — SDK 버전마다 명칭 약간 다를 수 있어 안전하게 시도
         try:
             aad_kwargs["start_of_speech_sensitivity"] = (
-                types.StartSensitivity.START_SENSITIVITY_MEDIUM
+                types.StartSensitivity.START_SENSITIVITY_LOW
             )
             aad_kwargs["end_of_speech_sensitivity"] = (
                 types.EndSensitivity.END_SENSITIVITY_LOW
             )
-        except AttributeError:
-            pass
+        except AttributeError as e:
+            # 조용히 삼키면 기본값(가장 민감)으로 돌아가 주변 소리에 반응한다 — 반드시 남긴다 (v1.59.0)
+            aad_kwargs.pop("start_of_speech_sensitivity", None)
+            aad_kwargs.pop("end_of_speech_sensitivity", None)
+            logger.warning("⚠️ AAD 감도 enum 을 찾지 못해 기본 감도로 동작: %s", e)
         # 음절 클리핑 방지 패딩 (200ms) + 한국어 호흡 고려 침묵 길이 (1200ms)
         aad_kwargs["prefix_padding_ms"] = 200
         aad_kwargs["silence_duration_ms"] = 1200
@@ -904,8 +1018,8 @@ async def handle_live_chat(
     except (AttributeError, TypeError) as e:
         logger.warning("⚠️ SDK 가 ContextWindowCompression 미지원 — 기본 한계 적용: %s", e)
     # session_resumption 은 connect 시점에 handle 을 매번 갱신해야 하므로 outer 루프에서 설정.
+    # LiveConnectConfig 도 연결할 때마다 그 루프 안에서 config_kwargs 로 새로 만든다.
 
-    config = types.LiveConnectConfig(**config_kwargs)
     # all_tools 는 Tool 객체 단위 카운트 (function_declarations 5개 = 1 Tool, google_search = 1 Tool)
     has_search = any(getattr(t, "google_search", None) or getattr(t, "google_search_retrieval", None) for t in all_tools)
     logger.info("🔧 도구 등록: function_declarations(5) + google_search=%s (Tool 객체 %d개)",
@@ -930,8 +1044,12 @@ async def handle_live_chat(
     last_activity_ts = asyncio.get_event_loop().time()
     idle_state = {"prompted": False}  # 종료 확인 음성을 이미 보냈는지
     # 무한대기 방지 — silent 재연결 직후 '미완료 사용자 턴' 재개 판정용
-    RESUME_WINDOW_SEC = 90                       # 마지막 사용자 입력 후 이 시간 이내면 재개 대상
+    # (판정 창 RESUME_WINDOW_SEC 와 판정 로직 should_resume_answer 는 모듈 수준에 있다)
     last_ai_turn_done_ts = last_activity_ts     # 마지막 AI 턴 완료 시각 (초기=세션 시작)
+    # 마지막 실제 사용자 입력 시각 — 재개 판정 전용. last_activity_ts 와 따로 둔다:
+    # last_activity_ts 는 유휴 종료를 막기 위해 화면 하트비트(type:"activity")로도 갱신되지만,
+    # 하트비트는 "답을 기다리는 질문"이 아니다. None = 아직 사용자 입력 없음.
+    last_user_utterance_ts = None
 
     def mark_user_active(source: str):
         nonlocal last_activity_ts
@@ -941,6 +1059,12 @@ async def handle_live_chat(
         if idle_state["prompted"]:
             logger.info("👤 사용자 활동 재개(%s) — idle 카운터 초기화", source)
         idle_state["prompted"] = False
+
+    def mark_user_utterance(source: str):
+        """실제 사용자 입력(음성 전사 수신·text·end_of_turn) — 재개 판정 시각과 유휴 타이머를 함께 갱신."""
+        nonlocal last_user_utterance_ts
+        last_user_utterance_ts = asyncio.get_event_loop().time()
+        mark_user_active(source)
 
     async def _send_system_signal(session, tag: str):
         """Gemini Live 에 시스템 신호를 user role 메시지로 주입.
@@ -982,7 +1106,7 @@ async def handle_live_chat(
     _ai_buf = ""                        # 현재 AI 턴 전사 누적
     # 정책 카드 상태(턴 단위) — scheduled: 이번 턴에 도구 기반 카드를 시도했는지,
     # sent: 실제 전송됐는지. 도구 기반이 실패하면 턴 종료 폴백이 전사 기반으로 커버.
-    card_state = {"scheduled": False, "sent": False}
+    card_state = {"scheduled": False}
     _user_buf = ""                      # 현재 사용자 턴 입력 누적
     # 스피커 에코 판정 근거 (v1.40.0) — 직전 상담원 발화 텍스트와 마지막 음성 송출 시각.
     # 상담원 음성의 끝말("…드릴게요"의 "요")이 마이크로 되돌아와 사용자 발화로 전사되는 일이
@@ -997,6 +1121,19 @@ async def handle_live_chat(
     reseed_context = False              # 새 세션에 맥락 re-seed 필요 여부
     _BASE_SYS = SYSTEM_INSTRUCTION
     RESEED_MAX_TURNS = 8                # 주입할 최근 대화 턴 수(컨텍스트 비대화 방지)
+    # 단말 재접속 이어받기 (v1.59.0) — 같은 sid 로 다시 붙었으면 handle·대화를 물려받고 인사말을 생략한다
+    _rkey = _resume_key(websocket, sid)
+    _client_resumed = False
+    if resume and _rkey:
+        _ent = _client_resume_get(_rkey)
+        if _ent:
+            session_handle = _ent.get("handle")
+            convo_history = list(_ent.get("history") or [])
+            _client_resumed = True
+            if session_handle is None and convo_history:
+                reseed_context = True
+            logger.info("🔁 단말 재접속 — 세션 이어받음 (handle=%s, 대화 %d턴)",
+                        "있음" if session_handle else "없음", len(convo_history))
 
     try:
       while True:
@@ -1027,7 +1164,17 @@ async def handle_live_chat(
         _connect_t0 = asyncio.get_event_loop().time()
         async with ai_client.aio.live.connect(model=model_name, config=config) as session:
             _connect_elapsed_ms = int((asyncio.get_event_loop().time() - _connect_t0) * 1000)
-            if reconnect_count == 0:
+            if reconnect_count == 0 and _client_resumed:
+                # 단말이 다시 붙은 것 — 인사말 없이 조용히 이어 간다 (v1.59.0)
+                logger.info("✅ Gemini Live 세션 연결됨 — 단말 재접속 이어받기 (model=%s, %dms)",
+                            model_name, _connect_elapsed_ms)
+            elif reconnect_count == 0 and (not greet or resume):
+                # resume: 단말은 끊긴 대화를 잇는 중이다. 서버가 그사이 다시 떠서 이어받을 정보가 없더라도
+                # 인사말로 끼어들지 않는다 — 안내 도중 갑자기 첫 인사말이 나왔다 (v2.0.2)
+                # 화면이 곧바로 경로 안내를 시작한다(이어서 안내·넘겨받은 목적지) — 인사말이 안내 음성과 겹치지 않게 생략 (v2.0.1)
+                logger.info("✅ Gemini Live 세션 연결됨 — 인사말 생략 (model=%s, %dms)",
+                            model_name, _connect_elapsed_ms)
+            elif reconnect_count == 0:
                 logger.info("✅ Gemini Live 세션 연결됨 (model=%s, %dms)",
                             model_name, _connect_elapsed_ms)
                 # ── 세션 시작 인사말 트리거 (DB 도구 호출 없이 지정 문장만 발화) ──
@@ -1037,6 +1184,9 @@ async def handle_live_chat(
                     "[SYSTEM:GREETING_NAVI]" if mode == "navi" else "[SYSTEM:GREETING]")
             else:
                 # silent 재연결 — 사용자에게 어떤 알림도 보내지 않음. 로그만 남김.
+                _tr_r = trial_recorder.of(websocket)
+                if _tr_r is not None:
+                    _tr_r.event("gemini_reconnect", n=reconnect_count, ms=_connect_elapsed_ms)
                 logger.info("🔇 Gemini Live silent 재연결 #%d (handle=%s, %dms)",
                             reconnect_count,
                             "이어받음" if session_handle else "신규",
@@ -1045,27 +1195,48 @@ async def handle_live_chat(
                 # 재개된 세션은 새 입력을 기다리기만 하므로(상호 대기 교착),
                 # 즉시 RESUME_ANSWER 신호를 보내 직전 질문에 이어서 답변하게 한다.
                 _now_rc = asyncio.get_event_loop().time()
-                if (last_activity_ts > last_ai_turn_done_ts
-                        and (_now_rc - last_activity_ts) <= RESUME_WINDOW_SEC):
+                # 판정은 실제 사용자 입력 시각으로만 한다(화면 하트비트로는 재개하지 않는다)
+                if should_resume_answer(last_user_utterance_ts, last_ai_turn_done_ts, _now_rc):
                     logger.info("🔁 미완료 사용자 턴 감지(입력 후 %.1fs) — [SYSTEM:RESUME_ANSWER] 전송",
-                                _now_rc - last_activity_ts)
+                                _now_rc - last_user_utterance_ts)
                     await _send_system_signal(session, "[SYSTEM:RESUME_ANSWER]")
 
             # ─── 클라이언트 → Gemini ───
             async def pump_client_to_gemini():
                 nonlocal _user_buf
+                _tr = trial_recorder.of(websocket)      # 실증 기록(#318)
                 try:
                     while True:
-                        raw = await websocket.receive_text()
-                        msg = json.loads(raw)
+                        # 잘못된 메시지 한 건은 그 메시지만 버리고 계속 받는다. 여기서 예외가
+                        # 바깥으로 나가면 이 pump 가 끝나고, 세션 전체가 재연결로 넘어간다
+                        # (단말의 일시적 오작동 한 번으로 대화가 끊긴다).
+                        # Gemini 로 보내는 호출(session.send_*)의 실패는 메시지 문제가 아니라
+                        # 세션 문제이므로 종전대로 바깥 except 가 받아 pump 를 끝낸다.
+                        try:
+                            raw = await websocket.receive_text()
+                        except KeyError:
+                            # 텍스트가 아닌(바이너리) 프레임 — 이 프로토콜은 텍스트 JSON 만 쓴다
+                            logger.warning("클라이언트 메시지 무시: 텍스트 프레임 아님")
+                            continue
+                        msg, _bad = parse_client_message(raw)
+                        if msg is None:
+                            logger.warning("클라이언트 메시지 무시: %s", _bad)
+                            continue
+                        if _tr is not None:
+                            _tr.on_in(msg)
                         # 클라이언트 메시지 포맷 (간단 합의):
                         #  {"type":"audio_chunk", "data": "<base64 PCM 16kHz>"}
                         #  {"type":"text", "content": "..."}
                         if msg.get("type") == "audio_chunk":
+                            try:
+                                _pcm = base64.b64decode(msg["data"])
+                            except (ValueError, TypeError):
+                                logger.warning("클라이언트 메시지 무시: type=audio_chunk base64 해석 실패")
+                                continue
                             await session.send_realtime_input(
                                 audio=types.Blob(
                                     mime_type="audio/pcm;rate=16000",
-                                    data=base64.b64decode(msg["data"]),
+                                    data=_pcm,
                                 )
                             )
                             # audio_chunk 자체는 무음 포함이라 활동 신호로 부적합 — 무시.
@@ -1078,7 +1249,7 @@ async def handle_live_chat(
                                 )],
                                 turn_complete=True,
                             )
-                            mark_user_active("text")
+                            mark_user_utterance("text")
                         elif msg.get("type") == "location":
                             # 프런트가 주기적으로 보내는 현재 위치(위경도).
                             # 경로 도구(plan_accessible_route)의 origin 으로 주입한다.
@@ -1091,7 +1262,7 @@ async def handle_live_chat(
                         elif msg.get("type") == "end_of_turn":
                             # 사용자가 말을 끝냈음을 알리는 신호 (VAD 가 없을 때)
                             await session.send_realtime_input(audio_stream_end=True)
-                            mark_user_active("end_of_turn")
+                            mark_user_utterance("end_of_turn")
                         elif msg.get("type") == "nav_state":
                             # 길안내 진행 상태 갱신 (#248). 위치 갱신처럼 수동 신호라
                             # 유휴 타이머는 건드리지 않는다.
@@ -1099,6 +1270,9 @@ async def handle_live_chat(
                                 update_nav_state(nav_state, msg)
                             except Exception:
                                 logger.warning("잘못된 nav_state 메시지 무시")
+                        elif msg.get("type") == "bye":
+                            # 이용자가 끝냈다 — 이어받기 정보를 바로 지운다 (v1.59.0)
+                            _client_resume_drop(_rkey)
                         elif msg.get("type") == "activity":
                             # 길안내 화면의 상호작용/안내 진행 신호 — 발화가 없어도
                             # 서비스 이용 중이므로 유휴 종료(IDLE/AUTO_CLOSE) 대상이 아니다.
@@ -1134,6 +1308,7 @@ async def handle_live_chat(
                                 new_h = getattr(sru, "new_handle", None) or getattr(sru, "handle", None)
                                 if new_h:
                                     session_handle = new_h
+                                    _client_resume_put(_rkey, session_handle, convo_history)
                                     logger.debug("📌 session_resumption handle 갱신 (앞 16자: %s...)",
                                                  str(new_h)[:16])
 
@@ -1169,6 +1344,7 @@ async def handle_live_chat(
                                     # 대화 이력은 사람이 읽는 표기(숫자)로 남긴다 (v1.40.0)
                                     convo_history.append(("model", normalize_numbers(_ai_buf.strip())))
                                     echo_ref["ai_text"] = _ai_buf
+                                _client_resume_put(_rkey, session_handle, convo_history)
                                 # 정책 카드 폴백 (#205→#208): 도구 기반 선표시 카드를 이번 턴에
                                 # 시도하지 않았을 때만 전사 기반으로 생성(도구 없이 답한 정책 설명 커버)
                                 _card_src = _ai_buf.strip()
@@ -1176,7 +1352,6 @@ async def handle_live_chat(
                                     asyncio.create_task(
                                         _send_answer_card(ai_client, websocket, _card_src))
                                 card_state["scheduled"] = False
-                                card_state["sent"] = False
                                 _user_buf = ""; _ai_buf = ""
                                 if len(convo_history) > 100:
                                     del convo_history[:-100]
@@ -1203,7 +1378,9 @@ async def handle_live_chat(
                             # Grounding metadata (google_search 사용 시)
                             if sc and getattr(sc, "grounding_metadata", None):
                                 gm = sc.grounding_metadata
-                                logger.info("🔍 google_search 사용 감지: %s", str(gm)[:200])
+                                # 검색어에는 이용자 질문이 그대로 들어간다 — INFO 에는 사용 사실만 남긴다
+                                logger.info("🔍 google_search 사용 감지")
+                                logger.debug("🔍 google_search 상세: %s", str(gm)[:200])
                                 tracker.on_grounding(gm)
                                 await _safe_send_json(websocket,{"type": "grounding", "info": str(gm)[:500]})
                                 _gsrc = _extract_grounding_sources(gm)
@@ -1219,14 +1396,21 @@ async def handle_live_chat(
                                         asyncio.get_event_loop().time() - echo_ref["audio_ts"]
                                         < ECHO_WINDOW_SEC):
                                     # 상담원 끝말 에코 — 사용자 발화로 표시·집계하지 않는다 (v1.40.0)
-                                    logger.info("🔇 에코 전사 무시: %r (직전 발화 끝말과 일치)", text)
+                                    logger.info("🔇 에코 전사 무시 (%d자, 직전 발화 끝말과 일치)", len(text))
+                                    logger.debug("🔇 에코 전사 원문: %r", text)
+                                    _tr_e = trial_recorder.of(websocket)
+                                    if _tr_e is not None:
+                                        _tr_e.event("echo_dropped", content=text)
                                     text = None
                                 if text:
                                     _user_buf += text
-                                    logger.info("🎤 사용자 음성→텍스트: %s", text)
+                                    # 대화 원문은 운영 로그(INFO)에 남기지 않는다 — 길이만 남기고
+                                    # 원문은 DEBUG 에서만 본다(장애·건강·주소 같은 내용이 섞인다).
+                                    logger.info("🎤 사용자 음성→텍스트 수신 (%d자)", len(text))
+                                    logger.debug("🎤 사용자 음성→텍스트: %s", text)
                                     tracker.on_user_transcript(text, raw=it)
                                     # ✅ 실제 사용자 발화 — 무입력 타이머 reset
-                                    mark_user_active("voice_transcript")
+                                    mark_user_utterance("voice_transcript")
                                     await _safe_send_json(websocket,{"type": "user_transcript", "content": text})
 
                             # 출력 transcription (AI 음성→텍스트)
@@ -1235,7 +1419,8 @@ async def handle_live_chat(
                                 text = getattr(ot, "text", None)
                                 if text:
                                     _ai_buf += text
-                                    logger.info("음성→텍스트: %s", text)
+                                    logger.info("음성→텍스트 수신 (%d자)", len(text))
+                                    logger.debug("음성→텍스트: %s", text)
                                     tracker.on_ai_transcript(text)
                                     await _safe_send_json(websocket,{"type": "ai_transcript", "content": text})
 
@@ -1246,7 +1431,8 @@ async def handle_live_chat(
                                 for fc in tc.function_calls:
                                     fname = fc.name
                                     fargs = dict(fc.args or {})
-                                    logger.info("🛠 도구 호출: %s(%s)", fname, fargs)
+                                    # 인자 값(말한 장소·질문 원문)은 남기지 않고 도구 이름과 인자 키만 남긴다
+                                    logger.info("🛠 도구 호출: %s (인자 키=%s)", fname, sorted(fargs))
                                     # 경로 도구는 현재 위치가 필요하다 — LLM 이 좌표를 지어내지 않도록
                                     # 프런트가 보낸 실제 위치를 서버에서 주입한다.
                                     if fname == "plan_accessible_route":
@@ -1258,18 +1444,19 @@ async def handle_live_chat(
                                             fargs.pop("origin_lng", None)
                                     # 세션이 아는 사실(현재 구간·현재 위치)을 기본값으로 주입 (#248)
                                     fargs = inject_nav_defaults(fname, fargs, nav_state, user_location)
+                                    fargs = inject_handoff(fname, fargs, mode)   # 정책상담이면 넘기기 (v2.0.0)
                                     if fname == "get_current_guidance":
                                         # 세션 상태만 읽는 도구 — 디스패처를 거치지 않는다
                                         result = current_guidance_result(nav_state)
                                     elif fname not in dispatcher:
                                         result = {"error": f"unknown tool: {fname}"}
                                     else:
-                                        try:
-                                            result = await dispatcher[fname](**fargs)
-                                            logger.info("✓ 도구 %s 결과: %s", fname, str(result)[:200])
-                                        except Exception as e:
-                                            logger.exception("도구 실행 실패 %s: %s", fname, e)
-                                            result = {"error": str(e)}
+                                        # run_tool: 핸들러가 받지 않는 인자를 걸러내고, 실행 상한
+                                        # 시간을 걸고, 실패·시간 초과를 예외가 아니라 값으로 돌려준다
+                                        # (상수·근거는 tool_handlers 의 TOOL_TIMEOUT_* 주석).
+                                        result = await run_tool(dispatcher, fname, fargs)
+                                        logger.info("✓ 도구 %s 결과: %s", fname,
+                                                    summarize_tool_result(result))
                                     # 대화로 새 경로가 생기면 세션 안내 상태를 즉시 갱신 —
                                     # 프런트 nav_state 도착 전 공백에 이전 경로가 주입되는 것 방지 (#248)
                                     if (fname == "plan_accessible_route" and isinstance(result, dict)
@@ -1327,7 +1514,11 @@ async def handle_live_chat(
                                         logger.exception("fallback send 도 실패: %s", e2)
                                 except Exception as e:
                                     logger.exception("❌ send_tool_response 실패: %s", e)
-                                    await _safe_send_json(websocket,{"type": "error", "message": f"도구 응답 전송 실패: {e}"})
+                                    # 비치명 오류 — 단말과의 연결은 유지되고 다음 턴(또는 silent
+                                    # 재연결)으로 이어진다. 화면은 fatal 이 false 인 error 에서는
+                                    # 재연결을 끄지 않는다. fatal 필드가 없는 error 는 치명(세션 종료)이다.
+                                    await _safe_send_json(websocket,{"type": "error", "fatal": False,
+                                                                     "message": f"도구 응답 전송 실패: {e}"})
 
                         # async for 정상 종료 — 1 turn 완료, 다음 receive() 대기
                         logger.info("⏸ turn #%d 응답 스트림 종료 — 다음 turn 대기", turn_count)
@@ -1456,6 +1647,15 @@ async def handle_live_chat(
         # 재연결 불가 오류(결제 크레딧 소진·권한·quota 등). 원문(예: "prepayment credits
         # depleted")은 이용자에게 절대 노출 금지 — silent 처리. 로컬 폴백이 켜져 있고 ws 가
         # 살아있으면 온프레미스 음성 파이프라인으로 조용히 전환한다.
+        if _client_resumed and reconnect_count == 0 and not session_progressed and session_handle is not None:
+            logger.warning("⚠️ 물려받은 handle 로 연결 실패 — handle 을 버리고 단말 재접속을 기다린다: %s", e)
+            _client_resume_put(_rkey, None, convo_history)
+            try:
+                if websocket.client_state == WebSocketState.CONNECTED:
+                    await websocket.close(code=4001)
+            except Exception:
+                pass
+            return
         logger.exception("Gemini Live 연결 실패 (재연결 불가능한 오류): %s", e)
         emsg = str(e).lower()
         nonretryable = any(k in emsg for k in (
@@ -1466,6 +1666,9 @@ async def handle_live_chat(
                 and websocket.client_state == WebSocketState.CONNECTED):
             logger.warning("🔁 Gemini 재연결 불가(%s) — 로컬 폴백 파이프라인으로 silent 전환",
                            type(e).__name__)
+            _tr_f = trial_recorder.of(websocket)
+            if _tr_f is not None:
+                _tr_f.event("local_fallback", reason=type(e).__name__)
             try:
                 sess = LocalVoiceSession(
                     websocket=websocket,
@@ -1477,7 +1680,8 @@ async def handle_live_chat(
                     session_id=str(session_id),
                     extract_sources=_extract_sources,
                     prior_history=list(convo_history),
-                    greet=(len(convo_history) == 0),
+                    greet=(greet and len(convo_history) == 0),
+                    session_mode=mode,
                 )
                 await sess.run()
             except Exception as e2:

@@ -117,7 +117,7 @@ def _summarize_for_log(path: str, req: Optional[dict], body: Any) -> dict:
     """요청·응답에서 지표 산출에 필요한 최소 필드만 뽑는다(좌표·본문 전체는 남기지 않는다)."""
     out = {}
     req = req or {}
-    if path == "/route/plan" or path == "/route/reroute":
+    if path == "/route/plan":
         out["profile"] = req.get("profile")
         out["mode"] = req.get("mode") or "walk"
         out["dest_type"] = (req.get("destination") or {}).get("type")
@@ -127,9 +127,6 @@ def _summarize_for_log(path: str, req: Optional[dict], body: Any) -> dict:
             summ = ((body.get("routes") or [{}])[0] or {}).get("summary") or {}
             out["total_m"] = summ.get("total_distance_m")
             out["walk_m"] = summ.get("walk_distance_m")
-            if path == "/route/reroute":
-                out["prev_route_id"] = req.get("route_id")
-                out["off_route"] = body.get("off_route")
     elif path == "/tour/recommend":
         out["disabilities"] = req.get("disabilities")
         out["sigungu"] = req.get("sigungu")
@@ -271,6 +268,10 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
                     body = r.json()
                 except Exception:
                     body = {}
+                # 4xx 본문이 객체가 아닐 수 있다(중간 프록시의 문자열·배열 응답 등). 그대로
+                # .get 을 부르면 AttributeError 가 호출부로 새므로 빈 객체로 본다.
+                if not isinstance(body, dict):
+                    body = {}
                 detail_msg = body.get("detail") or "경로를 만들 수 없습니다"
                 # 4xx 는 "일시적 장애"가 아니라 요청 자체의 문제(서비스 지역 밖 등) —
                 # 오해를 낳지 않도록 사유별 안내문을 함께 전달한다.
@@ -280,7 +281,24 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
                            **_summarize_for_log(path, json, None)})
                 return _err(detail_msg, "HTTP %d" % r.status_code,
                             _ai_for_4xx(detail_msg))
-            data = r.json()
+            # 2xx 인데 본문이 JSON 이 아니면(프록시의 HTML 오류 페이지, 빈 본문) 오류 값으로
+            # 돌려준다. 이 모듈의 계약은 "실패는 예외가 아니라 값"인데, r.json() 의 해석
+            # 예외는 아래 except(연결 오류만 잡는다)에 걸리지 않아 호출부로 샌다.
+            # 서버가 응답은 했으므로 서킷 실패로 세지 않고, 재시도도 하지 않는다.
+            # JSON 배열 응답은 그대로 돌려준다 — 접근점 조회처럼 목록을 받는 호출부가 있다.
+            _bad_body = False
+            try:
+                data = r.json()
+            except ValueError:
+                data, _bad_body = None, True
+            if _bad_body:
+                logger.warning("경로 API 응답 본문을 해석할 수 없음 %s %s (HTTP %d)",
+                               method, path, r.status_code)
+                _call_log({"path": path, "status": r.status_code, "ms": ms, "server_ms": server_ms,
+                           "attempt": attempt + 1, "error": "invalid_body",
+                           **_summarize_for_log(path, json, None)})
+                return _err("경로 서비스 응답을 해석하지 못했습니다",
+                            "HTTP %d invalid body" % r.status_code, _AI_TRANSIENT)
             _call_log({"path": path, "status": r.status_code, "ms": ms, "server_ms": server_ms,
                        "attempt": attempt + 1, **_summarize_for_log(path, json, data)})
             return data
@@ -321,16 +339,27 @@ async def plan_route(origin: dict, destination: dict, profile: str = "wheelchair
     return await _call("POST", "/route/plan", json=body)
 
 
-async def reroute(current: dict, destination: dict, profile: str = "wheelchair_electric",
-                  route_id: str = None, reason: str = None) -> dict:
-    body = {"current": current, "destination": destination,
-            "profile": profile, "route_id": route_id}
-    if reason:
-        body["reason"] = reason          # 02 v1.25.0 계측 로그용(구버전은 무시)
-    return await _call("POST", "/route/reroute", json=body)
+# URL 경로에 그대로 들어가는 식별자의 형식.
+# 근거: route_id 는 경로 서비스가 "r_" + 16진수 10자로 발급하고, poi_id 는 숫자 또는
+# 영문·숫자·밑줄·하이픈 조합("TBF-1", "KRNA_1_MHK")이다. 둘 다 이 문자 집합 안에 있다.
+# 길이 상한 64 는 실제 값(20자 안팎)보다 넉넉한 방어선이다.
+# 검증 없이 넣으면 "../meta/network", "x?y=1" 같은 값이 다른 경로·질의로 해석된다.
+_PATH_ID_RE = _re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def valid_path_id(value) -> bool:
+    """URL 경로에 넣어도 되는 식별자(route_id·poi_id)인지 — 문자열이고 형식이 맞아야 한다."""
+    # fullmatch — "$" 는 끝의 줄바꿈 앞에서도 맞으므로 match 로는 "r_x\n" 이 통과한다
+    return isinstance(value, str) and bool(_PATH_ID_RE.fullmatch(value))
 
 
 async def get_route(route_id: str) -> dict:
+    """안내했던 경로 조회. route_id 형식이 맞지 않으면 호출하지 않고 오류 값을 돌려준다."""
+    if not valid_path_id(route_id):
+        return _err("경로 식별자 형식이 올바르지 않습니다", "invalid route_id",
+                    "이전에 안내한 경로를 확인할 수 없다고 알리고, 목적지를 다시 말씀해 주시면 "
+                    "새로 안내해 드리겠다고 요청하세요. 일시적인 오류라고 말하지 말고, 경로를 "
+                    "추측하지 마세요.")
     return await _call("GET", "/route/%s" % route_id)
 
 
@@ -363,6 +392,10 @@ async def tour_spots(sigungu: str = "안양", limit: int = 20) -> dict:
 
 
 async def tour_detail(poi_id: str) -> dict:
+    """관광지 상세. poi_id 형식이 맞지 않으면 호출하지 않고 오류 값을 돌려준다."""
+    poi_id = str(poi_id) if isinstance(poi_id, int) and not isinstance(poi_id, bool) else poi_id
+    if not valid_path_id(poi_id):
+        return _err("장소 식별자 형식이 올바르지 않습니다", "invalid poi_id")
     return await _call("GET", "/tour/bf-spots/%s" % poi_id)
 
 
@@ -446,11 +479,6 @@ async def bus_arrivals(station_id: str, route_id: str = "") -> dict:
     if route_id:
         params["route_id"] = str(route_id)
     return await _call("GET", "/transit/bus/arrivals", params=params)
-
-
-async def bus_locations(route_id: str) -> dict:
-    """노선 실시간 차량 위치(정류장 순번·좌표·저상 여부)."""
-    return await _call("GET", "/transit/bus/locations", params={"route_id": str(route_id)})
 
 
 async def station_facilities(stn_cd: str = "", name: str = "") -> dict:

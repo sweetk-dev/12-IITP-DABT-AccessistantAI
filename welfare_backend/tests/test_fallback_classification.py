@@ -13,6 +13,10 @@ _APP = Path(__file__).resolve().parents[1]
 if str(_APP) not in sys.path:
     sys.path.insert(0, str(_APP))
 
+# models 는 진짜 DB 계층(sqlalchemy ORM·pgvector)이 있어야 import 된다 — 없으면 건너뛴다
+pytest.importorskip("sqlalchemy.orm")
+pytest.importorskip("pgvector")
+
 from models import FallbackReason                      # noqa: E402
 from schemas import ToolStep                           # noqa: E402
 from unresolved_logger import (                        # noqa: E402

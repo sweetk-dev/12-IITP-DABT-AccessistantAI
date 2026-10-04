@@ -58,6 +58,7 @@ def _embed(text_query: str) -> list[float]:
 
 import route_client
 import kakao_local
+import trial_recorder
 import tool_handlers
 from tool_handlers import expand_query
 
@@ -107,6 +108,59 @@ import pathlib as _pl
 _static_dir = _pl.Path(__file__).parent / "static"
 if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
+
+# ─────────────────────────────────────────────────────────────
+# 제품 분리 (v2.0.0) — 정책상담 / 이동경로 안내. 화면 파일은 하나이고 주소만 다르다.
+# 화면이 주소(/navi 여부)를 보고 어느 제품인지 정한다.
+# ─────────────────────────────────────────────────────────────
+import re as _re
+from fastapi import HTTPException as _HTTPException
+from fastapi.responses import FileResponse as _FileResponse
+
+
+def _front_page():
+    page = _static_dir / "accessistant.html"
+    if not page.exists():
+        raise _HTTPException(status_code=404, detail="화면 파일이 없습니다")
+    return _FileResponse(str(page), media_type="text/html; charset=utf-8",
+                         headers={"Cache-Control": "no-store"})
+
+
+@app.get("/policy", include_in_schema=False)
+async def page_policy():
+    return _front_page()
+
+
+@app.get("/navi", include_in_schema=False)
+async def page_navi():
+    return _front_page()
+
+
+# 이동경로 안내 앱 배포본 — 앱이 새 버전 유무를 확인하고 내려받는다.
+# APP_RELEASE_DIR 에 latest.json 과 설치 파일을 두면 된다(이미지를 다시 만들 필요 없음).
+_APP_RELEASE_DIR = _pl.Path(os.environ.get("APP_RELEASE_DIR", "/data/app"))
+_APK_NAME = _re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}\.apk$")
+
+
+@app.get("/app/latest.json", include_in_schema=False)
+async def app_latest():
+    f = _APP_RELEASE_DIR / "latest.json"
+    if not f.is_file():
+        raise _HTTPException(status_code=404, detail="배포본 정보가 없습니다")
+    return _FileResponse(str(f), media_type="application/json",
+                         headers={"Cache-Control": "no-store"})
+
+
+@app.get("/app/download/{name}", include_in_schema=False)
+async def app_download(name: str):
+    if not _APK_NAME.match(name or ""):
+        raise _HTTPException(status_code=400, detail="잘못된 파일 이름")
+    f = _APP_RELEASE_DIR / name
+    if not f.is_file():
+        raise _HTTPException(status_code=404, detail="파일이 없습니다")
+    return _FileResponse(str(f), media_type="application/vnd.android.package-archive",
+                         filename=name, headers={"Cache-Control": "no-store"})
+
 
 # 관리자 콘솔 라우터 (검토 큐 v1-1)
 try:
@@ -654,6 +708,10 @@ async def explain_route_segment(
     route_id: str = Query(...),
     step_idx: int = Query(None),
 ):
+    # route_id 는 경로 서비스의 URL 경로에 들어간다 — 형식이 다르면 호출 전에 거절한다
+    # (형식 근거는 route_client._PATH_ID_RE 주석).
+    if not route_client.valid_path_id(route_id):
+        raise HTTPException(status_code=422, detail="route_id 형식이 올바르지 않습니다")
     return await tool_handlers.tool_explain_route_segment(route_id=route_id, step_idx=step_idx)
 
 
@@ -921,13 +979,17 @@ from live_bridge import handle_live_chat
 
 
 @app.websocket("/ws/live-chat")
-async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str = None):
+async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str = None,
+                              sid: str = None, resume: int = 0, greet: int = 1):
     """클라이언트 ↔ Gemini Live API ↔ DB 도구 실시간 중계.
 
     Query 파라미터:
       voice — Gemini Live prebuilt voice 이름(예: Charon, Kore) 또는 카테고리(male/female).
               미지정 시 기본값(여성 Kore).
-      mode  — 세션 시작 화면. "navi"(이동·관광 길안내)면 경로 안내용 인사말을 사용.
+      mode  — 세션 종류. "navi" 면 이동경로 안내(경로 안내용 인사말, 경로 도구 사용),
+              그 밖은 정책상담 — 길안내 요청은 이동경로 안내로 넘긴다(v2.0.0).
+      greet — 0 이면 시작 인사말을 생략한다. 화면이 곧바로 경로 안내를 시작할 때(이어서 안내·넘겨받은 목적지) 쓴다(v2.0.1).
+      sid   — 단말이 만든 세션 식별자. resume=1 과 함께 오면 끊기기 전 대화를 이어받는다(v1.59.0).
 
     클라이언트 메시지 포맷:
       {"type":"audio_chunk", "data":"<base64 PCM 16kHz>"}
@@ -941,7 +1003,8 @@ async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str
       {"type":"turn_complete"}
       {"type":"idle_warning", "message":"..."}
       {"type":"auto_close", "message":"..."}
-      {"type":"error", "message":"..."}
+      {"type":"error", "message":"..."}                 (fatal 필드 없음 = 치명, 세션 종료)
+      {"type":"error", "fatal":false, "message":"..."}  (비치명 — 연결 유지, 화면은 재연결을 끄지 않는다)
     """
     if ai_client is None:
         await websocket.accept()
@@ -950,4 +1013,56 @@ async def websocket_live_chat(websocket: WebSocket, voice: str = None, mode: str
         return
     # 음성 세션 안의 도구 호출도 같은 출처 태그를 쓴다 — 이 코루틴에서 만든 태스크는 문맥을 물려받는다(#298)
     route_client.set_client_tag(websocket.headers.get("x-remote-user"))
-    await handle_live_chat(websocket, ai_client, _embed, voice=voice, mode=mode)
+    # 실증 참여자 계정이면 대화·음성 기록기를 붙인다(#318) — 다른 계정은 None 이라 아무 일도 없다
+    _trial = trial_recorder.session_for_ws(websocket)
+    try:
+        await handle_live_chat(websocket, ai_client, _embed, voice=voice, mode=mode,
+                               sid=sid, resume=bool(resume), greet=bool(greet))
+    finally:
+        if _trial is not None:
+            _trial.close()
+
+
+# ─────────────────────────────────────────────────────────────
+# 실증 참여자 계정 전용 기록 (#318) — 설정(TRIAL_RECORD_CLIENTS)에 없는 계정은
+# status 가 enabled=false 이고, 나머지 두 엔드포인트는 아무것도 저장하지 않는다.
+# ─────────────────────────────────────────────────────────────
+from fastapi import Request as _Request  # noqa: E402
+
+
+@app.get("/api/v1/trial/status", tags=["collect"], summary="실증 기록 대상 계정인지")
+async def trial_status(request: _Request):
+    return {"enabled": trial_recorder.enabled_for(request.headers.get("x-remote-user"))}
+
+
+@app.post("/api/v1/trial/events", tags=["collect"], summary="실증 기록 — 단말 사건")
+async def trial_events(request: _Request):
+    user = request.headers.get("x-remote-user")
+    if not trial_recorder.enabled_for(user):
+        return {"ok": False}
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="JSON 이 아닙니다")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="형식 오류")
+    n = trial_recorder.append_events(body.get("rid"), body.get("events"), "client",
+                                     str(user).strip().lower())
+    return {"ok": n > 0, "n": n}
+
+
+@app.post("/api/v1/trial/audio", tags=["collect"], summary="실증 기록 — 단말 마이크 녹음 조각")
+async def trial_audio(request: _Request, rid: str = Query(...), rec: str = Query(...),
+                      seq: int = Query(..., ge=0), t0: Optional[int] = Query(None),
+                      tc: Optional[int] = Query(None)):
+    if not trial_recorder.enabled_for(request.headers.get("x-remote-user")):
+        return {"ok": False}
+    data = await request.body()
+    if len(data) > trial_recorder.MAX_AUDIO_PART_BYTES:
+        raise HTTPException(status_code=413, detail="조각이 너무 큽니다")
+    meta = {"mime": (request.headers.get("content-type") or "")[:60]}
+    if t0 is not None:
+        meta["t0"] = t0
+    if tc is not None:
+        meta["tc"] = tc
+    return {"ok": trial_recorder.save_mic_part(rid, rec, seq, data, meta)}

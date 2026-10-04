@@ -4,6 +4,7 @@
 #   - 회귀 가드 + 스키마 검증 + 자동 백업 + baseline 전진 + (옵션) ingest_sync 재적재
 #   - print/input 없음(웹 API 용). confirm_apply 의 상수/헬퍼를 재사용.
 import json
+import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,8 @@ try:
     from . import confirm_apply as ca
 except ImportError:  # 스크립트 직접 실행 폴백
     import confirm_apply as ca  # type: ignore
+
+logger = logging.getLogger("review_core")
 
 # 자동 동반 반영되는 메타 키(내용 변경 선택 시 함께 갱신)
 META_KEYS = {"version", "last_verified"}
@@ -49,11 +52,6 @@ def _read_disc(staged: Path) -> dict:
         except Exception:
             return {}
     return {}
-
-
-def get_triage(policy_id):
-    found = ca._find_staged(policy_id)
-    return _read_triage(found[0]) if found else {}
 
 
 def set_triage(policy_id, priority=None, hold=None, note=None):
@@ -134,7 +132,7 @@ def list_pending():
     out = []
     if not ca.STAGING_DIR.exists():
         return out
-    files = sorted(ca.STAGING_DIR.glob("B0*.staged.json"),
+    files = sorted(ca.STAGING_DIR.glob(f"{ca.ITEM_GLOB_PREFIX}.staged.json"),
                    key=lambda p: p.stat().st_mtime, reverse=True)
     seen = set()
     for f in files:
@@ -206,19 +204,26 @@ def apply_selected(policy_id, selected_keys, reingest=True):
     ca.BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
     backup_name = f"{ep.stem}.{datetime.now().strftime('%Y%m%d_%H%M%S')}.bak.json"
     shutil.copy2(ep, ca.BACKUPS_DIR / backup_name)
-    ep.write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
+    # 임시 파일 → os.replace (쓰는 도중 중단돼도 항목 파일이 잘린 채 남지 않게)
+    ca.atomic_write_text(ep, json.dumps(merged, ensure_ascii=False, indent=2))
 
     ca._advance_baselines(staged)
     applied = ca.STAGING_DIR / ".applied"
     applied.mkdir(parents=True, exist_ok=True)
     shutil.move(str(staged), str(applied / staged.name))
-    for ext in (".sources.json", ".review.json", ".triage.json"):
+    # 사이드카를 본체와 함께 .applied 로 옮긴다. .disc.json(발굴 보강 제안의 원 질의 id)도
+    # 포함한다 — staging 에 남기면 discovery_core.referenced_query_ids 가 staging 의
+    # *.disc.json 을 모두 "검토 대기 중"으로 읽으므로, 반영이 끝난 제안의 질의 행이
+    # 보존기간 파기에서 계속 빠진다. 반려(reject)와 같은 방식으로 옮긴다.
+    for ext in (".sources.json", ".review.json", ".triage.json", ".disc.json"):
         side = _sidecar(staged, ext)
         if side.exists():
             shutil.move(str(side), str(applied / side.name))
 
     result = {"ok": True, "applied_keys": sorted(apply_keys), "backup": backup_name}
     if reingest:
+        # 재적재 실패(종료 코드 0 아님·시간 초과 포함)는 예외로 올라온다.
+        # 위에서 끝난 파일 반영·staging 정리는 그대로 두고 실패 사실만 응답에 싣는다.
         try:
             ca._trigger_reingest([policy_id])
             result["reingested"] = True
@@ -230,12 +235,19 @@ def apply_selected(policy_id, selected_keys, reingest=True):
 
 def trigger_reingest(policy_ids):
     """DB 부분 재적재만 수행(파일 반영과 분리) — 웹 요청의 백그라운드 스레드에서 호출.
-    ingest_sync.py 를 별도 프로세스로 돌려 변경된 정책의 청크·임베딩만 재생성."""
+    ingest_sync.py 를 별도 프로세스로 돌려 변경된 정책의 청크·임베딩만 재생성.
+
+    반환: 성공 {"ok": True, "reingested": True} /
+          실패 {"ok": False, "reingested": False, "reingest_error": 문구}.
+    예외를 밖으로 내보내지 않는다 — 백그라운드 스레드에서 불리므로, 여기서 잡지 않으면
+    스레드가 조용히 끝나 실패 흔적이 남지 않는다. 실패는 로그(error)에 대상 정책과 함께 남긴다.
+    """
     try:
         ca._trigger_reingest(policy_ids)
         return {"ok": True, "reingested": True}
     except Exception as e:
-        return {"ok": False, "reingest_error": str(e)}
+        logger.error("DB 재적재 실패(대상 %s): %s", list(policy_ids or []), e)
+        return {"ok": False, "reingested": False, "reingest_error": str(e)}
 
 
 def reject(policy_id):

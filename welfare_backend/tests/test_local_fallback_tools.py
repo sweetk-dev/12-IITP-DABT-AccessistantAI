@@ -124,15 +124,19 @@ def t_dispatcher_backs_every_tool():
     assert not unbacked, "구현 없는 도구를 선언함: %s" % sorted(unbacked)
 
 
-for fn in (t_has_route_tools, t_no_extra, t_route_off_hides_route_tools,
-           t_no_coordinate_params, t_explain_segment_ids_optional,
-           t_dispatcher_backs_every_tool):
-    check(fn.__name__, fn)
+# 실행부는 스크립트로 직접 돌릴 때만 탄다. 모듈 최상위에 두면 pytest 가 이 파일을
+# import(수집)하는 순간 sys.exit 가 불려 전체 테스트 실행이 수집 단계에서 끝난다.
+# pytest 에서는 위의 t_* 함수들이 각각 테스트로 수집된다(conftest.py).
+if __name__ == "__main__":
+    for fn in (t_has_route_tools, t_no_extra, t_route_off_hides_route_tools,
+               t_no_coordinate_params, t_explain_segment_ids_optional,
+               t_dispatcher_backs_every_tool):
+        check(fn.__name__, fn)
 
-failed = 0
-for st, name in results:
-    print("  %s  %s" % (st, name))
-    if st == "FAIL":
-        failed += 1
-print("\n%s" % ("ALL PASSED" if not failed else "%d FAILED" % failed))
-sys.exit(1 if failed else 0)
+    failed = 0
+    for st, name in results:
+        print("  %s  %s" % (st, name))
+        if st == "FAIL":
+            failed += 1
+    print("\n%s" % ("ALL PASSED" if not failed else "%d FAILED" % failed))
+    sys.exit(1 if failed else 0)

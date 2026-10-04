@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">이동경로 안내</string>
+    <string name="guide_channel">길안내 진행</string>
+    <string name="guide_title">이동경로 안내 중</string>
+    <string name="guide_text">화면이 꺼져도 안내가 이어집니다. 누르면 화면으로 돌아갑니다.</string>
+</resources>

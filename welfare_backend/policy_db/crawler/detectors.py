@@ -55,7 +55,11 @@ class ChangeResult:
     new_chunks: Optional[list] = None
     url_used: Optional[str] = None      # 실제 성공한 URL (기본 또는 fallback)
     used_fallback: bool = False         # fallback_url 로 성공 → 기본 URL 점검 필요 신호
-    status: str = "ok"                  # ok / fetch_failed / exception — 실패 분류용(reason 문자열 매칭 대체)
+    # ok / fetch_failed / detect_failed / exception — 실패 분류용(reason 문자열 매칭 대체)
+    #   fetch_failed  : 출처를 받아오지 못함
+    #   detect_failed : 출처는 받았으나 비교 키를 만들지 못함(변경 여부 판단 불가)
+    #   ok 가 아니면 크롤러가 리포트의 "실패 목록"에 올린다.
+    status: str = "ok"
     body_len: Optional[int] = None      # 정규화 본문 길이(HTML 출처) — JS 의심 판정용
     js_suspect: bool = False            # 본문 과소 → JS 렌더링(SPA) 의심(httpx 가 빈 셸만 받음)
 
@@ -241,8 +245,7 @@ def _read_prev_chunks(snapshot_dir: Path) -> list:
     if not f.exists():
         return []
     try:
-        import json as _json
-        return _json.loads(f.read_text(encoding="utf-8"))
+        return json.loads(f.read_text(encoding="utf-8"))
     except Exception:
         return []
 
@@ -383,6 +386,25 @@ async def detect_last_modified_field(target: dict, snapshot_dir: Path, *, client
         if m:
             body_lm = m.group(0)
             break
+    if not http_lm.strip() and not body_lm:
+        # 헤더에도 본문에도 수정일 표기가 없으면 비교 키가 상수 "|" 가 된다.
+        # 이 값을 그대로 해시해 저장하면 이후 모든 회차에서 해시가 같아 페이지 내용이
+        # 바뀌어도 계속 "변경 없음" 으로 보고된다(감지가 동작하지 않는데 정상으로 보임).
+        # → "변경 없음" 대신 감지 실패(detect_failed)로 돌려준다.
+        #   - changed=False : 변경으로 치지 않으므로 정기 검사에서 LLM 호출을 일으키지 않는다.
+        #   - new_hash=None : 비교 기준(baseline)으로 저장되지 않는다(--init-baseline 도 건너뜀).
+        #   - status≠ok     : 크롤 리포트의 "실패 목록"에 사유와 함께 올라간다.
+        #   - 재검증 모드에서는 받은 본문을 넘겨 정책 재확인에는 쓰이게 한다.
+        # 조치는 리포트를 보고 감지 방식을 page_hash 등으로 바꾸는 것이다.
+        return _annotate(ChangeResult(
+            changed=False,
+            reason=(f"detect_failed | last_modified 키 추출 실패 — Last-Modified 헤더·본문 수정일 표기 없음"
+                    f"(본문 {len(text)}자). 감지 방식 변경 필요"),
+            new_content=resp.content if revalidate else None,
+            new_hash=None,
+            status="detect_failed",
+            body_len=len(text), js_suspect=_js_suspect(len(text)),
+        ), finfo)
     new_key = f"{http_lm}|{body_lm or ''}"
     new_hash = _hash_bytes(new_key.encode("utf-8"))
     # 저장/비교 모두 해시 기준 — SNAPSHOT_FILES 매핑 공유로 불일치 재발 방지.
