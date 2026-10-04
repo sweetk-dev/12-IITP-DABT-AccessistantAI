@@ -25,7 +25,6 @@ _REPORT_DIR = _DATA / "discovery" / "reports"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_MODEL = os.environ.get("GEMINI_LLM_MODEL", "gemini-3.1-pro-preview")
 _GEN_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
-_GEN_URL = f"{_GEN_BASE}/{GEMINI_MODEL}:generateContent"  # 기본(main) 모델 — 하위호환
 
 
 def _gen_url(model):
@@ -789,19 +788,6 @@ def _reopen_queries(ids):
     n = cur.rowcount
     con.commit(); con.close()
     return n
-
-
-def reopen_for_staging(staged_name):
-    """staging 보강 제안 반려 시 — 동반 .disc.json 의 query_ids 를 재오픈(best-effort)."""
-    try:
-        side = _STAGING_DIR / staged_name.replace(".staged.json", ".disc.json")
-        if not side.exists():
-            return 0
-        info = json.loads(side.read_text(encoding="utf-8"))
-        return _reopen_queries(info.get("query_ids"))
-    except Exception as e:
-        logger.warning("staging 재오픈 실패(%s): %s", staged_name, e)
-        return 0
 
 
 def _load_existing_policy(pid):

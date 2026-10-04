@@ -54,11 +54,6 @@ def _read_disc(staged: Path) -> dict:
     return {}
 
 
-def get_triage(policy_id):
-    found = ca._find_staged(policy_id)
-    return _read_triage(found[0]) if found else {}
-
-
 def set_triage(policy_id, priority=None, hold=None, note=None):
     found = ca._find_staged(policy_id)
     if not found:

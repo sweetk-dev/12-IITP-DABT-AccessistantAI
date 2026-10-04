@@ -117,7 +117,7 @@ def _summarize_for_log(path: str, req: Optional[dict], body: Any) -> dict:
     """요청·응답에서 지표 산출에 필요한 최소 필드만 뽑는다(좌표·본문 전체는 남기지 않는다)."""
     out = {}
     req = req or {}
-    if path == "/route/plan" or path == "/route/reroute":
+    if path == "/route/plan":
         out["profile"] = req.get("profile")
         out["mode"] = req.get("mode") or "walk"
         out["dest_type"] = (req.get("destination") or {}).get("type")
@@ -127,9 +127,6 @@ def _summarize_for_log(path: str, req: Optional[dict], body: Any) -> dict:
             summ = ((body.get("routes") or [{}])[0] or {}).get("summary") or {}
             out["total_m"] = summ.get("total_distance_m")
             out["walk_m"] = summ.get("walk_distance_m")
-            if path == "/route/reroute":
-                out["prev_route_id"] = req.get("route_id")
-                out["off_route"] = body.get("off_route")
     elif path == "/tour/recommend":
         out["disabilities"] = req.get("disabilities")
         out["sigungu"] = req.get("sigungu")
@@ -342,15 +339,6 @@ async def plan_route(origin: dict, destination: dict, profile: str = "wheelchair
     return await _call("POST", "/route/plan", json=body)
 
 
-async def reroute(current: dict, destination: dict, profile: str = "wheelchair_electric",
-                  route_id: str = None, reason: str = None) -> dict:
-    body = {"current": current, "destination": destination,
-            "profile": profile, "route_id": route_id}
-    if reason:
-        body["reason"] = reason          # 02 v1.25.0 계측 로그용(구버전은 무시)
-    return await _call("POST", "/route/reroute", json=body)
-
-
 # URL 경로에 그대로 들어가는 식별자의 형식.
 # 근거: route_id 는 경로 서비스가 "r_" + 16진수 10자로 발급하고, poi_id 는 숫자 또는
 # 영문·숫자·밑줄·하이픈 조합("TBF-1", "KRNA_1_MHK")이다. 둘 다 이 문자 집합 안에 있다.
@@ -491,11 +479,6 @@ async def bus_arrivals(station_id: str, route_id: str = "") -> dict:
     if route_id:
         params["route_id"] = str(route_id)
     return await _call("GET", "/transit/bus/arrivals", params=params)
-
-
-async def bus_locations(route_id: str) -> dict:
-    """노선 실시간 차량 위치(정류장 순번·좌표·저상 여부)."""
-    return await _call("GET", "/transit/bus/locations", params={"route_id": str(route_id)})
 
 
 async def station_facilities(stn_cd: str = "", name: str = "") -> dict:

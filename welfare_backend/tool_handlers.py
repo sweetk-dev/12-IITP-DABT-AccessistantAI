@@ -654,10 +654,6 @@ async def _resolve_place(place: str) -> Optional[dict]:
     return None
 
 
-# 이전 이름 유지 (호출부 호환)
-_resolve_origin_place = _resolve_place
-
-
 def _route_unavailable_ui(reason: str, kind: str, place: str) -> dict:
     """화면에도 같은 사실을 알린다.
 

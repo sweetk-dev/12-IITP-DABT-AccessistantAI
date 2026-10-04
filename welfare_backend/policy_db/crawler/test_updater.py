@@ -5,11 +5,11 @@
 from pathlib import Path
 
 try:
-    from .llm_updater import _apply_patch, _has_termination_evidence, _set_by_path, _add_by_path
+    from .llm_updater import _apply_patch, _has_termination_evidence
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from crawler.llm_updater import _apply_patch, _has_termination_evidence, _set_by_path, _add_by_path  # type: ignore
+    from crawler.llm_updater import _apply_patch, _has_termination_evidence  # type: ignore
 
 
 def _sample():

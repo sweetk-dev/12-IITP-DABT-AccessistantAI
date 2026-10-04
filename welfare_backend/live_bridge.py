@@ -672,7 +672,6 @@ def resolve_voice(requested: str | None) -> str:
 
     'male'/'female' 같은 카테고리 입력도 받아주고, 알 수 없으면 여성 기본값.
     """
-    import os
     if not requested:
         return os.environ.get("GEMINI_LIVE_VOICE", DEFAULT_VOICE_FEMALE)
     req = requested.strip()
@@ -775,7 +774,6 @@ async def _send_answer_card_from_tool(ai_client, websocket, question: str,
         md = (getattr(resp, "text", None) or "").strip()
         if not md or "NOT_POLICY" in md[:40] or md.count("## ") < 2:
             return
-        card_state["sent"] = True
         await _safe_send_json(websocket, {"type": "answer_card", "content": md})
         logger.info("🗂 정책 카드(도구 기반, 선표시) 전송 (%d자)", len(md))
     except Exception as e:
@@ -919,7 +917,6 @@ async def handle_live_chat(
 ):
     # 환경변수 우선, 기본은 안정 GA 모델
     if model_name is None:
-        import os
         model_name = os.environ.get("GEMINI_LIVE_MODEL", "gemini-2.0-flash-live-001")
     selected_voice = resolve_voice(voice)
     logger.info("🎙 선택된 음성: %s (요청='%s')", selected_voice, voice)
@@ -1021,8 +1018,8 @@ async def handle_live_chat(
     except (AttributeError, TypeError) as e:
         logger.warning("⚠️ SDK 가 ContextWindowCompression 미지원 — 기본 한계 적용: %s", e)
     # session_resumption 은 connect 시점에 handle 을 매번 갱신해야 하므로 outer 루프에서 설정.
+    # LiveConnectConfig 도 연결할 때마다 그 루프 안에서 config_kwargs 로 새로 만든다.
 
-    config = types.LiveConnectConfig(**config_kwargs)
     # all_tools 는 Tool 객체 단위 카운트 (function_declarations 5개 = 1 Tool, google_search = 1 Tool)
     has_search = any(getattr(t, "google_search", None) or getattr(t, "google_search_retrieval", None) for t in all_tools)
     logger.info("🔧 도구 등록: function_declarations(5) + google_search=%s (Tool 객체 %d개)",
@@ -1109,7 +1106,7 @@ async def handle_live_chat(
     _ai_buf = ""                        # 현재 AI 턴 전사 누적
     # 정책 카드 상태(턴 단위) — scheduled: 이번 턴에 도구 기반 카드를 시도했는지,
     # sent: 실제 전송됐는지. 도구 기반이 실패하면 턴 종료 폴백이 전사 기반으로 커버.
-    card_state = {"scheduled": False, "sent": False}
+    card_state = {"scheduled": False}
     _user_buf = ""                      # 현재 사용자 턴 입력 누적
     # 스피커 에코 판정 근거 (v1.40.0) — 직전 상담원 발화 텍스트와 마지막 음성 송출 시각.
     # 상담원 음성의 끝말("…드릴게요"의 "요")이 마이크로 되돌아와 사용자 발화로 전사되는 일이
@@ -1355,7 +1352,6 @@ async def handle_live_chat(
                                     asyncio.create_task(
                                         _send_answer_card(ai_client, websocket, _card_src))
                                 card_state["scheduled"] = False
-                                card_state["sent"] = False
                                 _user_buf = ""; _ai_buf = ""
                                 if len(convo_history) > 100:
                                     del convo_history[:-100]
