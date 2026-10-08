@@ -3007,6 +3007,123 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   $("sosCancelBtn").dispatchEvent(new window.Event("click"));
 }
 
+// ── 리프트만 있는 승강장 주의 (v2.0.8, 경로 서비스 v1.35.0) ──
+// 안양 → 관악(북행) 하차 승강장은 승강기 없이 휠체어리프트만 있다. 출발 전에 눈에 띄게 보이고, 안내 시작 때 첫 안내보다 먼저 말해야 한다.
+{
+  const WARN = "관악역 하차 승강장(석수 방향)에는 대합실로 이어지는 승강기가 없고 휠체어리프트만 있습니다(폭 800mm·길이 1,100mm). 승강장의 리프트 호출 버튼을 누르거나 역무실에 연락해 역무원을 불러 주세요.";
+  const SHORT_ALIGHT = "내릴 관악역 승강장(석수 방향)에는 휠체어리프트만 있습니다.";   // 승차 스텝용 짧은 문장(경로 서비스 v1.35.0)
+  const PA = { station: "관악", side: "alight", line: "1호선", travel: "north", updown: "상행", toward: "석수", access: "lift_only",
+               elevator: null, lift: { detail_loc: "1F(석수역 방향 상행승강장 계단 옆)", width_mm: 800, length_mm: 1100 }, warning: WARN };
+  const EG2 = { station: "관악", exit: { exit_no: "2", lat: 37.4189, lng: 126.9092, has_elevator: true, elevator: "(1F) 2번 출입구 옆" },
+    platform: [{ kind: "lift", detail_loc: "1F(석수역 방향 상행승강장 계단 옆)", side: "arrival", width_mm: 800, length_mm: 1100 }],
+    platform_access: PA,
+    inside: ["내린 승강장 쪽에는 휠체어리프트만 있습니다 — 1F(석수역 방향 상행승강장 계단 옆)(폭 800mm·길이 1,100mm). 승강장의 리프트 호출 버튼을 누르거나 역무실에 연락해 역무원을 불러 주세요",
+             "2번 출구 승강기로 나갑니다 — (1F) 2번 출입구 옆"],
+    outside: "관악역 2번 출구 앞에서 도보 안내를 시작합니다. 다른 출구로 나오셨다면 경로를 다시 찾아 주세요",
+    question: "지금 역 안(승강장)에 계신가요, 역 밖으로 나오셨나요?" };
+  const LR = JSON.parse(JSON.stringify(MMROUTE.ui_action.route));
+  LR.route_id = "r_lift"; LR.mode = "walk_subway"; LR.low_floor = { mode: false };
+  LR.routes[0].summary = { total_distance_m: 3638, duration_sec: 1578, walk_distance_m: 1310, max_slope_deg: 3, stairs_cnt: 0, crossing_cnt: 2,
+    eta_note: "소요시간은 정거장 수 기반 추정이며 차량 대기 시간은 포함되지 않습니다",
+    warnings: [WARN, "다른 경고 한 줄"], platform_access: [PA], platform_access_penalty_m: 1500 };
+  LR.routes[0].legs = [
+    { kind: "walk", summary: { total_distance_m: 17, duration_sec: 15 }, to_label: "안양역 2번 출구" },
+    { kind: "subway", line: "1호선", board: { name: "안양" }, alight: { name: "관악" }, station_cnt: 1, warnings: [WARN],
+      platform_access: { board: { station: "안양", side: "board", access: "elevator" }, alight: PA }, alight_exit: EG2.exit, egress: EG2 },
+    { kind: "walk", summary: { total_distance_m: 1293, duration_sec: 1175 }, from_label: "관악역 2번 출구", to_label: "목적지" },
+  ];
+  LR.routes[0].steps = [
+    { idx: 0, maneuver: "depart", instruction: "안양역까지 17m 이동합니다.", distance_m: 17, coord: [37.3900, 126.9500], link_type: "sidewalk", warnings: [] },
+    { idx: 1, maneuver: "subway_board", instruction: "안양역에서 1호선에 승차합니다 — 1개 역 이동 (2번 출구 승강기 이용). 주의: " + SHORT_ALIGHT,
+      distance_m: 2000, coord: [37.3903, 126.9503], link_type: "subway", warnings: ["승강설비를 사전 확인하세요", SHORT_ALIGHT], platform_access: [PA] },
+    { idx: 2, maneuver: "subway_alight", instruction: "관악역에서 하차합니다 — 2번 출구(승강기)로 나갑니다. 주의: " + WARN,
+      distance_m: 0, coord: [37.3905, 126.9505], link_type: "subway", warnings: [WARN], platform_access: [PA], egress: EG2 },
+    { idx: 3, maneuver: "station_exit", instruction: "관악역 2번 출구입니다. 여기서부터 걸어서 이동합니다", distance_m: 0, coord: [37.3906, 126.9507], link_type: "walk", warnings: [], egress: EG2 },
+    { idx: 4, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: [37.3909, 126.9511], link_type: null, warnings: [] },
+  ];
+  const NL = window.NAVI._internals();
+  NL.clearRouteDisplay(); NL.resetTrip();
+  NL.showRoute(JSON.parse(JSON.stringify(LR)), "김중업건축박물관");
+  await sleep(30);
+  const count = (hay, needle) => hay.split(needle).length - 1;
+  check("리프트 승강장: 경로 요약에 별도 주의 상자(⚠ 승강장 주의)가 한 번만 보인다 (v2.0.8)", () => {
+    const box = $("platWarn");
+    assert.ok(box, "주의 상자 없음");
+    assert.ok(box.classList.contains("plat-warn"));
+    assert.equal(box.textContent, "⚠ 승강장 주의 — " + WARN);
+    const t = $("naviSheetBody").textContent;
+    assert.equal(count(t, WARN), 1, "주의 문장이 요약 주석·구간 카드에 되풀이됐다");
+    assert.match(t, /다른 경고 한 줄/, "다른 경고는 종전대로 보여야 한다");
+    // 주의 상자는 구간 카드보다 위(출발 전 가장 먼저 보이게)
+    const legList = $("naviSheetBody").querySelector(".leg-list");
+    assert.ok(box.compareDocumentPosition(legList) & window.Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+  check("리프트 승강장: 하차 스텝 발화에 주의가 실린다(경로 서비스 문장 그대로)", () => {
+    const u = window.NAVI._internals().stepUtterance(2);
+    assert.match(u, /관악역에서 하차합니다 — 2번 출구\(승강기\)로 나갑니다\. 주의: 관악역 하차 승강장\(석수 방향\)/);
+    assert.match(u, /지금 역 안\(승강장\)에 계신가요/);
+  });
+  check("리프트 승강장: 안내 시작 때 말할 주의 문장 (v2.0.8)", () => {
+    assert.equal(window.NAVI._internals().platformCautionSpeech(LR.routes[0]), "출발 전에 알려 드립니다. " + WARN);
+  });
+  // 발화 순서 확인 — 발화 큐는 앞 문장의 추정 길이(글자 수 기준)만큼 다음 문장을 기다린다. 실제 문장(약 16초 대기)
+  // 대신 짧은 경고 문장으로 같은 경로를 다시 표시해 순서만 빠르게 확인한다.
+  const SHORT = "관악역 리프트";
+  const LR2 = JSON.parse(JSON.stringify(LR));
+  LR2.routes[0].summary.platform_access = [Object.assign({}, PA, { warning: SHORT })];
+  NL.showRoute(LR2, "김중업건축박물관");
+  await sleep(30);
+  spoken.length = 0;
+  NL.startGuidance();
+  for (let i = 0; i < 80 && !spoken.includes("안양역까지 17m 이동합니다."); i++) await sleep(50);
+  check("리프트 승강장: 안내 시작 때 첫 안내보다 먼저 주의를 말한다 (v2.0.8)", () => {
+    const i = spoken.indexOf("출발 전에 알려 드립니다. " + SHORT);
+    const j = spoken.indexOf("안양역까지 17m 이동합니다.");
+    assert.ok(i >= 0, "주의 발화 없음: " + JSON.stringify(spoken));
+    assert.ok(j > i, "첫 안내보다 먼저여야 한다: " + JSON.stringify(spoken));
+  });
+  window.NAVI._internals().gotoStep(2);
+  await sleep(30);
+  check("리프트 승강장: 하차 스텝 카드에 경고가 한 번만 보인다(문장의 '주의:'와 배지 중복 없음) (v2.0.8)", () => {
+    const card = window.document.querySelector(".step-now");
+    assert.equal(count(card.textContent, WARN), 1, card.textContent);
+    assert.match(card.querySelector(".ins").textContent, /주의: 관악역 하차 승강장\(석수 방향\)/);
+    assert.equal([...card.querySelectorAll(".wr")].filter((e) => e.textContent.includes(WARN)).length, 0);
+  });
+  window.NAVI._internals().gotoStep(1);
+  await sleep(30);
+  check("리프트 승강장: 승차 스텝 — 짧은 주의는 문장에 한 번, 다른 경고 배지는 종전대로 (v2.0.8)", () => {
+    const card = window.document.querySelector(".step-now");
+    assert.equal(count(card.textContent, SHORT_ALIGHT), 1, card.textContent);
+    const badges = [...card.querySelectorAll(".wr")].map((e) => e.textContent);
+    assert.deepEqual(badges, ["⚠ 승강설비를 사전 확인하세요"]);
+  });
+  NL.clearRouteDisplay(); NL.resetTrip();
+
+  // 역 안 출발(station_start) — 주의 상자는 보이지만, 첫 스텝 문장이 리프트 안내를 이미 말하므로 따로 말하지 않는다
+  const SR = JSON.parse(JSON.stringify(ROUTE.ui_action.route));
+  SR.route_id = "r_lift_start";
+  SR.station_start = { station: "관악", travel: "north", exit: EG2.exit, egress: EG2 };
+  SR.routes[0].summary.warnings = [WARN];
+  SR.routes[0].steps = [{ idx: 0, maneuver: "station_start", instruction: "관악역 안에서 출발합니다. 2번 출구(승강기)로 나간 뒤 걸어서 이동합니다",
+    distance_m: 0, coord: [37.4189, 126.9092], link_type: "walk", egress: Object.assign({}, EG2, { question: null }),
+    warnings: [WARN], platform_access: [PA] }].concat(SR.routes[0].steps.map((s, k) => Object.assign({}, s, { idx: k + 1 })));
+  NL.showRoute(SR, "목적지");
+  await sleep(30);
+  check("역 안 출발 리프트 승강장: 주의 상자 표시 · 안내 시작 전 별도 발화는 없음 (v2.0.8)", () => {
+    assert.equal($("platWarn").textContent, "⚠ 승강장 주의 — " + WARN);
+    assert.equal(window.NAVI._internals().platformCautionSpeech(SR.routes[0]), "");
+  });
+  NL.clearRouteDisplay(); NL.resetTrip();
+  // 구버전 경로 서비스 응답(platform_access 없음) — 주의 상자가 없고 화면은 종전과 같다
+  NL.showRoute(JSON.parse(JSON.stringify(ROUTE.ui_action.route)), "목적지");
+  await sleep(30);
+  check("platform_access 없는 응답: 주의 상자 없음 (v2.0.8)", () => {
+    assert.equal($("platWarn"), null);
+  });
+  NL.clearRouteDisplay(); NL.resetTrip();
+}
+
 // ── v1.58.0 실증 기록(#318) — 실증 계정이 아니면 기록 요청을 하나도 보내지 않는다 ──
 {
   const q = await window.__TRIAL.wsQuery();

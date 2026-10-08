@@ -352,6 +352,8 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .leg-card .lg-t{font-weight:800;font-size:.92rem;color:#0F172A;}
 .leg-card .lg-d{font-size:.84rem;color:#334155;margin-top:2px;}
 .leg-card .lg-w{font-size:.8rem;color:#B45309;margin-top:3px;}
+/* 리프트만 있는 승강장 주의(경로 서비스 v1.35.0) — 경로 요약 안의 일반 주석(c-note)과 구별되는 강조 상자 */
+.plat-warn{border:2px solid var(--c-warning);background:var(--c-warning-soft);color:#7C3A02;border-radius:var(--r-md);padding:10px 12px;margin:0 0 10px;font-size:.95rem;font-weight:700;line-height:1.5;}
 .leg-card .lg-live{font-size:.84rem;font-weight:700;color:#166534;margin-top:3px;}
 .leg-card .lg-fac{font-size:.8rem;color:#1E40AF;margin-top:3px;}
 .step-now .live{margin-top:6px;padding:6px 8px;border-radius:8px;background:#ECFDF5;color:#166534;font-size:.9rem;font-weight:700;}
@@ -2145,6 +2147,8 @@ window.NAVI = (function(){
     var texts = steps.map(function(st, i){ return (_isMergedCrossing(i) || st.maneuver === "crossing") ? stepUtterance(i) : st.instruction; }).filter(Boolean);
     texts = texts.filter(function(t, k){ return texts.indexOf(t) === k; });   // 체인 문장은 노드 스텝과 머리 스텝에서 겹친다
     texts.push("다음 안내까지 약 300미터입니다", "다음 안내까지 약 150미터입니다");
+    var pcs = platformCautionSpeech((route && route.routes || [])[0]);   // 안내 시작 때 말할 승강장 주의 (v2.0.8)
+    if(pcs) texts.unshift(pcs);
     landmarks.forEach(function(x){ if(x.speech) texts.push(x.speech); });   // 주변 랜드마크 (#308)
     // 2개 병렬 — 캐시 미스 한 문장에 5~9초가 걸리므로 순차로는 안내 시작 전에 채우지 못한다 (v1.43.1)
     var queue = texts.slice();
@@ -3609,6 +3613,29 @@ window.NAVI = (function(){
     sendNavState();   // 경로 준비 상태(안내 전)도 세션에 알린다 (#248)
   }
 
+  /* ── 리프트만 있는 승강장 주의 (v2.0.8, 경로 서비스 v1.35.0) ──
+     승강기 없이 휠체어리프트만 있는 승강장에서 타거나 내리는 경로면, 출발 전에 눈에 띄게 보여 주고 안내 시작 때 말한다.
+     열차에서 내린 뒤에야 알면 휠체어 이용자는 되돌아갈 방법이 없다(2026-10-08 관악역 상행 승강장 실측).
+       · 표시용: 지하철 경로의 summary.platform_access + 역 안 출발 스텝(station_start)의 platform_access
+       · 발화용: summary.platform_access 만 — 역 안 출발은 첫 스텝 문장(egress.inside)이 이미 리프트 안내를 말한다
+     구버전 경로 서비스 응답에는 이 키가 없으므로 빈 목록이 되고 화면은 종전과 같다. */
+  function _cautionTexts(list, out){
+    (list || []).forEach(function(pa){ if(pa && pa.warning && out.indexOf(pa.warning) < 0) out.push(pa.warning); });
+    return out;
+  }
+  function platformCautionsSpoken(primary){
+    return _cautionTexts(((primary || {}).summary || {}).platform_access, []);
+  }
+  function platformCautions(primary){
+    var out = platformCautionsSpoken(primary), st0 = ((primary || {}).steps || [])[0];
+    if(st0 && st0.maneuver === "station_start") _cautionTexts(st0.platform_access, out);
+    return out;
+  }
+  function platformCautionSpeech(primary){
+    var c = platformCautionsSpoken(primary);
+    return c.length ? "출발 전에 알려 드립니다. " + c.join(" ") : "";
+  }
+
   function sheetTop(){ var sh=$("naviSheet"); if(sh) try{ sh.scrollTop=0; }catch(e){} }   // 새 내용은 맨 위부터 (v1.44.0)
   function renderSummary(primary, destName){
     sheetMini(false); sheetSetCollapsed(false); sheetTop();
@@ -3687,6 +3714,17 @@ window.NAVI = (function(){
       });
     body.appendChild(mrow);
 
+    // ── 리프트만 있는 승강장 주의 (v2.0.8) — 이동 방식 카드 바로 아래, 다른 주석과 구별되는 상자로 ──
+    var cautions = platformCautions(primary);
+    if(cautions.length){
+      var pw = document.createElement("div"); pw.className = "plat-warn"; pw.id = "platWarn";
+      pw.setAttribute("role", "note");
+      cautions.forEach(function(t, k){
+        var line = document.createElement("div"); line.textContent = "⚠ 승강장 주의 — " + t; pw.appendChild(line);
+      });
+      body.appendChild(pw);
+    }
+
     // ── 대중교통 leg 목록 (#251) — 있으면 수단별 카드로 보여준다 ──
     var legs = primary.legs || [];
     if(legs.length){
@@ -3739,10 +3777,13 @@ window.NAVI = (function(){
             c2.appendChild(fx);
           }
           var egIn = leg.egress && leg.egress.inside && leg.egress.inside[0];
-          if(egIn && /휠체어리프트만|정보가 없습니다/.test(egIn)){
+          // 하차 승강장 리프트를 위 주의 상자가 이미 알렸으면, 같은 사실을 담은 역 안 문장은 카드에서 되풀이하지 않는다
+          var alightFlagged = !!(leg.platform_access && leg.platform_access.alight && leg.platform_access.alight.warning);
+          if(egIn && /휠체어리프트만|정보가 없습니다/.test(egIn) && !(alightFlagged && /휠체어리프트만/.test(egIn))){
             var fw=document.createElement("div"); fw.className="lg-w"; fw.textContent="※ "+egIn; c2.appendChild(fw);
           }
           (leg.warnings||[]).forEach(function(wm){
+            if(cautions.indexOf(wm) >= 0) return;   // 주의 상자에 이미 있다
             var w2=document.createElement("div"); w2.className="lg-w"; w2.textContent="※ "+wm; c2.appendChild(w2);
           });
           ll.appendChild(c2);
@@ -3764,7 +3805,7 @@ window.NAVI = (function(){
     });
     body.appendChild(sum);
 
-    var notes = (s.warnings||[]).slice();
+    var notes = (s.warnings||[]).filter(function(w){ return cautions.indexOf(w) < 0; });   // 주의 상자와 중복 제외
     if(s.eta_note) notes.unshift(s.eta_note);
     if(route.fallback && route.fallback.used && route.fallback.reason) notes.push(route.fallback.reason);
     // 목적지 좌표를 무엇으로 정했는지 알린다 — 대표점이면 건물 중심일 수 있다
@@ -3946,6 +3987,9 @@ window.NAVI = (function(){
     renderStep();
     sendNavState();   // 안내 시작을 세션에 알린다 (#248)
     stopSpeak(); _spokenAhead = {}; _chainSpoken = -1;
+    // 리프트만 있는 승강장 주의는 첫 안내보다 먼저 말한다 (v2.0.8) — 출발 전에 듣고 다른 방식을 고를 수 있게
+    var pcs = platformCautionSpeech((route && route.routes || [])[0]);
+    if(pcs) speakStep(pcs);
     _announceStep(0);
     followCamera();
   }
@@ -4358,7 +4402,14 @@ window.NAVI = (function(){
     mv.textContent = "안내 " + (stepIdx+1) + " / " + steps.length;
     var ins=document.createElement("div"); ins.className="ins"; ins.textContent=st.instruction;
     card.appendChild(mv); card.appendChild(ins);
-    (st.warnings||[]).forEach(function(w){ var e=document.createElement("div"); e.className="wr"; e.textContent="⚠ "+w; card.appendChild(e); });
+    // 경로 서비스 v1.35.0 은 리프트 승강장 경고를 스텝 문장 끝("… 주의: <경고>")과 스텝 경고 양쪽에 싣는다(음성은 문장을 읽는다).
+    // 카드에 같은 문장이 두 번 보이지 않게, 문장의 "주의:" 뒷부분에 이미 들어 있는 경고는 배지로 다시 그리지 않는다 (v2.0.8).
+    // "주의:" 뒷부분만 보는 이유 — 횡단보도 문장 끝 괄호 속 경고 같은 종전 표시는 그대로 두기 위해서다.
+    var insTail = String(st.instruction || "").split("주의: ").slice(1).join("주의: ");
+    (st.warnings||[]).forEach(function(w){
+      if(insTail && w && insTail.indexOf(w) >= 0) return;
+      var e=document.createElement("div"); e.className="wr"; e.textContent="⚠ "+w; card.appendChild(e);
+    });
     // 승차 스텝이면 실시간 저상버스 도착정보를 붙이고 20초마다 갱신한다 (v1.39.0)
     stopArrivalPolling();
     var liveRef = null;
@@ -5257,6 +5308,7 @@ window.NAVI = (function(){
     _internals: function(){ return {steps:steps, stepIdx:stepIdx, spots:spots, speak:speak, showRoute:showRoute,
                                      resumeUtterance:resumeUtterance, saveTrip:saveTrip, clearTrip:clearTrip, pendingTrip:pendingTrip, offerTripResume:offerTripResume,
                                      speakBusy:speakBusy, stepUtterance:stepUtterance, drainSpeak:_drainSpeak,
+                                     platformCautionSpeech:platformCautionSpeech,
                                      resetTrip:resetTrip, tripDest:function(){return tripDest;},
                                      startGuidance:startGuidance, setHere:function(h){here=h;}, advanceStep:advanceStep,
                                      landmarks:function(){return landmarks;}, alongOnRoute:alongOnRoute,
