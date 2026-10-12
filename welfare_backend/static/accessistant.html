@@ -2,6 +2,22 @@
 <html lang="ko" data-fontsize="3" data-contrast="normal">
 <head>
 <meta charset="utf-8">
+<script>
+/* 배포 기준 경로 (v2.1.0) — 이 화면은 사이트 루트 바로 아래 주소(…/static/accessistant.html, …/navi, …/policy)에서도,
+   하위 경로(예: https://www.sweetk.ai/iitp/accessistantai/navi)에서도 열린다.
+   화면 주소의 앞부분을 떼어 APP_BASE 에 두고, 서버로 보내는 주소(API·WebSocket·정적 파일)는
+   전부 withBase("/api/...") 처럼 앞에 붙여 만든다. 루트 배포면 APP_BASE="" 이라 종전 주소와 같다.
+   서버 쪽 주소는 바뀌지 않는다 — 하위 경로는 앞단 프록시가 떼고 넘긴다. */
+var APP_BASE=(function(p){
+  var m=/^(.*?)\/(?:static\/accessistant\.html|navi|policy)\/?$/.exec(p||"");
+  var b=m?m[1]:"";
+  // 기준 경로는 "/이름/이름…" 꼴(영문·숫자·._~-)만 받는다. "//다른호스트/navi" 같은 주소로 열렸을 때
+  // 서버 호출이 다른 호스트로 새지 않게 하고, 아래 document.write 에 그대로 넣어도 안전하게 하려는 것이다
+  return /^(\/[A-Za-z0-9._~-]+)*$/.test(b)?b:"";
+})(location.pathname);
+function withBase(path){ return APP_BASE+path; }
+window.APP_BASE=APP_BASE;
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
 <title>AccessistantAI · 장애인 복지 정책 AI 상담</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -365,12 +381,23 @@ html[data-product="navi"] #modeNaviBtn{background:var(--c-primary);color:#fff;}
 html[data-product="navi"] #modeNaviBtn .av svg{stroke:#fff;}
 .handoff-note{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#EFF6FF;color:#1E3A8A;font-weight:700;}
 </style>
-<link rel="manifest" href="/static/manifest.webmanifest">
 <meta name="theme-color" content="#2563EB">
-<link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon-180.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16.png">
-<link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+<script>
+/* 매니페스트·아이콘 링크 (v2.1.0) — 기준 경로를 붙여 파싱 중에 바로 써 넣는다.
+   정적 <link> 와 같은 시점에 브라우저가 보게 하려는 것(나중에 href 를 바꾸면 설치·아이콘 인식이 늦을 수 있다).
+   APP_BASE 는 위에서 안전한 글자만 남겼으므로 그대로 넣는다. */
+(function(){
+  var L=[["manifest","","","/static/manifest.webmanifest"],
+         ["apple-touch-icon","180x180","","/static/icons/apple-touch-icon-180.png"],
+         ["icon","32x32","image/png","/static/icons/favicon-32.png"],
+         ["icon","16x16","image/png","/static/icons/favicon-16.png"],
+         ["icon","","image/svg+xml","/static/logo.svg"]];
+  for(var i=0;i<L.length;i++){
+    document.write('<link rel="'+L[i][0]+'"'+(L[i][1]?' sizes="'+L[i][1]+'"':'')+(L[i][2]?' type="'+L[i][2]+'"':'')
+      +' href="'+withBase(L[i][3])+'">');
+  }
+})();
+</script>
 </head>
 <body>
 <div class="app">
@@ -386,7 +413,8 @@ html[data-product="navi"] #modeNaviBtn .av svg{stroke:#fff;}
 var fs=3;
 function setFont(d){fs=Math.min(5,Math.max(1,fs+d));document.documentElement.setAttribute("data-fontsize",fs);document.querySelectorAll(".fontctl .dots").forEach(function(g){g.querySelectorAll("i").forEach(function(el,i){el.classList.toggle("on",i<fs);});});}
 // 제품 구분 (v2.0.0) — 같은 화면 코드를 정책상담(기본)과 이동경로 안내(/navi)로 나눠 쓴다
-var PRODUCT=(/^\/navi(\/|$)/.test(location.pathname)||/[?&]product=navi(&|$)/.test(location.search))?"navi":"policy";
+// 하위 경로 배포(v2.1.0)에서는 기준 경로를 뗀 나머지로 판단한다
+var PRODUCT=(/^\/navi(\/|$)/.test(location.pathname.slice(APP_BASE.length))||/[?&]product=navi(&|$)/.test(location.search))?"navi":"policy";
 window.__PRODUCT=PRODUCT;
 document.documentElement.setAttribute("data-product",PRODUCT);
 window.__APP_SHELL=/AccessNaviApp\//.test(navigator.userAgent);   // 이동경로 안내 앱 안에서 열렸다
@@ -403,7 +431,7 @@ window.__HANDOFF=(function(){
     add("profile",h.profile);
     return q.join("&");
   }
-  function webUrl(h){ var q=query(h); return location.origin+"/navi"+(q?"?"+q:""); }
+  function webUrl(h){ var q=query(h); return location.origin+withBase("/navi")+(q?"?"+q:""); }
   function appUrl(h){
     var q=query(h);
     return "intent://navi"+(q?"?"+q:"")+"#Intent;scheme="+SCHEME+";package="+PKG+";S.browser_fallback_url="+encodeURIComponent(webUrl(h))+";end";
@@ -589,7 +617,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
             wsQuery:function(){ return Promise.resolve(""); } };
   window.__TRIAL = T;
   if (typeof fetch !== "function") return;
-  var ready = fetch("/api/v1/trial/status", {credentials:"same-origin"})
+  var ready = fetch(withBase("/api/v1/trial/status"), {credentials:"same-origin"})
     .then(function(r){ return r.ok ? r.json() : {}; })
     .catch(function(){ return {}; })
     .then(function(j){ if (j && j.enabled === true) enable(); });
@@ -611,7 +639,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       if (flushing || !q.length) return;
       flushing = true;
       var batch = q.splice(0, 400);
-      fetch("/api/v1/trial/events", {method:"POST", credentials:"same-origin",
+      fetch(withBase("/api/v1/trial/events"), {method:"POST", credentials:"same-origin",
             headers:{"Content-Type":"application/json"}, body: JSON.stringify({rid:T.rid, events:batch})})
         .then(function(r){ if (!r.ok) throw new Error("http " + r.status); })
         .catch(function(){ q = batch.concat(q); if (q.length > EV_MAX){ dropped += q.length - EV_MAX; q = q.slice(q.length - EV_MAX); } })
@@ -631,7 +659,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     window.addEventListener("pagehide", function(){
       try{
         if (q.length && navigator.sendBeacon)
-          navigator.sendBeacon("/api/v1/trial/events",
+          navigator.sendBeacon(withBase("/api/v1/trial/events"),
             new Blob([JSON.stringify({rid:T.rid, events:q.splice(0, 400)})], {type:"application/json"}));
       }catch(err){}
     });
@@ -647,7 +675,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       if (pumping || !aq.length) return;
       pumping = true;
       var it = aq[0];
-      var url = "/api/v1/trial/audio?rid=" + encodeURIComponent(T.rid) + "&rec=" + encodeURIComponent(it.rec)
+      var url = withBase("/api/v1/trial/audio?rid=") + encodeURIComponent(T.rid) + "&rec=" + encodeURIComponent(it.rec)
               + "&seq=" + it.seq + "&t0=" + it.t0 + "&tc=" + it.tc;
       fetch(url, {method:"POST", credentials:"same-origin",
                   headers:{"Content-Type": it.blob.type || "application/octet-stream"}, body: it.blob})
@@ -707,7 +735,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   const wsBaseUrl = () => {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const host = location.host || "127.0.0.1:8000";
-    return `${proto}//${host}/ws/live-chat`;
+    return `${proto}//${host}${withBase("/ws/live-chat")}`;
   };
 
   // ────── 채팅 말풍선 ──────
@@ -1332,7 +1360,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       }
     } catch (e) { micHeadset = false; }
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.audioWorklet.addModule("/static/mic-processor.js");
+    await audioCtx.audioWorklet.addModule(withBase("/static/mic-processor.js"));
 
     micNode = audioCtx.createMediaStreamSource(micStream);
     micProcessor = new AudioWorkletNode(audioCtx, "mic-processor", {
@@ -1958,7 +1986,7 @@ window.NAVI = (function(){
     var key = v + "|" + text;
     if(ttsCache[key]) return Promise.resolve(ttsCache[key]);
     if(ttsPending[key]) return ttsPending[key];   // 같은 문장이 합성 중이면 그 응답을 함께 기다린다 (v1.43.1)
-    var p = fetch("/api/v1/tts?voice=" + encodeURIComponent(v) + "&text=" + encodeURIComponent(text))
+    var p = fetch(withBase("/api/v1/tts?voice=") + encodeURIComponent(v) + "&text=" + encodeURIComponent(text))
       .then(function(r){
         if(!r.ok){ var e = new Error("tts " + r.status); e.quota = (r.status === 503); throw e; }   // 503=한도 소진 (v1.43.2)
         return r.blob();
@@ -2166,7 +2194,7 @@ window.NAVI = (function(){
   /* ── 설정·지도 로드 ── */
   async function loadConfig(){
     try{
-      var r = await fetch("/api/v1/config");
+      var r = await fetch(withBase("/api/v1/config"));
       cfg = await r.json();
     }catch(e){ cfg = {features:{}, map:{default_center:{lat:37.3943,lng:126.9568}, default_level:5}}; }
     return cfg;
@@ -2573,10 +2601,10 @@ window.NAVI = (function(){
              started_at: trackStartTs, finished_at: new Date().toISOString()}});
     try{
       if(outcome === "unknown" && navigator.sendBeacon){   // 페이지 이탈 — 마지막 시도
-        navigator.sendBeacon("/api/v1/nav/track", new Blob([body], {type:"application/json"}));
+        navigator.sendBeacon(withBase("/api/v1/nav/track"), new Blob([body], {type:"application/json"}));
         return;
       }
-      fetch("/api/v1/nav/track", {method:"POST", keepalive:true,
+      fetch(withBase("/api/v1/nav/track"), {method:"POST", keepalive:true,
         headers:{"Content-Type":"application/json"}, body: body}).catch(function(){});
     }catch(e){}
   }
@@ -2620,10 +2648,10 @@ window.NAVI = (function(){
     renderSos("찾는 중…");
     try{
       var url = kind==="toilet"
-        ? "/api/v1/tools/find_toilet?lat="+o.lat+"&lng="+o.lng+"&radius_m=800"
+        ? withBase("/api/v1/tools/find_toilet?lat=")+o.lat+"&lng="+o.lng+"&radius_m=800"
         : kind==="food"
-        ? "/api/v1/tools/find_accessible_restaurants?lat="+o.lat+"&lng="+o.lng+"&radius_m=2000"
-        : "/api/v1/tools/find_emergency_support?lat="+o.lat+"&lng="+o.lng+"&types="+kind+"&radius_m="+(kind==="calltaxi"?10000:3000);
+        ? withBase("/api/v1/tools/find_accessible_restaurants?lat=")+o.lat+"&lng="+o.lng+"&radius_m=2000"
+        : withBase("/api/v1/tools/find_emergency_support?lat=")+o.lat+"&lng="+o.lng+"&types="+kind+"&radius_m="+(kind==="calltaxi"?10000:3000);
       var r = await fetch(url); var data = await r.json();
       if(data.status!=="success"){ sosItems[kind]=[]; renderSos(data.message || "정보를 불러오지 못했습니다."); return; }
       sosItems[kind] = data.items || []; sosLoaded[kind] = true;
@@ -2765,7 +2793,7 @@ window.NAVI = (function(){
     status("신고를 보내는 중입니다…");
     sendActivity("report_send");
     try{
-      var r = await fetch("/api/v1/nav/report", {method:"POST",
+      var r = await fetch(withBase("/api/v1/nav/report"), {method:"POST",
         headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
       var d = await r.json();
       if(r.ok && d && d.status !== "error"){
@@ -3211,7 +3239,7 @@ window.NAVI = (function(){
     res.textContent="찾는 중…";
     var items=[];
     try{
-      var r=await fetch("/api/v1/tools/search_places?q=" + encodeURIComponent(q));
+      var r=await fetch(withBase("/api/v1/tools/search_places?q=") + encodeURIComponent(q));
       var d=await r.json();
       items=(d.items||[]).map(function(i){
         return {poi_id: i.poi_id ? String(i.poi_id) : "", name:i.name, addr:i.addr,
@@ -3477,7 +3505,7 @@ window.NAVI = (function(){
       }catch(e){ abortCtl = null; }
     }
     try{
-      var planUrl = "/api/v1/tools/plan_accessible_route?" + qs.toString();
+      var planUrl = withBase("/api/v1/tools/plan_accessible_route?") + qs.toString();
       var r = await (abortCtl ? fetch(planUrl, {signal: abortCtl.signal}) : fetch(planUrl));
       var data = await r.json();
       if(abortTimer){ clearTimeout(abortTimer); abortTimer = null; }
@@ -4049,7 +4077,7 @@ window.NAVI = (function(){
     if(!el) { stopArrivalPolling(); return; }
     try{
       var qs = new URLSearchParams({station_id: ref.board_station_id, route_id: ref.route_id || ""});
-      var r = await fetch("/api/v1/tools/bus_arrivals?" + qs.toString());
+      var r = await fetch(withBase("/api/v1/tools/bus_arrivals?") + qs.toString());
       var d = await r.json();
       var lv = liveArrivalText(d, ref.route_name);
       if(!lv){ el.textContent = "실시간 도착정보 없음"; el.classList.add("off"); return; }
@@ -5220,7 +5248,7 @@ window.NAVI = (function(){
   var SPOT_PAGE=10, spotOffset=0, spotHasMore=false, spotLoading=false, spotSel=["지체장애"];
 
   function spotQuery(sel, offset){
-    var q = "/api/v1/tools/find_bf_tour_spots?disabilities=" + encodeURIComponent(sel.join(","))
+    var q = withBase("/api/v1/tools/find_bf_tour_spots?disabilities=") + encodeURIComponent(sel.join(","))
           + "&sigungu=안양&topk=" + SPOT_PAGE + "&offset=" + offset;
     // 출발지(직접 지정 > 현재 위치)가 있으면 거리 오름차순 — 1페이지는 근접순,
     // 이후 페이지는 반경 제한 없이 이어진다. 없으면 서버 기본(점수순).
@@ -5344,7 +5372,7 @@ document.addEventListener("DOMContentLoaded", function(){ window.NAVI.init(); })
 /* 홈 화면 설치(웹앱) 지원 — 서비스워커 등록. 실패해도 서비스 동작에는 영향 없음. */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function(){
-    navigator.serviceWorker.register("/static/sw.js").catch(function(){});
+    navigator.serviceWorker.register(withBase("/static/sw.js")).catch(function(){});
   });
 }
 </script>

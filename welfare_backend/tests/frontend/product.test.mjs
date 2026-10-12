@@ -10,6 +10,8 @@
  *     5) 주소로 넘겨받은 목적지로 경로를 찾는다 · 주소는 지운다
  *     6) 떠 있는 화면에 새 목적지가 들어와도 경로를 찾는다
  *     7) 통화 중에는 안내 음성을 내지 않는다
+ *   하위 경로 배포 (v2.1.0)
+ *     8) /iitp/accessistantai/… 에서 열어도 서버 호출·WebSocket·아이콘·넘기기 주소가 그 경로 아래로 간다 · 루트 배포는 종전과 같다
  */
 import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
@@ -344,6 +346,70 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   });
   w.close();
 }
+
+// ───────── 하위 경로 배포 (v2.1.0) ─────────
+// 같은 화면을 https://www.sweetk.ai/iitp/accessistantai/… 처럼 하위 경로에서 열어도
+// 서버 호출·WebSocket·아이콘·넘기기 주소가 그 경로 아래로 가야 한다. 루트 배포는 종전과 같아야 한다.
+const linkHrefs = (w) => [...w.document.querySelectorAll('link[rel="manifest"],link[rel="icon"],link[rel="apple-touch-icon"]')].map((l) => l.getAttribute("href"));
+{
+  const w = boot("https://example.test/iitp/accessistantai/static/accessistant.html");
+  await ready(w);
+  check("하위 경로(정책상담): 기준 경로를 알아낸다", () => { assert.equal(w.APP_BASE, "/iitp/accessistantai"); assert.equal(w.__PRODUCT, "policy"); });
+  check("하위 경로(정책상담): 서버 호출이 모두 기준 경로 아래로 간다", () => {
+    const log = w.__fetchLog || []; assert.ok(log.length > 0, "호출 기록 없음");
+    for (const u of log) assert.match(u, /^\/iitp\/accessistantai\/api\//, u);
+  });
+  check("하위 경로: 매니페스트·아이콘 링크 5개가 기준 경로 아래를 가리킨다", () => {
+    const h = linkHrefs(w); assert.equal(h.length, 5);
+    for (const x of h) assert.match(x, /^\/iitp\/accessistantai\/static\//, x);
+  });
+  check("하위 경로: 넘기기 웹 주소도 기준 경로 아래 /navi", () => assert.equal(w.__HANDOFF.webUrl({}), "https://example.test/iitp/accessistantai/navi"));
+  w.document.querySelector('[data-go="text"]').click(); await sleep(50);
+  check("하위 경로: 상담 WebSocket 주소", () => { assert.ok(w.__sockets[0], "세션 없음"); assert.match(w.__sockets[0].url, /^wss:\/\/example\.test\/iitp\/accessistantai\/ws\/live-chat/); });
+  w.close();
+}
+{
+  const w = boot("https://example.test/iitp/accessistantai/navi");
+  await ready(w, 300);
+  check("하위 경로(이동경로 안내): /navi 를 알아본다", () => { assert.equal(w.APP_BASE, "/iitp/accessistantai"); assert.equal(w.__PRODUCT, "navi"); });
+  check("하위 경로(이동경로 안내): 서버 호출이 모두 기준 경로 아래로 간다", () => {
+    const log = w.__fetchLog || []; assert.ok(log.some((u) => u.includes("/api/v1/config")), "설정 호출 없음");
+    for (const u of log) assert.match(u, /^\/iitp\/accessistantai\/api\//, u);
+  });
+  w.close();
+}
+{
+  const w = boot("https://example.test/static/accessistant.html");
+  await ready(w);
+  check("루트 배포: 기준 경로가 비어 있고 주소는 종전 그대로", () => {
+    assert.equal(w.APP_BASE, "");
+    for (const x of linkHrefs(w)) assert.match(x, /^\/static\//, x);
+    for (const u of (w.__fetchLog || [])) assert.match(u, /^\/api\//, u);
+    assert.equal(w.__HANDOFF.webUrl({}), "https://example.test/navi");
+  });
+  w.document.querySelector('[data-go="text"]').click(); await sleep(50);
+  check("루트 배포: 상담 WebSocket 주소는 종전 그대로", () => assert.match(w.__sockets[0].url, /^wss:\/\/example\.test\/ws\/live-chat/));
+  w.close();
+}
+{
+  // 교차검토 반영 — "//다른호스트/navi" 처럼 열려도 기준 경로로 삼지 않는다(서버 호출이 밖으로 새면 안 된다)
+  const w = boot("https://example.test//evil.test/navi");
+  await ready(w, 300);
+  check("이상한 주소로 열려도 서버 호출이 다른 호스트로 가지 않는다", () => {
+    assert.equal(w.APP_BASE, "");
+    for (const u of (w.__fetchLog || [])) assert.match(u, /^\/api\//, u);
+    for (const x of linkHrefs(w)) assert.match(x, /^\/static\//, x);
+  });
+  w.close();
+}
+check("서버로 보내는 주소에 루트 고정 문자열이 남지 않았다(소스)", () => {
+  // withBase("…") 로 감싼 것과, 링크 목록(L 배열 — 실행 시 withBase 로 감싼다)의 항목은 제외
+  const bad = [...HTML.matchAll(/[\x60'"(]\/(api|static|ws)\/[^\x60'")]*/g)].filter((m) =>
+    !/withBase\($/.test(HTML.slice(Math.max(0, m.index - 10), m.index)) &&
+    !HTML.startsWith('"]', m.index + m[0].length));
+  assert.equal(bad.length, 0, bad.map((m) => m[0]).join(", "));
+  assert.match(HTML, /href="'\+withBase\(L\[i\]\[3\]\)/, "링크 목록을 withBase 로 감싸 쓰지 않는다");
+});
 
 // ───────── 소스 가드 ─────────
 // 정책상담·이동경로 안내는 따로 여는 제품이라 화면 사이를 오가는 탭(마크업·스타일·핸들러)을 두지 않는다
