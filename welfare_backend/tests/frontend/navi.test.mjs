@@ -2031,18 +2031,20 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   });
   check("manifest 가 가리키는 아이콘 파일이 실제로 있고 PNG 시그니처를 갖는다 (v1.46.1)", () => {
     for (const i of png) {
-      const buf = readFileSync(new URL("../../static" + i.src.replace("/static", ""), import.meta.url));
+      // v2.1.0: manifest 의 아이콘 주소는 매니페스트 위치(static/) 기준 상대 주소다
+      const buf = readFileSync(new URL("../../static/" + i.src.replace(/^\/?(static\/)?/, ""), import.meta.url));
       assert.equal(buf.subarray(0, 8).toString("hex"), "89504e470d0a1a0a", i.src + " 가 PNG 가 아님");
     }
   });
   check("head 에 apple-touch-icon·favicon PNG 링크가 있다 (v1.46.1)", () => {
-    assert.match(HTML, /<link rel="apple-touch-icon" sizes="180x180" href="\/static\/icons\/apple-touch-icon-180\.png">/);
-    assert.match(HTML, /<link rel="icon" type="image\/png" sizes="32x32" href="\/static\/icons\/favicon-32\.png">/);
-    assert.match(HTML, /<link rel="icon" type="image\/png" sizes="16x16" href="\/static\/icons\/favicon-16\.png">/);
+    // v2.1.0: 하위 경로 배포 대응으로 링크는 파싱 중 document.write 로 기준 경로를 붙여 쓴다(product.test 에서 실제 href 확인)
+    assert.match(HTML, /\["apple-touch-icon","180x180","","\/static\/icons\/apple-touch-icon-180\.png"\]/);
+    assert.match(HTML, /\["icon","32x32","image\/png","\/static\/icons\/favicon-32\.png"\]/);
+    assert.match(HTML, /\["icon","16x16","image\/png","\/static\/icons\/favicon-16\.png"\]/);
   });
   check("정적 자원이 바뀌었으므로 서비스워커 캐시 이름이 올라가고 셸에 아이콘이 들어간다 (v1.46.1)", () => {
     const SW = readFileSync(new URL("../../static/sw.js", import.meta.url), "utf8");
-    assert.match(SW, /const CACHE = "accessistant-v5";/);   // v1.49.0 긴급·편의 시트로 셸이 바뀜
+    assert.match(SW, /const CACHE = "accessistant-v6";/);   // v1.49.0 긴급·편의 시트로 셸이 바뀜 → v2.1.0 하위 경로 배포 대응
     assert.match(SW, /"\/static\/icons\/icon-512\.png"/);
     assert.match(SW, /"\/static\/icons\/apple-touch-icon-180\.png"/);
   });
