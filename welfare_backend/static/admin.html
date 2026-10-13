@@ -201,6 +201,20 @@
       <div id="ops-discovery" style="margin:12px 0;font-size:13px;">…</div>
       <button class="primary" id="btnDisc" onclick="runDiscovery()">지금 발굴 실행</button>
     </div>
+    <div class="card" style="padding:16px;grid-column:1/3;" id="ops-collect-card">
+      <h2 style="margin:0 0 4px;font-size:15px;">데이터 수집 (통계·이동편의)</h2>
+      <div class="msg">수집 서버가 정해진 주기로 외부 데이터를 받아 DB 에 적재합니다. 실패한 항목은 기존 데이터를 그대로 두고, 아래 주소로 알림 메일을 보냅니다(실패 뒤 정상화되면 한 번 더).</div>
+      <div id="ops-collect" style="margin:12px 0;font-size:13px;">…</div>
+      <div style="border-top:1px solid var(--line);padding-top:12px;">
+        <div style="font-weight:600;font-size:13px;margin-bottom:6px;">이상 발생 시 알림 메일</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <label class="chk"><input type="checkbox" id="caEnabled" onchange="caDirty=true"> 알림 사용</label>
+          <input id="caEmails" type="text" oninput="caDirty=true" placeholder="받을 메일 주소 (여러 개는 쉼표로 구분, 최대 5개)" style="flex:1;min-width:260px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;">
+          <button class="primary" id="caSave" onclick="saveCollectAlert()">저장</button>
+        </div>
+        <div class="msg" id="caMsg" style="margin-top:6px;"></div>
+      </div>
+    </div>
     <div class="card" style="padding:16px;grid-column:1/3;">
       <h2 style="margin:0 0 4px;font-size:15px;">스케줄</h2>
       <div id="ops-sched" class="msg">…</div>
@@ -642,6 +656,7 @@ function _renderOp(name, d){
   if(name==="crawl"){ const ib=document.getElementById("btnInitBase"); if(ib) ib.disabled=run; const hb=document.getElementById("btnHash"); if(hb) hb.disabled=run; }
 }
 async function loadOps(){
+  loadCollect();
   try{ const d=await (await fetch(OAPI+"/status")).json();
     _renderOp("crawl",d); _renderOp("backup",d); _renderOp("discovery",d);
     const sc=d.schedules||{};
@@ -652,6 +667,76 @@ async function loadOps(){
     if(anyRun && !opsTimer){ opsTimer=setInterval(loadOps,4000); }
     if(!anyRun && opsTimer){ clearInterval(opsTimer); opsTimer=null; }
   }catch(e){ document.getElementById("ops-sched").textContent="상태 로드 실패: "+e; }
+}
+/* ===== 데이터 수집 상태 · 알림 설정 (v2.2.0) =====
+ * 수집 서버(08)가 실행마다 남기는 기록(sys_batch_run_log)을 작업별로 보여 준다.
+ * - 결과·연속 실패는 정기 실행(전체 범위 적재) 기준이다. 수동 시험 실행은 '최근 실행'에만 보인다.
+ * - 알림 설정은 입력 중(caDirty)이면 자동 새로고침이 덮어쓰지 않는다. */
+const CAPI="/admin/api/collect";
+let caDirty=false;
+const _CO_BADGE={SUCCESS:['ok','정상'],PARTIAL:['warn','일부 실패'],ERROR:['bad','실패']};
+const _CO_ALERT={SENT:'발송',SKIP:'보류',FAIL:'발송 실패',NONE:'-'};
+function _coBadge(st){ const b=_CO_BADGE[st]; return b?`<span class="b ${b[0]}">${b[1]}</span>`:'<span class="b off">기록 없음</span>'; }
+function _coStage(s){ return {collect:'수집',db:'적재',batch:'배치'}[s]||escapeHtml(s||'-'); }
+function renderCollect(d){
+  const el=document.getElementById("ops-collect");
+  // 다시 그려도 펼쳐 둔 실패 목록은 펼친 채로 둔다(작업 실행 중에는 몇 초마다 새로 그린다)
+  const coOpen=new Set([...el.querySelectorAll("details.co-fail[open]")].map(x=>x.dataset.sys));
+  if(!d.ready){ el.innerHTML='<span class="msg">수집 기록 표가 아직 없습니다 — DB 마이그레이션(v1.9.0) 적용 후 표시됩니다.</span>'; return; }
+  if(!d.jobs.length){ el.innerHTML='<span class="msg">등록된 수집 작업이 없습니다.</span>'; return; }
+  let h='<table style="font-size:12px"><thead><tr><th>작업</th><th>주기</th><th>마지막 정기 실행</th><th>결과</th><th>처리</th><th>연속 실패</th><th>알림</th></tr></thead><tbody>';
+  for(const j of d.jobs){
+    const r=j.last_regular;
+    const cnt=r?`${r.ok_cnt}/${r.targets}`:'-';
+    const streak=j.consecutive_fail?`<span class="b bad">${j.consecutive_fail}회</span>`+(j.last_success?`<div class="msg">마지막 성공 ${escapeHtml(j.last_success)}</div>`:''):'0';
+    const al=r&&r.alert_status?`<span title="${escapeHtml(r.alert_detail||'')}">${_CO_ALERT[r.alert_status]||escapeHtml(r.alert_status)}</span>`:'-';
+    h+=`<tr data-sys="${escapeHtml(j.ext_sys)}"><td><b>${escapeHtml(j.label)}</b><div class="msg">${escapeHtml(j.ext_sys)}</div></td>`+
+       `<td>${escapeHtml(j.schedule)}</td><td>${escapeHtml(r?r.started_at:(j.last_sync?('동기화 '+j.last_sync):'-'))}</td>`+
+       `<td>${_coBadge(r&&r.status)}</td><td>${cnt}</td><td>${streak}</td><td>${al}</td></tr>`;
+    const lr=j.last_run;
+    // 정기 실행 뒤에(또는 정기 실행 기록 없이) 수동 시험 실행이 있으면 함께 알려 준다
+    const manual = lr && (!r || lr.run_id!==r.run_id);
+    const fails=(r&&r.failures)||[];
+    if(fails.length || (r&&r.status!=="SUCCESS"&&r.error_summary) || manual){
+      let inner='';
+      if(fails.length){
+        inner+=`<details class="co-fail" data-sys="${escapeHtml(j.ext_sys)}"${coOpen.has(j.ext_sys)?' open':''}><summary>실패 ${fails.length}건 보기</summary><ol style="margin:6px 0 0 18px;padding:0">`+
+          fails.map(f=>`<li><b>${escapeHtml(f.id)}</b> · ${_coStage(f.stage)} — ${escapeHtml(f.reason||'')}</li>`).join('')+'</ol></details>';
+      } else if(r&&r.status!=="SUCCESS"&&r.error_summary){
+        inner+=`<div class="msg">오류: ${escapeHtml(r.error_summary)}</div>`;
+      }
+      if(manual) inner+=`<div class="msg">최근 수동 실행: ${escapeHtml(lr.started_at)} (${escapeHtml(lr.mode)}·${escapeHtml(lr.scope)}) ${_coBadge(lr.status)}</div>`;
+      h+=`<tr><td colspan="7" style="background:#fafbfc">${inner}</td></tr>`;
+    }
+  }
+  el.innerHTML=h+'</tbody></table>';
+}
+function fillCollectAlert(a){
+  const en=document.getElementById("caEnabled"), em=document.getElementById("caEmails"), btn=document.getElementById("caSave");
+  const off=!a; en.disabled=off; em.disabled=off; btn.disabled=off;
+  if(!a || caDirty) return;
+  en.checked=!!a.enabled; em.value=(a.emails||[]).join(", ");
+  setMsg("caMsg", a.updated_at?`마지막 수정 ${a.updated_at}${a.updated_by?(' · '+a.updated_by):''}`:'');
+}
+async function loadCollect(){
+  const el=document.getElementById("ops-collect");
+  try{
+    const r=await fetch(CAPI+"/status");
+    if(r.status===503){ el.innerHTML='<span class="msg">iitp_db 연결이 설정되지 않았습니다 (IITP_DB_NAME).</span>'; fillCollectAlert(null); return; }
+    if(!r.ok){ el.textContent="수집 상태 로드 실패: HTTP "+r.status; return; }
+    const d=await r.json(); renderCollect(d); fillCollectAlert(d.alert);
+  }catch(e){ el.textContent="수집 상태 로드 실패: "+e; }
+}
+async function saveCollectAlert(){
+  const btn=document.getElementById("caSave"); btn.disabled=true; setMsg("caMsg","저장 중…");
+  const body={enabled:document.getElementById("caEnabled").checked, emails:document.getElementById("caEmails").value};
+  try{
+    const r=await fetch(CAPI+"/alert-config",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(r.ok){ caDirty=false; fillCollectAlert(j); setMsg("caMsg","저장했습니다. 다음 수집부터 적용됩니다."); }
+    else { const d=j.detail||j; setMsg("caMsg","저장 실패: "+(d.error||JSON.stringify(d)),true); }
+  }catch(e){ setMsg("caMsg","저장 실패: "+e,true); }
+  btn.disabled=false;
 }
 async function runHashcheck(){
   try{ const j=await (await fetch(OAPI+"/crawl/hashcheck",{method:"POST"})).json();

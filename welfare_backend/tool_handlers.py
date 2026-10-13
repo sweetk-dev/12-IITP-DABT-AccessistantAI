@@ -759,6 +759,69 @@ def _out_of_service_area(kind: str, place: str, tool_name: str = _ROUTE_TOOL) ->
 
 AUTO_TRANSIT_MIN_M = 700     # 이 직선거리 미만이면 자동 모드는 도보를 쓴다
 
+# 리프트만 있는 승강장 감점의 기본값(m) — 경로 서비스 v1.35.0 의 LIFT_ONLY_PLATFORM_PENALTY_M 과 같다.
+# 경로 응답에 summary.platform_access_penalty_m 이 있으면 그 값을 쓴다(감점 기준을 두 곳에서 따로 정하지
+# 않기 위해). 이 상수는 값이 없고 경고만 있는 응답을 위한 대비다.
+LIFT_ONLY_PENALTY_DEFAULT_M = 1500
+
+
+def _platform_cautions(data: dict) -> list:
+    """경로 응답에서 '리프트만 있는 승강장' 경고 문장을 모은다(경로 서비스 v1.35.0).
+
+    출처는 두 곳이다 — 지하철 경로의 summary.platform_access(승차·하차 승강장),
+    역 안 출발 경로의 station_start 스텝(내린 승강장). 같은 문장은 한 번만 넣는다.
+    구버전 경로 서비스는 이 키들이 없으므로 빈 목록이 된다.
+    """
+    out = []
+    if not isinstance(data, dict):
+        return out
+    primary = (data.get("routes") or [{}])[0] or {}
+    summ = primary.get("summary") or {}
+    for pa in summ.get("platform_access") or []:
+        w = pa.get("warning") if isinstance(pa, dict) else None
+        if w and w not in out:
+            out.append(w)
+    for st in (primary.get("steps") or [])[:1]:
+        if isinstance(st, dict) and st.get("maneuver") == "station_start":
+            for pa in st.get("platform_access") or []:
+                w = pa.get("warning") if isinstance(pa, dict) else None
+                if w and w not in out:
+                    out.append(w)
+    return out
+
+
+def _lift_only_keeps_walk(walk_data: dict, transit_data: dict) -> bool:
+    """자동 추천에서 대중교통 경로가 리프트만 있는 승강장을 거치면 도보를 유지할지 판정한다.
+
+    대중교통으로 바꾸는 이득은 "덜 걷는 거리"다. 리프트만 있는 승강장은 그 이득을 깎는 부담
+    (역무원 호출·대기, 리프트에 휠체어가 올라가지 못할 위험)이고, 경로 서비스는 이를 도보 m 로
+    환산한 감점(summary.platform_access_penalty_m)으로 알려 준다. 덜 걷는 거리가 감점 이하이면
+    도보가 더 낫다고 보고 도보를 유지한다.
+      예) 도보 2,500m vs 지하철 경로 도보 1,310m + 감점 1,500m → 아끼는 1,190m < 1,500m → 도보 유지
+    리프트 경고가 없는 대중교통 경로에는 영향이 없다(종전처럼 700m 이상이면 승격).
+    """
+    tsum = ((transit_data.get("routes") or [{}])[0] or {}).get("summary") or {}
+    flags = [pa for pa in (tsum.get("platform_access") or []) if isinstance(pa, dict) and pa.get("warning")]
+    if not flags:
+        return False
+    pen = tsum.get("platform_access_penalty_m")
+    if not isinstance(pen, (int, float)) or pen <= 0:
+        pen = LIFT_ONLY_PENALTY_DEFAULT_M * len(flags)
+    wsum = ((walk_data.get("routes") or [{}])[0] or {}).get("summary") or {}
+    walk_m = wsum.get("total_distance_m")
+    if not isinstance(walk_m, (int, float)) or walk_m <= 0:
+        return False          # 도보 거리를 모르면 비교할 수 없다 — 종전대로 승격(도보를 고집하지 않는다)
+    transit_walk_m = tsum.get("walk_distance_m")
+    if not isinstance(transit_walk_m, (int, float)):
+        # 요약에 도보 합계가 없는 응답 — 도보 구간(legs)의 거리를 더해 쓴다
+        legs = ((transit_data.get("routes") or [{}])[0] or {}).get("legs") or []
+        dists = [((l.get("summary") or {}).get("total_distance_m")) for l in legs
+                 if isinstance(l, dict) and l.get("kind") == "walk"]
+        if not dists or not all(isinstance(d, (int, float)) for d in dists):
+            return False      # 도보 구간 거리도 모르면 판정하지 않는다(승격 유지)
+        transit_walk_m = sum(dists)
+    return (walk_m - transit_walk_m) <= pen
+
 # 기본 경로 프로필 (#294, 02 v1.25.0) — 전동 휠체어. 3차년도 실증 기준이며 02 서버 기본값과 같다.
 DEFAULT_PROFILE = "wheelchair_electric"
 # 지원 이동 방식 — walk_subway 는 버스 없이 지하철만 쓴다(02 v1.25.0, #294)
@@ -820,6 +883,24 @@ def _station_ai_note(data: dict) -> str:
                 "plan_accessible_route 를 다시 호출하되 origin_station='%s', origin_travel 에 "
                 "고른 방향(north/south, 모르면 비움)을 담으세요. ") % (sn["station"], labels, sn["station"])
     return ""
+
+
+def _platform_ai_note(cautions: list, kept_walk) -> str:
+    """리프트만 있는 승강장 경고를 모델이 출발 전에 말하도록 하는 지시문(02 v1.35.0).
+
+    휠체어 이용자는 열차에서 내린 뒤에야 "리프트만 있다"는 사실을 알면 되돌아갈 방법이 없다.
+    그래서 경로를 소개하는 첫 응답에서, 요약보다 먼저 경고를 전하게 한다.
+    """
+    note = ""
+    if cautions:
+        note += ("platform_cautions 가 있으면 경로 요약보다 먼저, 그 문장을 빠짐없이 그대로 전하세요"
+                 "(예: '관악역에서 내리시는 승강장은 승강기가 없고 휠체어리프트만 있습니다'). "
+                 "리프트 크기(폭·길이)가 있으면 함께 말하고, 리프트 이용이 어려우면 다른 이동 방식"
+                 "(도보·버스)을 고를 수 있다고 덧붙이세요. ")
+    if kept_walk:
+        note += ("자동 추천이 도보를 고른 이유를 한 문장으로 밝히세요 — 대중교통 경로가 휠체어리프트만 있는 "
+                 "승강장을 거쳐 도보가 더 낫다고 판단했습니다(auto_kept_walk 의 역 이름을 말하세요). ")
+    return note
 
 
 async def tool_plan_accessible_route(destination_poi_id: str = "",
@@ -962,6 +1043,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     _set_ctx = getattr(route_client, "set_log_ctx", None)   # 테스트 스텁은 이 함수가 없다
     if _set_ctx:
         _set_ctx(log_ctx)
+    auto_kept_walk = None     # 자동 추천이 리프트 승강장 때문에 도보를 유지했을 때의 사유 문장들
     if auto:
         data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk")
         if data.get("status") == "error":
@@ -974,7 +1056,11 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                 origin_pt, dest, profile=profile, mode="walk_bus_subway", realtime=True,
                 low_floor=low_floor)
             if upgraded.get("status") != "error" and (upgraded.get("routes") or []):
-                data, mode_used = upgraded, "walk_bus_subway"
+                if _lift_only_keeps_walk(data, upgraded):
+                    # 대중교통이 리프트만 있는 승강장을 거치고, 그만큼 덜 걷는 이득도 작다 — 도보 유지
+                    auto_kept_walk = _platform_cautions(upgraded)
+                else:
+                    data, mode_used = upgraded, "walk_bus_subway"
     elif st_in is not None:
         data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk",
                                              origin_station=st_in)
@@ -1030,6 +1116,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                                   "지금 승차 정류장에 오는 차량은 저상버스가 아닙니다")
             transit_brief.append(item)
         elif leg.get("kind") == "subway":
+            pam = leg.get("platform_access") if isinstance(leg.get("platform_access"), dict) else {}
             transit_brief.append({
                 "kind": "subway", "line": leg.get("line"),
                 "board": (leg.get("board") or {}).get("name"),
@@ -1038,7 +1125,11 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                 # 역 설비 요약(02 v1.19.0): 승차 역 승강기 출입구·장애인화장실 3상태
                 "board_facilities": _brief_station((leg.get("board") or {}).get("facilities")),
                 "alight_facilities": _brief_station((leg.get("alight") or {}).get("facilities")),
+                # 리프트만 있는 승강장 경고(02 v1.35.0) — 이 구간의 승차·하차 쪽
+                "platform_cautions": [pa["warning"] for pa in (pam.get("board"), pam.get("alight"))
+                                      if isinstance(pa, dict) and pa.get("warning")],
             })
+    platform_cautions = _platform_cautions(data)
     return {
         "status": "success",
         "tool_name": "plan_accessible_route",
@@ -1062,6 +1153,10 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
             "crossing_cnt": summary.get("crossing_cnt"),
         },
         "warnings": summary.get("warnings", []),
+        # 리프트만 있는 승강장(02 v1.35.0) — 출발 전에 반드시 말해야 하는 경고. 없으면 빈 목록
+        "platform_cautions": platform_cautions,
+        # 자동 추천이 리프트 승강장 때문에 대중교통 대신 도보를 고른 경우의 사유(없으면 None)
+        "auto_kept_walk": auto_kept_walk,
         "fallback": data.get("fallback", {}),
         "first_steps": [s.get("instruction") for s in (primary.get("steps") or [])[:2]],
         # 02 v1.28.0(#79) — 출발점이 역 가까이면 역 안/밖 질문, 역 안 출발이면 승강장→출구 안내
@@ -1091,6 +1186,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                     if lf.get("tier") in (1, 2) else "소요시간은 대기 미포함 추정임을 밝히세요. ")
                if transit_brief else "")
             + _station_ai_note(data)
+            + _platform_ai_note(platform_cautions, auto_kept_walk)
             + "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로 요약하고, 첫 안내 한 문장을 덧붙이세요. "
             "경고(warnings)나 제약 완화(fallback.used=true)가 있으면 반드시 함께 알리세요. "
             "전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다. "

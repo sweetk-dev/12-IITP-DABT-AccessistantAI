@@ -606,6 +606,32 @@ def mobility_status():
     return {"configured": iitp_db_configured()}
 
 
+# ---------------------------------------------------------------------------
+# 데이터 수집 배치 상태 · 이상 알림 설정 (v2.2.0) — iitp_db
+# 08 수집 배치가 남기는 sys_batch_run_log 를 작업별로 보여 주고, 알림 수신 주소·사용 여부를 고친다.
+# iitp_db 쓰기는 collect_ops.save_alert_config 의 sys_ops_setting 두 행으로만 한정한다.
+# ---------------------------------------------------------------------------
+import collect_ops as _co  # noqa: E402
+
+
+@router.get("/admin/api/collect/status")
+async def collect_status(db: _AsyncSession = Depends(get_iitp_db)):
+    """작업별 최근 실행·연속 실패·알림 결과 + 현재 알림 설정. 표가 없으면 ready=false."""
+    return await _co.collect_status(db)
+
+
+@router.put("/admin/api/collect/alert-config")
+async def collect_alert_config_save(payload: dict = Body(default={}),
+                                    db: _AsyncSession = Depends(get_iitp_db)):
+    """알림 설정 저장 — {"enabled": bool, "emails": "a@x, b@y" 또는 [..]}."""
+    if not await _co.tables_ready(db):
+        raise HTTPException(status_code=409, detail={"error": "수집 기록 표가 없습니다(DB v1.9.0 미적용)"})
+    try:
+        return await _co.save_alert_config(db, payload.get("enabled"), payload.get("emails"))
+    except _co.AlertConfigError as e:
+        raise HTTPException(status_code=422, detail={"error": str(e)})
+
+
 @router.get("/admin", response_class=HTMLResponse)
 def admin_page():
     html = (Path(__file__).resolve().parent / "static" / "admin.html").read_text(encoding="utf-8")

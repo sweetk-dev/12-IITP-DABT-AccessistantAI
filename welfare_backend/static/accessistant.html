@@ -2,6 +2,22 @@
 <html lang="ko" data-fontsize="3" data-contrast="normal">
 <head>
 <meta charset="utf-8">
+<script>
+/* 배포 기준 경로 (v2.1.0) — 이 화면은 사이트 루트 바로 아래 주소(…/static/accessistant.html, …/navi, …/policy)에서도,
+   하위 경로(예: https://www.sweetk.ai/iitp/accessistantai/navi)에서도 열린다.
+   화면 주소의 앞부분을 떼어 APP_BASE 에 두고, 서버로 보내는 주소(API·WebSocket·정적 파일)는
+   전부 withBase("/api/...") 처럼 앞에 붙여 만든다. 루트 배포면 APP_BASE="" 이라 종전 주소와 같다.
+   서버 쪽 주소는 바뀌지 않는다 — 하위 경로는 앞단 프록시가 떼고 넘긴다. */
+var APP_BASE=(function(p){
+  var m=/^(.*?)\/(?:static\/accessistant\.html|navi|policy)\/?$/.exec(p||"");
+  var b=m?m[1]:"";
+  // 기준 경로는 "/이름/이름…" 꼴(영문·숫자·._~-)만 받는다. "//다른호스트/navi" 같은 주소로 열렸을 때
+  // 서버 호출이 다른 호스트로 새지 않게 하고, 아래 document.write 에 그대로 넣어도 안전하게 하려는 것이다
+  return /^(\/[A-Za-z0-9._~-]+)*$/.test(b)?b:"";
+})(location.pathname);
+function withBase(path){ return APP_BASE+path; }
+window.APP_BASE=APP_BASE;
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
 <title>AccessistantAI · 장애인 복지 정책 AI 상담</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -352,6 +368,8 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .leg-card .lg-t{font-weight:800;font-size:.92rem;color:#0F172A;}
 .leg-card .lg-d{font-size:.84rem;color:#334155;margin-top:2px;}
 .leg-card .lg-w{font-size:.8rem;color:#B45309;margin-top:3px;}
+/* 리프트만 있는 승강장 주의(경로 서비스 v1.35.0) — 경로 요약 안의 일반 주석(c-note)과 구별되는 강조 상자 */
+.plat-warn{border:2px solid var(--c-warning);background:var(--c-warning-soft);color:#7C3A02;border-radius:var(--r-md);padding:10px 12px;margin:0 0 10px;font-size:.95rem;font-weight:700;line-height:1.5;}
 .leg-card .lg-live{font-size:.84rem;font-weight:700;color:#166534;margin-top:3px;}
 .leg-card .lg-fac{font-size:.8rem;color:#1E40AF;margin-top:3px;}
 .step-now .live{margin-top:6px;padding:6px 8px;border-radius:8px;background:#ECFDF5;color:#166534;font-size:.9rem;font-weight:700;}
@@ -363,12 +381,23 @@ html[data-product="navi"] #modeNaviBtn{background:var(--c-primary);color:#fff;}
 html[data-product="navi"] #modeNaviBtn .av svg{stroke:#fff;}
 .handoff-note{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#EFF6FF;color:#1E3A8A;font-weight:700;}
 </style>
-<link rel="manifest" href="/static/manifest.webmanifest">
 <meta name="theme-color" content="#2563EB">
-<link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon-180.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16.png">
-<link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+<script>
+/* 매니페스트·아이콘 링크 (v2.1.0) — 기준 경로를 붙여 파싱 중에 바로 써 넣는다.
+   정적 <link> 와 같은 시점에 브라우저가 보게 하려는 것(나중에 href 를 바꾸면 설치·아이콘 인식이 늦을 수 있다).
+   APP_BASE 는 위에서 안전한 글자만 남겼으므로 그대로 넣는다. */
+(function(){
+  var L=[["manifest","","","/static/manifest.webmanifest"],
+         ["apple-touch-icon","180x180","","/static/icons/apple-touch-icon-180.png"],
+         ["icon","32x32","image/png","/static/icons/favicon-32.png"],
+         ["icon","16x16","image/png","/static/icons/favicon-16.png"],
+         ["icon","","image/svg+xml","/static/logo.svg"]];
+  for(var i=0;i<L.length;i++){
+    document.write('<link rel="'+L[i][0]+'"'+(L[i][1]?' sizes="'+L[i][1]+'"':'')+(L[i][2]?' type="'+L[i][2]+'"':'')
+      +' href="'+withBase(L[i][3])+'">');
+  }
+})();
+</script>
 </head>
 <body>
 <div class="app">
@@ -384,7 +413,8 @@ html[data-product="navi"] #modeNaviBtn .av svg{stroke:#fff;}
 var fs=3;
 function setFont(d){fs=Math.min(5,Math.max(1,fs+d));document.documentElement.setAttribute("data-fontsize",fs);document.querySelectorAll(".fontctl .dots").forEach(function(g){g.querySelectorAll("i").forEach(function(el,i){el.classList.toggle("on",i<fs);});});}
 // 제품 구분 (v2.0.0) — 같은 화면 코드를 정책상담(기본)과 이동경로 안내(/navi)로 나눠 쓴다
-var PRODUCT=(/^\/navi(\/|$)/.test(location.pathname)||/[?&]product=navi(&|$)/.test(location.search))?"navi":"policy";
+// 하위 경로 배포(v2.1.0)에서는 기준 경로를 뗀 나머지로 판단한다
+var PRODUCT=(/^\/navi(\/|$)/.test(location.pathname.slice(APP_BASE.length))||/[?&]product=navi(&|$)/.test(location.search))?"navi":"policy";
 window.__PRODUCT=PRODUCT;
 document.documentElement.setAttribute("data-product",PRODUCT);
 window.__APP_SHELL=/AccessNaviApp\//.test(navigator.userAgent);   // 이동경로 안내 앱 안에서 열렸다
@@ -401,7 +431,7 @@ window.__HANDOFF=(function(){
     add("profile",h.profile);
     return q.join("&");
   }
-  function webUrl(h){ var q=query(h); return location.origin+"/navi"+(q?"?"+q:""); }
+  function webUrl(h){ var q=query(h); return location.origin+withBase("/navi")+(q?"?"+q:""); }
   function appUrl(h){
     var q=query(h);
     return "intent://navi"+(q?"?"+q:"")+"#Intent;scheme="+SCHEME+";package="+PKG+";S.browser_fallback_url="+encodeURIComponent(webUrl(h))+";end";
@@ -587,7 +617,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
             wsQuery:function(){ return Promise.resolve(""); } };
   window.__TRIAL = T;
   if (typeof fetch !== "function") return;
-  var ready = fetch("/api/v1/trial/status", {credentials:"same-origin"})
+  var ready = fetch(withBase("/api/v1/trial/status"), {credentials:"same-origin"})
     .then(function(r){ return r.ok ? r.json() : {}; })
     .catch(function(){ return {}; })
     .then(function(j){ if (j && j.enabled === true) enable(); });
@@ -609,7 +639,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       if (flushing || !q.length) return;
       flushing = true;
       var batch = q.splice(0, 400);
-      fetch("/api/v1/trial/events", {method:"POST", credentials:"same-origin",
+      fetch(withBase("/api/v1/trial/events"), {method:"POST", credentials:"same-origin",
             headers:{"Content-Type":"application/json"}, body: JSON.stringify({rid:T.rid, events:batch})})
         .then(function(r){ if (!r.ok) throw new Error("http " + r.status); })
         .catch(function(){ q = batch.concat(q); if (q.length > EV_MAX){ dropped += q.length - EV_MAX; q = q.slice(q.length - EV_MAX); } })
@@ -629,7 +659,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     window.addEventListener("pagehide", function(){
       try{
         if (q.length && navigator.sendBeacon)
-          navigator.sendBeacon("/api/v1/trial/events",
+          navigator.sendBeacon(withBase("/api/v1/trial/events"),
             new Blob([JSON.stringify({rid:T.rid, events:q.splice(0, 400)})], {type:"application/json"}));
       }catch(err){}
     });
@@ -645,7 +675,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       if (pumping || !aq.length) return;
       pumping = true;
       var it = aq[0];
-      var url = "/api/v1/trial/audio?rid=" + encodeURIComponent(T.rid) + "&rec=" + encodeURIComponent(it.rec)
+      var url = withBase("/api/v1/trial/audio?rid=") + encodeURIComponent(T.rid) + "&rec=" + encodeURIComponent(it.rec)
               + "&seq=" + it.seq + "&t0=" + it.t0 + "&tc=" + it.tc;
       fetch(url, {method:"POST", credentials:"same-origin",
                   headers:{"Content-Type": it.blob.type || "application/octet-stream"}, body: it.blob})
@@ -705,7 +735,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   const wsBaseUrl = () => {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const host = location.host || "127.0.0.1:8000";
-    return `${proto}//${host}/ws/live-chat`;
+    return `${proto}//${host}${withBase("/ws/live-chat")}`;
   };
 
   // ────── 채팅 말풍선 ──────
@@ -1330,7 +1360,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       }
     } catch (e) { micHeadset = false; }
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.audioWorklet.addModule("/static/mic-processor.js");
+    await audioCtx.audioWorklet.addModule(withBase("/static/mic-processor.js"));
 
     micNode = audioCtx.createMediaStreamSource(micStream);
     micProcessor = new AudioWorkletNode(audioCtx, "mic-processor", {
@@ -1956,7 +1986,7 @@ window.NAVI = (function(){
     var key = v + "|" + text;
     if(ttsCache[key]) return Promise.resolve(ttsCache[key]);
     if(ttsPending[key]) return ttsPending[key];   // 같은 문장이 합성 중이면 그 응답을 함께 기다린다 (v1.43.1)
-    var p = fetch("/api/v1/tts?voice=" + encodeURIComponent(v) + "&text=" + encodeURIComponent(text))
+    var p = fetch(withBase("/api/v1/tts?voice=") + encodeURIComponent(v) + "&text=" + encodeURIComponent(text))
       .then(function(r){
         if(!r.ok){ var e = new Error("tts " + r.status); e.quota = (r.status === 503); throw e; }   // 503=한도 소진 (v1.43.2)
         return r.blob();
@@ -2145,6 +2175,8 @@ window.NAVI = (function(){
     var texts = steps.map(function(st, i){ return (_isMergedCrossing(i) || st.maneuver === "crossing") ? stepUtterance(i) : st.instruction; }).filter(Boolean);
     texts = texts.filter(function(t, k){ return texts.indexOf(t) === k; });   // 체인 문장은 노드 스텝과 머리 스텝에서 겹친다
     texts.push("다음 안내까지 약 300미터입니다", "다음 안내까지 약 150미터입니다");
+    var pcs = platformCautionSpeech((route && route.routes || [])[0]);   // 안내 시작 때 말할 승강장 주의 (v2.0.8)
+    if(pcs) texts.unshift(pcs);
     landmarks.forEach(function(x){ if(x.speech) texts.push(x.speech); });   // 주변 랜드마크 (#308)
     // 2개 병렬 — 캐시 미스 한 문장에 5~9초가 걸리므로 순차로는 안내 시작 전에 채우지 못한다 (v1.43.1)
     var queue = texts.slice();
@@ -2162,7 +2194,7 @@ window.NAVI = (function(){
   /* ── 설정·지도 로드 ── */
   async function loadConfig(){
     try{
-      var r = await fetch("/api/v1/config");
+      var r = await fetch(withBase("/api/v1/config"));
       cfg = await r.json();
     }catch(e){ cfg = {features:{}, map:{default_center:{lat:37.3943,lng:126.9568}, default_level:5}}; }
     return cfg;
@@ -2569,10 +2601,10 @@ window.NAVI = (function(){
              started_at: trackStartTs, finished_at: new Date().toISOString()}});
     try{
       if(outcome === "unknown" && navigator.sendBeacon){   // 페이지 이탈 — 마지막 시도
-        navigator.sendBeacon("/api/v1/nav/track", new Blob([body], {type:"application/json"}));
+        navigator.sendBeacon(withBase("/api/v1/nav/track"), new Blob([body], {type:"application/json"}));
         return;
       }
-      fetch("/api/v1/nav/track", {method:"POST", keepalive:true,
+      fetch(withBase("/api/v1/nav/track"), {method:"POST", keepalive:true,
         headers:{"Content-Type":"application/json"}, body: body}).catch(function(){});
     }catch(e){}
   }
@@ -2616,10 +2648,10 @@ window.NAVI = (function(){
     renderSos("찾는 중…");
     try{
       var url = kind==="toilet"
-        ? "/api/v1/tools/find_toilet?lat="+o.lat+"&lng="+o.lng+"&radius_m=800"
+        ? withBase("/api/v1/tools/find_toilet?lat=")+o.lat+"&lng="+o.lng+"&radius_m=800"
         : kind==="food"
-        ? "/api/v1/tools/find_accessible_restaurants?lat="+o.lat+"&lng="+o.lng+"&radius_m=2000"
-        : "/api/v1/tools/find_emergency_support?lat="+o.lat+"&lng="+o.lng+"&types="+kind+"&radius_m="+(kind==="calltaxi"?10000:3000);
+        ? withBase("/api/v1/tools/find_accessible_restaurants?lat=")+o.lat+"&lng="+o.lng+"&radius_m=2000"
+        : withBase("/api/v1/tools/find_emergency_support?lat=")+o.lat+"&lng="+o.lng+"&types="+kind+"&radius_m="+(kind==="calltaxi"?10000:3000);
       var r = await fetch(url); var data = await r.json();
       if(data.status!=="success"){ sosItems[kind]=[]; renderSos(data.message || "정보를 불러오지 못했습니다."); return; }
       sosItems[kind] = data.items || []; sosLoaded[kind] = true;
@@ -2761,7 +2793,7 @@ window.NAVI = (function(){
     status("신고를 보내는 중입니다…");
     sendActivity("report_send");
     try{
-      var r = await fetch("/api/v1/nav/report", {method:"POST",
+      var r = await fetch(withBase("/api/v1/nav/report"), {method:"POST",
         headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
       var d = await r.json();
       if(r.ok && d && d.status !== "error"){
@@ -3207,7 +3239,7 @@ window.NAVI = (function(){
     res.textContent="찾는 중…";
     var items=[];
     try{
-      var r=await fetch("/api/v1/tools/search_places?q=" + encodeURIComponent(q));
+      var r=await fetch(withBase("/api/v1/tools/search_places?q=") + encodeURIComponent(q));
       var d=await r.json();
       items=(d.items||[]).map(function(i){
         return {poi_id: i.poi_id ? String(i.poi_id) : "", name:i.name, addr:i.addr,
@@ -3473,7 +3505,7 @@ window.NAVI = (function(){
       }catch(e){ abortCtl = null; }
     }
     try{
-      var planUrl = "/api/v1/tools/plan_accessible_route?" + qs.toString();
+      var planUrl = withBase("/api/v1/tools/plan_accessible_route?") + qs.toString();
       var r = await (abortCtl ? fetch(planUrl, {signal: abortCtl.signal}) : fetch(planUrl));
       var data = await r.json();
       if(abortTimer){ clearTimeout(abortTimer); abortTimer = null; }
@@ -3609,6 +3641,29 @@ window.NAVI = (function(){
     sendNavState();   // 경로 준비 상태(안내 전)도 세션에 알린다 (#248)
   }
 
+  /* ── 리프트만 있는 승강장 주의 (v2.0.8, 경로 서비스 v1.35.0) ──
+     승강기 없이 휠체어리프트만 있는 승강장에서 타거나 내리는 경로면, 출발 전에 눈에 띄게 보여 주고 안내 시작 때 말한다.
+     열차에서 내린 뒤에야 알면 휠체어 이용자는 되돌아갈 방법이 없다(2026-10-08 관악역 상행 승강장 실측).
+       · 표시용: 지하철 경로의 summary.platform_access + 역 안 출발 스텝(station_start)의 platform_access
+       · 발화용: summary.platform_access 만 — 역 안 출발은 첫 스텝 문장(egress.inside)이 이미 리프트 안내를 말한다
+     구버전 경로 서비스 응답에는 이 키가 없으므로 빈 목록이 되고 화면은 종전과 같다. */
+  function _cautionTexts(list, out){
+    (list || []).forEach(function(pa){ if(pa && pa.warning && out.indexOf(pa.warning) < 0) out.push(pa.warning); });
+    return out;
+  }
+  function platformCautionsSpoken(primary){
+    return _cautionTexts(((primary || {}).summary || {}).platform_access, []);
+  }
+  function platformCautions(primary){
+    var out = platformCautionsSpoken(primary), st0 = ((primary || {}).steps || [])[0];
+    if(st0 && st0.maneuver === "station_start") _cautionTexts(st0.platform_access, out);
+    return out;
+  }
+  function platformCautionSpeech(primary){
+    var c = platformCautionsSpoken(primary);
+    return c.length ? "출발 전에 알려 드립니다. " + c.join(" ") : "";
+  }
+
   function sheetTop(){ var sh=$("naviSheet"); if(sh) try{ sh.scrollTop=0; }catch(e){} }   // 새 내용은 맨 위부터 (v1.44.0)
   function renderSummary(primary, destName){
     sheetMini(false); sheetSetCollapsed(false); sheetTop();
@@ -3687,6 +3742,17 @@ window.NAVI = (function(){
       });
     body.appendChild(mrow);
 
+    // ── 리프트만 있는 승강장 주의 (v2.0.8) — 이동 방식 카드 바로 아래, 다른 주석과 구별되는 상자로 ──
+    var cautions = platformCautions(primary);
+    if(cautions.length){
+      var pw = document.createElement("div"); pw.className = "plat-warn"; pw.id = "platWarn";
+      pw.setAttribute("role", "note");
+      cautions.forEach(function(t, k){
+        var line = document.createElement("div"); line.textContent = "⚠ 승강장 주의 — " + t; pw.appendChild(line);
+      });
+      body.appendChild(pw);
+    }
+
     // ── 대중교통 leg 목록 (#251) — 있으면 수단별 카드로 보여준다 ──
     var legs = primary.legs || [];
     if(legs.length){
@@ -3739,10 +3805,13 @@ window.NAVI = (function(){
             c2.appendChild(fx);
           }
           var egIn = leg.egress && leg.egress.inside && leg.egress.inside[0];
-          if(egIn && /휠체어리프트만|정보가 없습니다/.test(egIn)){
+          // 하차 승강장 리프트를 위 주의 상자가 이미 알렸으면, 같은 사실을 담은 역 안 문장은 카드에서 되풀이하지 않는다
+          var alightFlagged = !!(leg.platform_access && leg.platform_access.alight && leg.platform_access.alight.warning);
+          if(egIn && /휠체어리프트만|정보가 없습니다/.test(egIn) && !(alightFlagged && /휠체어리프트만/.test(egIn))){
             var fw=document.createElement("div"); fw.className="lg-w"; fw.textContent="※ "+egIn; c2.appendChild(fw);
           }
           (leg.warnings||[]).forEach(function(wm){
+            if(cautions.indexOf(wm) >= 0) return;   // 주의 상자에 이미 있다
             var w2=document.createElement("div"); w2.className="lg-w"; w2.textContent="※ "+wm; c2.appendChild(w2);
           });
           ll.appendChild(c2);
@@ -3764,7 +3833,7 @@ window.NAVI = (function(){
     });
     body.appendChild(sum);
 
-    var notes = (s.warnings||[]).slice();
+    var notes = (s.warnings||[]).filter(function(w){ return cautions.indexOf(w) < 0; });   // 주의 상자와 중복 제외
     if(s.eta_note) notes.unshift(s.eta_note);
     if(route.fallback && route.fallback.used && route.fallback.reason) notes.push(route.fallback.reason);
     // 목적지 좌표를 무엇으로 정했는지 알린다 — 대표점이면 건물 중심일 수 있다
@@ -3946,6 +4015,9 @@ window.NAVI = (function(){
     renderStep();
     sendNavState();   // 안내 시작을 세션에 알린다 (#248)
     stopSpeak(); _spokenAhead = {}; _chainSpoken = -1;
+    // 리프트만 있는 승강장 주의는 첫 안내보다 먼저 말한다 (v2.0.8) — 출발 전에 듣고 다른 방식을 고를 수 있게
+    var pcs = platformCautionSpeech((route && route.routes || [])[0]);
+    if(pcs) speakStep(pcs);
     _announceStep(0);
     followCamera();
   }
@@ -4005,7 +4077,7 @@ window.NAVI = (function(){
     if(!el) { stopArrivalPolling(); return; }
     try{
       var qs = new URLSearchParams({station_id: ref.board_station_id, route_id: ref.route_id || ""});
-      var r = await fetch("/api/v1/tools/bus_arrivals?" + qs.toString());
+      var r = await fetch(withBase("/api/v1/tools/bus_arrivals?") + qs.toString());
       var d = await r.json();
       var lv = liveArrivalText(d, ref.route_name);
       if(!lv){ el.textContent = "실시간 도착정보 없음"; el.classList.add("off"); return; }
@@ -4358,7 +4430,14 @@ window.NAVI = (function(){
     mv.textContent = "안내 " + (stepIdx+1) + " / " + steps.length;
     var ins=document.createElement("div"); ins.className="ins"; ins.textContent=st.instruction;
     card.appendChild(mv); card.appendChild(ins);
-    (st.warnings||[]).forEach(function(w){ var e=document.createElement("div"); e.className="wr"; e.textContent="⚠ "+w; card.appendChild(e); });
+    // 경로 서비스 v1.35.0 은 리프트 승강장 경고를 스텝 문장 끝("… 주의: <경고>")과 스텝 경고 양쪽에 싣는다(음성은 문장을 읽는다).
+    // 카드에 같은 문장이 두 번 보이지 않게, 문장의 "주의:" 뒷부분에 이미 들어 있는 경고는 배지로 다시 그리지 않는다 (v2.0.8).
+    // "주의:" 뒷부분만 보는 이유 — 횡단보도 문장 끝 괄호 속 경고 같은 종전 표시는 그대로 두기 위해서다.
+    var insTail = String(st.instruction || "").split("주의: ").slice(1).join("주의: ");
+    (st.warnings||[]).forEach(function(w){
+      if(insTail && w && insTail.indexOf(w) >= 0) return;
+      var e=document.createElement("div"); e.className="wr"; e.textContent="⚠ "+w; card.appendChild(e);
+    });
     // 승차 스텝이면 실시간 저상버스 도착정보를 붙이고 20초마다 갱신한다 (v1.39.0)
     stopArrivalPolling();
     var liveRef = null;
@@ -5169,7 +5248,7 @@ window.NAVI = (function(){
   var SPOT_PAGE=10, spotOffset=0, spotHasMore=false, spotLoading=false, spotSel=["지체장애"];
 
   function spotQuery(sel, offset){
-    var q = "/api/v1/tools/find_bf_tour_spots?disabilities=" + encodeURIComponent(sel.join(","))
+    var q = withBase("/api/v1/tools/find_bf_tour_spots?disabilities=") + encodeURIComponent(sel.join(","))
           + "&sigungu=안양&topk=" + SPOT_PAGE + "&offset=" + offset;
     // 출발지(직접 지정 > 현재 위치)가 있으면 거리 오름차순 — 1페이지는 근접순,
     // 이후 페이지는 반경 제한 없이 이어진다. 없으면 서버 기본(점수순).
@@ -5257,6 +5336,7 @@ window.NAVI = (function(){
     _internals: function(){ return {steps:steps, stepIdx:stepIdx, spots:spots, speak:speak, showRoute:showRoute,
                                      resumeUtterance:resumeUtterance, saveTrip:saveTrip, clearTrip:clearTrip, pendingTrip:pendingTrip, offerTripResume:offerTripResume,
                                      speakBusy:speakBusy, stepUtterance:stepUtterance, drainSpeak:_drainSpeak,
+                                     platformCautionSpeech:platformCautionSpeech,
                                      resetTrip:resetTrip, tripDest:function(){return tripDest;},
                                      startGuidance:startGuidance, setHere:function(h){here=h;}, advanceStep:advanceStep,
                                      landmarks:function(){return landmarks;}, alongOnRoute:alongOnRoute,
@@ -5292,7 +5372,7 @@ document.addEventListener("DOMContentLoaded", function(){ window.NAVI.init(); })
 /* 홈 화면 설치(웹앱) 지원 — 서비스워커 등록. 실패해도 서비스 동작에는 영향 없음. */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function(){
-    navigator.serviceWorker.register("/static/sw.js").catch(function(){});
+    navigator.serviceWorker.register(withBase("/static/sw.js")).catch(function(){});
   });
 }
 </script>

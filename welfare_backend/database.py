@@ -40,6 +40,8 @@ async def get_db():
 
 # --- iitp_db (이동편의 데이터 조회 전용, read-only) — 이슈 #165 -----------------
 # 01-IITP-DABT-Database 의 iitp_db 를 콘솔에서 조회만 한다 (쓰기 금지).
+# 예외 하나(v2.2.0): 데이터 수집 이상 알림 설정 — collect_ops.save_alert_config 가
+# sys_ops_setting 의 batch_alert_enabled·batch_alert_emails 두 행만 고친다.
 # IITP_DB_NAME 미설정 시 기능 비활성 (엔진 미생성) — 콘솔 탭은 unconfigured 표시.
 IITP_DB_USER = os.environ.get("IITP_DB_USER", DB_USER)
 IITP_DB_PASS = os.environ.get("IITP_DB_PASS", DB_PASS)

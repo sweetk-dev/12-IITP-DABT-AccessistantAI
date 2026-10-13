@@ -2,8 +2,8 @@
   "name": "AccessistantAI — 장애인 정책·이동 안내",
   "short_name": "AccessistantAI",
   "description": "장애인 복지 정책 상담과 무장애 이동경로·관광 안내를 제공합니다.",
-  "start_url": "/static/accessistant.html",
-  "scope": "/static/",
+  "start_url": "accessistant.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",
@@ -11,31 +11,31 @@
   "lang": "ko",
   "icons": [
     {
-      "src": "/static/icons/icon-192.png",
+      "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/static/icons/icon-512.png",
+      "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/static/icons/icon-maskable-192.png",
+      "src": "icons/icon-maskable-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/static/icons/icon-maskable-512.png",
+      "src": "icons/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/static/logo.svg",
+      "src": "logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
