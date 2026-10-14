@@ -3009,6 +3009,103 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   $("sosCancelBtn").dispatchEvent(new window.Event("click"));
 }
 
+// ── 문화·체육 시설 (v2.4.0, 경로 서비스 v1.36.0) — 긴급·편의 창의 '도서관·체육' 탭 ──
+{
+  const NF = window.NAVI._internals();
+  const CUL = [
+    { facility_type: "braille_lib", type_label: "점자도서관", type_desc: "점자·음성(녹음) 도서를 빌려 주는 시각장애인 도서관",
+      name: "경기도시각장애인도서관", addr: "경기도 수원시 팔달구 수성로157번길 27-4", dist_m: 14800, beyond_radius: true,
+      in_service_area: false, tel: "031-213-5045", homepage: "lib.eyes1004.com", lat: 37.287, lng: 127.006 },
+    { facility_type: "braille_lib", type_label: "점자도서관", type_desc: "점자·음성(녹음) 도서를 빌려 주는 시각장애인 도서관",
+      name: "한마음점자도서관", addr: "경기도 성남시 분당구 야탑로 227", dist_m: 16200, beyond_radius: true,
+      in_service_area: false, lat: 37.41, lng: 127.127 },
+    { facility_type: "booknarae_lib", type_label: "책나래 신청 도서관",
+      type_desc: "장애인이 책을 무료 택배로 빌려 보는 '책나래' 서비스를 신청할 수 있는 도서관",
+      name: "석수<b>도서관</b>", addr: "경기도 안양시 만안구", dist_m: 850, beyond_radius: false, in_service_area: true,
+      homepage: "https://lib.anyang.go.kr", lat: 37.40, lng: 126.92 },
+    { facility_type: "sports_org", type_label: "장애인체육회", name: "안양시장애인체육회", addr: "경기도 안양시 만안구",
+      dist_m: 2300, beyond_radius: false, lat: 37.393, lng: 126.93 },   // 경로 서비스 구버전 — in_service_area 없음
+  ];
+  const actC = NF.onUiAction({ action: "show_culture", payload: { action: "show_culture", payload: { items: CUL, types: "braille_lib,booknarae_lib,sports_org" } } });
+  await sleep(30);
+  check("show_culture → 시트 '도서관·체육' 탭이 버튼 없이 바로 열림", () => {
+    assert.equal(actC, null, JSON.stringify(actC));
+    assert.equal(NF.sosItems().culture.length, 4);
+    assert.equal($("sosSheet").hidden, false);
+    assert.equal($("sosTabs").querySelector("button[data-kind='culture']").getAttribute("aria-pressed"), "true");
+  });
+  check("종류 머리글은 종류마다 한 번 + 설명 한 줄", () => {
+    const heads = [...$("sosList").querySelectorAll(".sos-grp")].map((h) => h.textContent);
+    assert.deepEqual(heads, ["점자도서관", "책나래 신청 도서관", "장애인체육회"]);
+    assert.match($("sosList").textContent, /'책나래' 서비스를 신청할 수 있는 도서관/);
+    assert.equal($("sosList").querySelectorAll(".sos-grp-desc").length, 2, "설명이 없는 종류는 설명 줄을 만들지 않는다");
+  });
+  check("반경 밖·길안내 지역 밖은 글로 밝히고 '여기로 안내' 없음 — 전화·홈페이지는 남는다", () => {
+    const c = $("sosList").querySelectorAll(".sos-card")[0];
+    assert.match(c.textContent, /14\.8km · 경기도 수원시/);
+    assert.match(c.textContent, /근처\(반경\)에는 없어 경기도 자료 중 가까운 곳을 보여 드려요/);
+    assert.match(c.textContent, /길안내 지역 밖 — 전화로 문의해 주세요/);
+    assert.equal(c.querySelector(".sos-acts button"), null, "지역 밖인데 안내 버튼이 있다");
+    const links = [...c.querySelectorAll(".sos-acts a")];
+    assert.equal(links[0].getAttribute("href"), "tel:0312135045");
+    assert.equal(links[1].getAttribute("href"), "http://lib.eyes1004.com");
+    assert.equal(links[1].getAttribute("rel"), "noopener noreferrer");
+  });
+  check("지역 안 시설은 m 거리·'여기로 안내', 이름은 글자로(태그 해석 안 함), https 주소는 그대로", () => {
+    const c = $("sosList").querySelectorAll(".sos-card")[2];
+    assert.match(c.textContent, /850m · 경기도 안양시 만안구/);
+    assert.equal(c.querySelector("b").textContent, "석수<b>도서관</b>");
+    assert.equal(c.querySelector("b").querySelectorAll("b").length, 0);
+    assert.ok(c.querySelector(".sos-acts button"), "안내 버튼이 없다");
+    assert.equal(c.querySelector(".sos-far"), null, "반경 안인데 반경 밖 문구가 붙었다");
+    assert.equal(c.querySelector(".sos-acts a").getAttribute("href"), "https://lib.anyang.go.kr");
+  });
+  check("in_service_area 가 없으면(확인 안 됨) 안내 버튼을 숨기고 지역 밖 문구", () => {
+    const c = $("sosList").querySelectorAll(".sos-card")[3];
+    assert.equal(c.querySelector(".sos-acts button"), null);
+    assert.match(c.textContent, /길안내 지역 밖 — 전화로 문의해 주세요/);
+    assert.match(c.textContent, /2\.3km/);
+  });
+  check("문화·체육 탭 맨 위 안내 — 경기도 자료·방문 전 전화 확인", () => {
+    assert.match($("sosList").firstChild.textContent, /경기도 자료입니다\. 운영시간·이용 대상은 방문 전에 전화로 확인해 주세요/);
+  });
+  check("탭 6개 — 큰 글씨에서도 잘리지 않게 줄바꿈 허용, 긴급·편의 버튼 읽기 문구에 도서관·체육", () => {
+    assert.equal($("sosTabs").querySelectorAll("button").length, 6);
+    assert.match($("naviSosBtn").getAttribute("aria-label"), /도서관·체육 시설/);
+  });
+  $("sosCancelBtn").dispatchEvent(new window.Event("click"));
+  // 말로 일부 종류만 찾은 결과는 '부분' — 탭을 직접 누르면 4종 전체를 다시 부른다
+  {
+    const prevP = window.fetch; const purls = [];
+    window.fetch = async (url) => { purls.push(String(url)); return { ok: true, status: 200, json: async () => ({ status: "success", items: CUL }) }; };
+    NF.setHere({ lat: 37.3900, lng: 126.9500 });
+    NF.onUiAction({ action: "show_culture", payload: { action: "show_culture", payload: { items: CUL.slice(0, 1), types: "braille_lib" } } });
+    await sleep(30);
+    check("말로 찾은 일부 결과(점자도서관 1곳)가 먼저 보인다", () => assert.equal($("sosList").querySelectorAll(".sos-card").length, 1));
+    $("sosTabs").querySelector("button[data-kind='culture']").dispatchEvent(new window.Event("click", { bubbles: true }));
+    await sleep(30);
+    window.fetch = prevP;
+    check("탭을 누르면 전체를 다시 불러 일부 결과에 갇히지 않는다", () => {
+      assert.ok(purls.some((u) => /find_culture_sports/.test(u)), purls.join(" | "));
+      assert.equal($("sosList").querySelectorAll(".sos-card").length, 4);
+    });
+    $("sosCancelBtn").dispatchEvent(new window.Event("click"));
+  }
+  // 탭을 직접 누르면 문화·체육 도구 REST 를 현재 위치로 부른다
+  const prevF = window.fetch; const urls = [];
+  window.fetch = async (url) => { urls.push(String(url)); return { ok: true, status: 200, json: async () => ({ status: "success", items: [] }) }; };
+  NF.sosItems().culture.length = 0; NF.resetSosLoaded("culture");
+  NF.setHere({ lat: 37.3900, lng: 126.9500 });   // 현재 위치 기준으로 부른다(앞 시험이 위치를 지웠을 수 있다)
+  NF.openSosSheet("charge");
+  $("sosTabs").querySelector("button[data-kind='culture']").dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(30);
+  window.fetch = prevF;
+  check("탭 클릭 → find_culture_sports(반경 5km) 호출", () => {
+    assert.ok(urls.some((u) => /\/api\/v1\/tools\/find_culture_sports\?lat=.*&radius_m=5000/.test(u)), urls.join(" | "));
+  });
+  $("sosCancelBtn").dispatchEvent(new window.Event("click"));
+}
+
 // ── 리프트만 있는 승강장 주의 (v2.0.8, 경로 서비스 v1.35.0) ──
 // 안양 → 관악(북행) 하차 승강장은 승강기 없이 휠체어리프트만 있다. 출발 전에 눈에 띄게 보이고, 안내 시작 때 첫 안내보다 먼저 말해야 한다.
 {

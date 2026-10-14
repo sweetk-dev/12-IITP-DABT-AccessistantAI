@@ -307,6 +307,13 @@ def _ollama_route_tools() -> list:
            {"place": {"type": "string", "description": "사용자가 말한 기준 장소 이름"},
             "radius_m": I,
             "accessible_only": {"type": "boolean", "description": "휠체어 출입이 확인된 곳만"}}),
+        fn("find_culture_sports",
+           "장애인 문화·체육 시설(점자도서관, 책나래 신청 도서관, 장애인체육시설, 장애인체육회)을 현재 위치 주변에서 찾는다. "
+           "반경 안에 없으면 가장 가까운 곳이 beyond_radius 로 온다 — 그렇다고 구분해 말한다.",
+           {"query": {"type": "string", "description": "사용자가 말한 원문"},
+            "types": {"type": "string", "description": "braille_lib/booknarae_lib/sports_fac/sports_org 콤마 구분. 모르면 비운다"},
+            "place": {"type": "string", "description": "사용자가 말한 기준 장소 이름"},
+            "radius_m": I}),
         fn("check_building_accessibility",
            "특정 건물(주민센터·보건소·우체국·도서관·병원 등)의 장애인 편의시설(주출입구 턱·승강기·장애인 화장실·"
            "주차구역)을 알려 준다. 장애인편의시설 실태조사 기준.",

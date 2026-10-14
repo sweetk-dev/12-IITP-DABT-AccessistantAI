@@ -1547,6 +1547,139 @@ async def tool_find_accessible_restaurants(lat: float = None, lng: float = None,
     }
 
 
+# ── 장애인 문화·체육 시설 (02 v1.36.0 /culture/nearby) ──
+CULTURE_TYPE_LABEL = {
+    "braille_lib": "점자도서관",
+    "booknarae_lib": "책나래 신청 도서관",
+    "sports_fac": "장애인체육시설",
+    "sports_org": "장애인체육회",
+}
+CULTURE_TYPES = tuple(CULTURE_TYPE_LABEL)
+# 사용자 말 → 종류. 하나도 걸리지 않으면 4종 전부를 찾는다.
+#   · '도서관'·'책' 만으로는 점자도서관을 고르지 않는다 — 점자·시각장애 표현이 있을 때만(휠체어 이용자의
+#     "근처 도서관" 에 점자도서관 15km 를 앞세우지 않기 위해서다).
+_CULTURE_KEYWORDS = (
+    ("braille_lib", ("점자", "시각장애", "녹음도서", "음성도서", "오디오북", "큰글자")),
+    ("booknarae_lib", ("책나래", "도서관", "책 빌", "책을 빌", "택배", "대출")),
+    ("sports_fac", ("체육시설", "체육관", "체육센터", "반다비", "운동", "수영", "헬스", "스포츠")),
+    ("sports_org", ("체육회", "생활체육", "동호회", "대회", "운동 프로그램", "스포츠 강좌")),
+)
+
+
+def _culture_types_from_query(types: str = "", query: str = "") -> str:
+    """도구 인자 types(명시) > 사용자 말(query) 키워드 > 4종 전부 — 콤마 문자열로."""
+    picked = [t.strip() for t in str(types or "").split(",") if t.strip() in CULTURE_TYPES]
+    if not picked:
+        q = str(query or "")
+        for t, words in _CULTURE_KEYWORDS:
+            if any(w in q for w in words) and t not in picked:
+                picked.append(t)
+        # '점자도서관' 에는 '도서관' 이 들어 있다 — 점자도서관을 물었으면 책나래 도서관은 '책나래' 를 말했을 때만 더한다
+        if "braille_lib" in picked and "booknarae_lib" in picked and "책나래" not in q:
+            picked.remove("booknarae_lib")
+        # '운동 프로그램'·'스포츠 강좌' 는 체육회(프로그램 문의처) 질문이다 — 그 안의 '운동'·'스포츠' 로
+        # 체육시설까지 끌어오지 않는다. 체육시설 고유 낱말(체육관·수영 등)이 따로 있으면 둘 다 둔다.
+        if "sports_org" in picked and "sports_fac" in picked:
+            fac_specific = ("체육시설", "체육관", "체육센터", "반다비", "수영", "헬스")
+            if not any(w in q for w in fac_specific):
+                picked.remove("sports_fac")
+    return ",".join(picked or CULTURE_TYPES)
+
+
+def _km_text(dist_m) -> str:
+    try:
+        d = float(dist_m)
+    except (TypeError, ValueError):
+        return ""
+    if d < 1000:
+        return "%dm" % round(d)
+    km = ("%.1f" % (d / 1000.0)).rstrip("0").rstrip(".")   # 5000 → '5', 14800 → '14.8'
+    return "약 %skm" % km
+
+
+async def tool_find_culture_sports(lat: float = None, lng: float = None, place: str = "",
+                                   types: str = "", query: str = "", radius_m: int = 5000) -> dict:
+    """점자도서관 · 책나래 신청 도서관 · 장애인체육시설 · 장애인체육회 근접 조회(경기도 자료).
+
+    종류별로 반경 안 가까운 곳, 반경 안에 없으면 가장 가까운 곳을 '반경 밖'(beyond_radius)으로 받는다
+    (점자도서관은 경기도 5곳뿐이라 안양에서 가장 가까운 곳도 수원·성남이다). 경로 안내 지역 밖
+    (in_service_area=false)인 곳은 화면이 '여기로 안내' 를 숨기고 상담은 전화 문의를 권한다.
+    """
+    base = await _resolve_base(place, lat, lng, "find_culture_sports")
+    if isinstance(base, dict):
+        return base
+    lat, lng, base_label = base
+    tsel = _culture_types_from_query(types, query)
+    try:
+        radius_m = max(500, min(int(radius_m or 5000), 20000))
+    except (TypeError, ValueError):
+        radius_m = 5000
+    data = await route_client.culture_nearby(lat, lng, types=tsel, radius_m=radius_m,
+                                             limit=3, fallback=True, fallback_limit=2)
+    if isinstance(data, dict) and data.get("status") == "error":
+        return data
+    items = []
+    for it in (data.get("items") or []):
+        if not isinstance(it, dict) or it.get("facility_type") not in CULTURE_TYPES:
+            continue
+        items.append({
+            "facility_type": it.get("facility_type"),
+            "type_label": CULTURE_TYPE_LABEL.get(it.get("facility_type")),
+            "type_desc": it.get("type_desc"),
+            "name": it.get("name"), "addr": it.get("addr"),
+            "dist_m": it.get("dist_m"), "dist_text": _km_text(it.get("dist_m")),
+            "beyond_radius": bool(it.get("beyond_radius")),
+            # 길안내 지역 안이라고 확인된 곳(true)만 화면이 '여기로 안내' 를 보인다. 값이 없으면(None) 숨긴다
+            "in_service_area": it.get("in_service_area"),
+            "tel": it.get("tel"), "homepage": it.get("homepage"),
+            "source_label": it.get("source_label"),
+            "lat": it.get("lat"), "lng": it.get("lng"),
+        })
+    by_type = {}
+    for it in items:
+        by_type[it["facility_type"]] = by_type.get(it["facility_type"], 0) + 1
+    radius_text = _km_text(radius_m).replace("약 ", "")
+    ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
+          + "종류별로 가장 가까운 1~2곳만 이름·거리(dist_text)·전화번호로 말하세요. "
+          "beyond_radius 가 true 인 곳은 '반경 %s 안에는 없고, 경기도 자료 중 가장 가까운 곳은 ○○(dist_text)'라고 "
+          "가까운 곳과 분명히 구분해 말하세요. 이 자료는 경기도 자료라 서울 등 인접 지역의 더 가까운 시설이 "
+          "빠져 있을 수 있으니 '가장 가까운 곳'이라고 단정하지 마세요. "
+          "운영시간과 이용 대상(회원 등록 여부 등)은 자료에 없으니 방문 전에 전화로 확인하시라고 하세요. " % radius_text)
+    if "booknarae_lib" in by_type:
+        ai += ("책나래 신청 도서관은 '장애인이 책을 무료 택배로 빌려 볼 수 있는 책나래 서비스를 신청할 수 있는 "
+               "도서관'이라고 한 번 풀어 설명하세요. 책나래는 도서관에 가지 않고 택배로 받는 서비스이니, "
+               "신청 방법은 그 도서관에 전화로 물어보시라고 하세요. ")
+    if "braille_lib" in by_type:
+        ai += "점자도서관은 점자·녹음(음성) 도서를 빌려 주는 시각장애인 도서관이라고 설명하세요. "
+    if "sports_org" in by_type:
+        ai += "장애인체육회는 시설이 아니라 생활체육 프로그램·대회를 문의하는 단체 사무국이라고 말하세요. "
+    if any(it["in_service_area"] is not True for it in items):
+        ai += ("in_service_area 가 true 가 아닌 곳은 길안내 지역 밖이라 경로 안내는 할 수 없으니 전화로 문의하거나 "
+               "대중교통을 이용하시라고 하세요. ")
+    if items:
+        ai += "화면에 카드가 떴고, 길안내 지역 안이면 '여기로 안내' 로 경로를 받을 수 있다고 알리세요. "
+    else:
+        ai += ("찾는 시설이 없다고 분명히 말하세요. 이 자료는 경기도 자료라 경기도 밖 시설은 알 수 없다고 "
+               "덧붙이세요. 시설을 지어내지 마세요. ")
+    return {
+        "status": "success",
+        "tool_name": "find_culture_sports",
+        "base_label": base_label,
+        "types": tsel,
+        "radius_m": radius_m,
+        "count": len(items),
+        "count_by_type": by_type,
+        "region_note": data.get("region_note"),
+        "items": items,
+        "ui_action": {
+            "action": "show_culture",
+            "payload": {"items": items, "types": tsel, "base_label": base_label,
+                        "base": {"lat": lat, "lng": lng}, "radius_m": radius_m},
+        },
+        "ai_instruction": ai,
+    }
+
+
 async def tool_check_building_accessibility(name: str = "", lat: float = None, lng: float = None,
                                             place: str = "") -> dict:
     """건물 편의시설 — "○○ 휠체어로 들어갈 수 있어?", "보건소에 장애인 화장실 있어?".
@@ -2235,6 +2368,7 @@ def get_tool_dispatcher(embed_fn):
         "find_emergency_support": tool_find_emergency_support,
         "find_toilet": tool_find_toilet,
         "find_accessible_restaurants": tool_find_accessible_restaurants,
+        "find_culture_sports": tool_find_culture_sports,
         "check_building_accessibility": tool_check_building_accessibility,
         "find_service_providers": tool_find_service_providers,
         "find_standard_workplaces": tool_find_standard_workplaces,
