@@ -633,6 +633,17 @@ async def find_accessible_restaurants(
         lat=lat, lng=lng, radius_m=radius_m, accessible_only=accessible_only)
 
 
+@app.get("/api/v1/tools/find_culture_sports", tags=["tools"],
+         summary="[15-1] 점자도서관·책나래 신청 도서관·장애인체육시설·장애인체육회 근접 조회")
+async def find_culture_sports(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    types: str = Query("", description="braille_lib,booknarae_lib,sports_fac,sports_org — 비우면 전부"),
+    radius_m: int = Query(5000, ge=500, le=20000),
+):
+    return await tool_handlers.tool_find_culture_sports(lat=lat, lng=lng, types=types, radius_m=radius_m)
+
+
 @app.get("/api/v1/tools/transit_access_points", tags=["tools"],
          summary="[7-1] 휠체어 접근 가능한 정류장·역")
 async def transit_access_points(

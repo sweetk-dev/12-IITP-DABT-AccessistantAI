@@ -126,6 +126,8 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
 
   await s0._msg({ type: "ui_action", action: "show_tour_spots", payload: { action: "show_tour_spots", items: [{ poi_id: "T1", name: "박물관" }] } });
   check("관광지·편의시설 결과 → '이동경로 안내 열기' 버튼", () => assert.match(btn().textContent, /이동경로 안내 열기/));
+  await s0._msg({ type: "ui_action", action: "show_culture", payload: { action: "show_culture", items: [{ name: "도서관" }] } });
+  check("문화·체육 시설 결과(v2.4.0)도 정책상담에서는 '이동경로 안내 열기' 버튼", () => assert.match(btn().textContent, /이동경로 안내 열기/));
   await s0._msg({ type: "ui_action", action: "route_unavailable", payload: { action: "route_unavailable", reason: "place_not_found", place: "어디" } });
   check("경로 불가 알림은 화면을 건드리지 않는다", () => assert.ok($("view-chat").classList.contains("active")));
   await s0._msg({ type: "tool_call", name: "plan_accessible_route", args: {} });
