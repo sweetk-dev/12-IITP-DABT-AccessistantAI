@@ -202,7 +202,7 @@
       <button class="primary" id="btnDisc" onclick="runDiscovery()">지금 발굴 실행</button>
     </div>
     <div class="card" style="padding:16px;grid-column:1/3;" id="ops-collect-card">
-      <h2 style="margin:0 0 4px;font-size:15px;">데이터 수집 (통계·이동편의)</h2>
+      <h2 style="margin:0 0 4px;font-size:15px;">데이터 수집 (통계·이동편의·문화·체육)</h2>
       <div class="msg">수집 서버가 정해진 주기로 외부 데이터를 받아 DB 에 적재합니다. 실패한 항목은 기존 데이터를 그대로 두고, 아래 주소로 알림 메일을 보냅니다(실패 뒤 정상화되면 한 번 더).</div>
       <div id="ops-collect" style="margin:12px 0;font-size:13px;">…</div>
       <div style="border-top:1px solid var(--line);padding-top:12px;">
@@ -685,12 +685,17 @@ function renderCollect(d){
   if(!d.ready){ el.innerHTML='<span class="msg">수집 기록 표가 아직 없습니다 — DB 마이그레이션(v1.9.0) 적용 후 표시됩니다.</span>'; return; }
   if(!d.jobs.length){ el.innerHTML='<span class="msg">등록된 수집 작업이 없습니다.</span>'; return; }
   let h='<table style="font-size:12px"><thead><tr><th>작업</th><th>주기</th><th>마지막 정기 실행</th><th>결과</th><th>처리</th><th>연속 실패</th><th>알림</th></tr></thead><tbody>';
+  let grp=null;
   for(const j of d.jobs){
+    // 분류 머리행(v2.3.0) — 서버가 분류 순서로 정렬해 보낸다. 분류가 바뀔 때 한 번 그린다.
+    if(j.group && j.group!==grp){ grp=j.group; h+=`<tr class="co-grp"><td colspan="7" style="background:#f3f4f6;font-weight:600;font-size:12px">${escapeHtml(grp)}</td></tr>`; }
     const r=j.last_regular;
     const cnt=r?`${r.ok_cnt}/${r.targets}`:'-';
     const streak=j.consecutive_fail?`<span class="b bad">${j.consecutive_fail}회</span>`+(j.last_success?`<div class="msg">마지막 성공 ${escapeHtml(j.last_success)}</div>`:''):'0';
     const al=r&&r.alert_status?`<span title="${escapeHtml(r.alert_detail||'')}">${_CO_ALERT[r.alert_status]||escapeHtml(r.alert_status)}</span>`:'-';
-    h+=`<tr data-sys="${escapeHtml(j.ext_sys)}"><td><b>${escapeHtml(j.label)}</b><div class="msg">${escapeHtml(j.ext_sys)}</div></td>`+
+    // 종류별 현재 적재 건수(v2.3.0) — 0건인 종류는 경고색으로 둔다(합계만으로는 한 종류 누락이 안 보인다)
+    const bd=Array.isArray(j.breakdown)&&j.breakdown.length?`<div class="msg co-bd">현재 `+j.breakdown.map(b=>b.count>0?`${escapeHtml(b.label)} ${b.count}`:`<span class="b bad">${escapeHtml(b.label)} 0</span>`).join(' · ')+'</div>':'';
+    h+=`<tr data-sys="${escapeHtml(j.ext_sys)}"><td><b>${escapeHtml(j.label)}</b><div class="msg">${escapeHtml(j.ext_sys)}</div>${bd}</td>`+
        `<td>${escapeHtml(j.schedule)}</td><td>${escapeHtml(r?r.started_at:(j.last_sync?('동기화 '+j.last_sync):'-'))}</td>`+
        `<td>${_coBadge(r&&r.status)}</td><td>${cnt}</td><td>${streak}</td><td>${al}</td></tr>`;
     const lr=j.last_run;
