@@ -46,6 +46,39 @@ def test_jobs_have_group_and_breakdown_spec():
         assert spec["table"].startswith("public.") and spec["labels"]
 
 
+def test_odcloud_emp_job_and_breakdown_spec():
+    """고용 파일데이터(ODCLOUD_EMP, v2.5.0) — 통계 분류, 표 14개를 모두 세고 판 기준일을 함께 읽는다."""
+    label, schedule, group = collect_ops.JOBS["ODCLOUD_EMP"]
+    assert group == "통계" and "04:40" in schedule
+    spec = collect_ops.JOB_BREAKDOWN["ODCLOUD_EMP"]
+    tables = [t for t, _ in spec["labels"]]
+    assert len(tables) == len(set(tables)) == 14
+    assert "emp_dis_obligation_by_type" not in tables          # 1회성 데이터 — 수집 대상 아님
+    for t in tables:
+        assert "FROM public.%s" % t in spec["sql"]
+    assert "src_latest_chn_dt" in spec["sql"]
+
+
+def test_breakdown_note_column_is_optional():
+    class FakeResult:
+        def __init__(self, v): self.v = v
+        def scalar(self): return self.v
+        def all(self): return self.v
+    class Db:
+        n = 0
+        def begin_nested(self): return _Nested()
+        async def execute(self, stmt, params=None):
+            Db.n += 1
+            if Db.n == 1:
+                return FakeResult(True)
+            return FakeResult([("emp_dis_jobseeker_status", 44588, "2025-12-31"),
+                               ("emp_dis_job_posting", 7085, None)])
+    out = asyncio.new_event_loop().run_until_complete(collect_ops.job_breakdown(Db(), "ODCLOUD_EMP"))
+    assert out[0] == {"key": "emp_dis_jobseeker_status", "label": "구직자", "count": 44588, "note": "2025-12-31"}
+    assert out[1]["note"] is None and out[1]["count"] == 7085
+    assert out[2]["count"] == 0 and out[2]["note"] is None       # 결과에 없는 표는 0
+
+
 def test_breakdown_none_for_plain_job():
     # 종류별 현황 대상이 아닌 작업은 DB 를 조회하지 않고 None
     class NoDb:

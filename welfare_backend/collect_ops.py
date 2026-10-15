@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""데이터 수집 배치 상태 · 이상 알림 설정 (운영 콘솔 [운영] 탭, v2.2.0 · 분류 묶음·종류별 현황 v2.3.0).
+"""데이터 수집 배치 상태 · 이상 알림 설정 (운영 콘솔 [운영] 탭, v2.2.0 · 분류 묶음·종류별 현황 v2.3.0
+· 고용 파일데이터 표별 기준일 v2.5.0).
 
 무엇을 보여 주나
   데이터 수집 배치(08-IITP-DABT-PreProcessing)는 KOSIS 통계와 이동편의 소스를 정해진 주기로
@@ -38,6 +39,7 @@ EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
 JOB_GROUPS = ("통계", "이동편의", "문화·체육", "기타")
 JOBS = {
     "KOSIS": ("KOSIS 통계", "매월 3·18일 03:00", "통계"),
+    "ODCLOUD_EMP": ("장애인 고용 파일데이터(14종)", "매월 3일 04:40", "통계"),
     "GBIS": ("경기 버스 노선(GBIS)", "매주 월 04:00", "이동편의"),
     "GBIS_LOWFLOOR": ("저상버스 운행 노선", "매일 04:30", "이동편의"),
     "KORAIL_CONV": ("철도역 편의시설", "매월 1일 04:30", "이동편의"),
@@ -51,6 +53,27 @@ JOBS = {
 #   실행 기록의 처리 건수는 합계뿐이라 한 종류가 통째로 빠져도(예: 5건짜리 종류 0건) 눈에 띄지
 #   않는다. 표의 현재 상태를 종류별로 세어 함께 보여 준다. 표가 아직 없으면(DB 마이그레이션 전) 생략.
 #   table 과 sql 은 코드 상수다(사용자 입력이 들어가지 않는다).
+#   sql 은 (종류 키, 건수) 또는 (종류 키, 건수, 메모) 를 돌려준다. 메모는 화면에 괄호로 붙는다(예: 기준일).
+
+# 장애인 고용 파일데이터(08 ODCLOUD_EMP, v1.19.0) — 표 14개. 표마다 현재 행 수와 적재된 판의 기준일
+# (sys_data_summary_info.src_latest_chn_dt)을 보여 준다. 기준일이 오래 그대로면 원천 갱신이 없거나
+# 그 표만 계속 실패하고 있다는 뜻이다(실패 목록과 함께 본다).
+_EMP_TABLES = (
+    ("emp_dis_jobseeker_status", "구직자"), ("emp_dis_job_posting", "구인"),
+    ("emp_dis_center_usage", "훈련센터"), ("emp_dis_obligation_status", "고용의무"),
+    ("emp_dis_consulting_his", "컨설팅"), ("emp_dis_burden_workplace", "연계고용"),
+    ("emp_dis_regional_status", "지역별"), ("emp_dis_staff_train_crs", "전문인력교육"),
+    ("emp_dis_dev_support_org", "발달지원기관"), ("emp_dis_startup_lecture", "창업강좌"),
+    ("emp_dis_std_workplace", "표준사업장"), ("emp_dis_emp_incentive", "고용장려금"),
+    ("emp_dis_obligation_by_indust", "산업별"), ("emp_dis_obligation_fulfillment", "의무이행"),
+)
+_EMP_SQL = (
+    "SELECT c.k, c.n, d.src_latest_chn_dt FROM ("
+    + " UNION ALL ".join("SELECT '%s' AS k, count(*) AS n FROM public.%s" % (t, t) for t, _ in _EMP_TABLES)
+    + ") c LEFT JOIN public.sys_data_summary_info d"
+      " ON d.sys_tbl_id = c.k AND d.del_yn = 'N' AND d.status = 'A'"
+)
+
 JOB_BREAKDOWN = {
     "GG_CULTURE": {
         "table": "public.poi_culture_sports_facility",     # 01 v1.10.0
@@ -58,6 +81,11 @@ JOB_BREAKDOWN = {
                 " WHERE del_yn = 'N' GROUP BY facility_type"),
         "labels": (("braille_lib", "점자도서관"), ("booknarae_lib", "책나래 제공도서관"),
                    ("sports_fac", "장애인체육시설"), ("sports_org", "장애인체육회")),
+    },
+    "ODCLOUD_EMP": {
+        "table": "public.emp_dis_jobseeker_status",         # 01 emp init
+        "sql": _EMP_SQL,
+        "labels": _EMP_TABLES,
     },
 }
 
@@ -152,7 +180,7 @@ async def job_breakdown(db, ext_sys: str):
     표 존재를 먼저 확인한다 — 없는 표를 조회하면 오류로 세션 트랜잭션이 중단돼 같은 요청의 다른
     조회까지 실패하기 때문이다. 표는 있는데 칸이 다르거나 권한이 없는 과도기에도 카드 전체가
     실패하지 않도록, 집계는 세이브포인트 안에서 돌리고 실패하면 그 부분만 되돌린 뒤 None 을 준다.
-    반환: [{"key", "label", "count"}] (정의 순서, 없는 종류는 0).
+    반환: [{"key", "label", "count", "note"}] (정의 순서, 없는 종류는 0, 메모가 없으면 note=None).
     """
     spec = JOB_BREAKDOWN.get(ext_sys)
     if not spec:
@@ -167,7 +195,9 @@ async def job_breakdown(db, ext_sys: str):
         logger.warning("수집 작업 %s 종류별 현황 조회 실패: %s", ext_sys, exc)
         return None
     counts = {r[0]: int(r[1]) for r in rows}
-    return [{"key": k, "label": label, "count": counts.get(k, 0)} for k, label in spec["labels"]]
+    notes = {r[0]: (str(r[2]) if r[2] is not None else None) for r in rows if len(r) > 2}
+    return [{"key": k, "label": label, "count": counts.get(k, 0), "note": notes.get(k)}
+            for k, label in spec["labels"]]
 
 
 async def collect_status(db, history: int = 10) -> dict:

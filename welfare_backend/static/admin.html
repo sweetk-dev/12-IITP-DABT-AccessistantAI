@@ -694,7 +694,9 @@ function renderCollect(d){
     const streak=j.consecutive_fail?`<span class="b bad">${j.consecutive_fail}회</span>`+(j.last_success?`<div class="msg">마지막 성공 ${escapeHtml(j.last_success)}</div>`:''):'0';
     const al=r&&r.alert_status?`<span title="${escapeHtml(r.alert_detail||'')}">${_CO_ALERT[r.alert_status]||escapeHtml(r.alert_status)}</span>`:'-';
     // 종류별 현재 적재 건수(v2.3.0) — 0건인 종류는 경고색으로 둔다(합계만으로는 한 종류 누락이 안 보인다)
-    const bd=Array.isArray(j.breakdown)&&j.breakdown.length?`<div class="msg co-bd">현재 `+j.breakdown.map(b=>b.count>0?`${escapeHtml(b.label)} ${b.count}`:`<span class="b bad">${escapeHtml(b.label)} 0</span>`).join(' · ')+'</div>':'';
+    // 메모(v2.5.0, 고용 파일데이터의 판 기준일)가 있으면 건수 뒤 괄호로 붙인다.
+    const bdNote=b=>b.note?`(${escapeHtml(b.note)})`:'';
+    const bd=Array.isArray(j.breakdown)&&j.breakdown.length?`<div class="msg co-bd">현재 `+j.breakdown.map(b=>b.count>0?`${escapeHtml(b.label)} ${b.count}${bdNote(b)}`:`<span class="b bad">${escapeHtml(b.label)} 0</span>${bdNote(b)}`).join(' · ')+'</div>':'';
     h+=`<tr data-sys="${escapeHtml(j.ext_sys)}"><td><b>${escapeHtml(j.label)}</b><div class="msg">${escapeHtml(j.ext_sys)}</div>${bd}</td>`+
        `<td>${escapeHtml(j.schedule)}</td><td>${escapeHtml(r?r.started_at:(j.last_sync?('동기화 '+j.last_sync):'-'))}</td>`+
        `<td>${_coBadge(r&&r.status)}</td><td>${cnt}</td><td>${streak}</td><td>${al}</td></tr>`;
