@@ -56,7 +56,33 @@ def test_odcloud_emp_job_and_breakdown_spec():
     assert "emp_dis_obligation_by_type" not in tables          # 1회성 데이터 — 수집 대상 아님
     for t in tables:
         assert "FROM public.%s" % t in spec["sql"]
-    assert "src_latest_chn_dt" in spec["sql"]
+        assert "FROM public.%s" % t in spec["fallback_sql"]
+    # v2.6.0: 최신 판(src_base_dt 최댓값)의 행 수와 보관 판 수. 01 v1.12.0 전에는 종전 방식(요약 표 기준일)
+    assert "max(src_base_dt)" in spec["sql"] and "count(DISTINCT src_base_dt)" in spec["sql"]
+    assert "src_latest_chn_dt" in spec["fallback_sql"]
+
+
+def test_breakdown_falls_back_when_first_sql_fails():
+    """src_base_dt 칸이 없는 과도기 — 첫 SQL 이 실패하면 세이브포인트로 되돌리고 종전 SQL 로 다시 센다."""
+    class FakeResult:
+        def __init__(self, v): self.v = v
+        def scalar(self): return self.v
+        def all(self): return self.v
+    class Db:
+        def __init__(self): self.sqls = []
+        def begin_nested(self): return _Nested()
+        async def execute(self, stmt, params=None):
+            sql = str(stmt)
+            self.sqls.append(sql)
+            if "to_regclass" in sql:
+                return FakeResult(True)
+            if "src_base_dt" in sql:
+                raise RuntimeError('column "src_base_dt" does not exist')
+            return FakeResult([("emp_dis_jobseeker_status", 44588, "2025-12-31")])
+    db = Db()
+    out = asyncio.new_event_loop().run_until_complete(collect_ops.job_breakdown(db, "ODCLOUD_EMP"))
+    assert out[0] == {"key": "emp_dis_jobseeker_status", "label": "구직자", "count": 44588, "note": "2025-12-31"}
+    assert len(db.sqls) == 3                      # 표 확인 + 실패한 새 SQL + 종전 SQL
 
 
 def test_breakdown_note_column_is_optional():
@@ -71,10 +97,11 @@ def test_breakdown_note_column_is_optional():
             Db.n += 1
             if Db.n == 1:
                 return FakeResult(True)
-            return FakeResult([("emp_dis_jobseeker_status", 44588, "2025-12-31"),
+            return FakeResult([("emp_dis_jobseeker_status", 44588, "2025-12-31 · 판 2개"),
                                ("emp_dis_job_posting", 7085, None)])
     out = asyncio.new_event_loop().run_until_complete(collect_ops.job_breakdown(Db(), "ODCLOUD_EMP"))
-    assert out[0] == {"key": "emp_dis_jobseeker_status", "label": "구직자", "count": 44588, "note": "2025-12-31"}
+    assert out[0] == {"key": "emp_dis_jobseeker_status", "label": "구직자", "count": 44588,
+                      "note": "2025-12-31 · 판 2개"}
     assert out[1]["note"] is None and out[1]["count"] == 7085
     assert out[2]["count"] == 0 and out[2]["note"] is None       # 결과에 없는 표는 0
 

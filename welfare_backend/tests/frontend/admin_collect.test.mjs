@@ -34,7 +34,7 @@ const STATUS = {
       recent: [] },
     { ext_sys: "ODCLOUD_EMP", label: "장애인 고용 파일데이터(14종)", schedule: "매월 3일 04:40", group: "통계",
       last_sync: "2026-11-03 04:45", consecutive_fail: 0, last_success: "2026-11-03 04:40",
-      breakdown: [{ key: "emp_dis_jobseeker_status", label: "구직자", count: 44588, note: "2025-12-31" },
+      breakdown: [{ key: "emp_dis_jobseeker_status", label: "구직자", count: 44588, note: "2025-12-31 · 판 2개" },
                   { key: "emp_dis_job_posting", label: "구인", count: 0, note: "2024-12-31" },
                   { key: "emp_dis_center_usage", label: "훈련<센터>", count: 19, note: null }],
       last_regular: { run_id: 15, started_at: "2026-11-03 04:40", status: "SUCCESS", targets: 14, ok_cnt: 14, fail_cnt: 0,
@@ -148,7 +148,7 @@ await check("종류별 현재 적재 건수 — 0건 종류는 경고색, 이름
 await check("종류별 메모(판 기준일)는 건수 뒤 괄호 — 없으면 생략, 0건은 경고색 (v2.5.0)", () => {
   const row = window.document.querySelector('#ops-collect tr[data-sys="ODCLOUD_EMP"]');
   const bd = row.querySelector(".co-bd");
-  assert.match(bd.textContent, /현재 구직자 44588\(2025-12-31\) · 구인 0\(2024-12-31\) · 훈련<센터> 19$/);
+  assert.match(bd.textContent, /현재 구직자 44588\(2025-12-31 · 판 2개\) · 구인 0\(2024-12-31\) · 훈련<센터> 19$/);
   const bad = bd.querySelectorAll(".b.bad");
   assert.equal(bad.length, 1); assert.equal(bad[0].textContent, "구인 0");
   assert.equal(bd.querySelectorAll("센터").length, 0);           // 이름은 이스케이프

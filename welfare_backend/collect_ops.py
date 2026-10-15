@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """데이터 수집 배치 상태 · 이상 알림 설정 (운영 콘솔 [운영] 탭, v2.2.0 · 분류 묶음·종류별 현황 v2.3.0
-· 고용 파일데이터 표별 기준일 v2.5.0).
+· 고용 파일데이터 표별 기준일 v2.5.0 · 최신 판 건수·보관 판 수 v2.6.0).
 
 무엇을 보여 주나
   데이터 수집 배치(08-IITP-DABT-PreProcessing)는 KOSIS 통계와 이동편의 소스를 정해진 주기로
@@ -55,9 +55,12 @@ JOBS = {
 #   table 과 sql 은 코드 상수다(사용자 입력이 들어가지 않는다).
 #   sql 은 (종류 키, 건수) 또는 (종류 키, 건수, 메모) 를 돌려준다. 메모는 화면에 괄호로 붙는다(예: 기준일).
 
-# 장애인 고용 파일데이터(08 ODCLOUD_EMP, v1.19.0) — 표 14개. 표마다 현재 행 수와 적재된 판의 기준일
-# (sys_data_summary_info.src_latest_chn_dt)을 보여 준다. 기준일이 오래 그대로면 원천 갱신이 없거나
-# 그 표만 계속 실패하고 있다는 뜻이다(실패 목록과 함께 본다).
+# 장애인 고용 파일데이터(08 ODCLOUD_EMP) — 표 14개.
+#   v2.6.0(08 v1.20.0 · 01 v1.12.0): 표에 지난 판이 함께 남으므로(행마다 판 기준일 src_base_dt) 표 전체
+#   행 수는 의미가 흐려진다. 표마다 **가장 최근 판의 행 수**와 그 판의 기준일, 보관 중인 판이 둘 이상이면
+#   판 수를 보여 준다. 예) "구직자 44588(2025-12-31 · 판 2개)". 기준일이 오래 그대로면 원천 갱신이 없거나
+#   그 표만 계속 실패하고 있다는 뜻이다(실패 목록과 함께 본다).
+#   01 v1.12.0 적용 전(src_base_dt 칸 없음)에는 종전 방식(표 전체 행 수 + 요약 표의 기준일)으로 보여 준다.
 _EMP_TABLES = (
     ("emp_dis_jobseeker_status", "구직자"), ("emp_dis_job_posting", "구인"),
     ("emp_dis_center_usage", "훈련센터"), ("emp_dis_obligation_status", "고용의무"),
@@ -67,7 +70,17 @@ _EMP_TABLES = (
     ("emp_dis_std_workplace", "표준사업장"), ("emp_dis_emp_incentive", "고용장려금"),
     ("emp_dis_obligation_by_indust", "산업별"), ("emp_dis_obligation_fulfillment", "의무이행"),
 )
-_EMP_SQL = (
+# 표마다 (표 이름, 최신 판 행 수, "기준일[ · 판 N개]") 한 줄. 판 기준일이 NULL 인 행만 있으면 메모는 '판 미상'.
+_EMP_SQL = " UNION ALL ".join(
+    "SELECT '%(t)s' AS k, count(*) FILTER (WHERE x.src_base_dt IS NOT DISTINCT FROM m.mx) AS n,"
+    " coalesce(m.mx::text, '판 미상')"
+    " || CASE WHEN m.ed > 1 THEN ' · 판 ' || m.ed || '개' ELSE '' END AS note"
+    " FROM public.%(t)s x, (SELECT max(src_base_dt) AS mx, count(DISTINCT src_base_dt) AS ed"
+    " FROM public.%(t)s) m GROUP BY m.mx, m.ed" % {"t": t}
+    for t, _ in _EMP_TABLES
+)
+# 01 v1.12.0 적용 전 종전 방식(v2.5.0): 표 전체 행 수 + 요약 표의 기준일
+_EMP_SQL_LEGACY = (
     "SELECT c.k, c.n, d.src_latest_chn_dt FROM ("
     + " UNION ALL ".join("SELECT '%s' AS k, count(*) AS n FROM public.%s" % (t, t) for t, _ in _EMP_TABLES)
     + ") c LEFT JOIN public.sys_data_summary_info d"
@@ -85,6 +98,7 @@ JOB_BREAKDOWN = {
     "ODCLOUD_EMP": {
         "table": "public.emp_dis_jobseeker_status",         # 01 emp init
         "sql": _EMP_SQL,
+        "fallback_sql": _EMP_SQL_LEGACY,                     # src_base_dt 칸이 없을 때
         "labels": _EMP_TABLES,
     },
 }
@@ -180,6 +194,7 @@ async def job_breakdown(db, ext_sys: str):
     표 존재를 먼저 확인한다 — 없는 표를 조회하면 오류로 세션 트랜잭션이 중단돼 같은 요청의 다른
     조회까지 실패하기 때문이다. 표는 있는데 칸이 다르거나 권한이 없는 과도기에도 카드 전체가
     실패하지 않도록, 집계는 세이브포인트 안에서 돌리고 실패하면 그 부분만 되돌린 뒤 None 을 준다.
+    spec 에 fallback_sql 이 있으면 sql 이 실패했을 때 그것으로 한 번 더 시도한다(DB 마이그레이션 과도기).
     반환: [{"key", "label", "count", "note"}] (정의 순서, 없는 종류는 0, 메모가 없으면 note=None).
     """
     spec = JOB_BREAKDOWN.get(ext_sys)
@@ -188,11 +203,17 @@ async def job_breakdown(db, ext_sys: str):
     exists = (await db.execute(text("SELECT to_regclass(:t) IS NOT NULL"), {"t": spec["table"]})).scalar()
     if not exists:
         return None
-    try:
-        async with db.begin_nested():
-            rows = (await db.execute(text(spec["sql"]))).all()
-    except Exception as exc:  # noqa: BLE001 — 현황 한 줄 때문에 수집 상태 전체를 실패시키지 않는다
-        logger.warning("수집 작업 %s 종류별 현황 조회 실패: %s", ext_sys, exc)
+    rows = None
+    for sql in (spec["sql"], spec.get("fallback_sql")):
+        if not sql:
+            continue
+        try:
+            async with db.begin_nested():
+                rows = (await db.execute(text(sql))).all()
+            break
+        except Exception as exc:  # noqa: BLE001 — 현황 한 줄 때문에 수집 상태 전체를 실패시키지 않는다
+            logger.warning("수집 작업 %s 종류별 현황 조회 실패: %s", ext_sys, exc)
+    if rows is None:
         return None
     counts = {r[0]: int(r[1]) for r in rows}
     notes = {r[0]: (str(r[2]) if r[2] is not None else None) for r in rows if len(r) > 2}
