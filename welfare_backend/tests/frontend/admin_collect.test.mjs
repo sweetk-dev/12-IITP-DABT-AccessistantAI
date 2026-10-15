@@ -7,6 +7,7 @@
  *   4) 입력 중에는 자동 새로고침이 입력값을 덮어쓰지 않는다
  *   5) 표가 없는 DB(ready=false)·iitp_db 미설정(503) 안내
  *   6) 분류 머리행(통계 / 이동편의 / 문화·체육)과 종류별 현재 적재 건수 — 0건 종류 경고색 (v2.3.0)
+ *   7) 종류별 메모(고용 파일데이터 표별 판 기준일)를 건수 뒤 괄호로 표시 (v2.5.0)
  */
 import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
@@ -31,6 +32,14 @@ const STATUS = {
         failures: [{ id: "DT_11761_N007", stage: "collect", reason: "KOSIS data API 오류 응답: err=20(<b>구조</b>)" }] },
       last_run: { run_id: 12, started_at: "2026-10-13 15:10", status: "SUCCESS", mode: "file", scope: "PARTIAL" },
       recent: [] },
+    { ext_sys: "ODCLOUD_EMP", label: "장애인 고용 파일데이터(14종)", schedule: "매월 3일 04:40", group: "통계",
+      last_sync: "2026-11-03 04:45", consecutive_fail: 0, last_success: "2026-11-03 04:40",
+      breakdown: [{ key: "emp_dis_jobseeker_status", label: "구직자", count: 44588, note: "2025-12-31" },
+                  { key: "emp_dis_job_posting", label: "구인", count: 0, note: "2024-12-31" },
+                  { key: "emp_dis_center_usage", label: "훈련<센터>", count: 19, note: null }],
+      last_regular: { run_id: 15, started_at: "2026-11-03 04:40", status: "SUCCESS", targets: 14, ok_cnt: 14, fail_cnt: 0,
+        mode: "db", scope: "ALL", alert_status: "NONE", alert_detail: "정상", failures: [] },
+      last_run: { run_id: 15, started_at: "2026-11-03 04:40", status: "SUCCESS", mode: "db", scope: "ALL" }, recent: [] },
     { ext_sys: "GBIS", label: "경기 버스 노선(GBIS)", schedule: "매주 월 04:00", group: "이동편의", last_sync: "2026-10-12 04:00",
       consecutive_fail: 0, last_success: "2026-10-12 04:00",
       last_regular: { run_id: 11, started_at: "2026-10-12 04:00", status: "SUCCESS", targets: 1, ok_cnt: 1, fail_cnt: 0,
@@ -87,12 +96,12 @@ await sleep(30);
 
 await check("작업별 표가 그려진다", () => {
   const rows = [...window.document.querySelectorAll("#ops-collect tbody tr[data-sys]")];
-  assert.deepEqual(rows.map((r) => r.dataset.sys), ["KOSIS", "GBIS", "GG_TOILET", "TOUR_BF_API", "GG_CULTURE"]);
+  assert.deepEqual(rows.map((r) => r.dataset.sys), ["KOSIS", "ODCLOUD_EMP", "GBIS", "GG_TOILET", "TOUR_BF_API", "GG_CULTURE"]);
   const k = rows[0].textContent;
   assert.match(k, /KOSIS 통계/); assert.match(k, /2026-10-03 03:00/); assert.match(k, /일부 실패/);
   assert.match(k, /20\/24/); assert.match(k, /2회/); assert.match(k, /마지막 성공 2026-09-03 03:05/); assert.match(k, /발송/);
-  assert.match(rows[1].textContent, /정상/);
-  assert.match(rows[2].textContent, /기록 없음/); assert.match(rows[2].textContent, /동기화 2026-09-30 19:20/);
+  assert.match(rows[2].textContent, /정상/);
+  assert.match(rows[3].textContent, /기록 없음/); assert.match(rows[3].textContent, /동기화 2026-09-30 19:20/);
 });
 
 await check("실패 목록 펼침 + 수동 시험 실행 안내, 사유는 HTML 이스케이프", () => {
@@ -134,6 +143,16 @@ await check("종류별 현재 적재 건수 — 0건 종류는 경고색, 이름
   assert.equal(window.document.querySelector('#ops-collect tr[data-sys="KOSIS"] .co-bd'), null);   // 대상 아닌 작업은 없음
   assert.match(row.textContent, /일부 실패/);
   assert.match($("ops-collect").textContent, /GG_CULTURE:braille_lib · 수집 — 점자도서관 수집 실패/);
+});
+
+await check("종류별 메모(판 기준일)는 건수 뒤 괄호 — 없으면 생략, 0건은 경고색 (v2.5.0)", () => {
+  const row = window.document.querySelector('#ops-collect tr[data-sys="ODCLOUD_EMP"]');
+  const bd = row.querySelector(".co-bd");
+  assert.match(bd.textContent, /현재 구직자 44588\(2025-12-31\) · 구인 0\(2024-12-31\) · 훈련<센터> 19$/);
+  const bad = bd.querySelectorAll(".b.bad");
+  assert.equal(bad.length, 1); assert.equal(bad[0].textContent, "구인 0");
+  assert.equal(bd.querySelectorAll("센터").length, 0);           // 이름은 이스케이프
+  assert.match(row.textContent, /14\/14/);
 });
 
 await check("알림 설정이 채워진다", () => {
