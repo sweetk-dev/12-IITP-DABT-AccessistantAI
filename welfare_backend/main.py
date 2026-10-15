@@ -644,6 +644,16 @@ async def find_culture_sports(
     return await tool_handlers.tool_find_culture_sports(lat=lat, lng=lng, types=types, radius_m=radius_m)
 
 
+@app.get("/api/v1/tools/lookup_local_stats", tags=["tools"],
+         summary="[15-2] 지역 장애인 통계(등록장애인·복지시설·의료이용·의무고용·저상버스 노선)")
+async def lookup_local_stats(
+    topic: str = Query("", description="registered,welfare_facility,medical_usage,employment,low_floor_bus — 비우면 query 로 판단"),
+    region: str = Query("안양시"),
+    query: str = Query(""),
+):
+    return await tool_handlers.tool_lookup_local_stats(topic=topic, region=region, query=query)
+
+
 @app.get("/api/v1/tools/transit_access_points", tags=["tools"],
          summary="[7-1] 휠체어 접근 가능한 정류장·역")
 async def transit_access_points(

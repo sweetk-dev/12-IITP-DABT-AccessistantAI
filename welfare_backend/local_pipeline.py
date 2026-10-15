@@ -232,7 +232,23 @@ def _ollama_tools() -> list:
            {"policy_id": S}, ["policy_id"]),
         fn("find_operating_agencies", "지역·기관 관련 질문에서 운영기관·연락처 청크를 벡터 검색.",
            {"query": S, "limit": I}, ["query"]),
-    ] + _ollama_route_tools()
+    ] + _ollama_stats_tools() + _ollama_route_tools()
+
+
+def _ollama_stats_tools() -> list:
+    """지역 통계 조회 도구 — Live 선언(live_bridge._stats_tool_declarations)과 1:1."""
+    import openapi_client
+    if not openapi_client.enabled():
+        return []
+    S = {"type": "string"}
+    return [{"type": "function", "function": {
+        "name": "lookup_local_stats",
+        "description": "안양 등 지역의 장애인 통계를 조회한다 — 등록장애인 수(registered), 장애인복지시설 수·정원(welfare_facility), 장애인 의료이용(medical_usage), 의무고용 사업체 장애인 고용(employment), 저상버스 운행 노선(low_floor_bus). '안양에 장애인이 몇 명이야', '만안구 중증장애인 수', '안양 장애인 거주시설 몇 곳', '안양 저상버스 비율' 같은 숫자 질문에 사용. 결과의 원천·기준 시점을 반드시 함께 말한다.",
+        "parameters": {"type": "object", "properties": {
+            "topic": {"type": "string",
+                      "description": "registered / welfare_facility / medical_usage / employment / low_floor_bus. 모르면 비운다"},
+            "region": {"type": "string", "description": "시군 또는 구 이름(예: 안양시, 만안구). 말하지 않았으면 안양시"},
+            "query": S}}}}]
 
 
 def _ollama_route_tools() -> list:

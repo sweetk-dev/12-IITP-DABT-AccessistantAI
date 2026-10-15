@@ -123,6 +123,7 @@ SYSTEM_INSTRUCTION = """당신은 대한민국 장애인 복지 정책을 안내
 3. **get_policy_details** — 정책 ID 식별 후 상세 필요 시.
 4. **check_eligibility_criteria** — "제가 받을 수 있나요?", "자격 요건?" 같은 자격 판정.
 5. **find_operating_agencies** — "부산 신청처?", "전화번호?" 지역·기관·연락처.
+6. **lookup_local_stats** — "안양에 장애인이 몇 명이야?", "만안구 중증장애인 수", "안양 장애인 거주시설 몇 곳?" 같은 **지역 통계 숫자** 질문. 숫자마다 원천·기준 시점·지역 단위를 함께 말하고, 결과에 없는 숫자는 만들지 않습니다(정책 검색 도구로 답하지 말 것).
 
 ### 2단계 — **DB 결과 평가 + 안전한 답변 마무리**
 DB 도구 응답을 받으면 다음을 판단:
@@ -569,6 +570,30 @@ def _route_tool_declarations() -> list:
     ]
 
 
+def _stats_tool_declarations() -> list:
+    """지역 통계 조회 도구(v2.7.0). 공개 데이터 OPEN API 가 설정되지 않았으면 선언하지 않는다."""
+    import openapi_client
+
+    if not openapi_client.enabled():
+        return []
+    return [
+        types.FunctionDeclaration(
+            name="lookup_local_stats",
+            description="안양 등 지역의 장애인 통계를 조회한다 — 등록장애인 수(registered), 장애인복지시설 수·정원(welfare_facility), 장애인 의료이용(medical_usage), 의무고용 사업체 장애인 고용(employment), 저상버스 운행 노선(low_floor_bus). '안양에 장애인이 몇 명이야', '만안구 중증장애인 수', '안양 장애인 거주시설 몇 곳', '안양 저상버스 비율' 같은 숫자 질문에 사용. 결과의 원천·기준 시점을 반드시 함께 말한다.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "topic": types.Schema(type=types.Type.STRING,
+                                          description="registered / welfare_facility / medical_usage / employment / low_floor_bus. 모르면 비운다"),
+                    "region": types.Schema(type=types.Type.STRING,
+                                           description="시군 또는 구 이름(예: 안양시, 만안구, 동안구). 말하지 않았으면 안양시"),
+                    "query": types.Schema(type=types.Type.STRING, description="사용자가 말한 원문"),
+                },
+            ),
+        ),
+    ]
+
+
 def build_tool_declarations() -> list:
     """Gemini Live API 에 등록할 함수 선언(정책 5종 + 경로·관광 3종).
 
@@ -643,7 +668,7 @@ def build_tool_declarations() -> list:
                     },
                 ),
             ),
-        ] + _route_tool_declarations()),
+        ] + _stats_tool_declarations() + _route_tool_declarations()),
         # ── 외부 검색 폴백 (Gemini 내장) ──
         # DB 도구로 답을 못 찾을 때만 사용되도록 SYSTEM_INSTRUCTION 으로 우선순위 강제.
         # SDK 버전에 따라 google_search 필드명이 다를 수 있으므로 호환성 fallback 적용.

@@ -235,9 +235,24 @@ def _run_discovery():
     logger.info("신규 발굴 시작")
     try:
         import discovery_core as dc
-        res = dc.run_discovery()
+        disc_failed = False
+        try:
+            res = dc.run_discovery()
+        except Exception as e:  # noqa: BLE001 — 발굴이 실패해도 아래 수집은 돈다
+            logger.exception("신규 발굴(미답변 질의) 실패: %s", e)
+            res, disc_failed = {"error": str(e)[:200]}, True
+        # v2.7.0: 지자체 복지서비스(공공 API) 신규 후보 — 같은 검토 큐에 넣는다. 발굴 실패와 무관하게 돈다.
+        try:
+            import lcgv_collector
+            lres = lcgv_collector.run()
+        except Exception as e:  # noqa: BLE001
+            logger.exception("지자체 복지서비스 수집 실패: %s", e)
+            lres = {"error": str(e)[:200]}
+        res = {"discovery": res,
+               "lcgv": {k: (len(v) if isinstance(v, list) else v) for k, v in (lres or {}).items()}}
+        status = "error" if disc_failed else "ok"
         with _lock:
-            _status["discovery"].update(running=False, last_run=_now(), last_status="ok",
+            _status["discovery"].update(running=False, last_run=_now(), last_status=status,
                                         last_output=json.dumps(res, ensure_ascii=False)[:400])
         logger.info("신규 발굴 완료: %s", res)
     except Exception as e:
