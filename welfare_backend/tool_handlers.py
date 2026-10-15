@@ -1597,6 +1597,207 @@ def _km_text(dist_m) -> str:
     return "약 %skm" % km
 
 
+# ─────────────────────────────────────────────────────────────
+# 지역 통계 조회 (과제 공개 데이터 OPEN API, v2.7.0)
+#   모든 수치에 기준 시점·원천·지역 단위를 붙이게 하고, 뜻이 오해되기 쉬운 통계(의료이용 적용인구,
+#   의무고용 사업체 고용률, 저상버스 운행 노선 비율)는 고정 설명 문구와 함께만 내보낸다.
+# ─────────────────────────────────────────────────────────────
+import openapi_client  # noqa: E402
+
+LOCAL_STATS_TOPICS = ("registered", "welfare_facility", "medical_usage", "employment", "low_floor_bus")
+_ANYANG_GU = ("만안구", "동안구")
+_FIXED_NOTES = {
+    "medical_usage": "이 값은 건강보험 장애인 '적용인구'(의료이용 통계)입니다. 등록장애인 수가 아닙니다.",
+    "employment": "이 값은 의무고용 대상 사업체(상시 50인 이상)의 장애인 고용 현황입니다. 지역 장애인 전체의 고용률(조사 고용률)이 아닙니다.",
+    "low_floor_bus": "이 값은 저상버스를 한 대라도 운행하는 노선의 비율입니다. 저상버스 차량 도입률이 아닙니다.",
+}
+
+
+def _local_region(region: str):
+    """(시군명, 구명 또는 None, 지명 줄기). '안양'·'안양시' → 안양시, '만안구' → 안양시+만안구."""
+    r = re.sub(r"\s+", "", region or "") or "안양시"
+    for gu in _ANYANG_GU:
+        if gu in r:
+            return "안양시", gu, "안양"
+    m = re.match(r"^(.+?[시군])(.+구)$", r)            # '수원시팔달구' → 수원시 + 팔달구
+    if m:
+        return m.group(1), m.group(2), m.group(1)[:-1]
+    if r.endswith(("시", "군")):
+        return r, None, r[:-1]
+    if r.endswith("구"):
+        return r, r, r[:-1]
+    return r + "시", None, r
+
+
+def _topic_from_query(topic: str, query: str) -> str:
+    t = (topic or "").strip().lower()
+    if t in LOCAL_STATS_TOPICS:
+        return t
+    q = query or ""
+    if any(k in q for k in ("시설", "거주", "보호작업장", "자립생활", "센터", "정원")):
+        return "welfare_facility"
+    if any(k in q for k in ("의료", "진료", "병원")):
+        return "medical_usage"
+    if any(k in q for k in ("고용", "취업", "일자리", "의무고용")):
+        return "employment"
+    if any(k in q for k in ("저상", "버스")):
+        return "low_floor_bus"
+    return "registered"
+
+
+def _num(v):
+    try:
+        return int(round(float(v)))
+    except (TypeError, ValueError):
+        return None
+
+
+async def _stats_registered(sigun, gu):
+    data = await openapi_client.get("/basic/housing/reg/local/summary", {"sigunName": sigun})
+    if not isinstance(data, dict) or data.get("status") in ("error", "not_found"):
+        return data if isinstance(data, dict) else openapi_client._err("응답 형식 오류")
+    out = {"sigun": sigun, "sources": []}
+    for key, label in (("gg_emd", "경기도 읍면동 집계"), ("kosis", "KOSIS 장애인현황")):
+        src = data.get(key)
+        if not src:
+            continue
+        when = ("%s 기준" % src["base_dt"]) if src.get("base_dt") else ("%s년 말 기준" % src.get("year"))
+        item = {"source": src.get("source_name") or label, "when": when,
+                "total": src.get("total_cnt"), "severe": src.get("sev_cnt"), "mild": src.get("nsev_cnt"),
+                "by_gu": [{"gu": g.get("name"), "total": g.get("total_cnt"), "severe": g.get("sev_cnt")}
+                          for g in (src.get("by_gu") or [])]}
+        if gu:
+            item["gu_value"] = next((g for g in item["by_gu"] if g["gu"] == gu), None)
+        if src.get("by_type"):
+            item["top_types"] = [{"type": t.get("name"), "total": t.get("total_cnt")} for t in src["by_type"][:5]]
+        out["sources"].append(item)
+    out["notes"] = data.get("notes") or []
+    return out
+
+
+async def _stats_welfare(sigun, stem):
+    data = await openapi_client.get("/poi/welfare-facility/search/paging",
+                                    {"page": 0, "size": 1000, "sigunName": stem})
+    if not isinstance(data, dict) or data.get("status") in ("error", "not_found"):
+        return data if isinstance(data, dict) else openapi_client._err("응답 형식 오류")
+    rows = [r for r in (data.get("content") or []) if (r.get("sigun_name") or "").startswith(stem)]
+    groups = {}
+    for r in rows:
+        g = groups.setdefault(r.get("facility_type"), {"type": r.get("facility_type_name"), "count": 0,
+                                                       "capacity": 0, "current": 0, "names": []})
+        g["count"] += 1
+        g["capacity"] += r.get("capacity_cnt") or 0
+        g["current"] += r.get("current_cnt") or 0
+        if len(g["names"]) < 5:
+            g["names"].append(r.get("name"))
+    checked = max((r.get("checked_dt") or "" for r in rows), default="")
+    return {"sigun": sigun, "source": "경기도 장애인복지시설 현황(경기데이터드림)",
+            "when": ("%s 확인" % checked) if checked else None, "total_facilities": len(rows),
+            "by_type": list(groups.values())}
+
+
+async def _stats_medical(sigun, gu, stem):
+    data = await openapi_client.get("/basic/health/medicalUsg/latest")
+    if not isinstance(data, dict) or data.get("status") in ("error", "not_found"):
+        return data if isinstance(data, dict) else openapi_client._err("응답 형식 오류")
+    items = [x for x in (data.get("items") or []) if (x.get("c1Nm") or "").strip().startswith(sigun)
+             and x.get("c2Nm") in ("적용인구", "진료실인원")]
+    if gu:
+        items = [x for x in items if gu in (x.get("c1Nm") or "")]
+    if not items:
+        return {"status": "not_found", "message": "%s 의료이용 자료가 없습니다." % (gu or sigun)}
+    year = max(int(x["prdDe"]) for x in items)
+    rows = {}
+    for x in items:
+        if int(x["prdDe"]) != year:
+            continue
+        name = (x.get("c1Nm") or "").strip()
+        rows.setdefault(name, {})[x["c2Nm"]] = _num(x.get("data"))
+    if not gu and sigun in rows and len(rows) > 1:         # 시 합계 행이 있으면 그것만(구 값과 겹쳐 더하지 않는다)
+        rows = {sigun: rows[sigun]}
+    parts = [{"area": k, "covered_population": v.get("적용인구"), "patients": v.get("진료실인원")}
+             for k, v in sorted(rows.items())]
+    out = {"sigun": sigun, "source": "장애인건강보건통계(보건복지부) — 장애인 의료이용 현황", "when": "%d년" % year,
+           "areas": parts, "fixed_note": _FIXED_NOTES["medical_usage"]}
+    if len(parts) > 1:
+        out["sum_covered_population"] = sum(p["covered_population"] or 0 for p in parts)
+        out["sum_note"] = "구 값을 더한 값입니다."
+    return out
+
+
+async def _stats_employment(sigun, stem):
+    data = await openapi_client.get("/emp/emp/region")
+    if isinstance(data, dict):
+        return data
+    # 지역 이름은 '경기 안양시' 형식 — 끝이 시군명과 같아야 한다(경기 광주시 ≠ 광주광역시 자치구)
+    rows = [r for r in (data or []) if re.sub(r"\s+", "", r.get("region") or "").endswith(sigun)]
+    if not rows:
+        return {"status": "not_found", "message": "%s 고용 자료가 없습니다." % sigun}
+    r = max(rows, key=lambda x: x.get("year") or 0)
+    return {"sigun": sigun, "source": "한국장애인고용공단 지역별 장애인 고용 현황", "when": "%s년" % r.get("year"),
+            "region": r.get("region"), "companies": r.get("companyCount"), "workers": r.get("workerCount"),
+            "disabled_workers_weighted": r.get("severe2xCount"), "rate_percent": r.get("severe2xRate"),
+            "fixed_note": _FIXED_NOTES["employment"]}
+
+
+async def _stats_low_floor(sigun, stem):
+    allr = await openapi_client.get("/transit/bus/routes/search/paging", {"page": 0, "size": 2, "regionName": stem})
+    low = await openapi_client.get("/transit/bus/routes/search/paging",
+                                   {"page": 0, "size": 2, "regionName": stem, "lowBusYn": "Y"})
+    for d in (allr, low):
+        if not isinstance(d, dict) or d.get("status") in ("error", "not_found"):
+            return d if isinstance(d, dict) else openapi_client._err("응답 형식 오류")
+    total, lowc = allr.get("total") or 0, low.get("total") or 0
+    base = next((c.get("low_bus_base_dt") for d in (low, allr) for c in (d.get("content") or [])
+                 if isinstance(c, dict) and c.get("low_bus_base_dt")), None)
+    return {"sigun": sigun, "source": "경기도 버스노선·저상버스 운행 노선(경기버스정보)",
+            "when": ("%s 기준" % base) if base else None, "routes": total, "low_floor_routes": lowc,
+            "ratio_percent": round(lowc * 100.0 / total, 1) if total else None,
+            "fixed_note": _FIXED_NOTES["low_floor_bus"]}
+
+
+async def tool_lookup_local_stats(topic: str = "", region: str = "안양시", query: str = "") -> dict:
+    """지역 장애인 통계 조회 — 등록장애인 수, 장애인복지시설 수·정원, 의료이용, 의무고용, 저상버스 노선.
+
+    과제 공개 데이터 OPEN API(09)를 부른다. 응답의 각 수치에 원천·기준 시점·지역 단위를 붙인다.
+    """
+    if not openapi_client.enabled():
+        return openapi_client._err("통계 조회 서비스가 설정되지 않았습니다.")
+    sigun, gu, stem = _local_region(region)
+    t = _topic_from_query(topic, query)
+    if t == "registered":
+        result = await _stats_registered(sigun, gu)
+    elif t == "welfare_facility":
+        result = await _stats_welfare(sigun, stem)
+    elif t == "medical_usage":
+        result = await _stats_medical(sigun, gu, stem)
+    elif t == "employment":
+        result = await _stats_employment(sigun, stem)
+    else:
+        result = await _stats_low_floor(sigun, stem)
+    if isinstance(result, dict) and result.get("status") in ("error", "not_found"):
+        if result.get("status") == "not_found":
+            result["ai_instruction"] = ("%s 자료가 없다고 분명히 말하세요. 다른 지역 값이나 추정값을 대신 말하지 마세요. "
+                                        "필요하면 시청 장애인복지과에 문의하시라고 안내하세요." % (gu or sigun))
+        result["tool_name"] = "lookup_local_stats"
+        return result
+    ai = ("숫자를 말할 때마다 원천(source)과 기준 시점(when)과 지역 단위를 함께 말하세요. 예: '경기도 읍면동 집계로 "
+          "2025년 8월 7일 기준 안양시 등록장애인은 이만 천칠백사십사 명입니다'. 숫자는 한국어 발화체로 읽으세요. "
+          "결과에 없는 숫자를 만들지 마세요. ")
+    if t == "registered":
+        ai += ("원천이 둘이면 두 값을 각각 원천·기준 시점과 함께 말하고, 기준 시점이 달라 값이 다르다고 덧붙이세요. "
+               "안양시는 만안구와 동안구로 나뉘며 시 값은 두 구를 더한 값이라고 밝히세요. ")
+        if gu:
+            ai += "사용자가 %s 를 물었으니 gu_value 를 먼저 말하세요. " % gu
+    if result.get("fixed_note"):
+        ai += "반드시 이 설명을 함께 말하세요: '%s' " % result["fixed_note"]
+    if t == "welfare_facility":
+        ai += ("종류별 시설 수를 말하고, 거주·보호작업장은 정원·현원을 함께 말하세요. 이 자료는 경기도 자료이며 "
+               "확인일(when)을 덧붙이세요. 시설 이름은 사용자가 원할 때만 2~3곳 말하세요. ")
+    return {"status": "success", "tool_name": "lookup_local_stats", "topic": t, "region": gu or sigun,
+            "result": result, "ai_instruction": ai}
+
+
 async def tool_find_culture_sports(lat: float = None, lng: float = None, place: str = "",
                                    types: str = "", query: str = "", radius_m: int = 5000) -> dict:
     """점자도서관 · 책나래 신청 도서관 · 장애인체육시설 · 장애인체육회 근접 조회(경기도 자료).
@@ -2369,6 +2570,7 @@ def get_tool_dispatcher(embed_fn):
         "find_toilet": tool_find_toilet,
         "find_accessible_restaurants": tool_find_accessible_restaurants,
         "find_culture_sports": tool_find_culture_sports,
+        "lookup_local_stats": tool_lookup_local_stats,
         "check_building_accessibility": tool_check_building_accessibility,
         "find_service_providers": tool_find_service_providers,
         "find_standard_workplaces": tool_find_standard_workplaces,

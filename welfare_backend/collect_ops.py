@@ -36,10 +36,11 @@ EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
 #   주기는 화면 안내용이다 — cron 을 바꾸면 여기도 고친다.
 #   분류는 카드에서 작업을 묶어 보여 주는 단위다(JOB_GROUPS 순서). 같은 분류는 이웃하게 적는다.
 #   등록되지 않은 작업(실행 기록만 있는 것)은 '기타' 로 맨 뒤에 붙는다.
-JOB_GROUPS = ("통계", "이동편의", "문화·체육", "기타")
+JOB_GROUPS = ("통계", "이동편의", "문화·체육", "복지시설", "기타")
 JOBS = {
     "KOSIS": ("KOSIS 통계", "매월 3·18일 03:00", "통계"),
     "ODCLOUD_EMP": ("장애인 고용 파일데이터(14종)", "매월 3일 04:40", "통계"),
+    "GG_DIS_REG": ("경기 읍면동 등록장애인", "매월 2일 04:30", "통계"),
     "GBIS": ("경기 버스 노선(GBIS)", "매주 월 04:00", "이동편의"),
     "GBIS_LOWFLOOR": ("저상버스 운행 노선", "매일 04:30", "이동편의"),
     "KORAIL_CONV": ("철도역 편의시설", "매월 1일 04:30", "이동편의"),
@@ -47,6 +48,7 @@ JOBS = {
     "TOUR_BF_API": ("무장애 관광지", "매주 일 04:00", "이동편의"),
     "GG_TOILET": ("경기 공중화장실", "분기 1일 04:20", "이동편의"),
     "GG_CULTURE": ("경기 문화·체육 시설(4종)", "매월 2일 04:20", "문화·체육"),
+    "GG_WELFARE": ("경기 장애인복지시설(5종)", "매월 2일 04:25", "복지시설"),
 }
 
 # 한 작업이 여러 종류를 함께 수집하는 경우의 종류별 현재 적재 건수(활성 행).
@@ -94,6 +96,23 @@ JOB_BREAKDOWN = {
                 " WHERE del_yn = 'N' GROUP BY facility_type"),
         "labels": (("braille_lib", "점자도서관"), ("booknarae_lib", "책나래 제공도서관"),
                    ("sports_fac", "장애인체육시설"), ("sports_org", "장애인체육회")),
+    },
+    "GG_WELFARE": {
+        "table": "public.poi_welfare_facility",             # 01 v1.14.0
+        "sql": ("SELECT facility_type, count(*) FROM public.poi_welfare_facility"
+                " WHERE del_yn = 'N' GROUP BY facility_type"),
+        "labels": (("residence", "거주시설"), ("short_residence", "단기거주시설"),
+                   ("protect_workshop", "보호작업장"), ("il_center", "자립생활지원센터"),
+                   ("support_center", "관련 기관")),
+    },
+    # 읍면동 등록장애인(08 GG_DIS_REG) — 시군마다 원천 기준일이 달라 판을 쌓는다.
+    #   최신 판 행 수와 시군 수, 시군 기준일의 범위(가장 이른 ~ 가장 늦은)를 보여 준다.
+    "GG_DIS_REG": {
+        "table": "public.stats_gg_dis_reg_emd",             # 01 v1.14.0
+        "sql": ("SELECT 'rows', count(*), max(base_dt)::text FROM public.v_stats_gg_dis_reg_emd_latest"
+                " UNION ALL SELECT 'siguns', count(DISTINCT sigun_nm),"
+                " min(base_dt)::text || ' ~ ' || max(base_dt)::text FROM public.v_stats_gg_dis_reg_emd_latest"),
+        "labels": (("rows", "최신 판 행"), ("siguns", "시군(기준일 범위)")),
     },
     "ODCLOUD_EMP": {
         "table": "public.emp_dis_jobseeker_status",         # 01 emp init
