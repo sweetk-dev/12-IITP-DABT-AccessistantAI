@@ -892,7 +892,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     else pendingAnswerCard = cardDiv;   // 다음 답변 말풍선이 생길 때 맨 위에 부착
   };
   // 테스트 노출 (NAVI._internals 와 같은 목적 — jsdom 이 WS 없이 카드 배치를 검증)
-  window.__CHAT = { appendAiTranscript, finalizeAiBubble, applyAnswerCard, aiAudioActive: () => aiAudioActive() };
+  window.__CHAT = { appendAiTranscript, finalizeAiBubble, applyAnswerCard, aiAudioActive: () => aiAudioActive(), aiBusy: () => aiBusy(), holdAi: (on) => holdAi(on) };
 
   // ────── 폴백(서버 음성 없음) 시 기기 내장 음성으로 답변 낭독 (접근성) ──────
   // Gemini 정상 모드는 서버가 audio 를 보내므로 turnHadAudio=true → 동작 안 함.
@@ -1065,6 +1065,24 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   const AI_ECHO_TAIL_MS = 800;
   const aiAudioActive = () => (activeSources.size > 0) || (Date.now() - lastAiAudioEnd < AI_ECHO_TAIL_MS);
   const echoTailActive = () => aiAudioActive() || (Date.now() - lastAiAudioEnd < 2500);
+  // 한 번에 한 목소리 (#359) — 길안내 문장이 나가는 동안 상담원 음성은 멈춰(suspend) 두었다가
+  // 안내가 끝나면 그 자리부터 이어서 재생한다. 받은 음성은 버리지 않는다.
+  let aiHeld = false;
+  let aiQueued = 0;          // 받았지만 재생을 마치지 않은 상담원 음성 조각 수
+  const holdAi = (on) => {
+    aiHeld = !!on;
+    try {
+      if (!playbackCtx) return;
+      if (aiHeld && playbackCtx.state === "running") {
+        playbackCtx.suspend();
+        if (activeSources.size > 0 || aiQueued > 0) trialEv("ai_hold", { on: 1 });
+      } else if (!aiHeld && playbackCtx.state === "suspended") {
+        playbackCtx.resume();
+        trialEv("ai_hold", { on: 0 });
+      }
+    } catch (e) {}
+  };
+  const aiBusy = () => aiQueued > 0 || aiAudioActive();
   let lastAiText = "";   // 직전 상담원 발화 텍스트 — 에코 끝말 판정 근거
   let selectedVoice = null;  // 'male' | 'female'
   let textOnly = false;  // [GRAFT] text-only mode: skip mic
@@ -1416,7 +1434,8 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           for (let i = 0; i < u8p.byteLength; i++) binp += String.fromCharCode(u8p[i]);
           naviPreRoll.push(btoa(binp));
           if (naviPreRoll.length > NAVI_BARGE_WIN) naviPreRoll.shift();
-          if (naviBargeHit((m.rms || 0) / gk)) {
+          // 이어마이크여도 기준을 낮추지 않는다 — 현장 점검(10/16)에서 거리 소음으로 안내가 끊긴 경우가 절반이었다 (#359)
+          if (naviBargeHit(m.rms || 0)) {
             const pre = naviPreRoll.splice(0);
             naviBargeReset();
             if (window.NAVI && window.NAVI.bargeStop) window.NAVI.bargeStop();
@@ -1553,7 +1572,9 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     const trialOff = aiRecvBytes;
     aiRecvBytes += Math.floor(((b64 || "").length * 3) / 4) - (((b64 || "").match(/=+$/) || [""])[0].length);
     if (interruptedFlag || textOnly) return;
+    aiQueued++;
     pendingPlayback = pendingPlayback.then(async () => {
+     try {
       if (interruptedFlag) return;
       try {
         const buffer = b642ab(b64);
@@ -1561,6 +1582,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
         if (!playbackCtx || playbackCtx.sampleRate !== sampleRate) {
           if (playbackCtx) { try { await playbackCtx.close(); } catch{} }
           playbackCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+          if (aiHeld) { try { playbackCtx.suspend(); } catch (e) {} }   // 길안내 문장 재생 중 (#359)
         }
         const int16 = new Int16Array(buffer);
         const f32 = new Float32Array(int16.length);
@@ -1577,6 +1599,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
         src.start();
         await new Promise((r) => { src.addEventListener("ended", r, { once: true }); });
       } catch (e) {}
+     } finally { aiQueued = Math.max(0, aiQueued - 1); }
     });
   };
 
@@ -1590,6 +1613,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       try { src.disconnect(); } catch {}
     }
     activeSources.clear();
+    aiQueued = 0;
     pendingPlayback = Promise.resolve();
     if (playbackCtx) {
       try { playbackCtx.close(); } catch {}
@@ -1894,6 +1918,34 @@ window.NAVI = (function(){
      - 같은 문장의 in-flight fetch 는 공유하고, 프리페치는 경로 표시 시점부터 2개 병렬로 돌린다 */
   var speakQueue=[], speakPlaying=null, speakDrainTimer=null, speakLoadTimer=null, speakEndTimer=null, ttsPending={};
   var SPEAK_LOAD_MAX_MS = 12000;
+  /* 한 번에 한 목소리 (#359) — 현장 점검(10/16)에서 안내 문장 125건 중 30건이 상담원 음성과 겹쳐 재생됐다.
+     - 상담원 음성이 나오는 중이면 안내 문장은 기다린다(최대 NAVI_WAIT_AI_MAX_MS). 중간 거리 안내는 버린다
+     - 기다려도 끝나지 않으면 안내를 말하고, 그동안 상담원 음성은 멈췄다가(holdAi) 안내가 끝나면 이어서 재생한다
+     - 턴바이턴 안내 문장 앞에는 짧은 알림음을 넣어 상담원 목소리와 구분한다 */
+  var NAVI_WAIT_AI_MAX_MS = 6000;
+  function _aiBusy(){ try{ return !!(window.__CHAT && window.__CHAT.aiBusy && window.__CHAT.aiBusy()); }catch(e){ return false; } }
+  function _setNaviSpeaking(on){
+    window.__NAVI_SPEAKING = !!on;
+    try{ if(window.__CHAT && window.__CHAT.holdAi) window.__CHAT.holdAi(!!on); }catch(e){}
+  }
+  var _chimeCtx = null;
+  function _playChime(){            // 두 음 알림음(약 0.2초). 재생할 수 없으면 0 — 바로 안내를 말한다
+    try{
+      var AC = window.AudioContext || window.webkitAudioContext; if(!AC) return 0;
+      if(!_chimeCtx) _chimeCtx = new AC();
+      if(_chimeCtx.state === "suspended") _chimeCtx.resume();
+      var t0 = _chimeCtx.currentTime + 0.01;
+      [[880, 0], [1320, 0.11]].forEach(function(p){
+        var o = _chimeCtx.createOscillator(), g = _chimeCtx.createGain();
+        o.type = "sine"; o.frequency.value = p[0];
+        g.gain.setValueAtTime(0.0001, t0 + p[1]);
+        g.gain.exponentialRampToValueAtTime(0.18, t0 + p[1] + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + p[1] + 0.1);
+        o.connect(g); g.connect(_chimeCtx.destination); o.start(t0 + p[1]); o.stop(t0 + p[1] + 0.11);
+      });
+      return 240;
+    }catch(e){ return 0; }
+  }
   function _estSpeakSec(text){ var n=(String(text||"").match(/[가-힣]/g)||[]).length; return 0.5 + n*0.30; }   // 실측 계수(v1.43.1)
   function speakBusy(){
     if(speakQueue.length) return true;
@@ -1934,7 +1986,7 @@ window.NAVI = (function(){
     if(speakEndTimer){ clearTimeout(speakEndTimer); speakEndTimer=null; }
     try{ if(ttsAudio){ ttsAudio.onended=null; ttsAudio.onerror=null; ttsAudio.pause(); ttsAudio=null; } }catch(e){}
     try{ window.speechSynthesis && window.speechSynthesis.cancel(); }catch(e){}
-    window.__NAVI_SPEAKING = false;
+    _setNaviSpeaking(false);
     speakPlaying = null;
   }
   function stopSpeak(){                            // 전부 멈춤 — 대기열도 비운다
@@ -1946,7 +1998,7 @@ window.NAVI = (function(){
     if(speakPlaying && !speakPlaying.ended) _tev("navi_end", {text:speakPlaying.text});
     if(speakPlaying) speakPlaying.ended = true;
     if(speakEndTimer){ clearTimeout(speakEndTimer); speakEndTimer=null; }
-    window.__NAVI_SPEAKING = false;
+    _setNaviSpeaking(false);
     _drainSpeak();
   }
   function _drainSpeak(){
@@ -1967,8 +2019,19 @@ window.NAVI = (function(){
       speakDrainTimer = setTimeout(_drainSpeak, Math.min(wait, 1500));
       return;
     }
+    // 상담원 음성이 나오는 중 — 한 번에 한 목소리 (#359)
+    if(_aiBusy()){
+      var hd = speakQueue[0];
+      if(hd.kind === "interim"){
+        speakQueue.shift(); _tev("navi_drop", {text:hd.text, kind:"interim_ai"});
+        if(speakQueue.length) speakDrainTimer = setTimeout(_drainSpeak, 250);
+        return;
+      }
+      if(!hd.waitSince){ hd.waitSince = Date.now(); _tev("navi_wait_ai", {text:hd.text}); }
+      if(Date.now() - hd.waitSince < NAVI_WAIT_AI_MAX_MS){ speakDrainTimer = setTimeout(_drainSpeak, 250); return; }
+    }
     var item = speakQueue.shift();
-    _speakNow(item.text);
+    _speakNow(item.text, item.kind);
   }
   function speakStep(text){ speak(text, {queue:true, kind:"step"}); }
   function speakInterim(text){ speak(text, {queue:true, kind:"interim"}); }
@@ -1978,7 +2041,7 @@ window.NAVI = (function(){
     try{
       var u = new SpeechSynthesisUtterance(text);
       u.lang="ko-KR"; u.rate=1.0; u.volume=1.0;
-      window.__NAVI_SPEAKING = true;
+      _setNaviSpeaking(true);
       if(speakPlaying) speakPlaying.via = "device";   // 기기 내장 음성으로 말함 — 서버 음성 파일 없음(#318)
       _markPlaying(_estSpeakSec(text) * 1000);   // 내장 TTS 는 길이를 모르므로 추정 (v1.43.1)
       u.onend = function(){ _speakEnded(); };
@@ -2029,9 +2092,10 @@ window.NAVI = (function(){
       return;
     }
     stopSpeak();                  // 즉시 발화 — 재생 중인 것과 대기열을 모두 버린다
-    _speakNow(text);
+    speakQueue.push({text:text, kind:"now"});   // 상담원 음성 중이면 끝날 때까지 기다린다 (#359)
+    _drainSpeak();
   }
-  function _speakNow(text){
+  function _speakNow(text, kind){
     _stopCurrent();
     var seq = speakSeq;
     var est = _estSpeakSec(text) * 1000, now = Date.now();
@@ -2051,7 +2115,7 @@ window.NAVI = (function(){
       try{
         ttsAudio = new Audio(url);
         ttsAudio.volume = 0.8;                     // 상담 음성 게인(0.8)과 동일하게 정합
-        window.__NAVI_SPEAKING = true;             // 발화 중 마이크 입력 차단(에코 방지)
+        _setNaviSpeaking(true);             // 발화 중 마이크 입력 차단(에코 방지)
         ttsAudio.onended = function(){ _speakEnded(); };
         ttsAudio.onerror = function(){ _speakEnded(); };
         var a = ttsAudio;
@@ -2060,8 +2124,13 @@ window.NAVI = (function(){
           var d = (a && isFinite(a.duration) && a.duration > 0) ? a.duration*1000 : est;
           _markPlaying(d);
         };
-        a.play().then(started).catch(function(){ window.__NAVI_SPEAKING = false; speakFallback(text, seq); });
-      }catch(e){ window.__NAVI_SPEAKING = false; speakFallback(text, seq); }
+        var go = function(){
+          if(seq !== speakSeq) return;
+          a.play().then(started).catch(function(){ _setNaviSpeaking(false); speakFallback(text, seq); });
+        };
+        var chimeMs = (kind === "step") ? _playChime() : 0;   // 턴바이턴 안내 앞 알림음 (#359)
+        if(chimeMs) setTimeout(go, chimeMs); else go();
+      }catch(e){ _setNaviSpeaking(false); speakFallback(text, seq); }
     }).catch(function(){ if(seq === speakSeq) speakFallback(text, seq); });
   }
   /* 스텝 발화 문장 (v1.43.0) — 횡단보도 노드 스텝("횡단보도가 있습니다. 횡단보도를 건너세요.")은
@@ -2891,29 +2960,34 @@ window.NAVI = (function(){
   function bargeStop(){
     if(simActive) return;             // 모의 주행은 안내를 끝까지 듣는 용도 — 에코 오탐으로 끊지 않는다 (v1.43.2)
     if(window.__NAVI_SPEAKING){ try{ console.info("[navi] barge-in: 사용자 발화 감지로 안내 중단"); }catch(e){} _tev("navi_barge"); sendActivity("navi_barge"); stopSpeak(); }
-    if(guiding) scheduleResume(8000);   // 질문이 이어지지 않아도 8초 뒤 안내 복귀
+    if(guiding) scheduleResume(2500, {barge:true});   // 대화가 이어지지 않으면 곧 안내로 돌아온다 (#359, 종전 8초)
   }
   function cancelResume(){ if(resumePoll){ clearInterval(resumePoll); resumePoll=null; } }
   // 마이크 프레임에서 유의미한 발화가 감지될 때 호출 — 사용자가 말한 직후에는
   // 서버 답변이 오기 전의 무음 구간에 안내 복귀가 끼어들지 않게 한다(리뷰 #1)
   function noteUserSpeech(){ lastUserSpeechTs = Date.now(); }
   // 답변(상담원 음성·길안내 음성)이 끝나고 graceMs 만큼 조용하면 직전 안내 문장을 재생.
-  function scheduleResume(graceMs){
+  function scheduleResume(graceMs, opt){
     cancelResume();
-    var quietSince = Date.now();
+    opt = opt || {};
+    var quietSince = Date.now(), since = Date.now(), sawAi = false;
     resumePoll = setInterval(function(){
       if(!guiding){ cancelResume(); return; }
       var naviActive = false;
       try{ naviActive = document.getElementById("view-navi").classList.contains("active"); }catch(e){}
       if(!naviActive){ cancelResume(); return; }   // 상담 화면에서 배경 발화 금지(리뷰 #4)
-      var busy = window.__NAVI_SPEAKING ||
-        (window.__CHAT && window.__CHAT.aiAudioActive && window.__CHAT.aiAudioActive()) ||
+      var aiOn = !!(window.__CHAT && window.__CHAT.aiAudioActive && window.__CHAT.aiAudioActive());
+      if(aiOn) sawAi = true;
+      var busy = window.__NAVI_SPEAKING || aiOn ||
         (Date.now() - lastUserSpeechTs < 4000);   // 방금 말했다 = 답변 대기 중일 수 있다(리뷰 #1)
-      if(busy){ quietSince = Date.now(); return; }
-      if(Date.now() - quietSince < (graceMs || 1500)) return;
+      // 발화 감지로 끊겼는데 상담원 답이 없다 = 주변 소리였다. 소음이 이어져도 6초 뒤엔 안내로 돌아온다 (#359)
+      var noiseOnly = !!opt.barge && !sawAi && !window.__NAVI_SPEAKING && !aiOn && (Date.now() - since > 6000);
+      if(busy && !noiseOnly){ quietSince = Date.now(); return; }
+      if(!noiseOnly && Date.now() - quietSince < (graceMs || 1500)) return;
       cancelResume();
       var st = steps[stepIdx];
-      if(st) speak("안내를 이어갈게요. " + resumeUtterance(stepIdx));
+      // "안내를 이어갈게요"는 상담원과 대화가 있었을 때만 붙인다 — 소리로 끊긴 문장은 그대로 다시 읽는다 (#359)
+      if(st) speak(((sawAi || !opt.barge) ? "안내를 이어갈게요. " : "") + resumeUtterance(stepIdx));
     }, 400);
   }
   /* 안내 재개 문장 (v1.59.0) — 구간 중간에서 처음 문장("좌회전 후 … 673m")을 다시 읽으면 이미 지난 회전과

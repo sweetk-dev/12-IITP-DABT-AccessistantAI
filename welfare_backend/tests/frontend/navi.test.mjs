@@ -485,6 +485,18 @@ await sleep(2400);
 check("답변 종료 후 직전 안내 문장 자동 복귀", () => {
   assert.match(spoken.at(-1), /^안내를 이어갈게요\. 횡단보도를 건너/);
 });
+// v2.8.0 — 발화 감지로 끊겼는데 상담원 답이 없으면(주변 소리) "안내를 이어갈게요" 없이 끊긴 문장만 다시 읽는다 (#359)
+{
+  window.__NAVI_SPEAKING = true;
+  const nB = spoken.length;
+  window.NAVI.bargeStop();
+  await sleep(3600);
+  check("소리로 끊긴 안내는 '안내를 이어갈게요' 없이 3초 안팎에 다시 읽는다 (#359)", () => {
+    const s = spoken.slice(nB);
+    assert.ok(s.length >= 1, "복귀 발화 없음");
+    assert.match(s.at(-1), /^횡단보도를 건너/);
+  });
+}
 check("상단 종료 버튼 — 안내 중엔 '안내 종료', 누르면 안내만 종료·버튼은 계속 활성 (v1.35.0)", () => {
   const eb = $("naviEndBtn");
   assert.ok(eb, "종료 버튼 없음");
@@ -525,7 +537,7 @@ check("세션 미연결 상태의 텍스트 질문은 안내문으로 거절", (
   assert.match($("naviStatus").textContent, /상담 세션이 아직 연결되지 않았습니다/);
 });
 check("마이크 게이트 barge-in 배선 존재 (소스 레벨 가드)", () => {
-  assert.match(HTML, /naviBargeHit\(\(m\.rms \|\| 0\) \/ gk\)/);   // v1.45.0 창 판정 · v1.59.0 헤드셋이면 기준 절반
+  assert.match(HTML, /naviBargeHit\(m\.rms \|\| 0\)/);   // v1.45.0 창 판정 · v2.8.0 이어마이크여도 기준을 낮추지 않는다(#359)
   assert.match(HTML, /NAVI\.bargeStop/);
   assert.doesNotMatch(HTML, /if \(window\.__NAVI_SPEAKING\) return;   \/\/ 길안내 음성 발화 중에도 동일하게 차단/);
 });
@@ -1988,7 +2000,7 @@ check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 
   await sleep(50);
   check("종료 안전장치 소스 가드 (v1.45.0)", () => {
     assert.match(HTML, /speakEndTimer = setTimeout\(function\(\)\{[\s\S]*?_speakEnded\(\);[\s\S]*?\}, Math\.max\(50, speakPlaying\.maxEnd - now\)\);/);
-    assert.match(HTML, /if\(speakEndTimer\)\{ clearTimeout\(speakEndTimer\); speakEndTimer=null; \}\s*window\.__NAVI_SPEAKING = false;/);
+    assert.match(HTML, /if\(speakEndTimer\)\{ clearTimeout\(speakEndTimer\); speakEndTimer=null; \}\s*_setNaviSpeaking\(false\);/);
   });
   NV.speak("정리"); window.speechSynthesis.speak = realSpeak; window.fetch = prevFetch5;
 }
@@ -3232,6 +3244,59 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   });
   check("실증 계정 아님: 길안내·상담을 거쳐도 기록 전송(events·audio) 0건 (v1.58.0)", () => {
     assert.equal(fetchLog.filter((u) => /\/api\/v1\/trial\/(events|audio)/.test(u)).length, 0);
+  });
+}
+
+// ── v2.8.0 한 번에 한 목소리 (#359) — 상담원 음성과 길안내 문장이 겹치지 않는다 ──
+{
+  const NV = window.NAVI._internals();
+  const C2 = window.__CHAT;
+  const orig = { busy: C2.aiBusy, act: C2.aiAudioActive, hold: C2.holdAi };
+  let aiOn = false; const holds = [];
+  C2.aiBusy = () => aiOn; C2.aiAudioActive = () => aiOn; C2.holdAi = (on) => { holds.push(on); };
+  NV.speak("준비");          // 앞 블록에서 남은 합성 대기·대기열을 비운다
+  await sleep(100);
+  aiOn = true; holds.length = 0;
+  const n0 = spoken.length;
+  NV.speak("다음 안내까지 약 200미터입니다", { queue: true, kind: "interim" });
+  NV.speak("우회전 후 40m 이동합니다.", { queue: true, kind: "step" });
+  await sleep(300);
+  check("상담원 음성 중에는 턴바이턴 안내가 재생되지 않고 대기한다 (#359)", () => {
+    assert.equal(spoken.length, n0, JSON.stringify(spoken.slice(n0)));
+  });
+  aiOn = false;
+  for (let i = 0; i < 40 && !spoken.slice(n0).includes("우회전 후 40m 이동합니다."); i++) await sleep(50);
+  check("상담원 음성이 끝나면 대기한 안내를 말하고 중간 거리 안내는 버린다 (#359)", () => {
+    assert.deepEqual(spoken.slice(n0), ["우회전 후 40m 이동합니다."]);
+  });
+  check("안내 문장 재생 동안 상담원 음성을 멈췄다가 끝나면 푼다 (#359)", () => {
+    assert.ok(holds.includes(true) && holds.at(-1) === false, JSON.stringify(holds));
+  });
+  await sleep(20);
+  const realNow = window.Date.now; let vn = realNow(); window.Date.now = () => vn;
+  aiOn = true; const n1 = spoken.length;
+  NV.speak("좌회전 후 30m 이동합니다.", { queue: true, kind: "step" });
+  vn += 3000; NV.drainSpeak();   // 앞 안내의 재생 창이 지난 뒤 — 이때부터 상담원 음성을 기다린다
+  const waited = spoken.length === n1;
+  vn += 6500; NV.drainSpeak(); await sleep(5);
+  window.Date.now = realNow;
+  check("상담원 음성이 6초 넘게 이어지면 안내를 말한다 (#359)", () => {
+    assert.ok(waited, "곧바로 말했다");
+    assert.equal(spoken.at(-1), "좌회전 후 30m 이동합니다.");
+  });
+  await sleep(20);
+  const n2 = spoken.length;
+  NV.speak("경로를 다시 탐색합니다.");
+  check("즉시 발화도 상담원 음성 중이면 기다린다 (#359)", () => assert.equal(spoken.length, n2));
+  aiOn = false;
+  for (let i = 0; i < 40 && spoken.at(-1) !== "경로를 다시 탐색합니다."; i++) await sleep(50);
+  check("상담원 음성이 끝나면 즉시 발화가 재생된다 (#359)", () => assert.equal(spoken.at(-1), "경로를 다시 탐색합니다."));
+  C2.aiBusy = orig.busy; C2.aiAudioActive = orig.act; C2.holdAi = orig.hold;
+  check("상담원 음성 대기 수·보류 배선 (소스 레벨 가드, #359)", () => {
+    assert.match(HTML, /aiQueued\+\+;\s*pendingPlayback = pendingPlayback\.then/);
+    assert.match(HTML, /\} finally \{ aiQueued = Math\.max\(0, aiQueued - 1\); \}/);
+    assert.match(HTML, /if \(aiHeld\) \{ try \{ playbackCtx\.suspend\(\); \} catch \(e\) \{\} \}/);
+    assert.match(HTML, /var chimeMs = \(kind === "step"\) \? _playChime\(\) : 0;/);
   });
 }
 
