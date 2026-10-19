@@ -52,6 +52,7 @@ function boot(url, opts) {
       w.WebSocket = FakeWS; w.__sockets = sockets;
       w.fetch = async (u0) => { const u = String(u0);
         (w.__fetchLog = w.__fetchLog || []).push(u);
+        if (u.includes("/app/latest.json")) { const L = w.__latest; return L ? { ok: true, json: async () => L } : { ok: false, json: async () => ({}) }; }
         const body = u.includes("/api/v1/config") ? CONFIG : u.includes("plan_accessible_route") ? ROUTE : { status: "success", results: [] };
         return { ok: true, json: async () => body }; };
       w.navigator.geolocation = { watchPosition: (ok) => { w.__watch = ok; return 1; }, clearWatch: () => {} };
@@ -376,7 +377,7 @@ const linkHrefs = (w) => [...w.document.querySelectorAll('link[rel="manifest"],l
   check("하위 경로(이동경로 안내): /navi 를 알아본다", () => { assert.equal(w.APP_BASE, "/iitp/accessistantai"); assert.equal(w.__PRODUCT, "navi"); });
   check("하위 경로(이동경로 안내): 서버 호출이 모두 기준 경로 아래로 간다", () => {
     const log = w.__fetchLog || []; assert.ok(log.some((u) => u.includes("/api/v1/config")), "설정 호출 없음");
-    for (const u of log) assert.match(u, /^\/iitp\/accessistantai\/api\//, u);
+    for (const u of log) assert.match(u, /^\/iitp\/accessistantai\/(api\/|app\/latest\.json$)/, u);   // 앱 배포본 정보(v2.10.0)도 기준 경로 아래
   });
   w.close();
 }
@@ -412,6 +413,50 @@ check("서버로 보내는 주소에 루트 고정 문자열이 남지 않았다
   assert.equal(bad.length, 0, bad.map((m) => m[0]).join(", "));
   assert.match(HTML, /href="'\+withBase\(L\[i\]\[3\]\)/, "링크 목록을 withBase 로 감싸 쓰지 않는다");
 });
+
+// ───────── 앱 내려받기 (v2.10.0) ─────────
+const LATEST = { versionCode: 20004, versionName: "2.0.4", file: "accessnavi-2.0.4.apk", sha256: "00" };
+{
+  const w = boot("https://example.test/iitp/accessistantai/navi", { preset: (win) => { win.__latest = LATEST; } });
+  const $ = (id) => w.document.getElementById(id);
+  await ready(w);
+  check("앱 내려받기: 이동경로 안내 웹 — 길안내 시작 바로 아래에 최신 설치 파일 링크", () => {
+    const a = $("appDownloadBtn");
+    assert.equal(a.style.display, "");
+    assert.equal(a.previousElementSibling.id, "modeNaviBtn");
+    assert.equal(a.getAttribute("href"), "/iitp/accessistantai/app/download/accessnavi-2.0.4.apk");
+    assert.equal(a.getAttribute("download"), "accessnavi-2.0.4.apk");
+    assert.match(a.querySelector(".appver").textContent, /최신 v2\.0\.4/);
+  });
+  w.close();
+}
+{
+  const w = boot("https://example.test/navi");
+  await ready(w);
+  check("앱 내려받기: 배포본 정보가 없으면 숨긴다", () => assert.equal(w.document.getElementById("appDownloadBtn").style.display, "none"));
+  w.close();
+}
+{
+  const w = boot("https://example.test/navi", { preset: (win) => { win.__latest = { versionName: "<b>", file: "../x.apk" }; } });
+  await ready(w);
+  check("앱 내려받기: 잘못된 파일 이름이면 숨긴다", () => assert.equal(w.document.getElementById("appDownloadBtn").style.display, "none"));
+  w.close();
+}
+{
+  const w = boot("https://example.test/navi", { ua: "Mozilla/5.0 (Linux; Android 15) AccessNaviApp/2.0.4", preset: (win) => { win.__latest = LATEST; win.AccessNaviApp = { setBusy() {} }; } });
+  await ready(w);
+  check("앱 내려받기: 앱 안에서는 보이지 않는다", () => {
+    assert.equal(w.document.getElementById("appDownloadBtn").style.display, "none");
+    assert.ok(!(w.__fetchLog || []).some((u) => u.includes("/app/latest.json")));
+  });
+  w.close();
+}
+{
+  const w = boot("https://example.test/static/accessistant.html", { preset: (win) => { win.__latest = LATEST; } });
+  await ready(w);
+  check("앱 내려받기: 정책상담에서는 보이지 않는다", () => assert.equal(w.document.getElementById("appDownloadBtn").style.display, "none"));
+  w.close();
+}
 
 // ───────── 소스 가드 ─────────
 // 정책상담·이동경로 안내는 따로 여는 제품이라 화면 사이를 오가는 탭(마크업·스타일·핸들러)을 두지 않는다
