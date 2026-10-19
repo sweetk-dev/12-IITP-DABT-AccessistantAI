@@ -3300,6 +3300,50 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   });
 }
 
+// ── v2.9.0 횡단보도 지도 표시 (#361, 경로 서비스 v1.37.0 crosswalks) ──
+{
+  const NV = window.NAVI._internals();
+  NV.resetTrip();
+  window.show("view-navi");
+  const P0 = [37.4185, 126.9110], P1 = [37.4170, 126.9135];
+  const mkRoute = (cw) => ({ status: "success", route_id: "r_cw361", destination: { poi_id: "TBF-361" }, routes: [{
+    summary: { total_distance_m: 300, duration_sec: 280, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 1, warnings: [] },
+    geometry: [P0, P1],
+    ...(cw ? { crosswalks: cw } : {}),
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "35m 앞으로 이동합니다.", distance_m: 35, coord: P0, warnings: [] },
+      { idx: 1, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: P1, warnings: [] },
+    ] }] });
+  const ov0 = overlays.length;
+  NV.showRoute(mkRoute([
+    { id: "2024121334", lat: 37.41851, lng: 126.91134, length_m: 32.1, role: "cross" },
+    { id: "2024121372", lat: 37.41625, lng: 126.91574, length_m: 7.2, role: "side" },
+    { id: "2024121232", lat: 37.41918, lng: 126.90980, length_m: 9.0, role: "near" },
+    { id: null, lat: null, lng: 126.9, length_m: 5, role: "cross" },
+  ]), "횡단보도 테스트");
+  check("응답의 횡단보도 목록을 지도에 표시한다 — 좌표 없는 항목은 건너뜀 (#361)", () => {
+    const m = NV.cwMarks();
+    assert.equal(m.length, 3);
+    assert.ok(m.every((o) => o.visible), "지도에 올라가지 않음");
+    const cls = m.map((o) => o.content.className);
+    assert.equal(JSON.stringify(cls), JSON.stringify(["cw-mark", "cw-mark", "cw-mark cw-mark--near"]));
+    assert.equal(m[0].content.getAttribute("aria-hidden"), "true");
+    assert.match(m[0].content.title, /약 32m/);
+    assert.equal(overlays.length - ov0, 3);
+  });
+  const first = NV.cwMarks().slice();
+  NV.showRoute(mkRoute([{ id: "A", lat: 37.418, lng: 126.912, length_m: 9, role: "cross" }]), "재탐색");
+  check("새 경로를 그리면 이전 횡단보도 표시를 지운다 (#361)", () => {
+    assert.ok(first.every((o) => !o.visible), "이전 표시가 남음");
+    assert.equal(NV.cwMarks().length, 1);
+  });
+  NV.clearRouteDisplay();
+  check("경로 지우기 때 횡단보도 표시도 지운다 (#361)", () => assert.equal(NV.cwMarks().length, 0));
+  NV.showRoute(mkRoute(null), "구버전 응답");
+  check("crosswalks 가 없는 구버전 응답은 표시 없음 (#361)", () => assert.equal(NV.cwMarks().length, 0));
+  NV.clearRouteDisplay();
+}
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {
