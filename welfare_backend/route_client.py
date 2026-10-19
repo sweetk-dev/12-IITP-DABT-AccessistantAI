@@ -439,6 +439,17 @@ async def toilet_nearby(lat: float, lng: float, radius_m: float = 800, limit: in
                                "accessible_only": "true" if accessible_only else "false"})
 
 
+# ── 장애인 문화·체육 시설 (02 v1.36.0) ──
+async def culture_nearby(lat: float, lng: float, types: str = "", radius_m: float = 5000,
+                         limit: int = 3, fallback: bool = True, fallback_limit: int = 2) -> dict:
+    """점자도서관·책나래 신청 도서관·장애인체육시설·장애인체육회 — 종류별 거리순, 반경 안이 없으면 가까운 곳(반경 밖)."""
+    params = {"lat": lat, "lng": lng, "radius_m": radius_m, "limit": limit,
+              "fallback": "true" if fallback else "false", "fallback_limit": fallback_limit}
+    if types:
+        params["types"] = types
+    return await _call("GET", "/culture/nearby", params=params)
+
+
 # ── 음식점·건물 편의시설·명부 (02 v1.31.0) ──
 async def food_nearby(lat: float = None, lng: float = None, sigungu: str = "안양",
                       radius_m: float = 3000, limit: int = 5, accessible_only: bool = False) -> dict:

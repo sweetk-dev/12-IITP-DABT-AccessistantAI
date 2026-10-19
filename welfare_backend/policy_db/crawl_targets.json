@@ -4004,11 +4004,11 @@
       "frequency": "quarterly",
       "change_detection_method": "page_hash",
       "css_selector_hint": "사업 안내·신청 절차 텍스트",
-      "priority": "secondary",
+      "priority": "primary",
       "used_by_items": [
         "B027"
       ],
-      "notes": "보건복지부 위탁 운영기관. 돌보미 배정·교육 정보 포함."
+      "notes": "보건복지부 위탁 중앙지원단. 연간 지원시간(2026년 1,200시간)·시간당 이용료(12,800원)·본인부담(40%, 5,120원) 안내 — 변경 감시."
     },
     {
       "target_id": "www_gov_kr_portal_service_serviceInfo_391000000295",
@@ -4043,23 +4043,6 @@
         "B027"
       ],
       "notes": "2026년 장애인복지 사업안내 PDF 내 장애아 가족 양육지원 세부 기준 포함. 연 1회 갱신."
-    },
-    {
-      "target_id": "www_chungnam_go_kr_cnportal_cmmn_file_fileDown_do_menuNo_5100288_atchFileId_2621",
-      "title": "충청남도 2026년 장애인복지사업 안내(지자체 사업안내 예시)",
-      "publisher": "충청남도",
-      "publisher_type": "광역지자체",
-      "url": "https://www.chungnam.go.kr/cnportal/cmmn/file/fileDown.do?menuNo=5100288&atchFileId=26219466339a488c91dfa84428d763f1&fileSn=1",
-      "fallback_url": "https://www.chungnam.go.kr/",
-      "official_api": null,
-      "frequency": "quarterly",
-      "change_detection_method": "pdf_hash",
-      "css_selector_hint": null,
-      "priority": "supplementary",
-      "used_by_items": [
-        "B027"
-      ],
-      "notes": "지자체별 지원시간 차이 확인 사례. 다른 지자체 유사 문서 병행 모니터링 권장."
     },
     {
       "target_id": "www_law_go_kr_법령_도시가스사업법",

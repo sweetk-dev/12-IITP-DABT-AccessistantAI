@@ -123,6 +123,7 @@ SYSTEM_INSTRUCTION = """당신은 대한민국 장애인 복지 정책을 안내
 3. **get_policy_details** — 정책 ID 식별 후 상세 필요 시.
 4. **check_eligibility_criteria** — "제가 받을 수 있나요?", "자격 요건?" 같은 자격 판정.
 5. **find_operating_agencies** — "부산 신청처?", "전화번호?" 지역·기관·연락처.
+6. **lookup_local_stats** — "안양에 장애인이 몇 명이야?", "만안구 중증장애인 수", "안양 장애인 거주시설 몇 곳?" 같은 **지역 통계 숫자** 질문. 숫자마다 원천·기준 시점·지역 단위를 함께 말하고, 결과에 없는 숫자는 만들지 않습니다(정책 검색 도구로 답하지 말 것).
 
 ### 2단계 — **DB 결과 평가 + 안전한 답변 마무리**
 DB 도구 응답을 받으면 다음을 판단:
@@ -224,6 +225,9 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 
 건물·시설의 이동 편의(접근성) 정보는 정책 DB 에 없으므로 정책 도구를 거치지 않습니다. 주민센터·보건소·우체국·도서관 같은 **특정 건물**이면 `check_building_accessibility` 를 먼저 부르고, 자료가 없을 때만 `google_search` 를 호출합니다.
 
+### 문화·체육 시설
+- "점자도서관 어디야", "책 빌려 볼 수 있는 곳", "장애인이 운동할 수 있는 곳", "반다비체육센터", "장애인체육회" → `find_culture_sports` (query 에 사용자 말 원문). 반경 안에 없으면 "근처에는 없고 가장 가까운 곳은 ○○(약 N km)"라고 구분해 말합니다. 경기도 자료라 경기도 밖 시설은 알 수 없습니다.
+
 ### 기관·사업장 명부
 - "주간활동 어디서 해?", "발달재활 바우처 쓸 수 있는 곳", "장애인 거주시설" → `find_service_providers`. 이용 신청 방법은 정책 도구로 안내합니다.
 - "장애인이 일하는 회사", "표준사업장" → `find_standard_workplaces`. 채용 여부는 알 수 없으니 회사·한국장애인고용공단에 문의를 권합니다.
@@ -279,6 +283,7 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - **긴급 상황** — "배터리가 다 됐어", "충전할 데 있어", "휠체어가 고장났어", "바퀴가 이상해", "콜택시 불러줘" → `find_emergency_support` 를 **먼저** 호출합니다(situation 에 사용자 말 원문). 유형별 가장 가까운 1~2곳을 이름·거리·전화번호로 말하고, `open_hours_status` 가 unknown 이면 운영시간을 지어내지 말고 "전화로 확인해 보시라"고 하세요. 배터리 상황이면 이동 가능 거리를 먼저 묻고 멀면 콜택시를 함께 권하세요. 화면에 카드가 떴고 '여기로 안내' 로 경로를 받을 수 있다고 알립니다.
 - "화장실 어디야", "장애인 화장실" → `find_toilet` 을 호출합니다. 가까운 1~2곳을 거리·개방시간으로 말합니다. 청사·도서관·병원 같은 공공건물 안 화장실(building_toilet)은 건물이 문을 연 시간에만 쓸 수 있다고 덧붙입니다. 역 안 화장실은 `get_station_facilities` 입니다.
 - "근처 밥 먹을 데", "휠체어로 들어갈 수 있는 식당" → `find_accessible_restaurants`. 휠체어 정보가 없는 곳을 "못 간다"고 말하지 않습니다.
+- "점자도서관", "도서관 어디야", "장애인 운동할 곳", "체육회" → `find_culture_sports`. 가까운 1~2곳을 거리로 말하고, 반경 밖(beyond_radius)이면 그렇다고 구분합니다.
 - **역 안/밖·출구 확인은 말로도 받습니다(손을 쓰기 어려운 분).** 화면이 "역 안(승강장)이신가요, 역 밖이신가요?"를 묻거나 역 안 안내 중일 때 사용자가 "역 안이야", "나왔어", "밖이야", "나가는 중이야", "아직이야", "엘리베이터 타는 중" 이라고 말하면 `report_station_position` 을 호출합니다(where = inside / outside / exiting). "서울 쪽에서 왔어" 처럼 타고 온 방향을 함께 말하면 travel 에 담습니다. 나가는 중이면 **재촉하지 말고** 천천히 오시라고 한 문장만 답합니다 — 이동에 시간이 걸리는 분들입니다. **"아직 안 나왔어", "나온 거 아니야" 같은 부정 표현은 outside 가 아닙니다 — exiting 입니다.** 역과 무관한 말("식당에서 나왔어")에는 호출하지 않습니다.
 - "근처 정류장", "여기서 뭐 타", "버스 어디서 타" → `find_nearby_transit` 을 호출합니다. 결과의 `accessible` 이 null(unknown)이면 "이용 불가"가 아니라 "저상버스 정차 여부는 실시간 도착정보로 확인이 필요하다"고 안내하세요. 버스 방면은 종점명(end_station)으로 안내하되, 양방향 종점명이 같은 순환 노선은 경유 순번(station_seq)이 다르다는 점을 함께 알립니다. 같은 번호라도 노선 유형(마을버스/일반형시내버스)이 다르면 다른 노선입니다.
 
@@ -430,6 +435,23 @@ def _route_tool_declarations() -> list:
             ),
         ),
         types.FunctionDeclaration(
+            name="find_culture_sports",
+            description=("장애인 문화·체육 시설을 찾는다 — 점자도서관(점자·녹음 도서), 책나래 신청 도서관(장애인이 책을 "
+                         "무료 택배로 빌려 보는 '책나래' 서비스를 신청할 수 있는 공공도서관), 장애인체육시설(반다비체육센터 등), "
+                         "시군 장애인체육회(생활체육 프로그램 문의처). \"점자도서관 어디야\", \"책 빌려 볼 수 있는 데\", "
+                         "\"장애인이 운동할 수 있는 곳\", \"장애인체육회 연락처\" 질의에 사용. 기준 위치는 현재 위치가 자동 "
+                         "주입된다. 반경 안에 없으면 가장 가까운 곳이 beyond_radius 로 온다. 경기도 자료다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "query": types.Schema(type=types.Type.STRING, description="사용자가 말한 원문(예: '점자도서관 있어?'). 종류 선택 근거"),
+                    "types": types.Schema(type=types.Type.STRING, description="braille_lib / booknarae_lib / sports_fac / sports_org 콤마 구분. 모르면 비운다"),
+                    "place": types.Schema(type=types.Type.STRING, description="사용자가 말한 기준 장소 이름. 미지정 시 현재 위치"),
+                    "radius_m": types.Schema(type=types.Type.INTEGER, description="검색 반경(m), 기본 5000, 최대 20000"),
+                },
+            ),
+        ),
+        types.FunctionDeclaration(
             name="check_building_accessibility",
             description=("특정 건물(주민센터·보건소·우체국·도서관·병원·경찰서 등)의 장애인 편의시설을 알려 준다 — "
                          "주출입구 턱·접근로·승강기·장애인 화장실·장애인 주차구역. \"○○ 휠체어로 들어갈 수 있어?\", "
@@ -548,6 +570,30 @@ def _route_tool_declarations() -> list:
     ]
 
 
+def _stats_tool_declarations() -> list:
+    """지역 통계 조회 도구(v2.7.0). 공개 데이터 OPEN API 가 설정되지 않았으면 선언하지 않는다."""
+    import openapi_client
+
+    if not openapi_client.enabled():
+        return []
+    return [
+        types.FunctionDeclaration(
+            name="lookup_local_stats",
+            description="안양 등 지역의 장애인 통계를 조회한다 — 등록장애인 수(registered), 장애인복지시설 수·정원(welfare_facility), 장애인 의료이용(medical_usage), 의무고용 사업체 장애인 고용(employment), 저상버스 운행 노선(low_floor_bus). '안양에 장애인이 몇 명이야', '만안구 중증장애인 수', '안양 장애인 거주시설 몇 곳', '안양 저상버스 비율' 같은 숫자 질문에 사용. 결과의 원천·기준 시점을 반드시 함께 말한다.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "topic": types.Schema(type=types.Type.STRING,
+                                          description="registered / welfare_facility / medical_usage / employment / low_floor_bus. 모르면 비운다"),
+                    "region": types.Schema(type=types.Type.STRING,
+                                           description="시군 또는 구 이름(예: 안양시, 만안구, 동안구). 말하지 않았으면 안양시"),
+                    "query": types.Schema(type=types.Type.STRING, description="사용자가 말한 원문"),
+                },
+            ),
+        ),
+    ]
+
+
 def build_tool_declarations() -> list:
     """Gemini Live API 에 등록할 함수 선언(정책 5종 + 경로·관광 3종).
 
@@ -622,7 +668,7 @@ def build_tool_declarations() -> list:
                     },
                 ),
             ),
-        ] + _route_tool_declarations()),
+        ] + _stats_tool_declarations() + _route_tool_declarations()),
         # ── 외부 검색 폴백 (Gemini 내장) ──
         # DB 도구로 답을 못 찾을 때만 사용되도록 SYSTEM_INSTRUCTION 으로 우선순위 강제.
         # SDK 버전에 따라 google_search 필드명이 다를 수 있으므로 호환성 fallback 적용.

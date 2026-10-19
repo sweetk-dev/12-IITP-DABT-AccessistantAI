@@ -31,6 +31,140 @@ def test_validate_emails_rejects_bad_and_too_many():
         collect_ops.validate_emails(",".join(f"u{i}@x.co.kr" for i in range(6)))
 
 
+def test_jobs_have_group_and_breakdown_spec():
+    """작업 정의는 (이름, 주기, 분류) 3칸이고 분류는 JOB_GROUPS 안에 있다. 같은 분류는 이웃한다."""
+    groups = []
+    for ext_sys, spec in collect_ops.JOBS.items():
+        assert len(spec) == 3, ext_sys
+        assert spec[2] in collect_ops.JOB_GROUPS, ext_sys
+        if not groups or groups[-1] != spec[2]:
+            groups.append(spec[2])
+    assert len(groups) == len(set(groups))            # 분류가 흩어져 있지 않다
+    assert collect_ops.JOBS["GG_CULTURE"][2] == "문화·체육"
+    for ext_sys, spec in collect_ops.JOB_BREAKDOWN.items():
+        assert ext_sys in collect_ops.JOBS
+        assert spec["table"].startswith("public.") and spec["labels"]
+
+
+def test_odcloud_emp_job_and_breakdown_spec():
+    """고용 파일데이터(ODCLOUD_EMP, v2.5.0) — 통계 분류, 표 14개를 모두 세고 판 기준일을 함께 읽는다."""
+    label, schedule, group = collect_ops.JOBS["ODCLOUD_EMP"]
+    assert group == "통계" and "04:40" in schedule
+    spec = collect_ops.JOB_BREAKDOWN["ODCLOUD_EMP"]
+    tables = [t for t, _ in spec["labels"]]
+    assert len(tables) == len(set(tables)) == 14
+    assert "emp_dis_obligation_by_type" not in tables          # 1회성 데이터 — 수집 대상 아님
+    for t in tables:
+        assert "FROM public.%s" % t in spec["sql"]
+        assert "FROM public.%s" % t in spec["fallback_sql"]
+    # v2.6.0: 최신 판(src_base_dt 최댓값)의 행 수와 보관 판 수. 01 v1.12.0 전에는 종전 방식(요약 표 기준일)
+    assert "max(src_base_dt)" in spec["sql"] and "count(DISTINCT src_base_dt)" in spec["sql"]
+    assert "src_latest_chn_dt" in spec["fallback_sql"]
+
+
+def test_breakdown_falls_back_when_first_sql_fails():
+    """src_base_dt 칸이 없는 과도기 — 첫 SQL 이 실패하면 세이브포인트로 되돌리고 종전 SQL 로 다시 센다."""
+    class FakeResult:
+        def __init__(self, v): self.v = v
+        def scalar(self): return self.v
+        def all(self): return self.v
+    class Db:
+        def __init__(self): self.sqls = []
+        def begin_nested(self): return _Nested()
+        async def execute(self, stmt, params=None):
+            sql = str(stmt)
+            self.sqls.append(sql)
+            if "to_regclass" in sql:
+                return FakeResult(True)
+            if "src_base_dt" in sql:
+                raise RuntimeError('column "src_base_dt" does not exist')
+            return FakeResult([("emp_dis_jobseeker_status", 44588, "2025-12-31")])
+    db = Db()
+    out = asyncio.new_event_loop().run_until_complete(collect_ops.job_breakdown(db, "ODCLOUD_EMP"))
+    assert out[0] == {"key": "emp_dis_jobseeker_status", "label": "구직자", "count": 44588, "note": "2025-12-31"}
+    assert len(db.sqls) == 3                      # 표 확인 + 실패한 새 SQL + 종전 SQL
+
+
+def test_breakdown_note_column_is_optional():
+    class FakeResult:
+        def __init__(self, v): self.v = v
+        def scalar(self): return self.v
+        def all(self): return self.v
+    class Db:
+        n = 0
+        def begin_nested(self): return _Nested()
+        async def execute(self, stmt, params=None):
+            Db.n += 1
+            if Db.n == 1:
+                return FakeResult(True)
+            return FakeResult([("emp_dis_jobseeker_status", 44588, "2025-12-31 · 판 2개"),
+                               ("emp_dis_job_posting", 7085, None)])
+    out = asyncio.new_event_loop().run_until_complete(collect_ops.job_breakdown(Db(), "ODCLOUD_EMP"))
+    assert out[0] == {"key": "emp_dis_jobseeker_status", "label": "구직자", "count": 44588,
+                      "note": "2025-12-31 · 판 2개"}
+    assert out[1]["note"] is None and out[1]["count"] == 7085
+    assert out[2]["count"] == 0 and out[2]["note"] is None       # 결과에 없는 표는 0
+
+
+def test_breakdown_none_for_plain_job():
+    # 종류별 현황 대상이 아닌 작업은 DB 를 조회하지 않고 None
+    class NoDb:
+        async def execute(self, *a, **k):
+            raise AssertionError("조회하면 안 된다")
+    assert asyncio.new_event_loop().run_until_complete(collect_ops.job_breakdown(NoDb(), "KOSIS")) is None
+
+
+def test_breakdown_skips_missing_table():
+    class FakeResult:
+        def __init__(self, v): self.v = v
+        def scalar(self): return self.v
+        def all(self): return self.v
+    class Db:
+        def __init__(self): self.calls = []
+        async def execute(self, stmt, params=None):
+            self.calls.append(str(stmt))
+            return FakeResult(False)            # to_regclass → 표 없음
+    db = Db()
+    assert asyncio.new_event_loop().run_until_complete(collect_ops.job_breakdown(db, "GG_CULTURE")) is None
+    assert len(db.calls) == 1                   # 표가 없으면 집계 조회를 하지 않는다
+
+
+class _Nested:
+    """AsyncSession.begin_nested() 대역 — async with 만 받는다."""
+    async def __aenter__(self): return self
+    async def __aexit__(self, *a): return False
+
+
+def test_breakdown_counts_in_label_order_with_zero():
+    class FakeResult:
+        def __init__(self, v): self.v = v
+        def scalar(self): return self.v
+        def all(self): return self.v
+    class Db:
+        n = 0
+        def begin_nested(self): return _Nested()
+        async def execute(self, stmt, params=None):
+            Db.n += 1
+            return FakeResult(True) if Db.n == 1 else FakeResult([("booknarae_lib", 260), ("braille_lib", 5)])
+    out = asyncio.new_event_loop().run_until_complete(collect_ops.job_breakdown(Db(), "GG_CULTURE"))
+    assert [b["key"] for b in out] == ["braille_lib", "booknarae_lib", "sports_fac", "sports_org"]
+    assert [b["count"] for b in out] == [5, 260, 0, 0]
+
+
+def test_breakdown_query_error_returns_none():
+    class FakeResult:
+        def scalar(self): return True
+    class Db:
+        n = 0
+        def begin_nested(self): return _Nested()
+        async def execute(self, stmt, params=None):
+            Db.n += 1
+            if Db.n == 1:
+                return FakeResult()
+            raise RuntimeError("column does not exist")
+    assert asyncio.new_event_loop().run_until_complete(collect_ops.job_breakdown(Db(), "GG_CULTURE")) is None
+
+
 URL = os.environ.get("ITEST_IITP_DB_URL")
 needs_db = pytest.mark.skipif(not URL, reason="ITEST_IITP_DB_URL 미설정 — DB 통합 테스트 생략")
 EXT = "ITEST_CO"
@@ -80,6 +214,9 @@ def test_status_groups_runs_and_counts_regular_failures():
             assert job["last_regular"]["failures"][0]["id"] == "DT_A"
             assert job["last_run"]["mode"] == "file"          # 최근 실행은 수동 시험
             assert len(job["recent"]) == 4
+            assert job["group"] == "기타" and job["breakdown"] is None   # 등록되지 않은 작업
+            groups = [j["group"] for j in d["jobs"]]
+            assert groups == sorted(groups, key=collect_ops.JOB_GROUPS.index)   # 분류 순서 정렬
 
             cfg = await collect_ops.save_alert_config(s, True, "ops@example.co.kr, ops2@example.co.kr", actor="itest")
             assert cfg["enabled"] is True and cfg["emails"] == ["ops@example.co.kr", "ops2@example.co.kr"]
@@ -94,4 +231,32 @@ def test_status_groups_runs_and_counts_regular_failures():
             await _exec(s, "DELETE FROM sys_batch_run_log WHERE ext_sys = :e", e=EXT)
             for k, v in saved.items():
                 await _exec(s, "UPDATE sys_ops_setting SET setting_value = :v WHERE setting_key = :k", k=k, v=v)
+    _run(_with_session(body))
+
+
+@needs_db
+def test_breakdown_on_real_db_keeps_session_usable():
+    """실DB — 표가 있으면 4종 건수, 없는 표를 가리켜도 None 이고 같은 세션의 다음 조회가 된다."""
+    async def body(s):
+        out = await collect_ops.job_breakdown(s, "GG_CULTURE")
+        has_table = (await s.execute(text_("SELECT to_regclass('public.poi_culture_sports_facility') IS NOT NULL"))).scalar()
+        if has_table:
+            assert [b["key"] for b in out] == ["braille_lib", "booknarae_lib", "sports_fac", "sports_org"]
+            assert all(isinstance(b["count"], int) for b in out)
+        else:
+            assert out is None
+        saved = dict(collect_ops.JOB_BREAKDOWN["GG_CULTURE"])
+        try:
+            collect_ops.JOB_BREAKDOWN["GG_CULTURE"]["table"] = "public.no_such_table_itest"
+            assert await collect_ops.job_breakdown(s, "GG_CULTURE") is None
+            if has_table:
+                # 표는 있는데 칸이 없는 경우 — 세이브포인트로 되돌리고 세션은 계속 쓸 수 있어야 한다
+                collect_ops.JOB_BREAKDOWN["GG_CULTURE"]["table"] = saved["table"]
+                collect_ops.JOB_BREAKDOWN["GG_CULTURE"]["sql"] = "SELECT no_such_col, 1 FROM public.poi_culture_sports_facility"
+                assert await collect_ops.job_breakdown(s, "GG_CULTURE") is None
+            assert (await s.execute(text_("SELECT 1"))).scalar() == 1
+        finally:
+            collect_ops.JOB_BREAKDOWN["GG_CULTURE"].clear()
+            collect_ops.JOB_BREAKDOWN["GG_CULTURE"].update(saved)
+    from sqlalchemy import text as text_
     _run(_with_session(body))

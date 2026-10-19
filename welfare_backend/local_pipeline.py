@@ -232,7 +232,23 @@ def _ollama_tools() -> list:
            {"policy_id": S}, ["policy_id"]),
         fn("find_operating_agencies", "지역·기관 관련 질문에서 운영기관·연락처 청크를 벡터 검색.",
            {"query": S, "limit": I}, ["query"]),
-    ] + _ollama_route_tools()
+    ] + _ollama_stats_tools() + _ollama_route_tools()
+
+
+def _ollama_stats_tools() -> list:
+    """지역 통계 조회 도구 — Live 선언(live_bridge._stats_tool_declarations)과 1:1."""
+    import openapi_client
+    if not openapi_client.enabled():
+        return []
+    S = {"type": "string"}
+    return [{"type": "function", "function": {
+        "name": "lookup_local_stats",
+        "description": "안양 등 지역의 장애인 통계를 조회한다 — 등록장애인 수(registered), 장애인복지시설 수·정원(welfare_facility), 장애인 의료이용(medical_usage), 의무고용 사업체 장애인 고용(employment), 저상버스 운행 노선(low_floor_bus). '안양에 장애인이 몇 명이야', '만안구 중증장애인 수', '안양 장애인 거주시설 몇 곳', '안양 저상버스 비율' 같은 숫자 질문에 사용. 결과의 원천·기준 시점을 반드시 함께 말한다.",
+        "parameters": {"type": "object", "properties": {
+            "topic": {"type": "string",
+                      "description": "registered / welfare_facility / medical_usage / employment / low_floor_bus. 모르면 비운다"},
+            "region": {"type": "string", "description": "시군 또는 구 이름(예: 안양시, 만안구). 말하지 않았으면 안양시"},
+            "query": S}}}}]
 
 
 def _ollama_route_tools() -> list:
@@ -307,6 +323,13 @@ def _ollama_route_tools() -> list:
            {"place": {"type": "string", "description": "사용자가 말한 기준 장소 이름"},
             "radius_m": I,
             "accessible_only": {"type": "boolean", "description": "휠체어 출입이 확인된 곳만"}}),
+        fn("find_culture_sports",
+           "장애인 문화·체육 시설(점자도서관, 책나래 신청 도서관, 장애인체육시설, 장애인체육회)을 현재 위치 주변에서 찾는다. "
+           "반경 안에 없으면 가장 가까운 곳이 beyond_radius 로 온다 — 그렇다고 구분해 말한다.",
+           {"query": {"type": "string", "description": "사용자가 말한 원문"},
+            "types": {"type": "string", "description": "braille_lib/booknarae_lib/sports_fac/sports_org 콤마 구분. 모르면 비운다"},
+            "place": {"type": "string", "description": "사용자가 말한 기준 장소 이름"},
+            "radius_m": I}),
         fn("check_building_accessibility",
            "특정 건물(주민센터·보건소·우체국·도서관·병원 등)의 장애인 편의시설(주출입구 턱·승강기·장애인 화장실·"
            "주차구역)을 알려 준다. 장애인편의시설 실태조사 기준.",
