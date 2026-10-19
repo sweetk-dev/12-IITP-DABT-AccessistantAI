@@ -341,6 +341,17 @@ def t_realtime_low_floor_without_predict_min_does_not_fail():
     assert r["low_floor_note"] == "승차 정류장에 저상버스 2번이 약 4분 뒤 도착 예정", r["low_floor_note"]
 
 
+
+def t_ui_action_carries_requested_mode():
+    # 화면의 이동 방식 카드가 말로 바꾼 방식을 따라가도록 — 자동이면 None, 명시면 그 방식
+    r = _plan("", _Recorder([_walk_resp(500)]))
+    assert r["ui_action"]["mode_requested"] is None, r["ui_action"].get("mode_requested")
+    r = _plan("walk", _Recorder([_walk_resp(1100)]))
+    assert r["ui_action"]["mode_requested"] == "walk", r["ui_action"].get("mode_requested")
+    r = _plan("walk_bus", _Recorder([_transit_resp()]))
+    assert r["ui_action"]["mode_requested"] == "walk_bus", r["ui_action"].get("mode_requested")
+
+
 if __name__ == "__main__":
     for nm, fn in sorted((k, v) for k, v in list(globals().items()) if k.startswith("t_")):
         check(nm, fn)
