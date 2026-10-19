@@ -281,6 +281,10 @@ check("앱 지도 오류 → 웹 지도로 복귀하고 경로를 다시 그린�
   await sleep(40);
   const pressed = () => { const b = E.w.document.querySelector('.mode-cards button[aria-pressed="true"]'); return b ? b.getAttribute("data-mode") : null; };
   check("말로 도보 요청 → '도보' 카드 선택", () => assert.equal(pressed(), "walk"));
+  check("말로 고른 방식은 '추천' 카드 이름(자동 추천 결과)을 덮지 않는다", () => {
+    const sm = E.w.document.querySelector('.mode-cards button[data-mode="auto"] small');
+    assert.ok(!sm || sm.textContent === "도보", "추천 카드 이름: " + (sm && sm.textContent));
+  });
   E.w.NAVI.onUiAction({ action: "show_route", payload: { action: "show_route", mode_requested: null,
     route: { route_id: "r_walk3", destination: { poi_id: "TBF-9" }, fallback: { used: false },
       routes: [{ summary: sum, geometry: geom, steps: st }] } } });

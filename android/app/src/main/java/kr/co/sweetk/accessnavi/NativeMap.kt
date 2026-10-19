@@ -557,10 +557,14 @@ class NativeMapController(
      * 방향이 15° 이상 바뀔 때만 부드럽게 돌린다. '북쪽 위' 모드에서는 돌리지 않고 가운데만 맞춘다.
      */
     private fun follow(map: KakaoMap, pos: LatLng) {
-        var deg: Double? = routeBearing(pos)
         val prev = lastFollow
-        if (deg == null && prev != null && distM(prev, pos) >= MIN_MOVE_M) deg = bearing(prev, pos)
-        if (deg != null) lastFollow = pos else if (prev == null) lastFollow = pos
+        val routeDeg = routeBearing(pos)
+        val moveDeg = if (prev != null && distM(prev, pos) >= MIN_MOVE_M) bearing(prev, pos) else null
+        // 경로 위라도 실제로 움직인 방향이 경로 방향과 크게 다르면(110° 초과 — 경로를 거꾸로 걷거나 되돌아가는 중)
+        // 움직인 방향을 쓴다. 그러지 않으면 지도가 등 뒤를 위로 세운 채 고정된다.
+        val deg: Double? = if (moveDeg != null && routeDeg != null && angleDiff(moveDeg, routeDeg) > 110.0) moveDeg
+            else routeDeg ?: moveDeg
+        if (moveDeg != null || prev == null) lastFollow = pos
         if (deg != null) {
             val cur = appliedDeg
             if (cur == null || angleDiff(cur, deg) >= TURN_THRESHOLD_DEG) appliedDeg = deg

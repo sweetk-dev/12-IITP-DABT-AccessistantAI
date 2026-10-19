@@ -3982,11 +3982,13 @@ window.NAVI = (function(){
     }
     // 카드 표시는 요청한 방식이 아니라 **실제 구간(legs)** 기준으로 맞춘다 (v1.41.0) —
     // 버스+지하철로 요청해도 플래너가 버스 직결만 고르면 "버스+지하철"이라 적으면 안 된다
-    if(routeData.mode){
+    // '추천' 카드 아래 이름(lastModeLabel)은 자동 추천이 고른 방식이다 — 말로 특정 방식을 고른 응답으로는 바꾸지 않는다.
+    var voicePicked = !!(opts && ("voiceMode" in opts) && opts.voiceMode);
+    if(routeData.mode && !voicePicked){
       var actual = modeLabelFromLegs(((routeData.routes||[])[0]||{}).legs, routeData.mode);
       lastModeLabel = actual.label;
       routeMode = "auto";
-    } else if(lastModeLabel){
+    } else if(lastModeLabel && !voicePicked){
       // 도보 전용 응답에는 mode 가 없다(경로 서비스는 대중교통 응답에만 mode 를 붙인다). 그대로 두면 앞서 받은
       // 대중교통 경로의 이름('도보+버스')이 '추천' 카드에 남는다 — 말로 "도보로만" 다시 요청해도 화면은
       // 도보+버스로 보였다(실기기 2026-10-19 관악역→김중업건축박물관). 실제 구간으로 다시 맞춘다.
@@ -5559,7 +5561,11 @@ window.NAVI = (function(){
     var grip=$("naviGrip");
     if(grip){
       var gy=null, gripTs=0, gripUpX=null, gripUpY=null;
-      grip.addEventListener("pointerdown", function(ev){ gy = (typeof ev.clientY==="number") ? ev.clientY : null; });
+      grip.addEventListener("pointerdown", function(ev){
+        gy = (typeof ev.clientY==="number") ? ev.clientY : null;
+        try{ if(ev.pointerId != null) grip.setPointerCapture(ev.pointerId); }catch(e){}   // 밖으로 밀어 떼도 pointerup 이 손잡이로 온다
+      });
+      grip.addEventListener("pointercancel", function(){ gy = null; });
       // 손잡이로 펼치거나 접은 직후 브라우저가 같은 자리에 보내는 click 을 버린다(v2.11.0).
       // 펼침은 손을 뗄 때(pointerup) 일어나고 click 은 그 뒤에 온다 — 그사이 목록이 펼쳐져 손가락 자리에
       // '이전'·'다음' 버튼이 와 있으면 그 버튼이 눌렸다(실기기 2026-10-19 "목록 펼치기를 누르면 이전/다음이 눌림").
@@ -5567,7 +5573,10 @@ window.NAVI = (function(){
       document.addEventListener("click", function(ev){
         if(Date.now() - gripTs >= 400 || grip.contains(ev.target) || gripUpY === null) return;
         if(typeof ev.clientX !== "number" || typeof ev.clientY !== "number") return;
-        if(Math.abs(ev.clientX - gripUpX) < 30 && Math.abs(ev.clientY - gripUpY) < 30){ ev.preventDefault(); ev.stopPropagation(); }
+        if(Math.abs(ev.clientX - gripUpX) < 30 && Math.abs(ev.clientY - gripUpY) < 30){
+          ev.preventDefault(); ev.stopPropagation();
+          gripTs = 0;   // 한 번만 버린다 — 곧이어 일부러 다시 누르는 것은 막지 않는다
+        }
       }, true);
       grip.addEventListener("pointerup", function(ev){
         var dy = (gy!==null && typeof ev.clientY==="number") ? (ev.clientY - gy) : NaN;
