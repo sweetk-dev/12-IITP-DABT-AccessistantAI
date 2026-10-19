@@ -127,7 +127,7 @@ function fakeKakao() {
       LatLngBounds: Bounds,
       Marker: function () { return mk(); },
       Circle: function () { return mk(); },
-      Polyline: function () { return mk(); },
+      Polyline: function (o) { const m = mk(); m.opts = o; return m; },   // 연결선 검사용으로 옵션을 남긴다 (v2.12.0)
       CustomOverlay: class {
         constructor(o) { this.content = o.content; this.position = o.position; this.visible = false; overlays.push(this); }
         setMap(m) { this.visible = !!m; }
@@ -1836,6 +1836,51 @@ check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 
   const NV = window.NAVI._internals();
   NV.resetTrip();
   window.show("view-navi");
+  // 역 → 출구 연결선 (v2.12.0, #367) — 지하철 구간은 역 대표점에서 끝나고 도보는 출구 앞에서 시작한다
+  {
+    const W0 = [37.4182, 126.9183], WB = [37.41890, 126.90922];          // 도보 → 관악역 2번 출구 앞
+    const SB = [37.419578, 126.908476], SA = [37.384435, 126.935579];   // 관악역·명학역 대표점(지하철 구간 선 끝)
+    const XA = { lat: 37.3854642, lng: 126.9350199 };                    // 명학역 1번 출구
+    const W1 = [37.3854642, 126.9350199], WE = [37.384688, 126.931893];
+    NV.showRoute({ status: "success", route_id: "r_v2120", mode: "walk_subway", destination: { poi_id: "16779" }, routes: [{
+      summary: { total_distance_m: 6000, duration_sec: 2000, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+      geometry: [W0, WB, SB, SA, W1, WE],
+      legs: [
+        { kind: "walk", geometry: [W0, WB] },
+        { kind: "subway", line: "1호선", geometry: [SB, SA], station_cnt: 2, warnings: [],
+          board: { name: "관악" }, alight: { name: "명학" },
+          board_exit: { exit_no: "2", lat: 37.4188986, lng: 126.9092237 }, alight_exit: { exit_no: "1", lat: XA.lat, lng: XA.lng } },
+        { kind: "walk", geometry: [W1, WE] },
+      ],
+      steps: [
+        { idx: 0, maneuver: "depart", instruction: "앞으로 이동합니다.", distance_m: 900, coord: W0, warnings: [] },
+        { idx: 1, maneuver: "subway_board", instruction: "관악역에서 승차합니다", distance_m: 0, coord: SB, warnings: [] },
+        { idx: 2, maneuver: "subway_alight", instruction: "명학역에서 하차합니다", distance_m: 0, coord: SA, warnings: [] },
+        { idx: 3, maneuver: "station_exit", instruction: "명학역 1번 출구입니다.", distance_m: 0, coord: W1, warnings: [] },
+        { idx: 4, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: WE, warnings: [] },
+      ] }] }, "v2120 테스트");
+    check("지하철 구간 앞뒤로 역 ↔ 출구 연결선을 그린다 (v2.12.0)", () => {
+      const lines = NV.routeLines();
+      assert.equal(lines.length, 5, "구간 3 + 연결선 2 가 아님");
+      const conn = lines.filter((l) => l.opts && l.opts.strokeStyle === "shortdot");
+      assert.equal(conn.length, 2, "연결선(옅은 점선) 수");
+      const pts = (l) => JSON.parse(JSON.stringify(l.opts.path.map((p) => [p.a, p.b])));   // 창(jsdom) 배열 → 이 쪽 배열
+      // 승차: 도보 끝 → 관악역 2번 출구 → 역 대표점
+      assert.deepEqual(pts(conn[0]), [WB, [37.4188986, 126.9092237], SB]);
+      // 하차: 역 대표점 → 명학역 1번 출구 (도보 첫 점이 출구와 같은 자리면 한 점으로 끝난다 — 같은 점 반복은 길이 0)
+      assert.deepEqual(pts(conn[1])[0], SA);
+      assert.deepEqual(pts(conn[1])[1], W1);
+      assert.notEqual(NV.routeLines()[0].opts.strokeStyle, "shortdot", "첫 줄(routeLine)이 연결선이 됨");
+    });
+    check("도보만 있는 경로·출구 좌표가 붙어 있는 경로에는 연결선이 없다 (v2.12.0)", () => {
+      NV.showRoute({ status: "success", route_id: "r_v2120b", destination: { poi_id: "x" }, routes: [{
+        summary: { total_distance_m: 100, duration_sec: 90, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+        geometry: [W1, WE], legs: [{ kind: "walk", geometry: [W1, WE] }],
+        steps: [{ idx: 0, maneuver: "depart", instruction: "앞으로", distance_m: 100, coord: W1, warnings: [] },
+                { idx: 1, maneuver: "arrive", instruction: "도착", distance_m: 0, coord: WE, warnings: [] }] }] }, "도보");
+      assert.equal(NV.routeLines().filter((l) => l.opts && l.opts.strokeStyle === "shortdot").length, 0);
+    });
+  }
   const P0 = [37.3900, 126.9500], P1 = [37.39050, 126.9500];
   const mmLegs = [
     { kind: "walk", geometry: [P0, P1] },
