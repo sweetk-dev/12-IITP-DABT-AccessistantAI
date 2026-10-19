@@ -67,6 +67,8 @@ class GuideWebView(context: Context) : WebView(context) {
  *   · 통화가 시작되면 안내를 멈추고 끝나면 잇는다
  *   · 정책상담 화면이 넘겨준 목적지를 받는다(accessnavi://navi?...)
  *   · 새 버전을 확인해 설치한다(AppUpdater)
+ *   · 길안내 지도 칸을 앱 지도(카카오맵 Android SDK)로 그린다 — 진행 방향으로 지도를 돌리기 위해(NativeMapController).
+ *     서버 설정(배포본 latest.json 의 native_map)이 꺼져 있거나 앱 지도를 못 쓰면 화면은 웹 지도를 그대로 쓴다.
  */
 class MainActivity : Activity() {
 
@@ -83,6 +85,8 @@ class MainActivity : Activity() {
     private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
     private val handler = Handler(Looper.getMainLooper())
     private var callHold = false
+    /** 길안내 지도(앱 지도). 지도 엔진을 쓸 수 없으면 null — 그때 화면은 웹 지도를 쓴다. */
+    private var mapCtl: NativeMapController? = null
 
     private val base: Uri by lazy { Uri.parse(BuildConfig.BASE_URL) }
 
@@ -93,7 +97,14 @@ class MainActivity : Activity() {
         root = FrameLayout(this).apply { setBackgroundColor(Color.WHITE) }
         setContentView(root)
         fitSystemBars()
+        NativeMap.initSdk(this)      // 길안내 지도 엔진 준비(키·엔진이 없으면 웹 지도로 남는다)
         createWebView()
+        if (NativeMap.sdkReady) mapCtl = NativeMapController(this, root) { web }
+        // 시험용(디버그 빌드에서만) — 지도 엔진 인증(패키지명·키 해시 등록)을 화면 하나로 확인한다
+        if (BuildConfig.DEBUG && intent?.getBooleanExtra("test_map", false) == true) {
+            NativeMap.showAuthTest(this, root)
+            return
+        }
         // 시험용(디버그 빌드에서만) — 임시 저장소의 update.apk 로 설치 화면을 바로 열어 본다
         if (BuildConfig.DEBUG && intent?.getBooleanExtra("test_install", false) == true) {
             AppUpdater.installFile(this, ApkProvider.file(this))
@@ -164,12 +175,21 @@ class MainActivity : Activity() {
         if (busy && !GuideService.running) GuideService.start(this)   // 화면이 꺼진 사이 시작하지 못했으면 지금
         AppUpdater.resume(this)       // 출처 허용 설정에서 돌아왔으면 설치를 잇는다
         if (!busy && Prefs.hasLogin(this)) AppUpdater.check(this)
+        mapCtl?.resume()
+    }
+
+    override fun onPause() {
+        // 화면이 가려지면 지도 그리기만 멈춘다 — 안내(웹)·위치·음성은 GuideService 로 계속된다
+        mapCtl?.pause()
+        super.onPause()
     }
 
     override fun onDestroy() {
         busy = false
         GuideService.stop(this)
         handler.removeCallbacks(callWatch)
+        mapCtl?.destroy()
+        mapCtl = null
         web?.let {
             it.stopLoading()
             (it.parent as? ViewGroup)?.removeView(it)
@@ -263,7 +283,7 @@ class MainActivity : Activity() {
         w.addJavascriptInterface(Bridge(), "AccessNaviApp")
         w.webViewClient = Client()
         w.webChromeClient = Chrome()
-        root.addView(w)
+        root.addView(w, 0)      // 맨 아래 — 길안내 지도 칸(앱 지도)이 그 위에 겹친다
         web = w
     }
 
@@ -295,6 +315,12 @@ class MainActivity : Activity() {
             handler.proceed(user, Prefs.pass(this@MainActivity))
         }
 
+        override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+            // 화면을 새로 연다(다시 시도·접속 계정 입력 후·연결 실패 화면) — 앱 지도가 새 화면을 가리지 않게
+            // 숨기고 비운다. 새 길안내 화면이 지도를 만들면(init) 다시 그려진다.
+            mapCtl?.resetForNewPage()
+        }
+
         override fun onPageFinished(view: WebView, url: String) {
             if (sameOrigin(Uri.parse(url))) {
                 pageReady = true
@@ -315,6 +341,7 @@ class MainActivity : Activity() {
             web = null
             pageReady = false
             setBusy(false)
+            mapCtl?.resetForNewPage()      // 새 화면이 지도를 처음부터 다시 그리게 한다
             createWebView()
             if (Prefs.hasLogin(this@MainActivity)) loadStart(null)
             return true
@@ -379,6 +406,29 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun version(): String = BuildConfig.VERSION_NAME
+
+        // ── 길안내 지도(앱 지도) — 화면의 지도 어댑터(accessistant.html 의 NMAP)가 부른다 ──
+
+        /** 앱 지도를 쓸 수 있는가 — 지도 엔진 준비가 끝났고 이번 실행에서 지도 오류가 나지 않았을 때. */
+        @JavascriptInterface
+        fun mapAvailable(): Boolean = mapCtl?.usable == true
+
+        /** (개발용 빌드에서만 true) 서버 설정(native_map)과 상관없이 앱 지도를 켠다 — 배포본 스위치를 건드리지 않고 시험하기 위해. */
+        @JavascriptInterface
+        fun mapForce(): Boolean = BuildConfig.DEBUG && mapCtl?.usable == true
+
+        /** 지도 칸의 위치·크기(웹 화면 기준 실제 픽셀). w·h 가 0 이면 지도를 숨긴다. */
+        @JavascriptInterface
+        fun mapRect(x: Int, y: Int, w: Int, h: Int) {
+            runOnUiThread { if (onServicePage()) mapCtl?.setRect(x, y, w, h) }
+        }
+
+        /** 지도 명령 묶음(JSON 배열) — 표시·경로선·카메라. */
+        @JavascriptInterface
+        fun mapCmd(json: String) {
+            if (json.length > 2_000_000) return       // 비정상적으로 큰 묶음은 받지 않는다
+            runOnUiThread { if (onServicePage()) mapCtl?.apply(json) }
+        }
     }
 
     private fun onServicePage(): Boolean = sameOrigin(web?.url?.let { Uri.parse(it) })

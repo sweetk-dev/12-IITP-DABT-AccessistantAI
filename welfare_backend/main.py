@@ -151,6 +151,21 @@ async def app_latest():
                          headers={"Cache-Control": "no-store"})
 
 
+def _native_map_enabled() -> bool:
+    """길안내 지도를 앱 지도(카카오맵 Android SDK)로 그릴지 — 배포본 latest.json 의 "native_map" 값.
+
+    되돌리기 스위치다. 값이 없거나 파일을 읽지 못하면 False(웹 지도). 파일만 고치면 바로 적용되고
+    (컨테이너 재시작 불필요), 화면은 다음에 열 때 이 값을 본다. 앱 지도를 못 쓰는 단말·브라우저는
+    이 값과 상관없이 웹 지도를 쓴다.
+    """
+    try:
+        import json as _json
+        with open(_APP_RELEASE_DIR / "latest.json", encoding="utf-8") as fp:
+            return _json.load(fp).get("native_map") is True
+    except Exception:
+        return False
+
+
 @app.get("/app/download/{name}", include_in_schema=False)
 async def app_download(name: str):
     if not _APK_NAME.match(name or ""):
@@ -264,6 +279,8 @@ async def front_config():
             # 안양시청 — 위치 권한 거부 시 지도 초기 중심
             "default_center": {"lat": 37.3943, "lng": 126.9568},
             "default_level": 5,
+            # 앱 안에서 길안내 지도를 앱 지도로 그릴지(되돌리기 스위치, #363) — _native_map_enabled 참조
+            "native_map": _native_map_enabled(),
         },
         # 기본 프로필은 전동 휠체어(#294, 02 v1.25.0). 프런트는 현재 프로필을 화면에 상시 표시한다
         "default_profile": tool_handlers.DEFAULT_PROFILE,

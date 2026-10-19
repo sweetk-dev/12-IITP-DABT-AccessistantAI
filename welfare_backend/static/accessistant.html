@@ -242,6 +242,16 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 /* 상단바는 세로 공간이 부족해도 줄어들면 안 된다 (다른 화면으로 못 나가는 상태 방지) */
 #view-navi>.appbar{flex:none;}
 /* 접근성 신고 (v1.34.0) — 지도 위 상시 노출. v1.35.0: 지도 가림 최소화를 위해 축소 */
+/* 앱 지도 배치 (v2.11.0, #363) — 앱 안에서 지도 칸을 앱 지도로 그릴 때(html.nmap).
+   앱 지도는 웹 화면 위에 겹치므로 지도 칸 위에 떠 있던 상태 문구·버튼을 지도 위·아래 줄로 옮긴다. */
+html.nmap .navi-wrap{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr) auto;}
+html.nmap .navi-status{position:relative;top:auto;left:auto;right:auto;grid-column:1/-1;grid-row:1;margin:6px 10px 4px;box-shadow:none;border:1px solid var(--c-border);}
+html.nmap #naviMap,html.nmap #naviMapFallback{grid-column:1/-1;grid-row:2;}
+html.nmap .reportbtn,html.nmap .sosbtn,html.nmap .prof-badge,html.nmap .locbtn{position:relative;left:auto;right:auto;top:auto;bottom:auto;grid-row:3;margin:6px 0 6px 8px;box-shadow:none;}
+html.nmap .reportbtn{grid-column:1;}
+html.nmap .sosbtn{grid-column:2;}
+html.nmap .prof-badge{grid-column:3;justify-self:end;}
+html.nmap .locbtn{grid-column:4;margin-right:8px;}
 .reportbtn{position:absolute;left:12px;bottom:12px;z-index:6;border:0;border-radius:12px;
   background:#B45309;color:#fff;font-size:.92em;font-weight:700;padding:9px 10px;
   box-shadow:0 3px 10px rgba(0,0,0,.3);cursor:pointer;}
@@ -2300,8 +2310,8 @@ window.NAVI = (function(){
     try{
       meMarker=null; drawMe();
       if(originOverride){
-        var op=new kakao.maps.LatLng(originOverride.lat, originOverride.lng);
-        originMarker=new kakao.maps.Circle({center:op, radius:14, strokeWeight:3,
+        var op=new (KM().LatLng)(originOverride.lat, originOverride.lng);
+        originMarker=new (KM().Circle)({center:op, radius:14, strokeWeight:3,
           strokeColor:"#16A34A", strokeOpacity:0.9, fillColor:"#16A34A", fillOpacity:0.75});
         originMarker.setMap(map);
       }
@@ -2310,7 +2320,7 @@ window.NAVI = (function(){
       stepMarker=null;
       var st=steps[stepIdx];
       if((guiding||simActive) && st && st.coord){
-        stepMarker=new kakao.maps.Marker({position:new kakao.maps.LatLng(st.coord[0], st.coord[1]), map:map});
+        stepMarker=new (KM().Marker)({position:new (KM().LatLng)(st.coord[0], st.coord[1]), map:map});
       }
       simMarker=null; if(simActive) drawSim();
       if(guiding||simActive){ setFollow(true); followCamera(); }
@@ -2343,26 +2353,246 @@ window.NAVI = (function(){
       document.head.appendChild(sc);
     });
   }
+  /* ── 앱 지도 어댑터 (v2.11.0, #363) ──────────────────────────────────────────────────────────
+     이동경로 안내 앱 안에서는 지도 칸을 앱 지도(카카오맵 Android SDK)로 그린다 — 웹 지도는 진행 방향으로
+     지도를 돌릴 수 없어서다(현장 점검 2026-10-16 "북쪽 고정이라 길을 읽기 어렵다").
+     · 지도 호출부는 KM() 이 돌려주는 이름공간을 쓴다: 앱 지도면 NMAP.api, 아니면 kakao.maps(웹 지도).
+     · NMAP.api 는 이 화면이 실제로 쓰는 만큼만 카카오 웹 지도와 같은 모양으로 흉내 낸다
+       (Map·LatLng·LatLngBounds·Circle·Marker·Polyline·CustomOverlay·event.addListener).
+       그린 것은 명령(JSON 배열)으로 묶어 AccessNaviApp.mapCmd 로 보내고, 앱이 그대로 그린다.
+     · 앱 → 화면 사건은 window.__NMAP.emit 으로 받는다: click(빈 곳) · label(이름 태그) · dragstart ·
+       camera(이동 끝 — 중심·확대 단계) · error(앱 지도 실패 → 웹 지도로 되돌림).
+     · 켜는 조건: 앱이 앱 지도를 쓸 수 있다고 답하고(AccessNaviApp.mapAvailable) 서버 설정 cfg.map.native_map
+       (배포본 latest.json — 되돌리기 스위치)이 true 일 때. 개발용 앱 빌드는 mapForce 로 서버 설정 없이도 켠다.
+       일반 브라우저·구버전 앱은 웹 지도 그대로.
+     · 장소 검색(kakao.maps.services)은 앱 지도와 무관하게 웹 지도 SDK 를 그대로 쓴다. */
+  var NMAP = (function(){
+    var self = {on:false};
+    var seq = 0, objs = {}, lis = {}, q = [], qT = null;
+    var center = {lat:37.3943, lng:126.9568}, level = 5;
+    var lastRect = "", rectT = null, watching = false;
+
+    function app(){ return window.AccessNaviApp; }
+    function want(){
+      try{
+        var a = app();
+        if(!a || typeof a.mapAvailable !== "function" || typeof a.mapCmd !== "function" ||
+           typeof a.mapRect !== "function" || !a.mapAvailable()) return false;
+        if(cfg && cfg.map && cfg.map.native_map === true) return true;
+        // 개발용 앱 빌드만 true 를 돌려준다(배포본은 항상 false) — 서버 스위치를 켜지 않고 시험하기 위해
+        return typeof a.mapForce === "function" && a.mapForce() === true;
+      }catch(e){ return false; }
+    }
+    // 명령은 한 번에 묶어 보낸다 — 경로를 그릴 때 수십 개가 한꺼번에 나온다
+    function send(c){ q.push(c); if(!qT) qT = setTimeout(flush, 0); }
+    function flush(){
+      qT = null;
+      if(!q.length || !self.on){ q = []; return; }
+      var b = q; q = [];
+      try{ app().mapCmd(JSON.stringify(b)); }catch(e){}
+    }
+    function pt(p){ return {lat:+p.getLat(), lng:+p.getLng()}; }
+
+    function LatLng(lat, lng){ this._a = +lat; this._b = +lng; }
+    LatLng.prototype.getLat = function(){ return this._a; };
+    LatLng.prototype.getLng = function(){ return this._b; };
+    function LatLngBounds(){ this._p = []; }
+    LatLngBounds.prototype.extend = function(p){ this._p.push([+p.getLat(), +p.getLng()]); };
+    LatLngBounds.prototype.isEmpty = function(){ return !this._p.length; };
+
+    // 지도 — 중심·확대 단계는 앱이 카메라 이동을 마칠 때마다 알려 준다(camera 사건). 그 사이는 마지막으로 보낸 값.
+    function NMap(el, opts){
+      opts = opts || {};
+      if(opts.center) center = pt(opts.center);
+      if(opts.level) level = opts.level;
+      objs = {}; lis = {};
+      send({op:"init", lat:center.lat, lng:center.lng, level:level});
+      watchRect();
+    }
+    NMap.prototype.setCenter = function(p){ center = pt(p); send({op:"center", lat:center.lat, lng:center.lng}); };
+    NMap.prototype.panTo = NMap.prototype.setCenter;
+    NMap.prototype.getCenter = function(){ return new LatLng(center.lat, center.lng); };
+    NMap.prototype.setBounds = function(b){ if(b && b._p && b._p.length) send({op:"bounds", pts:b._p.slice(0, 4000)}); };
+    NMap.prototype.getLevel = function(){ return level; };
+    NMap.prototype.setLevel = function(lv, o){
+      level = lv;
+      var c = {op:"level", level:lv};
+      if(o && o.anchor){ var a = pt(o.anchor); c.lat = a.lat; c.lng = a.lng; }
+      send(c);
+    };
+    NMap.prototype.relayout = function(){ reportRect(true); };
+    // 안내 중 현재 위치 따라가기 — 앱이 진행 방향으로 지도를 돌린다(웹 지도에는 없는 기능, followCamera 가 쓴다)
+    NMap.prototype.followTo = function(p){ center = pt(p); send({op:"follow", lat:center.lat, lng:center.lng}); };
+
+    // 지도 위 표시 공통 — 웹 지도와 같이 setMap(map) 으로 그리고 setMap(null) 로 지운다
+    function Ov(){}
+    Ov.prototype._init = function(pos, o){
+      this.id = "o" + (++seq); this._pos = pos ? pt(pos) : null; this._o = o || {}; this._on = false;
+      if(this._o.map) this.setMap(this._o.map);
+    };
+    Ov.prototype.setMap = function(m){
+      if(m){
+        if(this._on) return;
+        this._on = true; objs[this.id] = this; send(this._spec());
+      } else if(this._on){
+        this._on = false; delete objs[this.id]; send({op:"remove", id:this.id});
+      }
+    };
+    Ov.prototype.getMap = function(){ return this._on ? true : null; };
+    Ov.prototype.setPosition = function(p){
+      this._pos = pt(p);
+      if(this._on) send({op:"move", id:this.id, lat:this._pos.lat, lng:this._pos.lng});
+    };
+    Ov.prototype.getPosition = function(){ return this._pos ? new LatLng(this._pos.lat, this._pos.lng) : null; };
+    Ov.prototype._label = function(kind, extra){
+      var c = {op:"label", id:this.id, kind:kind, lat:this._pos.lat, lng:this._pos.lng};
+      for(var k in (extra || {})) c[k] = extra[k];
+      return c;
+    };
+
+    // 원(현재 위치·출발지·모의 주행 위치) — 앱 지도에서는 화면 크기가 일정한 점으로 그린다.
+    // nmRole: me(현재 위치)·sim(모의 주행) 은 진행 방향 화살표가 있는 점. 출발지는 초록 원(색으로 구분).
+    var CIRCLE_KIND = {"#16A34A":"origin"};
+    function Circle(o){ this._init(o && o.center, o); }
+    Circle.prototype = Object.create(Ov.prototype);
+    Circle.prototype._spec = function(){
+      var o = this._o, kind = o.nmRole || CIRCLE_KIND[o.strokeColor] || "dot";
+      return this._label(kind, {color: o.fillColor || o.strokeColor || "#2563EB"});
+    };
+    // 기본 마커(다음 안내 지점) — 빨간 핀
+    function Marker(o){ this._init(o && o.position, o); }
+    Marker.prototype = Object.create(Ov.prototype);
+    Marker.prototype._spec = function(){ return this._label("pin"); };
+    // 사용자 표시 — 내용 요소의 class 로 종류를 정한다: 횡단보도(.cw-mark) / 관광지 이름 태그(.poi-tag)
+    function CustomOverlay(o){ this._init(o && o.position, o); }
+    CustomOverlay.prototype = Object.create(Ov.prototype);
+    CustomOverlay.prototype._spec = function(){
+      var el = this._o.content, cls = (el && el.className) || "";
+      if(typeof cls !== "string") cls = String(cls.baseVal || "");
+      if(/\bcw-mark\b/.test(cls)) return this._label(/\bcw-mark--near\b/.test(cls) ? "cw-near" : "cw");
+      return this._label(/\bpoi-tag--multi\b/.test(cls) ? "tag-multi" : "tag",
+        {text: el ? (el.textContent || "") : "", clickable: !!this._o.clickable});
+    };
+    // 경로선 — 구간마다 하나. 점선(대중교통 개략선)은 dash 로 알린다(앱은 진행 방향 계산에서 뺀다)
+    function Polyline(o){ this._init(null, o); }
+    Polyline.prototype = Object.create(Ov.prototype);
+    Polyline.prototype.setPosition = function(){};
+    Polyline.prototype._spec = function(){
+      var o = this._o;
+      return {op:"line", id:this.id,
+        pts:(o.path || []).map(function(p){ return [+p.getLat(), +p.getLng()]; }),
+        color:o.strokeColor || "#2563EB", width:o.strokeWeight || 6,
+        opacity:(o.strokeOpacity != null ? o.strokeOpacity : 0.9),
+        dash:!!(o.strokeStyle && o.strokeStyle !== "solid")};
+    };
+
+    var event = { addListener: function(target, type, fn){ (lis[type] = lis[type] || []).push(fn); } };
+    function fire(type, arg){ (lis[type] || []).forEach(function(fn){ try{ fn(arg); }catch(e){} }); }
+
+    self.api = {Map:NMap, LatLng:LatLng, LatLngBounds:LatLngBounds, Circle:Circle, Marker:Marker,
+                Polyline:Polyline, CustomOverlay:CustomOverlay, event:event};
+
+    // 앱 → 화면
+    window.__NMAP = { emit: function(type, d){
+      if(!self.on) return;
+      d = d || {};
+      if(type === "click") fire("click", {latLng: new LatLng(d.lat, d.lng)});
+      else if(type === "label"){
+        // 이름 태그를 눌렀다 — 웹 태그 요소에 붙은 처리(선택 팝업·묶음 확대)를 그대로 쓴다
+        var o = objs[d.id], el = o && o._o && o._o.content;
+        if(el && typeof el.click === "function") el.click();
+      }
+      else if(type === "dragstart") fire("dragstart");
+      else if(type === "camera"){
+        center = {lat:+d.lat, lng:+d.lng};
+        var lv = Math.round(+d.level);
+        if(lv && lv !== level){ level = lv; fire("zoom_changed"); }
+      }
+      else if(type === "error") self.fallback(d.code);
+    }};
+
+    // 지도 칸 위치 보고 — 앱 지도는 웹 화면 위에 겹쳐 있어서, 지도 칸이 안 보이거나(다른 화면·화면 꺼짐)
+    // 팝업이 떠 있으면 0 을 보내 앱 지도를 숨긴다. 숨기지 않으면 지도 칸 위로 뜨는 팝업을 가린다.
+    function overlayOpen(){
+      var list = document.querySelectorAll('.modal-backdrop:not([hidden]), [role="dialog"][aria-modal="true"]');
+      for(var i = 0; i < list.length; i++){ if(list[i].getClientRects().length) return true; }
+      return false;
+    }
+    function reportRect(force){
+      if(!self.on) return;
+      var el = $("naviMap"), v = $("view-navi"), x = 0, y = 0, w = 0, h = 0;
+      if(el && v && v.classList.contains("active") && !overlayOpen() && document.visibilityState !== "hidden"){
+        var r = el.getBoundingClientRect(), k = window.devicePixelRatio || 1;
+        x = Math.round(r.left * k); y = Math.round(r.top * k);
+        w = Math.round(r.width * k); h = Math.round(r.height * k);
+      }
+      var key = x + "," + y + "," + w + "," + h;
+      if(!force && key === lastRect) return;
+      lastRect = key;
+      try{ app().mapRect(x, y, w, h); }catch(e){}
+    }
+    function soon(){ if(!rectT) rectT = setTimeout(function(){ rectT = null; reportRect(); }, 30); }
+    function watchRect(){
+      if(watching) return;
+      watching = true;
+      var el = $("naviMap");
+      try{ if(window.ResizeObserver && el) new ResizeObserver(soon).observe(el); }catch(e){}
+      try{
+        new MutationObserver(soon).observe(document.body,
+          {subtree:true, childList:true, attributes:true, attributeFilter:["hidden", "class", "style", "inert"]});
+      }catch(e){}
+      window.addEventListener("resize", soon);
+      document.addEventListener("visibilitychange", soon);
+      setInterval(reportRect, 1000);   // 크기는 그대로인데 위치만 바뀐 경우 대비 — 바뀌었을 때만 보낸다
+      soon();
+    }
+
+    /** 앱 지도를 쓸지 정한다(init 에서 지도를 만들기 전에 한 번). html.nmap 은 앱 지도용 배치(CSS). */
+    self.decide = function(){
+      self.on = want();
+      document.documentElement.classList.toggle("nmap", self.on);
+      return self.on;
+    };
+    // 앱 지도 오류 — 웹 지도로 바꾸고, 그동안 그린 것(현위치·출발지·태그·경로·안내 지점)을 다시 그린다
+    self.fallback = function(code){
+      if(!self.on) return;
+      self.on = false; q = []; objs = {}; lis = {};
+      document.documentElement.classList.remove("nmap");
+      try{ app().mapRect(0, 0, 0, 0); }catch(e){}
+      kakaoReady = !!(window.kakao && window.kakao.maps && window.kakao.maps.Map);
+      map = null;
+      initMap();                      // 웹 지도 SDK 가 아직 없으면 initMap 이 다시 받아 오기를 예약한다
+      if(map) restoreMapState();
+    };
+    return self;
+  })();
+  /** 지도 이름공간 — 앱 지도면 NMAP.api, 아니면 카카오 웹 지도. 생성은 new (KM().LatLng)(…) 처럼 괄호로 감싼다. */
+  function KM(){ return NMAP.on ? NMAP.api : window.kakao.maps; }
   function initMap(){
     var f=$("naviMapFallback");
+    // 앱 지도(v2.11.0)는 웹 지도 SDK 와 무관하게 준비된다 — 지도 그리기 가드(kakaoReady)를 연다.
+    // 장소 검색은 window.kakao.maps.services 를 따로 확인하므로 웹 지도 SDK 가 없으면 조용히 빈 결과다.
+    if(NMAP.on) kakaoReady = true;
     if(!kakaoReady){ if(f) f.hidden=false; scheduleKakaoRetry(); return; }   // 자동 재시도 (v1.44.0)
     if(f) f.hidden=true;
     var c = (cfg.map && cfg.map.default_center) || {lat:37.3943,lng:126.9568};
-    map = new kakao.maps.Map($("naviMap"), {
-      center: new kakao.maps.LatLng(c.lat, c.lng),
+    map = new (KM().Map)($("naviMap"), {
+      center: new (KM().LatLng)(c.lat, c.lng),
       level: (cfg.map && cfg.map.default_level) || 5
     });
     // 지도를 눌러 출발지·도착지 지정.
     // 예전에는 빈 곳 클릭이 언제나 출발지였다 — 그래서 관광지 태그가 없는 곳(복지관·시청 등)은
     // 도착지로 지정할 방법이 아예 없었는데, 안내문은 "지도에서 목적지를 골라 달라"고 말했다.
-    kakao.maps.event.addListener(map, "click", function(e){
+    KM().event.addListener(map, "click", function(e){
       var ll = e.latLng;
       onMapPointPick(ll.getLat(), ll.getLng());
     });
     // 줌이 바뀌면 이름 태그 묶음/분리를 다시 계산
-    kakao.maps.event.addListener(map, "zoom_changed", function(){ renderSpotTags(); });
+    KM().event.addListener(map, "zoom_changed", function(){ renderSpotTags(); });
     // 사용자가 지도를 끌면 현재 위치 추적을 푼다 — 안내 중에도 주변을 볼 수 있게 (v1.44.0)
-    kakao.maps.event.addListener(map, "dragstart", function(){ setFollow(false); });
+    KM().event.addListener(map, "dragstart", function(){ setFollow(false); });
+    // 앱 지도는 터치를 앱이 받는다 — 웹 지도 칸의 '끌면 목록 접기'(pointermove) 대신 여기서 접는다
+    if(NMAP.on) KM().event.addListener(map, "dragstart", function(){ sheetSetCollapsed(true); });
   }
 
   /* ── 현재 위치 추적 (v1.44.0) — followMe=false 면 안내 중에도 카메라를 옮기지 않는다 ── */
@@ -2377,24 +2607,24 @@ window.NAVI = (function(){
     setFollow(true);
     var p = simActive ? simPos : (here || originOverride);
     if(!p){ status("현재 위치를 아직 확인하지 못했습니다."); return; }
-    if(map && kakaoReady){ try{ map.setCenter(new kakao.maps.LatLng(p.lat, p.lng)); }catch(e){} }
+    if(map && kakaoReady){ try{ map.setCenter(new (KM().LatLng)(p.lat, p.lng)); }catch(e){} }
   }
 
   function recenter(){
     if(!map || !kakaoReady) return;
     var o = originOverride || (inServiceArea(here) ? here : null);
-    if(o){ map.setCenter(new kakao.maps.LatLng(o.lat, o.lng)); return; }
+    if(o){ map.setCenter(new (KM().LatLng)(o.lat, o.lng)); return; }
     // 서비스 지역 밖이거나 위치를 모를 때 — 현위치(서울 등)를 보여주면 아무 의미가 없다.
     // 관광지 핀이 다 보이도록 맞추고, 없으면 지역 기본 중심으로.
     var located = spots.filter(function(sp){ return sp.lat && sp.lng; });
     if(located.length){
-      var b = new kakao.maps.LatLngBounds();
-      located.forEach(function(sp){ b.extend(new kakao.maps.LatLng(sp.lat, sp.lng)); });
+      var b = new (KM().LatLngBounds)();
+      located.forEach(function(sp){ b.extend(new (KM().LatLng)(sp.lat, sp.lng)); });
       map.setBounds(b);
       return;
     }
     var c = (cfg.map && cfg.map.default_center) || {lat:37.3943, lng:126.9568};
-    map.setCenter(new kakao.maps.LatLng(c.lat, c.lng));
+    map.setCenter(new (KM().LatLng)(c.lat, c.lng));
   }
 
   function setOrigin(lat, lng){
@@ -2405,9 +2635,9 @@ window.NAVI = (function(){
     }
     originOverride = {lat:lat, lng:lng};
     if(map){
-      var pos = new kakao.maps.LatLng(lat, lng);
+      var pos = new (KM().LatLng)(lat, lng);
       if(!originMarker){
-        originMarker = new kakao.maps.Circle({center:pos, radius:14, strokeWeight:3,
+        originMarker = new (KM().Circle)({center:pos, radius:14, strokeWeight:3,
           strokeColor:"#16A34A", strokeOpacity:0.9, fillColor:"#16A34A", fillOpacity:0.75});
         originMarker.setMap(map);
       } else { originMarker.setPosition(pos); }
@@ -3099,10 +3329,10 @@ window.NAVI = (function(){
   }
   function drawMe(){
     if(!map || !here) return;
-    var pos = new kakao.maps.LatLng(here.lat, here.lng);
+    var pos = new (KM().LatLng)(here.lat, here.lng);
     if(!meMarker){
-      meMarker = new kakao.maps.Circle({center:pos, radius:12, strokeWeight:3, strokeColor:"#2563EB",
-        strokeOpacity:0.9, fillColor:"#2563EB", fillOpacity:0.8});
+      meMarker = new (KM().Circle)({center:pos, radius:12, strokeWeight:3, strokeColor:"#2563EB",
+        strokeOpacity:0.9, fillColor:"#2563EB", fillOpacity:0.8, nmRole:"me"});
       meMarker.setMap(map);
     } else { meMarker.setPosition(pos); }
   }
@@ -3389,7 +3619,7 @@ window.NAVI = (function(){
       if(sp.addr){ var ad=document.createElement("div"); ad.className="ad"; ad.textContent=sp.addr; col.appendChild(ad); }
       b.appendChild(col);
       b.addEventListener("click", function(){
-        if(map && kakaoReady && sp.lat != null) map.setCenter(new kakao.maps.LatLng(sp.lat, sp.lng));
+        if(map && kakaoReady && sp.lat != null) map.setCenter(new (KM().LatLng)(sp.lat, sp.lng));
         openSpotChoice(sp);
       });
       res.appendChild(b);
@@ -3423,13 +3653,13 @@ window.NAVI = (function(){
         if(g.length > 1){
           // 묶음 태그 — 한 단계 확대해 분리
           map.setLevel(Math.max(1, map.getLevel() - 1),
-                       {anchor: new kakao.maps.LatLng(rep.lat, rep.lng)});
+                       {anchor: new (KM().LatLng)(rep.lat, rep.lng)});
         } else {
           onSpotTagClick(rep);
         }
       });
-      var ov = new kakao.maps.CustomOverlay({
-        position: new kakao.maps.LatLng(rep.lat, rep.lng),
+      var ov = new (KM().CustomOverlay)({
+        position: new (KM().LatLng)(rep.lat, rep.lng),
         content: el, yAnchor: 1.25, clickable: true,
       });
       ov.setMap(map);
@@ -3510,8 +3740,8 @@ window.NAVI = (function(){
       el.className = "cw-mark" + (c.role === "near" ? " cw-mark--near" : "");
       el.setAttribute("aria-hidden", "true");
       el.title = c.role === "near" ? "횡단보도" : "건너는 횡단보도" + (c.length_m ? " 약 " + Math.round(c.length_m) + "m" : "");
-      var ov = new kakao.maps.CustomOverlay({
-        position: new kakao.maps.LatLng(c.lat, c.lng), content: el, xAnchor: 0.5, yAnchor: 0.5,
+      var ov = new (KM().CustomOverlay)({
+        position: new (KM().LatLng)(c.lat, c.lng), content: el, xAnchor: 0.5, yAnchor: 0.5,
         clickable: false, zIndex: c.role === "near" ? 1 : 2,
       });
       ov.setMap(map); cwMarks.push(ov);
@@ -3527,8 +3757,8 @@ window.NAVI = (function(){
       ? legs.map(function(l){ return {geom:l.geometry, transit: l.kind !== "walk"}; })
       : [{geom: primary.geometry, transit:false}];
     parts.forEach(function(p){
-      var path = p.geom.map(function(c){ return new kakao.maps.LatLng(c[0], c[1]); });
-      var ln = new kakao.maps.Polyline(p.transit
+      var path = p.geom.map(function(c){ return new (KM().LatLng)(c[0], c[1]); });
+      var ln = new (KM().Polyline)(p.transit
         ? {path:path, strokeWeight:5, strokeColor:"#7C3AED", strokeOpacity:0.75, strokeStyle:"shortdash"}
         : {path:path, strokeWeight:6, strokeColor:"#2563EB", strokeOpacity:0.9});
       ln.setMap(map); routeLines.push(ln);
@@ -3536,8 +3766,8 @@ window.NAVI = (function(){
     routeLine = routeLines[0] || null;
     drawCwMarks(primary);
     if(fit){
-      var bounds = new kakao.maps.LatLngBounds();
-      primary.geometry.forEach(function(c){ bounds.extend(new kakao.maps.LatLng(c[0], c[1])); });
+      var bounds = new (KM().LatLngBounds)();
+      primary.geometry.forEach(function(c){ bounds.extend(new (KM().LatLng)(c[0], c[1])); });
       map.setBounds(bounds);
     }
   }
@@ -3739,6 +3969,19 @@ window.NAVI = (function(){
       var actual = modeLabelFromLegs(((routeData.routes||[])[0]||{}).legs, routeData.mode);
       lastModeLabel = actual.label;
       routeMode = "auto";
+    } else if(lastModeLabel){
+      // 도보 전용 응답에는 mode 가 없다(경로 서비스는 대중교통 응답에만 mode 를 붙인다). 그대로 두면 앞서 받은
+      // 대중교통 경로의 이름('도보+버스')이 '추천' 카드에 남는다 — 말로 "도보로만" 다시 요청해도 화면은
+      // 도보+버스로 보였다(실기기 2026-10-19 관악역→김중업건축박물관). 실제 구간으로 다시 맞춘다.
+      lastModeLabel = modeLabelFromLegs(((routeData.routes||[])[0]||{}).legs, "walk").label;
+    }
+    // 말로 이동 방식을 바꿨다 — 안내 문장만 바뀌고 카드 선택은 '추천'에 남던 문제(실기기 2026-10-19).
+    // 상담원이 부른 경로 도구가 알려 준 '사용자가 고른 방식'으로 카드를 맞춘다. 자동 추천이면 '추천'.
+    if(opts && ("voiceMode" in opts)){
+      var vm = opts.voiceMode;
+      routeMode = (vm === "walk" || vm === "walk_subway" || vm === "walk_bus" || vm === "walk_bus_subway") ? vm : "auto";
+      if(routeMode === "auto" && !lastModeLabel)
+        lastModeLabel = modeLabelFromLegs(((routeData.routes||[])[0]||{}).legs, routeData.mode || "walk").label;
     }
     var primary = (route.routes||[])[0];
     if(!primary){ status("경로를 찾지 못했습니다."); return; }
@@ -4646,8 +4889,8 @@ window.NAVI = (function(){
     }
 
     if(map && st.coord){
-      var pos=new kakao.maps.LatLng(st.coord[0], st.coord[1]);
-      if(!stepMarker){ stepMarker=new kakao.maps.Marker({position:pos, map:map}); }
+      var pos=new (KM().LatLng)(st.coord[0], st.coord[1]);
+      if(!stepMarker){ stepMarker=new (KM().Marker)({position:pos, map:map}); }
       else { stepMarker.setPosition(pos); }
     }
   }
@@ -4712,11 +4955,18 @@ window.NAVI = (function(){
       return;
     }
   }
-  function _interimAnnounce(pos){
+  // 중간 안내("다음 안내까지 약 300·150미터") — 남은 거리는 경로를 따라 잰다(v2.11.0).
+  // 예전에는 다음 안내 지점까지의 직선거리였다 — 길이 돌아가는 구간에서 실제 남은 거리와 크게 어긋났다
+  // (실기기 모의 주행 2026-10-19 "다음 안내까지 150미터 — 전혀 맞지 않음"). 진행거리를 모르면 직선거리로 둔다.
+  function _interimAnnounce(pos, alongOverride){
     if(!guiding || !pos) return;
     var nxt = steps[stepIdx+1];
     if(!nxt || !nxt.coord) return;
-    var d = distM(pos, {lat:nxt.coord[0], lng:nxt.coord[1]});
+    var nextAlong = stepAlong[stepIdx+1], d;
+    if(typeof nextAlong === "number" && routeGeom.length >= 2){
+      var along = (typeof alongOverride === "number") ? alongOverride : alongOnRoute(pos);
+      d = nextAlong - along;
+    } else d = distM(pos, {lat:nxt.coord[0], lng:nxt.coord[1]});
     [300, 150].forEach(function(t){
       var k = stepIdx + ":" + t;
       if(d <= t && d > t - 90 && !_interimDone[k]){
@@ -4856,14 +5106,19 @@ window.NAVI = (function(){
   function followCamera(){
     if(!map || !guiding || !followMe) return;   // 사용자가 지도를 옮겼으면 강제 이동하지 않는다 (v1.44.0)
     var p = simActive ? simPos : here;
-    if(p){ try{ map.setCenter(new kakao.maps.LatLng(p.lat, p.lng)); }catch(e){} }
+    if(!p) return;
+    try{
+      var pos = new (KM().LatLng)(p.lat, p.lng);
+      if(typeof map.followTo === "function") map.followTo(pos);   // 앱 지도 — 진행 방향 기준 회전 (v2.11.0)
+      else map.setCenter(pos);
+    }catch(e){}
   }
   function drawSim(){
     if(!map || !simPos) return;
-    var pos=new kakao.maps.LatLng(simPos.lat, simPos.lng);
+    var pos=new (KM().LatLng)(simPos.lat, simPos.lng);
     if(!simMarker){
-      simMarker=new kakao.maps.Circle({center:pos, radius:12, strokeWeight:3, strokeColor:"#EA580C",
-        strokeOpacity:0.9, fillColor:"#F97316", fillOpacity:0.85});
+      simMarker=new (KM().Circle)({center:pos, radius:12, strokeWeight:3, strokeColor:"#EA580C",
+        strokeOpacity:0.9, fillColor:"#F97316", fillOpacity:0.85, nmRole:"sim"});
       simMarker.setMap(map);
     } else { simMarker.setPosition(pos); }
   }
@@ -4903,13 +5158,15 @@ window.NAVI = (function(){
     if(!simActive || !simPos) return;
     var nxt=steps[stepIdx+1];
     if(!nxt || !nxt.coord) return;
-    _interimAnnounce(simPos);
+    _interimAnnounce(simPos, simDist);
     _landmarkAnnounce(simPos, simDist);
     if(_reachedStep(simPos, stepIdx+1)){
       stepIdx+=1;
       renderStep();
       _announceStep(stepIdx);
-      if(steps[stepIdx].maneuver==="arrive"){ finishSimulation(); }
+      // 도착 안내는 지점 5~25m 앞에서 미리 나온다(전환 판정의 여유). 예전에는 여기서 곧바로 모의 주행을 끝내
+      // 화살표가 도착지 앞에 멈춘 채 종료 창이 떴다(실기기 2026-10-19). 경로 끝까지 마저 움직인 뒤
+      // 타이머(simDist >= total)가 끝낸다 — 마지막 스텝이라 다음 판정은 더 일어나지 않는다.
     }
   }
   function finishSimulation(){
@@ -5059,7 +5316,9 @@ window.NAVI = (function(){
       renderSpotsPanel();
       return {label: "🗺️ 지도에서 무장애 관광지 보기" + (spots.length ? " (" + spots.length + "곳)" : "")};
     } else if(msg.action === "show_route"){
-      showRoute(p.route, "");
+      // mode_requested: 말로 고른 이동 방식(자동 추천이면 null) — 이동 방식 카드 선택을 맞춘다(v2.11.0).
+      // 구버전 서버는 이 키가 없다 → undefined 면 카드는 종전대로 둔다.
+      showRoute(p.route, "", ("mode_requested" in p) ? {voiceMode: p.mode_requested} : null);
       return {label: "🗺️ 지도에서 경로 보기"};
     } else if(msg.action === "route_unavailable"){
       // 대화로 요청한 경로가 만들어지지 않았다 — 말로만 알리고 화면은 그대로 두면
@@ -5127,8 +5386,8 @@ window.NAVI = (function(){
         try{
           var primary=(route.routes||[])[0];
           if(primary && primary.geometry && primary.geometry.length){
-            var b=new kakao.maps.LatLngBounds();
-            primary.geometry.forEach(function(c){ b.extend(new kakao.maps.LatLng(c[0], c[1])); });
+            var b=new (KM().LatLngBounds)();
+            primary.geometry.forEach(function(c){ b.extend(new (KM().LatLng)(c[0], c[1])); });
             map.setBounds(b);
           }
         }catch(e){}
@@ -5141,6 +5400,9 @@ window.NAVI = (function(){
   function _sheetRelayout(){
     // 시트 높이가 바뀌면 지도 컨테이너 크기도 바뀐다 — 전환이 끝난 뒤 재계산(중심 유지)
     if(!map || !kakaoReady) return;
+    // 앱 지도는 칸 크기가 바뀌어도 스스로 중심을 유지한다 — 여기서 중심을 다시 넣으면, 지도를 끌어
+    // 목록이 접힌 직후(끌기 전 중심값으로) 지도를 되돌려 버린다(실기기 2026-10-19). 크기만 다시 알린다.
+    if(NMAP.on){ setTimeout(function(){ try{ map.relayout(); }catch(e){} }, 280); return; }
     setTimeout(function(){
       try{ var c=map.getCenter(); map.relayout(); map.setCenter(c); }catch(e){}
     }, 280);
@@ -5195,6 +5457,7 @@ window.NAVI = (function(){
     if(!IS_NAVI) return;   // 정책상담에서는 지도·위치를 쓰지 않는다 — 길안내는 이동경로 안내가 맡는다 (v2.0.0)
 
     await loadKakao();
+    NMAP.decide();      // 앱 안 + 서버 설정 on + 앱 지도 사용 가능 → 앱 지도 (v2.11.0)
     initMap();
     startWatch();
 
@@ -5278,11 +5541,21 @@ window.NAVI = (function(){
     // 그립: 클릭 = 토글, 위/아래 드래그 = 펼침/접힘
     var grip=$("naviGrip");
     if(grip){
-      var gy=null;
+      var gy=null, gripTs=0, gripUpX=null, gripUpY=null;
       grip.addEventListener("pointerdown", function(ev){ gy = (typeof ev.clientY==="number") ? ev.clientY : null; });
+      // 손잡이로 펼치거나 접은 직후 브라우저가 같은 자리에 보내는 click 을 버린다(v2.11.0).
+      // 펼침은 손을 뗄 때(pointerup) 일어나고 click 은 그 뒤에 온다 — 그사이 목록이 펼쳐져 손가락 자리에
+      // '이전'·'다음' 버튼이 와 있으면 그 버튼이 눌렸다(실기기 2026-10-19 "목록 펼치기를 누르면 이전/다음이 눌림").
+      // 손을 뗀 바로 그 자리(30px 안)로 온 click 만 버린다 — 곧바로 다른 곳을 누르는 정상 조작은 그대로 둔다.
+      document.addEventListener("click", function(ev){
+        if(Date.now() - gripTs >= 400 || grip.contains(ev.target) || gripUpY === null) return;
+        if(typeof ev.clientX !== "number" || typeof ev.clientY !== "number") return;
+        if(Math.abs(ev.clientX - gripUpX) < 30 && Math.abs(ev.clientY - gripUpY) < 30){ ev.preventDefault(); ev.stopPropagation(); }
+      }, true);
       grip.addEventListener("pointerup", function(ev){
         var dy = (gy!==null && typeof ev.clientY==="number") ? (ev.clientY - gy) : NaN;
-        gy = null;
+        gy = null; gripTs = Date.now();
+        gripUpX = (typeof ev.clientX==="number") ? ev.clientX : null; gripUpY = (typeof ev.clientY==="number") ? ev.clientY : null;
         if(dy > 18) sheetSetCollapsed(true);        // 아래로 드래그 → 접기
         else if(dy < -18) sheetSetCollapsed(false); // 위로 드래그 → 펼치기
         else sheetSetCollapsed(!sheetCollapsed);    // 클릭 → 토글
@@ -5488,7 +5761,7 @@ window.NAVI = (function(){
                                      refreshArrivals:refreshArrivals,
                                      arrivalPollingActive:function(){return !!arrTimer;},
                                      followMe:function(){return followMe;}, routeLines:function(){return routeLines;},
-                                     cwMarks:function(){return cwMarks;},
+                                     cwMarks:function(){return cwMarks;}, nmap:function(){return NMAP;}, mapObj:function(){return map;},
                                      kakaoRetryPending:function(){return !!kakaoRetryTimer;},
                                      cancelArrivalReset:function(){ if(arrivalTimer){ clearInterval(arrivalTimer); arrivalTimer=null; } closeSpotChoice(); },
                                      stopSpeak:stopSpeak,

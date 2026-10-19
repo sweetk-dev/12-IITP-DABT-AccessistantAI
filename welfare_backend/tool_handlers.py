@@ -1033,6 +1033,9 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                 "message": "지원하지 않는 이동 방식입니다: %s" % mode,
                 "ai_instruction": "이동 방식은 도보/도보+지하철/도보+버스/도보+버스+지하철 중에서만 "
                                   "고를 수 있다고 짧게 안내하세요."}
+    # 화면의 이동 방식 카드에 표시할 '사용자가 고른 방식' — 자동 추천이면 None('추천' 카드).
+    # 역 안 출발로 도보가 강제되는 경우(아래)는 사용자가 고른 것이 아니므로 이 값을 바꾸지 않는다.
+    user_mode = None if auto else req_mode
 
     origin_pt = {"lat": origin_lat, "lng": origin_lng}
     st_in = None
@@ -1163,7 +1166,9 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         "station_nearby": _brief_station_nearby(data.get("station_nearby")),
         "station_start": _brief_station_start(data.get("station_start")),
         # 프런트가 지도·경로·턴바이턴을 그리도록 원본 경로를 그대로 전달
-        "ui_action": {"action": "show_route", "route": data},
+        # mode_requested: 사용자가 고른 이동 방식(자동 추천이면 None) — 화면이 이동 방식 카드 선택을 맞춘다.
+        # 경로 원본만으로는 '자동 추천이 도보를 골랐다'와 '도보로 요청했다'를 구분할 수 없다(v2.11.0).
+        "ui_action": {"action": "show_route", "route": data, "mode_requested": user_mode},
         "ai_instruction": (
             ("출발지는 %s 기준임을 먼저 밝히세요. " % origin_label if origin_label else "")
             + ("목적지는 %s 입니다. " % dest_label if dest_label else "")
