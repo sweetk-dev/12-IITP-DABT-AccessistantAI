@@ -270,10 +270,39 @@ class NativeMapController(
         ensureMapView()
     }
 
+    /*
+     * 지도 그리기 영역(viewport)을 지도 칸 크기에 맞춘다 (앱 2.1.1).
+     * 실기기(2026-10-20): 목록 접기·펼치기를 할 때마다 지도와 신고 줄 사이 빈 띠가 조금씩 두꺼워지다가 신고 줄 두께만큼
+     * 지도를 가렸다. 화면(웹) 쪽 지도 칸 크기는 접기·펼치기마다 정확히 같은 두 값을 오갔다(브라우저 재현 확인) —
+     * 칸(box) 크기는 바뀌는데 엔진의 그리기 영역이 따라오지 못해 어긋남이 쌓인 것으로 본다(접기 애니메이션 동안
+     * 크기가 30ms 간격으로 여러 번 바뀐다). 크기 변화가 멈춘 뒤(150ms) 지금 크기로 viewport 를 다시 지정한다.
+     */
+    private val viewportSync = Runnable { syncViewport() }
+    private fun syncViewport() {
+        val mv = mapView ?: return
+        val m = kmap ?: return
+        if (mv.width <= 0 || mv.height <= 0) return
+        try {
+            val vp = m.viewport
+            if (vp == null || vp.left != 0 || vp.top != 0 || vp.width() != mv.width || vp.height() != mv.height) {
+                if (BuildConfig.DEBUG) Log.d(TAG, "VIEWPORT ${vp} -> ${mv.width}x${mv.height}")
+                m.setViewport(0, 0, mv.width, mv.height)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "viewport sync failed", e)
+        }
+    }
+
     private fun ensureMapView() {
         if (mapView != null || failed) return
         val mv = MapView(activity)
         mapView = mv
+        mv.addOnLayoutChangeListener { _, l, t, r, b, ol, ot, or, ob ->
+            if (r - l != or - ol || b - t != ob - ot) {      // 크기가 바뀐 경우만 — 위치만 바뀐 것은 무관
+                box.removeCallbacks(viewportSync)
+                box.postDelayed(viewportSync, 150)
+            }
+        }
         box.addView(mv, 0, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         val start = pending.lastOrNull { it.optString("op") == "init" }
         mv.start(object : MapLifeCycleCallback() {
@@ -306,6 +335,7 @@ class NativeMapController(
 
     private fun onReady(map: KakaoMap) {
         kmap = map
+        syncViewport()
         map.setOnMapClickListener { _, ll, _, _ ->
             emit("click", JSONObject().put("lat", ll.latitude).put("lng", ll.longitude))
         }

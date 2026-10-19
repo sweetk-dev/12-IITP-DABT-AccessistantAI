@@ -1836,6 +1836,55 @@ check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 
   const NV = window.NAVI._internals();
   NV.resetTrip();
   window.show("view-navi");
+  // 중간 안내 — 짧은 스텝·투영 튐 (v2.13.0, #369)
+  {
+    const A0 = [37.3900, 126.9500];
+    const pt = (m) => [37.3900 + m / 110540, 126.9500];                       // 북쪽으로 m 미터
+    NV.showRoute({ status: "success", route_id: "r_v2130", destination: { poi_id: "x" }, routes: [{
+      summary: { total_distance_m: 640, duration_sec: 600, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+      geometry: [A0, pt(80), pt(580), pt(640)],
+      steps: [
+        { idx: 0, maneuver: "depart", instruction: "80m 앞으로 이동합니다.", distance_m: 80, coord: A0, warnings: [] },
+        { idx: 1, maneuver: "straight", instruction: "500m 직진합니다.", distance_m: 500, coord: pt(80), warnings: [] },
+        { idx: 2, maneuver: "left", instruction: "좌회전 후 60m 이동합니다.", distance_m: 60, coord: pt(580), warnings: [] },
+        { idx: 3, maneuver: "arrive", instruction: "도착", distance_m: 0, coord: pt(640), warnings: [] },
+      ] }] }, "v2130");
+    NV.startGuidance();
+    const ll = (m) => ({ lat: pt(m)[0], lng: pt(m)[1] });
+    check("150m 보다 짧은 스텝 시작 직후에는 '약 150미터'를 말하지 않는다 (v2.13.0)", () => {
+      NV.setStepIdxForTest(0); NV.interimAnnounce(ll(5), 5);               // 다음 안내까지 75m — 스텝 길이 80m
+      assert.ok(!NV.interimDone()["0:150"], "80m 스텝에서 150미터 안내");
+    });
+    check("긴 스텝은 기준 거리 바로 아래에서 한 번 말한다 (v2.13.0)", () => {
+      NV.setStepIdxForTest(1);
+      NV.interimAnnounce(ll(240), 240);                                        // 남은 340m — 아직
+      assert.ok(!NV.interimDone()["1:300"]);
+      NV.interimAnnounce(ll(300), 300);                                        // 남은 280m
+      assert.ok(NV.interimDone()["1:300"]);
+      NV.interimAnnounce(ll(370), 370);                                        // 남은 210m — 150 창(110~150) 아님
+      assert.ok(!NV.interimDone()["1:150"]);
+      NV.interimAnnounce(ll(450), 450);                                        // 남은 130m
+      assert.ok(NV.interimDone()["1:150"]);
+    });
+    check("위치 투영이 지나온 구간으로 튀면 중간 안내를 하지 않는다 (v2.13.0)", () => {
+      NV.setStepIdxForTest(1); delete NV.interimDone()["1:300"];
+      NV.interimAnnounce(ll(0), 0);                                            // 스텝 시작(80m)보다 80m 뒤
+      assert.ok(!NV.interimDone()["1:300"]);
+    });
+    window.NAVI._internals().clearRouteDisplay();
+  }
+  check("상태 줄 닫기 — 같은 문구는 다시 안 띄우고 새 문구는 띄운다 (v2.13.0)", () => {
+    const st = $("naviStatus"), bt = $("naviStatusClose");
+    window.NAVI._internals(); // noop
+    st.textContent = "이 서비스는 안양시 지역만 안내합니다. 지도를 눌러 출발지를 지정해 주세요.";
+    bt.dispatchEvent(new window.Event("click"));
+    assert.ok(st.classList.contains("navi-status--closed") && bt.hidden);
+    assert.equal(st.textContent, "이 서비스는 안양시 지역만 안내합니다. 지도를 눌러 출발지를 지정해 주세요.");   // 닫기 단추 글자가 섞이지 않는다
+    NV.statusForTest && NV.statusForTest("이 서비스는 안양시 지역만 안내합니다. 지도를 눌러 출발지를 지정해 주세요.");
+    assert.ok(st.classList.contains("navi-status--closed"), "같은 문구로 다시 열림");
+    NV.statusForTest("경로를 표시했습니다.");
+    assert.ok(!st.classList.contains("navi-status--closed") && !bt.hidden, "새 문구인데 닫혀 있음");
+  });
   // 역 → 출구 연결선 (v2.12.0, #367) — 지하철 구간은 역 대표점에서 끝나고 도보는 출구 앞에서 시작한다
   {
     const W0 = [37.4182, 126.9183], WB = [37.41890, 126.90922];          // 도보 → 관악역 2번 출구 앞
