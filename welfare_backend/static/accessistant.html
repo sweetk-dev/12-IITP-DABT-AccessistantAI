@@ -208,6 +208,10 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 /* 지도 POI 이름 태그 (CustomOverlay) */
 .poi-tag{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#fff;border:1.5px solid var(--c-primary);color:var(--c-primary);font-weight:700;font-size:.8rem;border-radius:999px;padding:4px 10px;box-shadow:0 2px 6px rgba(16,32,64,.18);cursor:pointer;font-family:var(--font-body);}
 .poi-tag--multi{background:var(--c-primary);color:#fff;}
+/* 경로 위 횡단보도 표시 (v2.9.0) — 줄무늬 사각형. 건너는 것·옆길은 크게, 경로 옆은 작고 옅게 */
+.cw-mark{width:18px;height:18px;border-radius:4px;border:2px solid #111827;box-shadow:0 1px 4px rgba(16,32,64,.35);
+  background:repeating-linear-gradient(90deg,#fff 0 3px,#111827 3px 6px);pointer-events:none;}
+.cw-mark--near{width:10px;height:10px;border-width:1.5px;opacity:.55;box-shadow:none;}
 .spot .ad{font-size:.86rem;color:var(--c-text-muted);margin-top:2px;}
 .spot .fac{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
 .spot .fac span{font-size:.78rem;background:#EEF2FF;color:#3730A3;border-radius:6px;padding:2px 6px;}
@@ -3488,6 +3492,30 @@ window.NAVI = (function(){
   function clearRouteLines(){
     routeLines.forEach(function(l){ try{ l.setMap(null); }catch(e){} });
     routeLines=[]; routeLine=null;
+    clearCwMarks();
+  }
+  /* 횡단보도 표시 (v2.9.0, 경로 서비스 v1.37.0 crosswalks) — 현장 점검(2026-10-16)에서 "어디서 건너는지"를
+     지도로 확인할 수 없었다. role: cross(경로가 건너는 횡단보도)·side(직진 교차로에서 건너는 옆길)는 크게,
+     near(경로 옆에 있을 뿐인 것)는 작고 옅게. 지도 클릭을 가로채지 않는다. 목록이 없는 구버전 응답은 종전과 같다. */
+  var cwMarks=[];
+  function clearCwMarks(){
+    cwMarks.forEach(function(o){ try{ o.setMap(null); }catch(e){} });
+    cwMarks=[];
+  }
+  function drawCwMarks(primary){
+    clearCwMarks();
+    (primary.crosswalks || []).forEach(function(c){
+      if(!c || typeof c.lat !== "number" || typeof c.lng !== "number") return;
+      var el = document.createElement("div");
+      el.className = "cw-mark" + (c.role === "near" ? " cw-mark--near" : "");
+      el.setAttribute("aria-hidden", "true");
+      el.title = c.role === "near" ? "횡단보도" : "건너는 횡단보도" + (c.length_m ? " 약 " + Math.round(c.length_m) + "m" : "");
+      var ov = new kakao.maps.CustomOverlay({
+        position: new kakao.maps.LatLng(c.lat, c.lng), content: el, xAnchor: 0.5, yAnchor: 0.5,
+        clickable: false, zIndex: c.role === "near" ? 1 : 2,
+      });
+      ov.setMap(map); cwMarks.push(ov);
+    });
   }
   function drawRouteLines(fit){
     if(!map || !kakaoReady || !route) return;
@@ -3506,6 +3534,7 @@ window.NAVI = (function(){
       ln.setMap(map); routeLines.push(ln);
     });
     routeLine = routeLines[0] || null;
+    drawCwMarks(primary);
     if(fit){
       var bounds = new kakao.maps.LatLngBounds();
       primary.geometry.forEach(function(c){ bounds.extend(new kakao.maps.LatLng(c[0], c[1])); });
@@ -5459,6 +5488,7 @@ window.NAVI = (function(){
                                      refreshArrivals:refreshArrivals,
                                      arrivalPollingActive:function(){return !!arrTimer;},
                                      followMe:function(){return followMe;}, routeLines:function(){return routeLines;},
+                                     cwMarks:function(){return cwMarks;},
                                      kakaoRetryPending:function(){return !!kakaoRetryTimer;},
                                      cancelArrivalReset:function(){ if(arrivalTimer){ clearInterval(arrivalTimer); arrivalTimer=null; } closeSpotChoice(); },
                                      stopSpeak:stopSpeak,
