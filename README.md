@@ -103,7 +103,7 @@ sdk.dir=<Android SDK 경로>
 accessnavi.baseUrl=https://<서비스 주소>
 
 # 서명 정보(keystore.properties: storeFile / storePassword / keyAlias / keyPassword)도 저장소 밖에 둔다
-cd android && ./gradlew assembleRelease -Paccessnavi.keystoreProps=<경로>
+cd android && ./gradlew clean assembleRelease -Paccessnavi.keystoreProps=<경로>   # 배포본은 clean 필수(이전 버전 번호가 남지 않게)
 ```
 
 - 화면을 상태 표시줄·내비게이션 바·키보드 안쪽에 맞춘다(v2.0.1 — 최신 안드로이드는 앱 화면을 시스템 바 밑까지 그린다)
