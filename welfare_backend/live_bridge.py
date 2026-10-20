@@ -14,6 +14,7 @@ import base64
 import json
 import logging
 import os
+import re
 import uuid
 from typing import Callable
 
@@ -306,6 +307,8 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 5. `[SYSTEM:RESUME_ANSWER]` — 연결이 잠시 끊겼다가 복구된 직후, 직전 사용자 질문에 아직 답변하지 못한 상태. 고정 문구 없이 **직전 사용자 질문에 이어서 답변을 완료**하세요. 이 신호에 한해 필요한 도구 호출을 허용합니다. 직전 질문을 확인할 수 없으면 "죄송해요, 방금 말씀을 제가 놓쳤어요. 다시 한 번 말씀해 주시겠어요?" 라고 요청하세요.
 
 1~4번 신호에는 **DB 도구 호출 금지**, **외부 검색 금지**, **법적 근거·문의처 멘트 금지** — 지정된 문장만 정확히 발화한 뒤 turn 을 종료하세요. 5번(`RESUME_ANSWER`)만 도구 사용이 허용됩니다.
+
+**인사말은 위 인사 신호(`GREETING`, `GREETING_NAVI`)를 받았을 때만 합니다.** 사용자 발화에는 — 알아듣기 어려운 말·숫자 하나·잡음이 글자로 들어온 경우를 포함해 — 절대 인사말로 답하지 마세요. 뜻을 알 수 없는 짧은 말이면 "잘 못 들었어요. 다시 말씀해 주시겠어요?" 한 문장만 말합니다. 신호 이름(대괄호로 시작하는 `SYSTEM` 표기)은 소리 내 말하거나 글로 옮기지 않습니다.
 """
 
 
@@ -862,6 +865,39 @@ _CLIENT_RESUME_MAX = 200
 _SID_RE = _re.compile(r"^[A-Za-z0-9]{6,40}$")
 
 
+# ── 길안내(navi) 화면 세션 지침 (v2.18.0) ──
+# 현장 점검(2026-10-20)에서 길안내 도중 Gemini 정기 재연결 뒤 잡음 전사("17")에 모델이 정책상담 인사말을
+# 신호 이름("[SYSTEM:GREETING]")까지 붙여 그대로 말했다. 길안내 화면에는 정책상담 인사말이 필요 없으므로
+# 그 문장 자체를 지침에서 빼 모델이 베껴 말할 거리를 없앤다. 나머지 지침(도구·안내 규칙)은 공용 그대로.
+_POLICY_GREETING_BLOCK = (
+    "1. `[SYSTEM:GREETING]` — 세션이 막 연결된 직후. 다음 인사말을 그대로 한국어 음성으로 한 번만 출력:\n"
+    "   > \"안녕하세요! 장애인 복지 정책에 대해 궁금한 점이 있으신가요? 필요하신 정보를 정확하게 안내해 드릴게요. 편하게 말씀해 주세요.\"\n"
+)
+_NAVI_GREETING_NOTE = (
+    "1. (이 화면에서는 오지 않는 신호입니다 — 이동·관광 길안내 화면의 인사는 4번 `GREETING_NAVI` 뿐입니다. "
+    "길안내 도중에는 어떤 경우에도 처음 인사말을 다시 하지 않습니다.)\n"
+)
+
+
+def navi_system_instruction(base: str) -> str:
+    """길안내 화면 세션에 쓰는 지침 — 정책상담 인사말 문장을 뺀다. 문장이 없으면(지침 개정) 그대로 돌려준다."""
+    if _POLICY_GREETING_BLOCK in base:
+        return base.replace(_POLICY_GREETING_BLOCK, _NAVI_GREETING_NOTE)
+    logger.warning("⚠️ 길안내 지침 변환: 정책상담 인사말 블록을 찾지 못함 — 공용 지침 그대로 사용")
+    return base
+
+
+# 모델 출력 전사에서 신호 이름("[SYSTEM:GREETING]" 등)을 지운다 — 화면·기록에 내부 표기가 보이지 않게 (v2.18.0).
+# 조각 단위로 오므로 대괄호가 한쪽만 있는 경우도 지운다.
+_SIGNAL_TOKEN_RE = re.compile(r"\[?\s*SYSTEM\s*:\s*[A-Z_]*\s*\]?")
+
+
+def strip_signal_tokens(text: str) -> str:
+    if not text or "SYSTEM" not in text:
+        return text
+    return _SIGNAL_TOKEN_RE.sub("", text)
+
+
 def _resume_key(websocket, sid):
     """sid 는 계정별로 따로 본다 — 다른 계정이 남의 sid 로 대화를 이어받지 못하게."""
     if not sid or not _SID_RE.match(str(sid)):
@@ -1166,7 +1202,8 @@ async def handle_live_chat(
     # explain_route_segment 기본 구간 주입의 근거가 된다.
     nav_state = {}
     reseed_context = False              # 새 세션에 맥락 re-seed 필요 여부
-    _BASE_SYS = SYSTEM_INSTRUCTION
+    # 길안내 화면이면 정책상담 인사말을 뺀 지침 (v2.18.0)
+    _BASE_SYS = navi_system_instruction(SYSTEM_INSTRUCTION) if mode == "navi" else SYSTEM_INSTRUCTION
     RESEED_MAX_TURNS = 8                # 주입할 최근 대화 턴 수(컨텍스트 비대화 방지)
     # 단말 재접속 이어받기 (v1.59.0) — 같은 sid 로 다시 붙었으면 handle·대화를 물려받고 인사말을 생략한다
     _rkey = _resume_key(websocket, sid)
@@ -1463,8 +1500,8 @@ async def handle_live_chat(
                             # 출력 transcription (AI 음성→텍스트)
                             if sc and getattr(sc, "output_transcription", None):
                                 ot = sc.output_transcription
-                                text = getattr(ot, "text", None)
-                                if text:
+                                text = strip_signal_tokens(getattr(ot, "text", None))   # 신호 이름 지우기 (v2.18.0)
+                                if text and text.strip():
                                     _ai_buf += text
                                     logger.info("음성→텍스트 수신 (%d자)", len(text))
                                     logger.debug("음성→텍스트: %s", text)

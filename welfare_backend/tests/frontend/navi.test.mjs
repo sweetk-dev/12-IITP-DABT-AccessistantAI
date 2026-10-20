@@ -2379,6 +2379,15 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     const t = $("naviSheetBody").textContent;
     assert.match(t, /1호선/);
   });
+  {
+    // v2.18.0 — 응답을 받으면 카드 표시는 '추천'으로 돌아가지만, 이탈 재탐색은 고른 방식(도보+지하철)을 지킨다
+    const NVr = window.NAVI._internals();
+    lastPlanQuery = null;
+    await NVr.requestRoute(NVr.tripDest(), { reroute: 987654 });
+    check("이탈 재탐색은 이번 여정에서 고른 방식(도보+지하철)으로 다시 찾는다 (v2.18.0)", () => {
+      assert.match(lastPlanQuery || "", /mode=walk_subway/, "재탐색 요청: " + lastPlanQuery);
+    });
+  }
   window.fetch = prevFetchPF;
 }
 
@@ -3597,6 +3606,81 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   G.dispatchEvent(new window.MouseEvent("pointerup", { clientY: 360, bubbles: true }));
   check("아래로 끌면 한 단계 작게 (v2.17.0)", () => { assert.ok(!V.classList.contains("big")); assert.ok(!SH.classList.contains("collapsed")); });
   window.NAVI.sheetSetBig(false);
+}
+
+// ── v2.18.0 지나친 안내 지점 따라잡기 · 지하철 하차 범위 ──
+{
+  const NV = window.NAVI._internals();
+  const realNowR = window.Date.now; let vnowR = realNowR() + 900000; window.Date.now = () => vnowR;
+  NV.stopSpeak();
+  // 북쪽으로 곧게 가는 도보 경로 — 스텝 지점 약 55m 간격
+  const pt = (k) => [37.40000 + 0.0005 * k, 126.95000];
+  NV.showRoute({ status: "success", route_id: "r_resync", destination: { poi_id: "RS-1" }, routes: [{
+    summary: { total_distance_m: 330, duration_sec: 300, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+    geometry: [pt(0), pt(1), pt(2), pt(3), pt(4), pt(5), pt(6)],
+    legs: [{ kind: "walk", geometry: [pt(0), pt(6)] }],
+    steps: [0, 1, 2, 3, 4, 5].map((k) => ({ idx: k, maneuver: k ? "turn_left" : "depart", instruction: "구간 " + k, distance_m: 55, coord: pt(k), warnings: [] }))
+      .concat([{ idx: 6, maneuver: "arrive", instruction: "도착", distance_m: 0, coord: pt(6), warnings: [] }]) }] }, "따라잡기 시험");
+  NV.setHere({ lat: pt(0)[0], lng: pt(0)[1] });
+  NV.startGuidance();
+  await sleep(5);
+  const idx = () => window.NAVI._internals().stepIdx;
+  // 앱이 뒤에 있는 동안 구간 3 지점을 지나 3.4 지점까지 왔다 — 바로 다음(1)·(2) 지점 25m 안을 거치지 않았다
+  const far = { lat: 37.40000 + 0.0005 * 3.4, lng: 126.95000 };
+  NV.setHere(far); vnowR += 5000; NV.advanceStep();
+  check("측위 한 번으로는 건너뛰지 않는다 — 튐 방지 (v2.18.0)", () => assert.equal(idx(), 0));
+  vnowR += 5000; NV.advanceStep();
+  check("같은 위치가 두 번 이어지면 마지막으로 지나친 구간(3)으로 따라잡는다 (v2.18.0)", () => assert.equal(idx(), 3));
+  // 경로에서 떨어진 곳(동쪽 80m)은 건너뛰기 대상이 아니다 — 이탈 판정이 맡는다
+  NV.setHere({ lat: 37.40000 + 0.0005 * 5.5, lng: 126.95090 }); vnowR += 5000; NV.advanceStep(); vnowR += 5000; NV.advanceStep();
+  check("경로에서 30m 넘게 떨어진 위치로는 건너뛰지 않는다 (v2.18.0)", () => assert.equal(idx(), 3));
+  // 도착 지점은 건너뛰기로 넘기지 않는다(도착 판정은 25m 도달로만)
+  NV.setHere({ lat: 37.40000 + 0.0005 * 5.75, lng: 126.95000 }); vnowR += 5000; NV.advanceStep(); vnowR += 5000; NV.advanceStep();
+  check("도착 스텝은 건너뛰지 않고 그 앞(5)까지만 따라잡는다 (v2.18.0)", () => assert.equal(idx(), 5));
+  NV.resetTrip(); NV.stopSpeak();
+
+  // 지하철 하차 — 승강장 가운데 점에서 100m 떨어진 승강장 끝(10-4)에서 내려도 하차로 본다
+  const W0 = [37.4182, 126.9183], SB = [37.419578, 126.908476], SA = [37.384435, 126.935579];
+  const W1 = [37.3854642, 126.9350199], WE = [37.384688, 126.931893];
+  NV.showRoute({ status: "success", route_id: "r_alight", mode: "walk_subway", destination: { poi_id: "16779" }, routes: [{
+    summary: { total_distance_m: 6000, duration_sec: 2000, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+    geometry: [W0, SB, SA, W1, WE],
+    legs: [{ kind: "walk", geometry: [W0, SB] }, { kind: "subway", line: "1호선", geometry: [SB, SA], board: { name: "관악" }, alight: { name: "명학" } }, { kind: "walk", geometry: [W1, WE] }],
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "앞으로", distance_m: 900, coord: W0, warnings: [] },
+      { idx: 1, maneuver: "subway_board", instruction: "관악역에서 승차합니다", distance_m: 0, coord: SB, warnings: [] },
+      { idx: 2, maneuver: "subway_alight", instruction: "명학역에서 하차합니다", distance_m: 0, coord: SA, warnings: [] },
+      { idx: 3, maneuver: "turn_left", instruction: "출구로", distance_m: 100, coord: W1, warnings: [] },
+      { idx: 4, maneuver: "arrive", instruction: "도착", distance_m: 0, coord: WE, warnings: [] },
+    ] }] }, "하차 시험");
+  NV.setHere({ lat: W0[0], lng: W0[1] });
+  NV.startGuidance(); await sleep(5);
+  NV.setStepIdxForTest(1);
+  const end104 = { lat: 37.38530, lng: 126.93520 };   // 하차 점에서 약 100m
+  NV.setHere(end104); vnowR += 5000; NV.advanceStep(); vnowR += 5000; NV.advanceStep();
+  check("지하철 하차 점에서 150m 안(승강장 끝)이면 하차 단계로 넘어간다 (v2.18.0)", () => assert.equal(idx(), 2));
+  NV.resetTrip(); NV.stopSpeak();
+  NV.setHere({ lat: W0[0], lng: W0[1] });
+  NV.showRoute({ status: "success", route_id: "r_alight2", mode: "walk_subway", destination: { poi_id: "16779" }, routes: [{
+    summary: { total_distance_m: 6000, duration_sec: 2000, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+    geometry: [W0, SB, SA, W1, WE],
+    legs: [{ kind: "walk", geometry: [W0, SB] }, { kind: "subway", line: "1호선", geometry: [SB, SA], board: { name: "관악" }, alight: { name: "명학" } }, { kind: "walk", geometry: [W1, WE] }],
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "앞으로", distance_m: 900, coord: W0, warnings: [] },
+      { idx: 1, maneuver: "subway_board", instruction: "관악역에서 승차합니다", distance_m: 0, coord: SB, warnings: [] },
+      { idx: 2, maneuver: "subway_alight", instruction: "명학역에서 하차합니다", distance_m: 0, coord: SA, warnings: [] },
+      { idx: 3, maneuver: "arrive", instruction: "도착", distance_m: 0, coord: WE, warnings: [] },
+    ] }] }, "하차 시험2");
+  NV.startGuidance(); await sleep(5);
+  NV.setStepIdxForTest(1);
+  NV.setHere({ lat: 37.3920, lng: 126.9300 }); vnowR += 5000; NV.advanceStep(); vnowR += 5000; NV.advanceStep();   // 하차역 900m 전
+  check("하차역에 닿기 전(열차 안)에는 넘어가지 않는다 (v2.18.0)", () => assert.equal(idx(), 1));
+  check("앱 복귀 시 위치를 바로 다시 받는다 (소스 가드)", () => {
+    assert.match(HTML, /document\.visibilityState !== "visible" \|\| !guiding \|\| simActive/);
+    assert.match(HTML, /_tev\("navi_resync"/);
+  });
+  NV.resetTrip(); NV.stopSpeak();
+  window.Date.now = realNowR;
 }
 
 // ── 결과 ──
