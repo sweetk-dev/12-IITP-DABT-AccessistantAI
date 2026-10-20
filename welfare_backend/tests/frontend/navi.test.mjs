@@ -3566,39 +3566,36 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.match(HTML, /appendUserTranscript\(msg\.content\);\s*\/\/[^\n]*\n\s*try \{ if \(window\.NAVI && window\.NAVI\.onUserText\) window\.NAVI\.onUserText\(msg\.content\); \} catch \(e\) \{\}/);
     assert.match(HTML, /\.navi-askbar\.hearing \.field\{border-color:#16A34A;/);
   });
-  // 목록 크게 단계
-  const V = $("view-navi"), BB = $("naviBigBtn");
-  check("손잡이 줄에 '▲ 크게' 버튼이 있다 (v2.16.0)", () => {
-    assert.ok(BB); assert.match(BB.textContent, /크게/); assert.equal(BB.getAttribute("aria-pressed"), "false");
+  // 목록 단계 — 손잡이 하나로 접힘 → 1단계 → 2단계(크게) → 접힘 (v2.17.0)
+  const V = $("view-navi"), G = $("naviGrip"), L = () => $("naviGripLabel").textContent, SH = $("naviSheet");
+  const tapG = () => { G.dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 500, bubbles: true })); G.dispatchEvent(new window.MouseEvent("pointerup", { clientY: 500, bubbles: true })); };
+  window.NAVI.sheetSetBig(false);
+  check("별도 크게/작게 버튼은 없다 (v2.17.0)", () => assert.equal($("naviBigBtn"), null));
+  check("1단계(기본)에서 손잡이 라벨은 '목록 펼치기' (v2.17.0)", () => {
+    assert.ok(!SH.classList.contains("collapsed")); assert.ok(!V.classList.contains("big"));
+    assert.equal(L(), "목록 펼치기");
   });
-  BB.dispatchEvent(new window.Event("click"));
-  check("'크게'를 누르면 크게 단계(지도는 위쪽 띠만) — 버튼은 '▼ 작게' (v2.16.0)", () => {
+  tapG();
+  check("누르면 2단계(지도는 위쪽 띠만), 라벨 '목록 접기' (v2.17.0)", () => {
     assert.ok(V.classList.contains("big"));
-    assert.match(BB.textContent, /작게/); assert.equal(BB.getAttribute("aria-pressed"), "true");
+    assert.equal(L(), "목록 접기");
     assert.match(HTML, /html\.nmap #view-navi\.big \.navi-wrap\{grid-template-rows:auto 64px auto;\}/);
   });
-  const G = $("naviGrip");
-  G.dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 300, bubbles: true }));
-  G.dispatchEvent(new window.MouseEvent("pointerup", { clientY: 360, bubbles: true }));
-  check("크게 단계에서 손잡이를 아래로 끌면 한 단계만 작게(기본) (v2.16.0)", () => {
-    assert.ok(!V.classList.contains("big"));
-    assert.ok(!$("naviSheet").classList.contains("collapsed"));
+  tapG();
+  check("다시 누르면 목록 최소화(접힘), 라벨 '목록 펼치기' (v2.17.0)", () => {
+    assert.ok(SH.classList.contains("collapsed")); assert.ok(!V.classList.contains("big"));
+    assert.equal(L(), "목록 펼치기"); assert.equal(G.getAttribute("aria-expanded"), "false");
+  });
+  tapG();
+  check("또 누르면 1단계로 (v2.17.0)", () => {
+    assert.ok(!SH.classList.contains("collapsed")); assert.ok(!V.classList.contains("big"));
   });
   G.dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 360, bubbles: true }));
   G.dispatchEvent(new window.MouseEvent("pointerup", { clientY: 300, bubbles: true }));
-  check("기본에서 위로 끌면 크게 단계 (v2.16.0)", () => assert.ok(V.classList.contains("big")));
-  window.NAVI._internals();
-  $("naviGrip").dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 500, bubbles: true }));
-  $("naviGrip").dispatchEvent(new window.MouseEvent("pointerup", { clientY: 500, bubbles: true }));
-  check("손잡이를 누르면(목록 접기) 크게 단계도 끝난다 (v2.16.0)", () => {
-    assert.ok($("naviSheet").classList.contains("collapsed"));
-    assert.ok(!V.classList.contains("big"));
-  });
-  BB.dispatchEvent(new window.Event("click"));
-  check("접힌 상태에서 '크게'를 누르면 목록을 펴고 크게 (v2.16.0)", () => {
-    assert.ok(!$("naviSheet").classList.contains("collapsed"));
-    assert.ok(V.classList.contains("big"));
-  });
+  check("위로 끌면 한 단계 크게 (v2.17.0)", () => assert.ok(V.classList.contains("big")));
+  G.dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 300, bubbles: true }));
+  G.dispatchEvent(new window.MouseEvent("pointerup", { clientY: 360, bubbles: true }));
+  check("아래로 끌면 한 단계 작게 (v2.17.0)", () => { assert.ok(!V.classList.contains("big")); assert.ok(!SH.classList.contains("collapsed")); });
   window.NAVI.sheetSetBig(false);
 }
 

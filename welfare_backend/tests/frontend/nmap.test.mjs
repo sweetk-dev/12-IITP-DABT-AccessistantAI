@@ -309,6 +309,7 @@ check("앱 지도 오류 → 웹 지도로 복귀하고 경로를 다시 그린�
     el.dispatchEvent(new G.w.MouseEvent("pointerdown", { clientX: 200, clientY: y, bubbles: true }));
     el.dispatchEvent(new G.w.MouseEvent("pointerup", { clientX: 200, clientY: y, bubbles: true }));
   };
+  G.w.NAVI.sheetSetBig(true);   // 2단계에서 시작 — 손잡이를 누르면 접힌다 (v2.17.0 세 단계 순환)
   tap(gd, 700);   // 접기
   await sleep(500);
   const nextBtn = () => [...G.w.document.querySelectorAll("#naviSheetBody button")].find((b) => /다음/.test(b.textContent));
