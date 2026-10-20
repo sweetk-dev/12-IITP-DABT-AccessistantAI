@@ -3521,6 +3521,85 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   NV.resetTrip(); NV.stopSpeak();
 }
 
+// ── v2.15.0 길안내 화면 '내 말' 줄 — 사용자 말 전사를 실시간 표시 ──
+{
+  window.show("view-navi");
+  const H = () => $("naviHeard"), A = () => $("naviAnswer");
+  window.NAVI.onAiTurnComplete();          // 앞 블록 상태 정리
+  window.NAVI.onUserText(" 안양아트센터");
+  window.NAVI.onUserText("까지 얼마나");
+  window.NAVI.onUserText(" 남았어?");
+  check("말 전사 조각이 '내 말' 줄에 이어 붙어 실시간 표시 (v2.15.0)", () => {
+    assert.equal(H().hidden, false);
+    assert.equal(H().textContent, "안양아트센터까지 얼마나 남았어?");
+  });
+  window.NAVI.onAiText("약 300미터 ");
+  window.NAVI.onUserText(" 남았어");          // 답 시작 직후 늦게 온 같은 말 조각
+  window.NAVI.onAiText("남았어요.");
+  check("답이 시작돼도 '내 말'은 남고, 직후 늦은 조각은 같은 말에 붙는다 (v2.15.0)", () => {
+    assert.equal(A().hidden, false);
+    assert.equal(A().textContent, "약 300미터 남았어요.");
+    assert.match(H().textContent, /남았어\? 남았어$/);
+  });
+  window.NAVI.onAiTurnComplete();
+  window.NAVI.onUserText("화장실 어디야");
+  check("답이 끝난 뒤 새 말은 지난 말·지난 답을 지우고 새로 시작 (v2.15.0)", () => {
+    assert.equal(H().textContent, "화장실 어디야");
+    assert.equal(A().hidden, true);
+    assert.equal(A().textContent, "");
+  });
+  window.show("view-chat");
+  window.NAVI.onUserText(" 상담 화면 말");
+  check("길안내 화면이 아닐 때는 '내 말' 줄을 건드리지 않는다 (v2.15.0)", () => {
+    assert.equal(H().textContent, "화장실 어디야");
+  });
+  window.show("view-navi");
+  check("WS user_transcript 가 길안내 '내 말' 줄로 이어진다 (소스 가드)", () => {
+    assert.match(HTML, /appendUserTranscript\(msg\.content\);\s*\/\/[^\n]*\n\s*try \{ if \(window\.NAVI && window\.NAVI\.onUserText\) window\.NAVI\.onUserText\(msg\.content\); \} catch \(e\) \{\}/);
+    assert.match(HTML, /<div class="navi-heard" id="naviHeard" hidden/);
+  });
+  window.NAVI.onAiTurnComplete();
+}
+
+// ── v2.15.0 답변 줄 펼치기/접기 ──
+{
+  window.show("view-navi");
+  const A = $("naviAnswer"), B = $("naviAnsToggle");
+  window.NAVI.onAiTurnComplete();
+  window.NAVI.onUserText("짧은 질문");
+  window.NAVI.onAiText("짧은 답.");
+  check("답이 3줄 안이면 펼치기 버튼을 숨긴다 (v2.15.0)", () => assert.equal(B.hidden, true));
+  Object.defineProperty(A, "scrollHeight", { configurable: true, get: () => 200 });
+  Object.defineProperty(A, "clientHeight", { configurable: true, get: () => 60 });
+  window.NAVI.onAiText(" 길게 이어지는 답변입니다.");
+  check("답이 3줄을 넘치면 '답변 펼치기' 버튼이 보인다 (v2.15.0)", () => {
+    assert.equal(B.hidden, false);
+    assert.match(B.textContent, /펼치기/);
+    assert.equal(B.getAttribute("aria-expanded"), "false");
+  });
+  B.dispatchEvent(new window.Event("click"));
+  check("누르면 펼쳐지고 버튼은 '답변 접기' (v2.15.0)", () => {
+    assert.ok(A.classList.contains("expanded"));
+    assert.match(B.textContent, /접기/);
+    assert.equal(B.getAttribute("aria-expanded"), "true");
+  });
+  window.NAVI.onAiTurnComplete();
+  Object.defineProperty(A, "scrollHeight", { configurable: true, get: () => 60 });
+  window.NAVI.onUserText("다음 질문");
+  window.NAVI.onAiText("다음 답.");
+  check("펼친 상태는 다음 답에도 유지되고, 접기 버튼은 계속 보인다 (v2.15.0)", () => {
+    assert.ok(A.classList.contains("expanded"));
+    assert.equal(B.hidden, false);
+  });
+  B.dispatchEvent(new window.Event("click"));
+  check("다시 누르면 접히고, 넘치지 않으면 버튼이 사라진다 (v2.15.0)", () => {
+    assert.ok(!A.classList.contains("expanded"));
+    assert.equal(B.hidden, true);
+  });
+  delete A.scrollHeight; delete A.clientHeight;
+  window.NAVI.onAiTurnComplete();
+}
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {
