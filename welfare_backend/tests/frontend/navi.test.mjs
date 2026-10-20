@@ -2077,7 +2077,7 @@ check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 
     assert.match(HTML, /naviPreRoll\.push\(btoa\(binp\)\)/);
     assert.match(HTML, /const pre = naviPreRoll\.splice\(0\);/);
     assert.match(HTML, /for \(const b of pre\) ws\.send\(JSON\.stringify\(\{ type: "audio_chunk", data: b \}\)\);/);
-    assert.match(HTML, /window\.NAVI\.noteUserSpeech\(\);\s*\}\s*\}\s*return;/);
+    assert.match(HTML, /window\.NAVI\.noteUserSpeech\(\);\s*\} else if \(naviDuckHit\(\)[\s\S]{0,200}?window\.NAVI\.bargeDuck\(\);\s*\}\s*\}\s*return;/);   // v2.14.0 조기 감지 분기 추가
   });
   // 재생 종료 안전장치 — onend 가 오지 않아도 추정 길이×1.3+1초 뒤 __NAVI_SPEAKING 해제
   const NV = window.NAVI._internals();
@@ -3436,6 +3436,89 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   NV.showRoute(mkRoute(null), "구버전 응답");
   check("crosswalks 가 없는 구버전 응답은 표시 없음 (#361)", () => assert.equal(NV.cwMarks().length, 0));
   NV.clearRouteDisplay();
+}
+
+// ── v2.14.0 안내 중 말소리 조기 감지 — 먼저 볼륨만 낮추고 '들었어요', 소음이면 되돌린다 ──
+{
+  const G = window.__NAVI_GATE;
+  check("조기 감지: 기준 넘는 청크 2개면 duck 성립, 끊기(hit)는 아직 아님 (v2.14.0)", () => {
+    G.reset();
+    assert.equal(G.hit(0.05), false); assert.equal(G.duck(), false, "1청크로는 낮추지 않는다");
+    assert.equal(G.hit(0.05), false); assert.equal(G.duck(), true, "2청크면 낮춘다");
+    G.reset();
+  });
+  check("조기 감지: 스피커 에코 수준(0.02)·끊어진 충격음은 duck 아님 (v2.14.0)", () => {
+    G.reset();
+    for (const r of [0.02, 0.022, 0.018]) G.hit(r);
+    assert.equal(G.duck(), false);
+    G.reset(); G.hit(0.06); G.hit(0.0); G.hit(0.0);
+    assert.equal(G.duck(), false);
+    G.reset();
+  });
+  const NV = window.NAVI._internals();
+  const prevFetch5 = window.fetch;
+  window.fetch = async (url, opt) => {
+    const u = String(url);
+    if (u.includes("/api/v1/tts")) return { ok: true, blob: async () => ({}) };
+    return prevFetch5(url, opt);
+  };
+  const made = [];
+  window.URL.createObjectURL = () => "blob:duck";
+  window.Audio = function(){ const self = this; this.duration = 30.0; this.volume = 1; made.push(self); this.play = () => Promise.resolve(); this.pause = () => { self.paused = true; }; };
+  window.show("view-navi");
+  NV.stopSpeak();
+  NV.speak("조기 감지 시험 문장입니다", { queue: true, kind: "interim" });
+  await sleep(30);
+  const a = made.at(-1);
+  check("시험 준비 — 안내 재생 중, 평소 볼륨 0.8", () => {
+    assert.ok(a, "Audio 생성 안 됨");
+    assert.equal(window.__NAVI_SPEAKING, true);
+    assert.equal(a.volume, 0.8);
+  });
+  const ok1 = window.NAVI.bargeDuck();
+  check("bargeDuck: 볼륨을 0.2 로 낮추고 '들었어요' 표시, 안내는 계속 (v2.14.0)", () => {
+    assert.equal(ok1, true);
+    assert.equal(a.volume, 0.2);
+    assert.equal(a.paused, undefined, "낮추기만 해야 하는데 멈췄다");
+    assert.equal(window.__NAVI_SPEAKING, true);
+    const el = $("naviMicState");
+    assert.ok(el.classList.contains("heard"));
+    assert.match(el.textContent, /들었어요/);
+    assert.equal(NV.duckState().ducked, true);
+  });
+  check("이미 낮춘 상태에서 다시 불러도 그대로 (v2.14.0)", () => {
+    assert.equal(window.NAVI.bargeDuck(), true);
+    assert.equal(a.volume, 0.2);
+  });
+  await sleep(1350);
+  check("1.2초 안에 끊기 판정이 없으면 소음 — 볼륨 0.8 복귀, 표시 내림 (v2.14.0)", () => {
+    assert.equal(a.volume, 0.8);
+    assert.equal(NV.duckState().ducked, false);
+    assert.ok(!$("naviMicState").classList.contains("heard"));
+    assert.equal(window.__NAVI_SPEAKING, true, "소음 판정으로 안내가 끊기면 안 된다");
+  });
+  check("되돌린 직후 1초는 다시 낮추지 않는다 — 소음에 볼륨 출렁임 방지 (v2.14.0)", () => {
+    assert.equal(window.NAVI.bargeDuck(), false);
+    assert.equal(a.volume, 0.8);
+  });
+  await sleep(1050);
+  const ok2 = window.NAVI.bargeDuck();
+  window.NAVI.bargeStop();
+  check("낮춘 뒤 끊기 판정이 서면 안내를 멈추고 '들었어요'는 유지 (v2.14.0)", () => {
+    assert.equal(ok2, true);
+    assert.equal(window.__NAVI_SPEAKING, false);
+    assert.equal(NV.duckState().ducked, false, "복귀 타이머가 남아 있다");
+    assert.equal(NV.duckState().heard, true);
+  });
+  check("재생 중이 아니면 낮추지 않는다 (v2.14.0)", () => {
+    assert.equal(window.NAVI.bargeDuck(), false);
+  });
+  check("마이크 게이트가 끊기 판정 전 조기 감지로 bargeDuck 을 부른다 (소스 가드)", () => {
+    assert.match(HTML, /\} else if \(naviDuckHit\(\) && window\.NAVI && window\.NAVI\.bargeDuck\) \{/);
+    assert.match(HTML, /ttsAudio\.volume = NAVI_TTS_VOL;/);
+  });
+  window.fetch = prevFetch5;
+  NV.resetTrip(); NV.stopSpeak();
 }
 
 // ── 결과 ──

@@ -368,6 +368,9 @@ html.nmap .locbtn{grid-column:4;margin-right:8px;}
 .navi-micstate::before{content:"";width:9px;height:9px;border-radius:50%;background:#94A3B8;flex:none;}
 .navi-micstate.on::before{background:#16A34A;}
 .navi-micstate.tts::before{background:#F59E0B;animation:navimic 1s infinite;}
+/* v2.14.0 — 안내 중 말소리를 잡은 즉시(약 0.25초) 바뀌는 '들었어요' 표시. 멀리서도 보이게 초록 바탕·굵은 글씨 */
+.navi-micstate.heard{color:#fff;background:#16A34A;border-radius:999px;padding:3px 10px;font-weight:700;font-size:.95rem;max-width:none;}
+.navi-micstate.heard::before{background:#fff;animation:none;}
 @keyframes navimic{50%{opacity:.35;}}
 /* ── 이동 방식 카드 (#251) ── */
 .mode-cards{display:flex;gap:6px;margin:0 0 10px;}
@@ -1397,7 +1400,14 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     return naviBargeWin.filter((r) => r >= NAVI_BARGE_RMS).length >= NAVI_BARGE_NEED;
   };
   const naviBargeReset = () => { naviBargeWin.length = 0; naviPreRoll.length = 0; };
-  window.__NAVI_GATE = { hit: naviBargeHit, reset: naviBargeReset, RMS: NAVI_BARGE_RMS, WIN: NAVI_BARGE_WIN, NEED: NAVI_BARGE_NEED };
+  // v2.14.0 — 조기 감지(duck). 끊기 판정(1초 중 4청크)은 빨라야 0.5초, 보통 1초 가까이 걸려 그 사이 사용자는
+  // 자기 말이 들렸는지 알 수 없어 말이 겹쳤다(리허설 10/16). 최근 3청크(≈0.38초) 중 2청크가 기준을 넘으면
+  // 먼저 안내 볼륨만 낮추고 '들었어요'를 띄운다. 끊기는 기존 판정이 성립할 때만 — 소음이면 볼륨을 되돌린다.
+  // 판정은 naviBargeHit 가 채운 같은 창(naviBargeWin)을 읽기만 한다 — 이 함수는 창을 바꾸지 않는다.
+  const NAVI_DUCK_LAST = 3;          // 최근 3청크(128ms × 3 ≈ 0.38초)
+  const NAVI_DUCK_NEED = 2;          // 그중 2청크 이상이면 조기 감지
+  const naviDuckHit = () => naviBargeWin.slice(-NAVI_DUCK_LAST).filter((r) => r >= NAVI_BARGE_RMS).length >= NAVI_DUCK_NEED;
+  window.__NAVI_GATE = { hit: naviBargeHit, duck: naviDuckHit, reset: naviBargeReset, RMS: NAVI_BARGE_RMS, WIN: NAVI_BARGE_WIN, NEED: NAVI_BARGE_NEED };
 
   const startMic = async () => {
     micStream = await navigator.mediaDevices.getUserMedia({
@@ -1478,6 +1488,9 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
             if (window.NAVI && window.NAVI.bargeStop) window.NAVI.bargeStop();
             for (const b of pre) ws.send(JSON.stringify({ type: "audio_chunk", data: b }));
             if (window.NAVI && window.NAVI.noteUserSpeech) window.NAVI.noteUserSpeech();
+          } else if (naviDuckHit() && window.NAVI && window.NAVI.bargeDuck) {
+            // 끊기 판정 전 — 볼륨만 낮추고 '들었어요' 표시 (v2.14.0). 이미 낮춘 상태면 bargeDuck 이 그냥 넘어간다.
+            window.NAVI.bargeDuck();
           }
         }
         return;   // 재생 중 프레임은 에코일 수 있어 보관만 하고, 멈춘 다음 프레임부터 통과
@@ -1955,6 +1968,14 @@ window.NAVI = (function(){
      speakSeq: 발화 요청 세대 토큰. 합성 응답이 늦게 도착해도 그 사이 새 발화가
      요청됐으면 폐기한다 — 안내가 밀리거나(순서 꼬임) 폴백 목소리와 섞이는 것 방지. */
   var ttsAudio=null, ttsCache={}, ttsCacheKeys=[], speakSeq=0;
+  /* v2.14.0 — 안내 중 조기 감지(duck) 상태.
+     NAVI_TTS_VOL  : 평소 안내 볼륨(아래 _speakNow 의 0.8 과 같아야 한다)
+     NAVI_DUCK_VOL : 말소리를 잡았을 때 낮추는 볼륨 — 안내 내용은 계속 들리되 사용자 말이 묻히지 않을 정도
+     NAVI_DUCK_HOLD_MS : 낮춘 뒤 이 시간 안에 끊기 판정이 서지 않으면 소음으로 보고 볼륨을 되돌린다
+     NAVI_DUCK_COOL_MS : 되돌린 직후 이 시간 동안은 다시 낮추지 않는다 — 계속되는 소음에 볼륨이 출렁이지 않게
+     NAVI_HEARD_MS : '들었어요' 표시 유지 시간(말이 이어지면 noteUserSpeech 가 연장) */
+  var NAVI_TTS_VOL=0.8, NAVI_DUCK_VOL=0.2, NAVI_DUCK_HOLD_MS=1200, NAVI_DUCK_COOL_MS=1000, NAVI_HEARD_MS=1500;
+  var duckTimer=null, duckCoolUntil=0, heardUntil=0;
   // 실증 기록(#318) — 실제로 말한 문장·끊김·버려진 문장을 남긴다. 실증 계정이 아니면 아무 일도 없다
   function _tev(t, d){ try{ if(window.__TRIAL && window.__TRIAL.enabled) window.__TRIAL.ev(t, d); }catch(e){} }
   /* v1.43.0 발화 큐 — 스텝 안내는 앞 안내를 끊지 않고 이어서 말한다.
@@ -2041,6 +2062,7 @@ window.NAVI = (function(){
     if(speakEndTimer){ clearTimeout(speakEndTimer); speakEndTimer=null; }
     try{ if(ttsAudio){ ttsAudio.onended=null; ttsAudio.onerror=null; ttsAudio.pause(); ttsAudio=null; } }catch(e){}
     try{ window.speechSynthesis && window.speechSynthesis.cancel(); }catch(e){}
+    if(duckTimer){ clearTimeout(duckTimer); duckTimer=null; }   // 낮춘 문장이 끝났다 — 다음 문장은 평소 볼륨으로 (v2.14.0)
     _setNaviSpeaking(false);
     speakPlaying = null;
   }
@@ -2169,7 +2191,7 @@ window.NAVI = (function(){
       if(seq !== speakSeq) return;                 // 늦게 도착 — 폐기
       try{
         ttsAudio = new Audio(url);
-        ttsAudio.volume = 0.8;                     // 상담 음성 게인(0.8)과 동일하게 정합
+        ttsAudio.volume = NAVI_TTS_VOL;            // 상담 음성 게인(0.8)과 동일하게 정합
         _setNaviSpeaking(true);             // 발화 중 마이크 입력 차단(에코 방지)
         ttsAudio.onended = function(){ _speakEnded(); };
         ttsAudio.onerror = function(){ _speakEnded(); };
@@ -3232,15 +3254,50 @@ window.NAVI = (function(){
   }
   // 안내 TTS 재생 중 사용자 발화 감지(마이크 게이트) 또는 질문 전송 시 —
   // 안내를 멈춰 말할 길을 연다. 대화가 끝나면 scheduleResume 이 안내를 복귀시킨다.
+  /* v2.14.0 — 안내 재생 중 말소리 조기 감지: 볼륨을 낮추고 '들었어요'를 즉시 띄운다.
+     반환값: 낮췄거나 이미 낮춘 상태면 true. 모의 주행·쿨다운·재생 중 아님이면 false.
+     내장 TTS(speechSynthesis) 폴백 중에는 볼륨을 바꿀 수 없어 표시만 한다. */
+  function _showHeard(){
+    heardUntil = Date.now() + NAVI_HEARD_MS;
+    var el = $("naviMicState");
+    if(el){ el.textContent = "들었어요! 말씀하세요"; el.classList.add("heard"); el.classList.remove("tts"); el.classList.remove("on"); }
+  }
+  function _clearHeard(){
+    heardUntil = 0;
+    var el = $("naviMicState"); if(el) el.classList.remove("heard");
+  }
+  function bargeDuck(){
+    if(simActive) return false;                 // 모의 주행은 끊지도 낮추지도 않는다(bargeStop 과 같은 원칙)
+    if(!window.__NAVI_SPEAKING) return false;
+    if(duckTimer) return true;                   // 이미 낮춘 상태
+    if(Date.now() < duckCoolUntil) return false; // 방금 소음으로 되돌렸다
+    try{ if(ttsAudio) ttsAudio.volume = NAVI_DUCK_VOL; }catch(e){}
+    _showHeard();
+    _tev("navi_duck");
+    duckTimer = setTimeout(function(){ duckTimer = null; _unduck(); }, NAVI_DUCK_HOLD_MS);
+    return true;
+  }
+  // 끊기 판정 없이 시간이 지났다 = 주변 소리였다 — 볼륨을 되돌리고 표시를 내린다
+  function _unduck(){
+    if(duckTimer){ clearTimeout(duckTimer); duckTimer = null; }
+    try{ if(ttsAudio) ttsAudio.volume = NAVI_TTS_VOL; }catch(e){}
+    duckCoolUntil = Date.now() + NAVI_DUCK_COOL_MS;
+    _clearHeard();
+    _tev("navi_unduck");
+  }
   function bargeStop(){
     if(simActive) return;             // 모의 주행은 안내를 끝까지 듣는 용도 — 에코 오탐으로 끊지 않는다 (v1.43.2)
+    if(duckTimer){ clearTimeout(duckTimer); duckTimer = null; }   // 끊는다 — 소음 복귀 타이머는 필요 없다 (v2.14.0)
     if(window.__NAVI_SPEAKING){ try{ console.info("[navi] barge-in: 사용자 발화 감지로 안내 중단"); }catch(e){} _tev("navi_barge"); sendActivity("navi_barge"); stopSpeak(); }
     if(guiding) scheduleResume(2500, {barge:true});   // 대화가 이어지지 않으면 곧 안내로 돌아온다 (#359, 종전 8초)
   }
   function cancelResume(){ if(resumePoll){ clearInterval(resumePoll); resumePoll=null; } }
   // 마이크 프레임에서 유의미한 발화가 감지될 때 호출 — 사용자가 말한 직후에는
   // 서버 답변이 오기 전의 무음 구간에 안내 복귀가 끼어들지 않게 한다(리뷰 #1)
-  function noteUserSpeech(){ lastUserSpeechTs = Date.now(); }
+  function noteUserSpeech(){
+    lastUserSpeechTs = Date.now();
+    if(Date.now() < heardUntil) heardUntil = Date.now() + NAVI_HEARD_MS;   // 말이 이어지는 동안 '들었어요' 유지 (v2.14.0)
+  }
   // 답변(상담원 음성·길안내 음성)이 끝나고 graceMs 만큼 조용하면 직전 안내 문장을 재생.
   function scheduleResume(graceMs, opt){
     cancelResume();
@@ -5736,6 +5793,7 @@ window.NAVI = (function(){
       var net = (window.__CHAT && window.__CHAT._net) ? window.__CHAT._net() : {};
       if(net.reconnecting){ txt="다시 연결 중…"; cls=""; }
       else if(!wsRef || wsRef.readyState !== 1){ txt="세션 대기"; cls=""; }
+      else if(Date.now() < heardUntil && window.__micOn){ txt="들었어요! 말씀하세요"; cls="heard"; }   // (v2.14.0)
       else if(net.forced && window.__micOn){ txt="말씀하세요"; cls="on"; }
       else if(window.__NAVI_SPEAKING){ txt="안내 중 — 말하면 멈춰요"; cls="tts"; }
       else if(window.__CHAT && window.__CHAT.aiAudioActive && window.__CHAT.aiAudioActive()){ txt="답변 중 — 말하면 끊어요"; cls="tts"; }
@@ -5744,6 +5802,7 @@ window.NAVI = (function(){
       if(el.textContent !== txt){ el.textContent = txt; }
       el.classList.toggle("on", cls==="on");
       el.classList.toggle("tts", cls==="tts");
+      el.classList.toggle("heard", cls==="heard");
       // 종료 버튼은 항시 활성(v1.35.0). 여기서는 라벨만 상태에 맞춰 동기화한다.
       // (구 #251 코드가 매 틱 disabled 를 되돌려 버튼이 계속 잠기던 문제 수정)
       setEndBtn((guiding || simActive) ? "guide" : "home");
@@ -5820,6 +5879,7 @@ window.NAVI = (function(){
     },
     onUiAction: onUiAction,
     bargeStop: bargeStop,
+    bargeDuck: bargeDuck,
     noteUserSpeech: noteUserSpeech,
     isBusy: function(){ return !!(guiding || simActive); },
     onSessionClosed: function(){
@@ -5852,7 +5912,8 @@ window.NAVI = (function(){
     // 첫 진입은 장애유형 선택 게이트를 먼저 — 선택 완료 후 목록 로드 (#202)
     openNavi: function(){ openNavi(); if(typeConfirmed) loadSpots(); else renderTypeSelectPanel(); },
     // 테스트용 노출
-    _internals: function(){ return {steps:steps, stepIdx:stepIdx, spots:spots, speak:speak, showRoute:showRoute,
+    _internals: function(){ return {duckState: function(){ return {ducked: !!duckTimer, heard: Date.now() < heardUntil, coolUntil: duckCoolUntil, vol: ttsAudio ? ttsAudio.volume : null}; },
+      steps:steps, stepIdx:stepIdx, spots:spots, speak:speak, showRoute:showRoute,
                                      resumeUtterance:resumeUtterance, saveTrip:saveTrip, clearTrip:clearTrip, pendingTrip:pendingTrip, offerTripResume:offerTripResume,
                                      speakBusy:speakBusy, stepUtterance:stepUtterance, drainSpeak:_drainSpeak,
                                      platformCautionSpeech:platformCautionSpeech,
