@@ -47,8 +47,8 @@ android {
         applicationId = "kr.co.sweetk.accessnavi"
         minSdk = 26
         targetSdk = 35
-        versionCode = 20101
-        versionName = "2.1.1"
+        versionCode = 20102
+        versionName = "2.1.2"
         buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
         buildConfigField("String", "KAKAO_NATIVE_KEY", "\"$kakaoNativeKey\"")
         // 지도 엔진(네이티브 라이브러리)은 실제 단말용 64비트 ARM 하나만 넣는다 — 설치 파일 크기를 줄인다(32비트 전용 단말은 웹 지도로 그린다).
