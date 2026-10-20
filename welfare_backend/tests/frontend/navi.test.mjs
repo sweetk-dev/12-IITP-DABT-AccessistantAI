@@ -528,8 +528,8 @@ check("음성안내 토글은 스텝 카드로 이동 (상단 토글 제거)", (
   assert.equal(window.document.getElementById("naviVoiceBtn"), null);
   assert.match(HTML, /음성 끄기/);
 });
-check("상담원 답변 스트립은 3줄 제한", () => {
-  assert.match(HTML, /\.navi-answer\{max-height:4\.2em/);
+check("상담원 답변 스트립은 4줄 제한(내 말 1줄 + 답 3줄, v2.16.0)", () => {
+  assert.match(HTML, /\.navi-answer\{max-height:5\.6em/);
 });
 check("세션 미연결 상태의 텍스트 질문은 안내문으로 거절", () => {
   $("naviTextInput").value = "지금 어디로 가요?";
@@ -3521,83 +3521,85 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   NV.resetTrip(); NV.stopSpeak();
 }
 
-// ── v2.15.0 길안내 화면 '내 말' 줄 — 사용자 말 전사를 실시간 표시 ──
+// ── v2.16.0 내 말 + 상담원 답을 한 영역에 · 듣는 중 색 표시 · 목록 크게 단계 ──
 {
   window.show("view-navi");
-  const H = () => $("naviHeard"), A = () => $("naviAnswer");
-  window.NAVI.onAiTurnComplete();          // 앞 블록 상태 정리
+  const A = () => $("naviAnswer");
+  window.NAVI.onAiTurnComplete();
   window.NAVI.onUserText(" 안양아트센터");
-  window.NAVI.onUserText("까지 얼마나");
-  window.NAVI.onUserText(" 남았어?");
-  check("말 전사 조각이 '내 말' 줄에 이어 붙어 실시간 표시 (v2.15.0)", () => {
-    assert.equal(H().hidden, false);
-    assert.equal(H().textContent, "안양아트센터까지 얼마나 남았어?");
+  window.NAVI.onUserText("까지 얼마나 남았어?");
+  check("내 말이 답변 영역에 파란 줄(ln-me)로 들어간다 — 별도 영역 없음 (v2.16.0)", () => {
+    assert.equal($("naviHeard"), null, "별도 '내 말' 영역이 남아 있다");
+    assert.equal($("naviAnsToggle"), null, "답변 펼치기 버튼이 남아 있다");
+    assert.equal(A().hidden, false);
+    const me = A().querySelector(".ln-me");
+    assert.ok(me); assert.equal(me.textContent, "안양아트센터까지 얼마나 남았어?");
   });
   window.NAVI.onAiText("약 300미터 ");
-  window.NAVI.onUserText(" 남았어");          // 답 시작 직후 늦게 온 같은 말 조각
+  window.NAVI.onUserText(" 남았어");
   window.NAVI.onAiText("남았어요.");
-  check("답이 시작돼도 '내 말'은 남고, 직후 늦은 조각은 같은 말에 붙는다 (v2.15.0)", () => {
-    assert.equal(A().hidden, false);
-    assert.equal(A().textContent, "약 300미터 남았어요.");
-    assert.match(H().textContent, /남았어\? 남았어$/);
+  check("답은 같은 영역에서 내 말 바로 아래로 이어진다, 늦은 조각은 같은 말에 (v2.16.0)", () => {
+    const kids = [...A().children].map((e) => e.className);
+    assert.equal(JSON.stringify(kids), JSON.stringify(["ln-me", "ln-ai"]));
+    assert.equal(A().querySelector(".ln-ai").textContent, "약 300미터 남았어요.");
+    assert.match(A().querySelector(".ln-me").textContent, /남았어\? 남았어$/);
   });
   window.NAVI.onAiTurnComplete();
   window.NAVI.onUserText("화장실 어디야");
-  check("답이 끝난 뒤 새 말은 지난 말·지난 답을 지우고 새로 시작 (v2.15.0)", () => {
-    assert.equal(H().textContent, "화장실 어디야");
-    assert.equal(A().hidden, true);
-    assert.equal(A().textContent, "");
+  check("답이 끝난 뒤 새 말은 지난 말·답을 지우고 새로 시작 (v2.16.0)", () => {
+    assert.equal(A().children.length, 1);
+    assert.equal(A().textContent, "화장실 어디야");
   });
   window.show("view-chat");
   window.NAVI.onUserText(" 상담 화면 말");
-  check("길안내 화면이 아닐 때는 '내 말' 줄을 건드리지 않는다 (v2.15.0)", () => {
-    assert.equal(H().textContent, "화장실 어디야");
-  });
+  check("길안내 화면이 아닐 때는 건드리지 않는다 (v2.16.0)", () => assert.equal(A().textContent, "화장실 어디야"));
   window.show("view-navi");
-  check("WS user_transcript 가 길안내 '내 말' 줄로 이어진다 (소스 가드)", () => {
+  window.NAVI.onAiTurnComplete();
+  // 듣는 중 표시 — 마이크 쪽 호출(NAVI.noteUserSpeech). 앞 블록의 '들었어요' 표시가 끝난 뒤에 본다
+  await sleep(1700);
+  window.NAVI.noteUserSpeech();
+  check("말소리를 보내는 동안 '말씀 듣는 중' + 입력칸 초록 테두리 (v2.16.0)", () => {
+    assert.match($("naviMicState").textContent, /말씀 듣는 중/);
+    assert.ok(window.document.querySelector(".navi-askbar").classList.contains("hearing"));
+  });
+  check("WS user_transcript 가 길안내 화면으로 이어진다 (소스 가드)", () => {
     assert.match(HTML, /appendUserTranscript\(msg\.content\);\s*\/\/[^\n]*\n\s*try \{ if \(window\.NAVI && window\.NAVI\.onUserText\) window\.NAVI\.onUserText\(msg\.content\); \} catch \(e\) \{\}/);
-    assert.match(HTML, /<div class="navi-heard" id="naviHeard" hidden/);
+    assert.match(HTML, /\.navi-askbar\.hearing \.field\{border-color:#16A34A;/);
   });
-  window.NAVI.onAiTurnComplete();
-}
-
-// ── v2.15.0 답변 줄 펼치기/접기 ──
-{
-  window.show("view-navi");
-  const A = $("naviAnswer"), B = $("naviAnsToggle");
-  window.NAVI.onAiTurnComplete();
-  window.NAVI.onUserText("짧은 질문");
-  window.NAVI.onAiText("짧은 답.");
-  check("답이 3줄 안이면 펼치기 버튼을 숨긴다 (v2.15.0)", () => assert.equal(B.hidden, true));
-  Object.defineProperty(A, "scrollHeight", { configurable: true, get: () => 200 });
-  Object.defineProperty(A, "clientHeight", { configurable: true, get: () => 60 });
-  window.NAVI.onAiText(" 길게 이어지는 답변입니다.");
-  check("답이 3줄을 넘치면 '답변 펼치기' 버튼이 보인다 (v2.15.0)", () => {
-    assert.equal(B.hidden, false);
-    assert.match(B.textContent, /펼치기/);
-    assert.equal(B.getAttribute("aria-expanded"), "false");
+  // 목록 크게 단계
+  const V = $("view-navi"), BB = $("naviBigBtn");
+  check("손잡이 줄에 '▲ 크게' 버튼이 있다 (v2.16.0)", () => {
+    assert.ok(BB); assert.match(BB.textContent, /크게/); assert.equal(BB.getAttribute("aria-pressed"), "false");
   });
-  B.dispatchEvent(new window.Event("click"));
-  check("누르면 펼쳐지고 버튼은 '답변 접기' (v2.15.0)", () => {
-    assert.ok(A.classList.contains("expanded"));
-    assert.match(B.textContent, /접기/);
-    assert.equal(B.getAttribute("aria-expanded"), "true");
+  BB.dispatchEvent(new window.Event("click"));
+  check("'크게'를 누르면 크게 단계(지도는 위쪽 띠만) — 버튼은 '▼ 작게' (v2.16.0)", () => {
+    assert.ok(V.classList.contains("big"));
+    assert.match(BB.textContent, /작게/); assert.equal(BB.getAttribute("aria-pressed"), "true");
+    assert.match(HTML, /html\.nmap #view-navi\.big \.navi-wrap\{grid-template-rows:auto 64px auto;\}/);
   });
-  window.NAVI.onAiTurnComplete();
-  Object.defineProperty(A, "scrollHeight", { configurable: true, get: () => 60 });
-  window.NAVI.onUserText("다음 질문");
-  window.NAVI.onAiText("다음 답.");
-  check("펼친 상태는 다음 답에도 유지되고, 접기 버튼은 계속 보인다 (v2.15.0)", () => {
-    assert.ok(A.classList.contains("expanded"));
-    assert.equal(B.hidden, false);
+  const G = $("naviGrip");
+  G.dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 300, bubbles: true }));
+  G.dispatchEvent(new window.MouseEvent("pointerup", { clientY: 360, bubbles: true }));
+  check("크게 단계에서 손잡이를 아래로 끌면 한 단계만 작게(기본) (v2.16.0)", () => {
+    assert.ok(!V.classList.contains("big"));
+    assert.ok(!$("naviSheet").classList.contains("collapsed"));
   });
-  B.dispatchEvent(new window.Event("click"));
-  check("다시 누르면 접히고, 넘치지 않으면 버튼이 사라진다 (v2.15.0)", () => {
-    assert.ok(!A.classList.contains("expanded"));
-    assert.equal(B.hidden, true);
+  G.dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 360, bubbles: true }));
+  G.dispatchEvent(new window.MouseEvent("pointerup", { clientY: 300, bubbles: true }));
+  check("기본에서 위로 끌면 크게 단계 (v2.16.0)", () => assert.ok(V.classList.contains("big")));
+  window.NAVI._internals();
+  $("naviGrip").dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 500, bubbles: true }));
+  $("naviGrip").dispatchEvent(new window.MouseEvent("pointerup", { clientY: 500, bubbles: true }));
+  check("손잡이를 누르면(목록 접기) 크게 단계도 끝난다 (v2.16.0)", () => {
+    assert.ok($("naviSheet").classList.contains("collapsed"));
+    assert.ok(!V.classList.contains("big"));
   });
-  delete A.scrollHeight; delete A.clientHeight;
-  window.NAVI.onAiTurnComplete();
+  BB.dispatchEvent(new window.Event("click"));
+  check("접힌 상태에서 '크게'를 누르면 목록을 펴고 크게 (v2.16.0)", () => {
+    assert.ok(!$("naviSheet").classList.contains("collapsed"));
+    assert.ok(V.classList.contains("big"));
+  });
+  window.NAVI.sheetSetBig(false);
 }
 
 // ── 결과 ──
