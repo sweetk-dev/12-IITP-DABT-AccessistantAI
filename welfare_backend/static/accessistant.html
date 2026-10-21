@@ -1226,6 +1226,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
         case "ai_transcript":   appendAiTranscript(msg.content); if (window.NAVI && window.NAVI.onAiText) window.NAVI.onAiText(msg.content); if (pendingSources.length) { clearTimeout(srcFlushTimer); srcFlushTimer = setTimeout(flushSources, 800); } break;
         case "text":            appendAiTranscript(msg.content); break;
         case "answer_card":     applyAnswerCard(msg.content); break;   // 정책 템플릿 카드 (#205)
+        case "location_request": if (window.NAVI && window.NAVI.locateOnce) window.NAVI.locateOnce(); break;   // 상담원이 '근처'를 찾을 때만 묻는다 (v2.19.0)
         case "audio":
           // 서버(상담원) 음성이 오면 기기 내장 음성은 즉시 멈춘다 — 중첩 재생 방지 (#217)
           if (ttsSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking)) stopLocalTts();
@@ -2808,6 +2809,29 @@ window.NAVI = (function(){
       }
       if(emsg){ status(emsg); locErrMsg = emsg; }
     }, {enableHighAccuracy:true, maximumAge:5000, timeout:10000});
+  }
+  /* ── 위치 1회 조회 (v2.19.0) ──
+     서버가 '근처' 도구를 기준 장소 없이 부르려는데 위치가 없을 때만 보낸다({type:"location_request"}).
+     정책상담은 위치를 계속 받지 않는다 — 이때 한 번만 측위해 보낸다(권한 창은 처음 이때 뜬다).
+     정확도가 150m 보다 나쁜 측위(통신망·와이파이 추정)는 보내지 않는다 — 엉뚱한 곳이 '근처'의 기준이 되지 않게.
+     실패·거부·정확도 미달은 화면에 아무것도 띄우지 않고 서버에 location_unavailable 만 알린다 — 서버는 바로 위치 없이 진행하고
+     상담원이 기준 장소를 되묻는다.
+     이동경로 안내는 이미 위치를 계속 받고 있으니 가진 위치를 바로 보낸다. */
+  var LOC_ONCE_ACC_MAX = 150;
+  function locUnavailable(){   // 측위 실패를 바로 알려 서버가 6초를 다 기다리지 않게 한다
+    try{ if(wsRef && wsRef.readyState === 1) wsRef.send(JSON.stringify({type:"location_unavailable"})); }catch(e){}
+  }
+  function locateOnce(){
+    if(watchId != null && here){ sendLocation(); return; }
+    if(!navigator.geolocation){ locUnavailable(); return; }
+    try{
+      navigator.geolocation.getCurrentPosition(function(pos){
+        if(pos.coords.accuracy != null && +pos.coords.accuracy > LOC_ONCE_ACC_MAX){ locUnavailable(); return; }
+        here = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+        lastFixAcc = (pos.coords.accuracy != null) ? +pos.coords.accuracy : null;
+        sendLocation();
+      }, locUnavailable, {enableHighAccuracy:true, timeout:5000, maximumAge:30000});
+    }catch(e){ locUnavailable(); }
   }
   function sendLocation(){
     var o = activeOrigin();
@@ -5775,7 +5799,7 @@ window.NAVI = (function(){
     var feat = (cfg && cfg.features) || {};
     if(!feat.route && !feat.tour){ return; }   // 기능 플래그 OFF -> 진입점 자체를 노출하지 않음
     var mb=$("modeNaviBtn"); if(mb) mb.style.display="";
-    if(!IS_NAVI) return;   // 정책상담에서는 지도·위치를 쓰지 않는다 — 길안내는 이동경로 안내가 맡는다 (v2.0.0)
+    if(!IS_NAVI) return;   // 정책상담에서는 지도·위치 감시를 하지 않는다 — 길안내는 이동경로 안내가 맡는다 (v2.0.0). 위치는 상담원이 필요할 때만 locateOnce (v2.19.0)
 
     await loadKakao();
     NMAP.decide();      // 앱 안 + 서버 설정 on + 앱 지도 사용 가능 → 앱 지도 (v2.11.0)
@@ -6065,6 +6089,7 @@ window.NAVI = (function(){
       var aw = $("naviAskwrap"); if(aw) aw.hidden = false;   // 세션이 있어야 질문할 수 있다 (#248)
     },
     onUiAction: onUiAction,
+    locateOnce: locateOnce,
     bargeStop: bargeStop,
     bargeDuck: bargeDuck,
     noteUserSpeech: onMicVoice,   // 마이크 쪽에서 부른다 — 듣는 중 표시 포함 (v2.16.0)

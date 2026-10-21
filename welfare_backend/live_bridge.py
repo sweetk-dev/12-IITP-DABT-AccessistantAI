@@ -24,7 +24,8 @@ from starlette.websockets import WebSocketState
 
 from nav_context import (annotate_route_failure,
                          update_nav_state, current_guidance_result,
-                         inject_nav_defaults, inject_handoff, note_new_route)
+                         inject_nav_defaults, inject_handoff, note_new_route,
+                         needs_current_location)
 from text_normalize import looks_like_echo, normalize_numbers
 from tool_handlers import get_tool_dispatcher, run_tool, summarize_tool_result
 from unresolved_logger import TurnTracker
@@ -55,6 +56,40 @@ async def _safe_send_json(websocket: WebSocket, payload: dict) -> bool:
     except (RuntimeError, WebSocketDisconnect) as e:
         logger.debug("send_json 무시 (연결 종료 상태): %s", e)
         return False
+
+
+# 위치 1회 요청 (v2.19.0) — 정책상담 화면은 위치를 계속 보내지 않는다. '근처' 도구가 기준 장소 없이 불렸는데
+# 세션에 위치가 없거나 2분 넘게 묵었으면 화면에 한 번 묻는다. 화면이 측위해 보내면 바로 이어가고,
+# 권한이 없거나 늦으면 기다리지 않고 위치 없이 진행한다(도구가 '기준 장소를 말해 달라'로 끝난다).
+# 화면은 측위에 실패하면(권한 거부·정확도 미달·미지원) location_unavailable 로 바로 알려 기다림을 푼다.
+# 실패한 뒤 LOCATION_RETRY_SEC 안에는 다시 묻지 않는다 — 한 응답에 근처 도구가 여럿 와도 대기가 쌓이지 않게.
+LOCATION_FRESH_SEC = 120.0
+LOCATION_WAIT_SEC = 6.0
+LOCATION_RETRY_SEC = 30.0
+
+
+def location_request_due(user_location: dict, now: float) -> bool:
+    """위치를 화면에 물어야 하는가 — 위치가 없거나 묵었고, 최근에 물었다가 실패하지 않았을 때."""
+    fresh = user_location.get("lat") is not None and now - (user_location.get("ts") or 0) <= LOCATION_FRESH_SEC
+    if fresh:
+        return False
+    return now - (user_location.get("fail_ts") or 0) > LOCATION_RETRY_SEC
+
+
+async def _request_location_once(websocket: WebSocket, user_location: dict, loc_event: asyncio.Event) -> bool:
+    loc_event.clear()
+    t0 = _time.time()
+    if not await _safe_send_json(websocket, {"type": "location_request"}):
+        user_location["fail_ts"] = _time.time()
+        return False
+    try:
+        await asyncio.wait_for(loc_event.wait(), timeout=LOCATION_WAIT_SEC)
+    except asyncio.TimeoutError:
+        logger.info("📍 위치 요청 — %.0f초 안에 응답 없음, 위치 없이 진행", LOCATION_WAIT_SEC)
+    ok = user_location.get("lat") is not None and (user_location.get("ts") or 0) >= t0
+    if not ok:
+        user_location["fail_ts"] = _time.time()
+    return ok
 
 
 def _extract_sources(result) -> list:
@@ -1197,7 +1232,9 @@ async def handle_live_chat(
     ECHO_WINDOW_SEC = 3.0
     echo_ref = {"ai_text": "", "audio_ts": 0.0}
     # 프런트가 보낸 현재 위치 — 경로 도구의 출발지로 서버에서 주입한다(모델이 좌표를 지어내지 못하게).
-    user_location = {"lat": None, "lng": None}
+    user_location = {"lat": None, "lng": None, "ts": 0.0}
+    # 위치 1회 요청(v2.19.0) — 정책상담처럼 위치를 계속 보내지 않는 화면에, 필요한 도구가 불릴 때만 묻는다
+    loc_event = asyncio.Event()
     # 프런트가 보내는 길안내 진행 상태(#248) — get_current_guidance 와
     # explain_route_segment 기본 구간 주입의 근거가 된다.
     nav_state = {}
@@ -1340,9 +1377,14 @@ async def handle_live_chat(
                             try:
                                 user_location["lat"] = float(msg["lat"])
                                 user_location["lng"] = float(msg["lng"])
+                                user_location["ts"] = _time.time()
+                                loc_event.set()
                                 logger.debug("📍 현재 위치 갱신")
                             except (KeyError, TypeError, ValueError):
                                 logger.warning("잘못된 location 메시지 무시")
+                        elif msg.get("type") == "location_unavailable":
+                            # 화면이 위치 요청에 측위하지 못했다(권한 거부·정확도 미달) — 기다림을 바로 푼다 (v2.19.0)
+                            loc_event.set()
                         elif msg.get("type") == "end_of_turn":
                             # 사용자가 말을 끝냈음을 알리는 신호 (VAD 가 없을 때)
                             await session.send_realtime_input(audio_stream_end=True)
@@ -1526,6 +1568,10 @@ async def handle_live_chat(
                                         else:
                                             fargs.pop("origin_lat", None)
                                             fargs.pop("origin_lng", None)
+                                    # 위치가 필요한데 없거나 오래됐으면 화면에 한 번 묻고 잠깐 기다린다 (v2.19.0)
+                                    if needs_current_location(fname, fargs, nav_state) and \
+                                            location_request_due(user_location, _time.time()):
+                                        await _request_location_once(websocket, user_location, loc_event)
                                     # 세션이 아는 사실(현재 구간·현재 위치)을 기본값으로 주입 (#248)
                                     fargs = inject_nav_defaults(fname, fargs, nav_state, user_location)
                                     fargs = inject_handoff(fname, fargs, mode)   # 정책상담이면 넘기기 (v2.0.0)
