@@ -2,7 +2,7 @@
  * 제품 분리 런타임 검증 (jsdom) — v2.0.0
  *
  *   정책상담(기본 주소)
- *     1) 지도·위치를 쓰지 않는다 · 화면 사이 탭이 없다
+ *     1) 지도·위치 감시를 하지 않는다 · 화면 사이 탭이 없다 · 상담원이 물을 때만 위치를 한 번 보낸다(v2.19.0)
  *     2) 길안내 요청 결과(handoff_navi)는 넘기기 버튼으로 뜨고, 누르면 목적지·프로필만 실어 연다
  *     3) 넘어가 있는 동안 마이크·음성을 멈추고, 돌아오면 잇는다
  *   이동경로 안내(/navi)
@@ -55,7 +55,8 @@ function boot(url, opts) {
         if (u.includes("/app/latest.json")) { const L = w.__latest; return L ? { ok: true, json: async () => L } : { ok: false, json: async () => ({}) }; }
         const body = u.includes("/api/v1/config") ? CONFIG : u.includes("plan_accessible_route") ? ROUTE : { status: "success", results: [] };
         return { ok: true, json: async () => body }; };
-      w.navigator.geolocation = { watchPosition: (ok) => { w.__watch = ok; return 1; }, clearWatch: () => {} };
+      w.navigator.geolocation = { watchPosition: (ok) => { w.__watch = ok; return 1; }, clearWatch: () => {},
+        getCurrentPosition: (ok, err, o) => { (w.__once = w.__once || []).push({ ok, err, o }); } };
       w.navigator.mediaDevices = { getUserMedia: async () => { throw new Error("no mic"); } };
       w.SpeechSynthesisUtterance = function (t) { this.text = t; };
       w.speechSynthesis = { cancel() {}, speak(u) { (w.__spoken = w.__spoken || []).push(u.text); if (u.onend) u.onend(); } };
@@ -96,6 +97,25 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   w.document.querySelector('[data-go="text"]').click(); await sleep(50);
   const s0 = w.__sockets[0]; await s0._open(); await sleep(20);
   check("정책상담: 세션 주소에 navi 모드가 없다", () => assert.doesNotMatch(s0.url, /mode=navi/));
+  {
+    const locs = () => s0.sent.map((d) => { try { return JSON.parse(d); } catch (e) { return {}; } }).filter((m) => m.type === "location");
+    const st0 = ($("naviStatus") || {}).textContent;
+    check("정책상담: 묻기 전에는 위치를 받지도 보내지도 않는다 (v2.19.0)", () => { assert.equal(w.__watch, undefined); assert.equal((w.__once || []).length, 0); assert.equal(locs().length, 0); });
+    await s0._msg({ type: "location_request" }); await sleep(10);
+    check("정책상담: 서버가 물으면 한 번 측위한다", () => { assert.equal(w.__once.length, 1); assert.equal(w.__once[0].o.enableHighAccuracy, true); });
+    w.__once[0].ok({ coords: { latitude: 37.3943, longitude: 126.9568, accuracy: 9 } }); await sleep(10);
+    check("정책상담: 측위 결과를 세션에 보낸다", () => { const L = locs(); assert.equal(L.length, 1); assert.equal(L[0].lat, 37.3943); assert.equal(L[0].lng, 126.9568); });
+    await s0._msg({ type: "location_request" }); await sleep(10);
+    w.__once[1].ok({ coords: { latitude: 37.40, longitude: 126.96, accuracy: 900 } }); await sleep(10);
+    const unav = () => s0.sent.filter((d) => { try { return JSON.parse(d).type === "location_unavailable"; } catch (e) { return false; } }).length;
+    check("정책상담: 정확도가 나쁜 측위(150m 초과)는 보내지 않고 못 잡았다고만 알린다", () => { assert.equal(locs().length, 1); assert.equal(unav(), 1); });
+    await s0._msg({ type: "location_request" }); await sleep(10);
+    w.__once[2].err({ code: 1 }); await sleep(10);
+    check("정책상담: 권한 거부는 조용히 넘어간다 · 위치 감시를 시작하지 않는다 · 상태 줄 그대로", () => {
+      assert.equal(locs().length, 1); assert.equal(unav(), 2); assert.equal(w.__watch, undefined);
+      assert.equal(($("naviStatus") || {}).textContent, st0);
+    });
+  }
   check("정책상담: 상담 중에는 뒤로 가기를 붙잡는다(종전대로)", () => { assert.equal(w.__BACK.busy(), true); assert.equal(w.__BACK.armed(), true); assert.equal(w.__reconnectNavi(), false); });
   const dest = { name: "안양시청", kind: "building", lat: 37.3943, lng: 126.9568 };
   await s0._msg({ type: "ui_action", action: "handoff_navi", payload: { action: "handoff_navi", dest, profile: "visual" } });
