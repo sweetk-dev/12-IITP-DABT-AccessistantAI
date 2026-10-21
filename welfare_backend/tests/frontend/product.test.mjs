@@ -99,22 +99,64 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   check("정책상담: 세션 주소에 navi 모드가 없다", () => assert.doesNotMatch(s0.url, /mode=navi/));
   {
     const locs = () => s0.sent.map((d) => { try { return JSON.parse(d); } catch (e) { return {}; } }).filter((m) => m.type === "location");
+    const unav = () => s0.sent.filter((d) => { try { return JSON.parse(d).type === "location_unavailable"; } catch (e) { return false; } }).length;
     const st0 = ($("naviStatus") || {}).textContent;
-    check("정책상담: 묻기 전에는 위치를 받지도 보내지도 않는다 (v2.19.0)", () => { assert.equal(w.__watch, undefined); assert.equal((w.__once || []).length, 0); assert.equal(locs().length, 0); });
-    await s0._msg({ type: "location_request" }); await sleep(10);
+    check("정책상담: 상담 시작 누름에서 위치 권한만 미리 묻는다 · 결과는 보내지 않는다 (v2.19.1)", () => {
+      assert.equal((w.__once || []).length, 1); assert.equal(w.__watch, undefined); assert.equal(locs().length, 0);
+      w.__once[0].ok({ coords: { latitude: 37.1, longitude: 127.1, accuracy: 5 } });
+      assert.equal(locs().length, 0, "미리 묻기 결과를 보냈다");
+    });
+    w.__once = [];
+    await s0._msg({ type: "location_request" }); await sleep(20);
     check("정책상담: 서버가 물으면 한 번 측위한다", () => { assert.equal(w.__once.length, 1); assert.equal(w.__once[0].o.enableHighAccuracy, true); });
     w.__once[0].ok({ coords: { latitude: 37.3943, longitude: 126.9568, accuracy: 9 } }); await sleep(10);
     check("정책상담: 측위 결과를 세션에 보낸다", () => { const L = locs(); assert.equal(L.length, 1); assert.equal(L[0].lat, 37.3943); assert.equal(L[0].lng, 126.9568); });
-    await s0._msg({ type: "location_request" }); await sleep(10);
+    await s0._msg({ type: "location_request" }); await sleep(20);
     w.__once[1].ok({ coords: { latitude: 37.40, longitude: 126.96, accuracy: 900 } }); await sleep(10);
-    const unav = () => s0.sent.filter((d) => { try { return JSON.parse(d).type === "location_unavailable"; } catch (e) { return false; } }).length;
     check("정책상담: 정확도가 나쁜 측위(150m 초과)는 보내지 않고 못 잡았다고만 알린다", () => { assert.equal(locs().length, 1); assert.equal(unav(), 1); });
-    await s0._msg({ type: "location_request" }); await sleep(10);
+    await s0._msg({ type: "location_request" }); await sleep(20);
     w.__once[2].err({ code: 1 }); await sleep(10);
-    check("정책상담: 권한 거부는 조용히 넘어간다 · 위치 감시를 시작하지 않는다 · 상태 줄 그대로", () => {
+    check("정책상담: 권한 거부는 조용히 알린다 · 위치 감시를 시작하지 않는다 · 상태 줄 그대로", () => {
       assert.equal(locs().length, 1); assert.equal(unav(), 2); assert.equal(w.__watch, undefined);
       assert.equal(($("naviStatus") || {}).textContent, st0);
     });
+    // 권한을 아직 묻지 않은 상태(prompt) — 버튼을 띄우고 서버에는 바로 '없음'
+    w.navigator.permissions = { query: async () => ({ state: "prompt" }) };
+    await s0._msg({ type: "location_request" }); await sleep(20);
+    check("정책상담: 권한 미결정이면 [현재 위치 사용] 버튼을 띄우고 서버엔 바로 없음을 알린다 (v2.19.1)", () => {
+      assert.ok($("locAskBtn"), "버튼이 없다"); assert.equal(unav(), 3); assert.equal(w.__once.length, 3, "버튼 전에 측위했다");
+    });
+    await s0._msg({ type: "location_request" }); await sleep(20);
+    check("정책상담: 버튼이 남은 채 다시 물으면 이전 버튼을 지우고 지금 자리에 하나만 띄운다", () => {
+      assert.equal(w.document.querySelectorAll("#locAskBtn").length, 1); assert.equal(w.document.querySelectorAll(".bubble--loc").length, 1);
+      assert.equal(w.document.querySelector("#chat").lastElementChild, $("locAskBtn").closest(".bubble")); assert.equal(unav(), 4);
+    });
+    $("locAskBtn").click(); await sleep(10);
+    await s0._msg({ type: "location_request" }); await sleep(20);
+    check("정책상담: 측위 중 재요청 — 버튼 유지 · 없음만 알림", () => { assert.equal(w.document.querySelectorAll("#locAskBtn").length, 1); assert.ok($("locAskBtn").disabled); assert.equal(unav(), 5); });
+    w.__once[3].ok({ coords: { latitude: 37.40, longitude: 126.96, accuracy: 900 } }); await sleep(10);
+    check("정책상담: 버튼 측위 정확도 미달 — 보내지 않고 버튼을 다시 누를 수 있게 남긴다", () => {
+      assert.equal(locs().length, 1); assert.ok($("locAskBtn") && !$("locAskBtn").disabled); assert.match(w.document.querySelector(".bubble--loc").textContent, /정확하지 않습니다/);
+    });
+    $("locAskBtn").click(); await sleep(10);
+    w.__once[4].err({ code: 1 }); await sleep(10);
+    check("정책상담: 버튼 측위 거부 — 버튼 살려 두고 설정 안내", () => { assert.ok(!$("locAskBtn").disabled); assert.match(w.document.querySelector(".bubble--loc").textContent, /거부/); });
+    $("locAskBtn").click(); await sleep(10);
+    w.__once[5].ok({ coords: { latitude: 37.3953, longitude: 126.9568, accuracy: 7 } }); await sleep(10);
+    check("정책상담: 버튼으로 받은 위치를 보내고 다시 물어보라고 안내한다", () => {
+      const L = locs(); assert.equal(L.length, 2); assert.equal(L[1].lat, 37.3953);
+      assert.equal($("locAskBtn"), null); assert.match(w.document.querySelector(".bubble--loc").textContent, /다시 한 번 물어봐/);
+    });
+    w.navigator.permissions = { query: async () => ({ state: "denied" }) };
+    await s0._msg({ type: "location_request" }); await sleep(20);
+    check("정책상담: 권한이 막혀 있으면 설정 안내를 띄운다", () => { assert.equal(unav(), 6); assert.match(w.document.querySelector("#chat").textContent, /사이트 설정/); });
+    // 미리 묻기 — 권한 상태별 분기
+    for (const [state, n] of [["granted", 0], ["denied", 0], ["prompt", 1]]) {
+      w.navigator.permissions = { query: async () => ({ state }) }; w.__once = [];
+      w.NAVI.primeLocation(); await sleep(10);
+      check("정책상담: 미리 묻기 — 권한 " + state + "이면 측위 " + n + "번", () => assert.equal(w.__once.length, n));
+    }
+    delete w.navigator.permissions;
   }
   check("정책상담: 상담 중에는 뒤로 가기를 붙잡는다(종전대로)", () => { assert.equal(w.__BACK.busy(), true); assert.equal(w.__BACK.armed(), true); assert.equal(w.__reconnectNavi(), false); });
   const dest = { name: "안양시청", kind: "building", lat: 37.3943, lng: 126.9568 };
