@@ -4,7 +4,8 @@
     python3 tests/test_route_mode.py
 
 계약:
-  1) mode 미지정(자동) — 도보를 먼저 만들고, 도보가 멀면 대중교통 조합으로 승격
+  1) mode 미지정(자동) — 도보를 먼저 만들고, 도보가 멀면 도보+지하철·도보+버스·도보+버스+지하철을
+     함께 만들어 (소요시간+승하차 부담)×방식 가중치로 비교한다(v2.20.0). 우선순위 도보 > 지하철 > 버스 > 버스+지하철
   2) 승격 실패(조합 없음)면 도보 결과를 그대로 쓴다 — 오류로 뒤집지 않는다
   3) 명시 mode 는 그대로 전달하고 폴백하지 않는다
   4) 알 수 없는 mode 는 도구가 직접 오류로 답한다(서버 호출 없이)
@@ -110,13 +111,66 @@ def t_auto_short_stays_walk():
     assert r["mode_used"] == "walk" and r["auto_mode"] is True
 
 
+ERR = {"status": "error", "message": "조합 없음"}
+
+
+def _dur(resp, sec, dist=None):
+    """대중교통 응답의 소요시간·총거리를 바꾼 사본."""
+    import copy
+    r = copy.deepcopy(resp)
+    r["routes"][0]["summary"]["duration_sec"] = sec
+    if dist is not None:
+        r["routes"][0]["summary"]["total_distance_m"] = dist
+    return r
+
+
+def _only(kind):
+    """지정한 대중교통 종류만 남긴 응답(legs 기준 실제 방식이 그 종류가 된다)."""
+    r = _transit_resp()
+    r["routes"][0]["legs"] = [l for l in r["routes"][0]["legs"] if l["kind"] in ("walk", kind)]
+    return r
+
+
 def t_auto_long_upgrades():
-    rec = _Recorder([_walk_resp(2000), _transit_resp()])
+    # 도보 4,000m(4,000초) vs 버스+지하철 1,400초+승하차 2구간 360초 → 1,760×1.45=2,552 < 4,000 → 대중교통
+    rec = _Recorder([_walk_resp(4000), ERR, ERR, _transit_resp()])
     r = _plan("", rec)
-    assert rec.calls == ["walk", "walk_bus_subway"]
-    assert rec.realtime == [False, True], "대중교통 조합 요청에만 실시간을 붙인다"
+    assert rec.calls == ["walk", "walk_subway", "walk_bus", "walk_bus_subway"], rec.calls
+    assert rec.realtime == [False, True, True, True], "대중교통 조합 요청에만 실시간을 붙인다"
     assert r["mode_used"] == "walk_bus_subway"
     assert r["mode_label"] == "도보+버스+지하철"
+    sel = [c for c in r["auto_compare"] if c.get("status") == "선택"]
+    assert sel and sel[0]["mode"] == "walk_bus_subway", r["auto_compare"]
+
+
+def t_auto_keeps_walk_when_transit_not_clearly_faster():
+    # 2026-10-22 1-A 유형 — 도보 1,419m(1,419초) vs 버스 1정거장 1,000초+승하차 180초 → 1,180×1.30=1,534
+    # > 1,419 → 도보. 버스가 조금 빠른 정도로는 도보를 넘지 못한다(우선순위 가중치).
+    rec = _Recorder([_walk_resp(1419), ERR, _dur(_only("bus"), 1000), ERR])
+    r = _plan("", rec)
+    assert r["mode_used"] == "walk", r["auto_compare"]
+
+
+def t_auto_priority_subway_over_slightly_faster_bus():
+    # 지하철 1,500초(+180)×1.15=1,932 vs 버스 1,450초(+180)×1.30=2,119 → 버스가 더 빨라도 지하철
+    rec = _Recorder([_walk_resp(5000), _dur(_only("subway"), 1500), _dur(_only("bus"), 1450), ERR])
+    r = _plan("", rec)
+    assert r["mode_used"] == "walk_subway", r["auto_compare"]
+
+
+def t_auto_excludes_excessive_detour():
+    # 2026-10-22 결함 유형 — 도보 1,300m 에 버스 경로 총 20,161m(15배) → 후보에서 빼고 도보
+    rec = _Recorder([_walk_resp(1300), ERR, _dur(_only("bus"), 300, dist=20161), ERR])
+    r = _plan("", rec)
+    assert r["mode_used"] == "walk"
+    assert any(c.get("status") == "제외(우회 과다)" for c in r["auto_compare"]), r["auto_compare"]
+
+
+def t_auto_same_actual_mode_compared_once():
+    # walk_bus 와 walk_bus_subway 요청이 둘 다 버스만 쓴 결과를 주면 한 번만 비교한다
+    rec = _Recorder([_walk_resp(5000), ERR, _only("bus"), _only("bus")])
+    r = _plan("", rec)
+    assert [c["mode"] for c in r["auto_compare"] if c.get("status") in ("후보", "선택")] == ["walk", "walk_bus"]
 
 
 def t_auto_upgrade_failure_keeps_walk():
@@ -206,10 +260,10 @@ def t_low_floor_passthrough_and_note():
     r = _plan("walk_bus", rec, low_floor=False)
     assert rec.low_floor == [False]
     assert r["low_floor"] == {"mode": False} and r["transit"][0]["low_floor_tier"] is None
-    # 자동 추천 승격 경로에도 전달된다
-    rec = _Recorder([_walk_resp(2000), resp])
+    # 자동 추천 비교 요청에도 전달된다(대중교통 세 방식 모두)
+    rec = _Recorder([_walk_resp(4000), ERR, ERR, resp])
     r = _plan("", rec, low_floor=True)
-    assert rec.low_floor == [None, True]
+    assert rec.low_floor == [None, True, True, True]
     # 저상 없음(tier 3) — 문구는 leg 경고 첫 줄
     resp3 = _transit_resp()
     resp3["low_floor"] = {"mode": True, "tier": 3}
@@ -235,7 +289,7 @@ def t_mode_label_follows_actual_legs():
     assert r["mode_used"] == "walk_bus_subway" and "언급하지 마세요" not in r["ai_instruction"]
     # 자동 추천 승격 경로도 같다
     resp2 = _transit_resp(); resp2["routes"][0]["legs"] = resp2["routes"][0]["legs"][:2]
-    rec = _Recorder([_walk_resp(2000), resp2])
+    rec = _Recorder([_walk_resp(4000), ERR, ERR, resp2])
     r = _plan("", rec)
     assert r["mode_used"] == "walk_bus" and r["auto_mode"] is True
 

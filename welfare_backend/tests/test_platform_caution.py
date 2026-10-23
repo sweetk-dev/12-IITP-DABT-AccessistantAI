@@ -90,9 +90,10 @@ def t_station_start_cautions_collected():
 
 def t_auto_keeps_walk_when_lift_only_and_saving_small():
     # 도보 2,500m vs 지하철 경로 도보 1,310m — 아끼는 1,190m 가 감점 1,500m 이하 → 도보 유지
-    rec = _Recorder([_walk_resp(2500), _lift_transit()])
+    err = {"status": "error", "message": "조합 없음"}
+    rec = _Recorder([_walk_resp(2500), _lift_transit(), err, err])
     r = _plan("", rec)
-    assert rec.calls == ["walk", "walk_bus_subway"], rec.calls
+    assert rec.calls == ["walk", "walk_subway", "walk_bus", "walk_bus_subway"], rec.calls
     assert r["mode_used"] == "walk" and r["auto_mode"] is True, r["mode_used"]
     assert r["auto_kept_walk"] == [WARN]
     assert r["platform_cautions"] == [], "도보 경로에는 승강장 주의가 없다"
@@ -101,16 +102,22 @@ def t_auto_keeps_walk_when_lift_only_and_saving_small():
 
 def t_auto_upgrades_when_saving_exceeds_penalty():
     # 도보 4,000m vs 1,310m — 아끼는 2,690m > 1,500m → 경고와 함께 대중교통으로 승격
-    rec = _Recorder([_walk_resp(4000), _lift_transit()])
+    err = {"status": "error", "message": "조합 없음"}
+    rec = _Recorder([_walk_resp(4000), _lift_transit(), err, err])
     r = _plan("", rec)
     assert r["mode_used"] == "walk_subway", r["mode_used"]
     assert r["platform_cautions"] == [WARN] and r["auto_kept_walk"] is None
 
 
 def t_auto_upgrades_without_lift_flags_as_before():
-    rec = _Recorder([_walk_resp(1000), _transit_resp()])
+    # v2.20.0 — 리프트 경고가 없어도 '무조건 승격'하지 않고 비교한다. 도보 1,000m(1,000초)가
+    # 버스+지하철 (1,400+360)×1.45=2,552 보다 나으므로 도보. 도보가 멀면(4,000초) 대중교통.
+    err = {"status": "error", "message": "조합 없음"}
+    r = _plan("", _Recorder([_walk_resp(1000), err, err, _transit_resp()]))
+    assert r["mode_used"] == "walk" and r["auto_kept_walk"] is None, "리프트 때문이 아닌 도보 선택"
+    rec = _Recorder([_walk_resp(4000), err, err, _transit_resp()])
     r = _plan("", rec)
-    assert r["mode_used"] == "walk_bus_subway", "리프트 경고가 없으면 종전처럼 승격"
+    assert r["mode_used"] == "walk_bus_subway"
     assert r["platform_cautions"] == [] and r["auto_kept_walk"] is None
     assert "platform_cautions 가 있으면" not in r["ai_instruction"]
 
