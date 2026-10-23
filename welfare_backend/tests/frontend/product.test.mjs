@@ -2,7 +2,7 @@
  * 제품 분리 런타임 검증 (jsdom) — v2.0.0
  *
  *   정책상담(기본 주소)
- *     1) 지도·위치를 쓰지 않는다 · 화면 사이 탭이 없다
+ *     1) 지도·위치 감시를 하지 않는다 · 화면 사이 탭이 없다 · 상담원이 물을 때만 위치를 한 번 보낸다(v2.19.0)
  *     2) 길안내 요청 결과(handoff_navi)는 넘기기 버튼으로 뜨고, 누르면 목적지·프로필만 실어 연다
  *     3) 넘어가 있는 동안 마이크·음성을 멈추고, 돌아오면 잇는다
  *   이동경로 안내(/navi)
@@ -52,9 +52,11 @@ function boot(url, opts) {
       w.WebSocket = FakeWS; w.__sockets = sockets;
       w.fetch = async (u0) => { const u = String(u0);
         (w.__fetchLog = w.__fetchLog || []).push(u);
+        if (u.includes("/app/latest.json")) { const L = w.__latest; return L ? { ok: true, json: async () => L } : { ok: false, json: async () => ({}) }; }
         const body = u.includes("/api/v1/config") ? CONFIG : u.includes("plan_accessible_route") ? ROUTE : { status: "success", results: [] };
         return { ok: true, json: async () => body }; };
-      w.navigator.geolocation = { watchPosition: (ok) => { w.__watch = ok; return 1; }, clearWatch: () => {} };
+      w.navigator.geolocation = { watchPosition: (ok) => { w.__watch = ok; return 1; }, clearWatch: () => {},
+        getCurrentPosition: (ok, err, o) => { (w.__once = w.__once || []).push({ ok, err, o }); } };
       w.navigator.mediaDevices = { getUserMedia: async () => { throw new Error("no mic"); } };
       w.SpeechSynthesisUtterance = function (t) { this.text = t; };
       w.speechSynthesis = { cancel() {}, speak(u) { (w.__spoken = w.__spoken || []).push(u.text); if (u.onend) u.onend(); } };
@@ -95,6 +97,67 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   w.document.querySelector('[data-go="text"]').click(); await sleep(50);
   const s0 = w.__sockets[0]; await s0._open(); await sleep(20);
   check("정책상담: 세션 주소에 navi 모드가 없다", () => assert.doesNotMatch(s0.url, /mode=navi/));
+  {
+    const locs = () => s0.sent.map((d) => { try { return JSON.parse(d); } catch (e) { return {}; } }).filter((m) => m.type === "location");
+    const unav = () => s0.sent.filter((d) => { try { return JSON.parse(d).type === "location_unavailable"; } catch (e) { return false; } }).length;
+    const st0 = ($("naviStatus") || {}).textContent;
+    check("정책상담: 상담 시작 누름에서 위치 권한만 미리 묻는다 · 결과는 보내지 않는다 (v2.19.1)", () => {
+      assert.equal((w.__once || []).length, 1); assert.equal(w.__watch, undefined); assert.equal(locs().length, 0);
+      w.__once[0].ok({ coords: { latitude: 37.1, longitude: 127.1, accuracy: 5 } });
+      assert.equal(locs().length, 0, "미리 묻기 결과를 보냈다");
+    });
+    w.__once = [];
+    await s0._msg({ type: "location_request" }); await sleep(20);
+    check("정책상담: 서버가 물으면 한 번 측위한다", () => { assert.equal(w.__once.length, 1); assert.equal(w.__once[0].o.enableHighAccuracy, true); });
+    w.__once[0].ok({ coords: { latitude: 37.3943, longitude: 126.9568, accuracy: 9 } }); await sleep(10);
+    check("정책상담: 측위 결과를 세션에 보낸다", () => { const L = locs(); assert.equal(L.length, 1); assert.equal(L[0].lat, 37.3943); assert.equal(L[0].lng, 126.9568); });
+    await s0._msg({ type: "location_request" }); await sleep(20);
+    w.__once[1].ok({ coords: { latitude: 37.40, longitude: 126.96, accuracy: 900 } }); await sleep(10);
+    check("정책상담: 정확도가 나쁜 측위(150m 초과)는 보내지 않고 못 잡았다고만 알린다", () => { assert.equal(locs().length, 1); assert.equal(unav(), 1); });
+    await s0._msg({ type: "location_request" }); await sleep(20);
+    w.__once[2].err({ code: 1 }); await sleep(10);
+    check("정책상담: 권한 거부는 조용히 알린다 · 위치 감시를 시작하지 않는다 · 상태 줄 그대로", () => {
+      assert.equal(locs().length, 1); assert.equal(unav(), 2); assert.equal(w.__watch, undefined);
+      assert.equal(($("naviStatus") || {}).textContent, st0);
+    });
+    // 권한을 아직 묻지 않은 상태(prompt) — 버튼을 띄우고 서버에는 바로 '없음'
+    w.navigator.permissions = { query: async () => ({ state: "prompt" }) };
+    await s0._msg({ type: "location_request" }); await sleep(20);
+    check("정책상담: 권한 미결정이면 [현재 위치 사용] 버튼을 띄우고 서버엔 바로 없음을 알린다 (v2.19.1)", () => {
+      assert.ok($("locAskBtn"), "버튼이 없다"); assert.equal(unav(), 3); assert.equal(w.__once.length, 3, "버튼 전에 측위했다");
+    });
+    await s0._msg({ type: "location_request" }); await sleep(20);
+    check("정책상담: 버튼이 남은 채 다시 물으면 이전 버튼을 지우고 지금 자리에 하나만 띄운다", () => {
+      assert.equal(w.document.querySelectorAll("#locAskBtn").length, 1); assert.equal(w.document.querySelectorAll(".bubble--loc").length, 1);
+      assert.equal(w.document.querySelector("#chat").lastElementChild, $("locAskBtn").closest(".bubble")); assert.equal(unav(), 4);
+    });
+    $("locAskBtn").click(); await sleep(10);
+    await s0._msg({ type: "location_request" }); await sleep(20);
+    check("정책상담: 측위 중 재요청 — 버튼 유지 · 없음만 알림", () => { assert.equal(w.document.querySelectorAll("#locAskBtn").length, 1); assert.ok($("locAskBtn").disabled); assert.equal(unav(), 5); });
+    w.__once[3].ok({ coords: { latitude: 37.40, longitude: 126.96, accuracy: 900 } }); await sleep(10);
+    check("정책상담: 버튼 측위 정확도 미달 — 보내지 않고 버튼을 다시 누를 수 있게 남긴다", () => {
+      assert.equal(locs().length, 1); assert.ok($("locAskBtn") && !$("locAskBtn").disabled); assert.match(w.document.querySelector(".bubble--loc").textContent, /정확하지 않습니다/);
+    });
+    $("locAskBtn").click(); await sleep(10);
+    w.__once[4].err({ code: 1 }); await sleep(10);
+    check("정책상담: 버튼 측위 거부 — 버튼 살려 두고 설정 안내", () => { assert.ok(!$("locAskBtn").disabled); assert.match(w.document.querySelector(".bubble--loc").textContent, /거부/); });
+    $("locAskBtn").click(); await sleep(10);
+    w.__once[5].ok({ coords: { latitude: 37.3953, longitude: 126.9568, accuracy: 7 } }); await sleep(10);
+    check("정책상담: 버튼으로 받은 위치를 보내고 다시 물어보라고 안내한다", () => {
+      const L = locs(); assert.equal(L.length, 2); assert.equal(L[1].lat, 37.3953);
+      assert.equal($("locAskBtn"), null); assert.match(w.document.querySelector(".bubble--loc").textContent, /다시 한 번 물어봐/);
+    });
+    w.navigator.permissions = { query: async () => ({ state: "denied" }) };
+    await s0._msg({ type: "location_request" }); await sleep(20);
+    check("정책상담: 권한이 막혀 있으면 설정 안내를 띄운다", () => { assert.equal(unav(), 6); assert.match(w.document.querySelector("#chat").textContent, /사이트 설정/); });
+    // 미리 묻기 — 권한 상태별 분기
+    for (const [state, n] of [["granted", 0], ["denied", 0], ["prompt", 1]]) {
+      w.navigator.permissions = { query: async () => ({ state }) }; w.__once = [];
+      w.NAVI.primeLocation(); await sleep(10);
+      check("정책상담: 미리 묻기 — 권한 " + state + "이면 측위 " + n + "번", () => assert.equal(w.__once.length, n));
+    }
+    delete w.navigator.permissions;
+  }
   check("정책상담: 상담 중에는 뒤로 가기를 붙잡는다(종전대로)", () => { assert.equal(w.__BACK.busy(), true); assert.equal(w.__BACK.armed(), true); assert.equal(w.__reconnectNavi(), false); });
   const dest = { name: "안양시청", kind: "building", lat: 37.3943, lng: 126.9568 };
   await s0._msg({ type: "ui_action", action: "handoff_navi", payload: { action: "handoff_navi", dest, profile: "visual" } });
@@ -376,7 +439,7 @@ const linkHrefs = (w) => [...w.document.querySelectorAll('link[rel="manifest"],l
   check("하위 경로(이동경로 안내): /navi 를 알아본다", () => { assert.equal(w.APP_BASE, "/iitp/accessistantai"); assert.equal(w.__PRODUCT, "navi"); });
   check("하위 경로(이동경로 안내): 서버 호출이 모두 기준 경로 아래로 간다", () => {
     const log = w.__fetchLog || []; assert.ok(log.some((u) => u.includes("/api/v1/config")), "설정 호출 없음");
-    for (const u of log) assert.match(u, /^\/iitp\/accessistantai\/api\//, u);
+    for (const u of log) assert.match(u, /^\/iitp\/accessistantai\/(api\/|app\/latest\.json$)/, u);   // 앱 배포본 정보(v2.10.0)도 기준 경로 아래
   });
   w.close();
 }
@@ -412,6 +475,50 @@ check("서버로 보내는 주소에 루트 고정 문자열이 남지 않았다
   assert.equal(bad.length, 0, bad.map((m) => m[0]).join(", "));
   assert.match(HTML, /href="'\+withBase\(L\[i\]\[3\]\)/, "링크 목록을 withBase 로 감싸 쓰지 않는다");
 });
+
+// ───────── 앱 내려받기 (v2.10.0) ─────────
+const LATEST = { versionCode: 20004, versionName: "2.0.4", file: "accessnavi-2.0.4.apk", sha256: "00" };
+{
+  const w = boot("https://example.test/iitp/accessistantai/navi", { preset: (win) => { win.__latest = LATEST; } });
+  const $ = (id) => w.document.getElementById(id);
+  await ready(w);
+  check("앱 내려받기: 이동경로 안내 웹 — 길안내 시작 바로 아래에 최신 설치 파일 링크", () => {
+    const a = $("appDownloadBtn");
+    assert.equal(a.style.display, "");
+    assert.equal(a.previousElementSibling.id, "modeNaviBtn");
+    assert.equal(a.getAttribute("href"), "/iitp/accessistantai/app/download/accessnavi-2.0.4.apk");
+    assert.equal(a.getAttribute("download"), "accessnavi-2.0.4.apk");
+    assert.match(a.querySelector(".appver").textContent, /최신 v2\.0\.4/);
+  });
+  w.close();
+}
+{
+  const w = boot("https://example.test/navi");
+  await ready(w);
+  check("앱 내려받기: 배포본 정보가 없으면 숨긴다", () => assert.equal(w.document.getElementById("appDownloadBtn").style.display, "none"));
+  w.close();
+}
+{
+  const w = boot("https://example.test/navi", { preset: (win) => { win.__latest = { versionName: "<b>", file: "../x.apk" }; } });
+  await ready(w);
+  check("앱 내려받기: 잘못된 파일 이름이면 숨긴다", () => assert.equal(w.document.getElementById("appDownloadBtn").style.display, "none"));
+  w.close();
+}
+{
+  const w = boot("https://example.test/navi", { ua: "Mozilla/5.0 (Linux; Android 15) AccessNaviApp/2.0.4", preset: (win) => { win.__latest = LATEST; win.AccessNaviApp = { setBusy() {} }; } });
+  await ready(w);
+  check("앱 내려받기: 앱 안에서는 보이지 않는다", () => {
+    assert.equal(w.document.getElementById("appDownloadBtn").style.display, "none");
+    assert.ok(!(w.__fetchLog || []).some((u) => u.includes("/app/latest.json")));
+  });
+  w.close();
+}
+{
+  const w = boot("https://example.test/static/accessistant.html", { preset: (win) => { win.__latest = LATEST; } });
+  await ready(w);
+  check("앱 내려받기: 정책상담에서는 보이지 않는다", () => assert.equal(w.document.getElementById("appDownloadBtn").style.display, "none"));
+  w.close();
+}
 
 // ───────── 소스 가드 ─────────
 // 정책상담·이동경로 안내는 따로 여는 제품이라 화면 사이를 오가는 탭(마크업·스타일·핸들러)을 두지 않는다

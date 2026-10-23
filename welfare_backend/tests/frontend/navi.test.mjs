@@ -127,7 +127,7 @@ function fakeKakao() {
       LatLngBounds: Bounds,
       Marker: function () { return mk(); },
       Circle: function () { return mk(); },
-      Polyline: function () { return mk(); },
+      Polyline: function (o) { const m = mk(); m.opts = o; return m; },   // 연결선 검사용으로 옵션을 남긴다 (v2.12.0)
       CustomOverlay: class {
         constructor(o) { this.content = o.content; this.position = o.position; this.visible = false; overlays.push(this); }
         setMap(m) { this.visible = !!m; }
@@ -485,6 +485,18 @@ await sleep(2400);
 check("답변 종료 후 직전 안내 문장 자동 복귀", () => {
   assert.match(spoken.at(-1), /^안내를 이어갈게요\. 횡단보도를 건너/);
 });
+// v2.8.0 — 발화 감지로 끊겼는데 상담원 답이 없으면(주변 소리) "안내를 이어갈게요" 없이 끊긴 문장만 다시 읽는다 (#359)
+{
+  window.__NAVI_SPEAKING = true;
+  const nB = spoken.length;
+  window.NAVI.bargeStop();
+  await sleep(3600);
+  check("소리로 끊긴 안내는 '안내를 이어갈게요' 없이 3초 안팎에 다시 읽는다 (#359)", () => {
+    const s = spoken.slice(nB);
+    assert.ok(s.length >= 1, "복귀 발화 없음");
+    assert.match(s.at(-1), /^횡단보도를 건너/);
+  });
+}
 check("상단 종료 버튼 — 안내 중엔 '안내 종료', 누르면 안내만 종료·버튼은 계속 활성 (v1.35.0)", () => {
   const eb = $("naviEndBtn");
   assert.ok(eb, "종료 버튼 없음");
@@ -516,8 +528,8 @@ check("음성안내 토글은 스텝 카드로 이동 (상단 토글 제거)", (
   assert.equal(window.document.getElementById("naviVoiceBtn"), null);
   assert.match(HTML, /음성 끄기/);
 });
-check("상담원 답변 스트립은 3줄 제한", () => {
-  assert.match(HTML, /\.navi-answer\{max-height:4\.2em/);
+check("상담원 답변 스트립은 4줄 제한(내 말 1줄 + 답 3줄, v2.16.0)", () => {
+  assert.match(HTML, /\.navi-answer\{max-height:5\.6em/);
 });
 check("세션 미연결 상태의 텍스트 질문은 안내문으로 거절", () => {
   $("naviTextInput").value = "지금 어디로 가요?";
@@ -525,7 +537,7 @@ check("세션 미연결 상태의 텍스트 질문은 안내문으로 거절", (
   assert.match($("naviStatus").textContent, /상담 세션이 아직 연결되지 않았습니다/);
 });
 check("마이크 게이트 barge-in 배선 존재 (소스 레벨 가드)", () => {
-  assert.match(HTML, /naviBargeHit\(\(m\.rms \|\| 0\) \/ gk\)/);   // v1.45.0 창 판정 · v1.59.0 헤드셋이면 기준 절반
+  assert.match(HTML, /naviBargeHit\(m\.rms \|\| 0\)/);   // v1.45.0 창 판정 · v2.8.0 이어마이크여도 기준을 낮추지 않는다(#359)
   assert.match(HTML, /NAVI\.bargeStop/);
   assert.doesNotMatch(HTML, /if \(window\.__NAVI_SPEAKING\) return;   \/\/ 길안내 음성 발화 중에도 동일하게 차단/);
 });
@@ -1824,6 +1836,100 @@ check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 
   const NV = window.NAVI._internals();
   NV.resetTrip();
   window.show("view-navi");
+  // 중간 안내 — 짧은 스텝·투영 튐 (v2.13.0, #369)
+  {
+    const A0 = [37.3900, 126.9500];
+    const pt = (m) => [37.3900 + m / 110540, 126.9500];                       // 북쪽으로 m 미터
+    NV.showRoute({ status: "success", route_id: "r_v2130", destination: { poi_id: "x" }, routes: [{
+      summary: { total_distance_m: 640, duration_sec: 600, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+      geometry: [A0, pt(80), pt(580), pt(640)],
+      steps: [
+        { idx: 0, maneuver: "depart", instruction: "80m 앞으로 이동합니다.", distance_m: 80, coord: A0, warnings: [] },
+        { idx: 1, maneuver: "straight", instruction: "500m 직진합니다.", distance_m: 500, coord: pt(80), warnings: [] },
+        { idx: 2, maneuver: "left", instruction: "좌회전 후 60m 이동합니다.", distance_m: 60, coord: pt(580), warnings: [] },
+        { idx: 3, maneuver: "arrive", instruction: "도착", distance_m: 0, coord: pt(640), warnings: [] },
+      ] }] }, "v2130");
+    NV.startGuidance();
+    const ll = (m) => ({ lat: pt(m)[0], lng: pt(m)[1] });
+    check("150m 보다 짧은 스텝 시작 직후에는 '약 150미터'를 말하지 않는다 (v2.13.0)", () => {
+      NV.setStepIdxForTest(0); NV.interimAnnounce(ll(5), 5);               // 다음 안내까지 75m — 스텝 길이 80m
+      assert.ok(!NV.interimDone()["0:150"], "80m 스텝에서 150미터 안내");
+    });
+    check("긴 스텝은 기준 거리 바로 아래에서 한 번 말한다 (v2.13.0)", () => {
+      NV.setStepIdxForTest(1);
+      NV.interimAnnounce(ll(240), 240);                                        // 남은 340m — 아직
+      assert.ok(!NV.interimDone()["1:300"]);
+      NV.interimAnnounce(ll(300), 300);                                        // 남은 280m
+      assert.ok(NV.interimDone()["1:300"]);
+      NV.interimAnnounce(ll(370), 370);                                        // 남은 210m — 150 창(110~150) 아님
+      assert.ok(!NV.interimDone()["1:150"]);
+      NV.interimAnnounce(ll(450), 450);                                        // 남은 130m
+      assert.ok(NV.interimDone()["1:150"]);
+    });
+    check("위치 투영이 지나온 구간으로 튀면 중간 안내를 하지 않는다 (v2.13.0)", () => {
+      NV.setStepIdxForTest(1); delete NV.interimDone()["1:300"];
+      NV.interimAnnounce(ll(0), 0);                                            // 스텝 시작(80m)보다 80m 뒤
+      assert.ok(!NV.interimDone()["1:300"]);
+    });
+    window.NAVI._internals().clearRouteDisplay();
+  }
+  check("상태 줄 닫기 — 같은 문구는 다시 안 띄우고 새 문구는 띄운다 (v2.13.0)", () => {
+    const st = $("naviStatus"), bt = $("naviStatusClose");
+    window.NAVI._internals(); // noop
+    st.textContent = "이 서비스는 안양시 지역만 안내합니다. 지도를 눌러 출발지를 지정해 주세요.";
+    bt.dispatchEvent(new window.Event("click"));
+    assert.ok(st.classList.contains("navi-status--closed") && bt.hidden);
+    assert.equal(st.textContent, "이 서비스는 안양시 지역만 안내합니다. 지도를 눌러 출발지를 지정해 주세요.");   // 닫기 단추 글자가 섞이지 않는다
+    NV.statusForTest && NV.statusForTest("이 서비스는 안양시 지역만 안내합니다. 지도를 눌러 출발지를 지정해 주세요.");
+    assert.ok(st.classList.contains("navi-status--closed"), "같은 문구로 다시 열림");
+    NV.statusForTest("경로를 표시했습니다.");
+    assert.ok(!st.classList.contains("navi-status--closed") && !bt.hidden, "새 문구인데 닫혀 있음");
+  });
+  // 역 → 출구 연결선 (v2.12.0, #367) — 지하철 구간은 역 대표점에서 끝나고 도보는 출구 앞에서 시작한다
+  {
+    const W0 = [37.4182, 126.9183], WB = [37.41890, 126.90922];          // 도보 → 관악역 2번 출구 앞
+    const SB = [37.419578, 126.908476], SA = [37.384435, 126.935579];   // 관악역·명학역 대표점(지하철 구간 선 끝)
+    const XA = { lat: 37.3854642, lng: 126.9350199 };                    // 명학역 1번 출구
+    const W1 = [37.3854642, 126.9350199], WE = [37.384688, 126.931893];
+    NV.showRoute({ status: "success", route_id: "r_v2120", mode: "walk_subway", destination: { poi_id: "16779" }, routes: [{
+      summary: { total_distance_m: 6000, duration_sec: 2000, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+      geometry: [W0, WB, SB, SA, W1, WE],
+      legs: [
+        { kind: "walk", geometry: [W0, WB] },
+        { kind: "subway", line: "1호선", geometry: [SB, SA], station_cnt: 2, warnings: [],
+          board: { name: "관악" }, alight: { name: "명학" },
+          board_exit: { exit_no: "2", lat: 37.4188986, lng: 126.9092237 }, alight_exit: { exit_no: "1", lat: XA.lat, lng: XA.lng } },
+        { kind: "walk", geometry: [W1, WE] },
+      ],
+      steps: [
+        { idx: 0, maneuver: "depart", instruction: "앞으로 이동합니다.", distance_m: 900, coord: W0, warnings: [] },
+        { idx: 1, maneuver: "subway_board", instruction: "관악역에서 승차합니다", distance_m: 0, coord: SB, warnings: [] },
+        { idx: 2, maneuver: "subway_alight", instruction: "명학역에서 하차합니다", distance_m: 0, coord: SA, warnings: [] },
+        { idx: 3, maneuver: "station_exit", instruction: "명학역 1번 출구입니다.", distance_m: 0, coord: W1, warnings: [] },
+        { idx: 4, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: WE, warnings: [] },
+      ] }] }, "v2120 테스트");
+    check("지하철 구간 앞뒤로 역 ↔ 출구 연결선을 그린다 (v2.12.0)", () => {
+      const lines = NV.routeLines();
+      assert.equal(lines.length, 5, "구간 3 + 연결선 2 가 아님");
+      const conn = lines.filter((l) => l.opts && l.opts.strokeStyle === "shortdot");
+      assert.equal(conn.length, 2, "연결선(옅은 점선) 수");
+      const pts = (l) => JSON.parse(JSON.stringify(l.opts.path.map((p) => [p.a, p.b])));   // 창(jsdom) 배열 → 이 쪽 배열
+      // 승차: 도보 끝 → 관악역 2번 출구 → 역 대표점
+      assert.deepEqual(pts(conn[0]), [WB, [37.4188986, 126.9092237], SB]);
+      // 하차: 역 대표점 → 명학역 1번 출구 (도보 첫 점이 출구와 같은 자리면 한 점으로 끝난다 — 같은 점 반복은 길이 0)
+      assert.deepEqual(pts(conn[1])[0], SA);
+      assert.deepEqual(pts(conn[1])[1], W1);
+      assert.notEqual(NV.routeLines()[0].opts.strokeStyle, "shortdot", "첫 줄(routeLine)이 연결선이 됨");
+    });
+    check("도보만 있는 경로·출구 좌표가 붙어 있는 경로에는 연결선이 없다 (v2.12.0)", () => {
+      NV.showRoute({ status: "success", route_id: "r_v2120b", destination: { poi_id: "x" }, routes: [{
+        summary: { total_distance_m: 100, duration_sec: 90, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+        geometry: [W1, WE], legs: [{ kind: "walk", geometry: [W1, WE] }],
+        steps: [{ idx: 0, maneuver: "depart", instruction: "앞으로", distance_m: 100, coord: W1, warnings: [] },
+                { idx: 1, maneuver: "arrive", instruction: "도착", distance_m: 0, coord: WE, warnings: [] }] }] }, "도보");
+      assert.equal(NV.routeLines().filter((l) => l.opts && l.opts.strokeStyle === "shortdot").length, 0);
+    });
+  }
   const P0 = [37.3900, 126.9500], P1 = [37.39050, 126.9500];
   const mmLegs = [
     { kind: "walk", geometry: [P0, P1] },
@@ -1971,7 +2077,7 @@ check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 
     assert.match(HTML, /naviPreRoll\.push\(btoa\(binp\)\)/);
     assert.match(HTML, /const pre = naviPreRoll\.splice\(0\);/);
     assert.match(HTML, /for \(const b of pre\) ws\.send\(JSON\.stringify\(\{ type: "audio_chunk", data: b \}\)\);/);
-    assert.match(HTML, /window\.NAVI\.noteUserSpeech\(\);\s*\}\s*\}\s*return;/);
+    assert.match(HTML, /window\.NAVI\.noteUserSpeech\(\);\s*\} else if \(naviDuckHit\(\)[\s\S]{0,200}?window\.NAVI\.bargeDuck\(\);\s*\}\s*\}\s*return;/);   // v2.14.0 조기 감지 분기 추가
   });
   // 재생 종료 안전장치 — onend 가 오지 않아도 추정 길이×1.3+1초 뒤 __NAVI_SPEAKING 해제
   const NV = window.NAVI._internals();
@@ -1988,7 +2094,7 @@ check("프리페치는 합성 한도 소진(503)을 받으면 멈추고, 일시 
   await sleep(50);
   check("종료 안전장치 소스 가드 (v1.45.0)", () => {
     assert.match(HTML, /speakEndTimer = setTimeout\(function\(\)\{[\s\S]*?_speakEnded\(\);[\s\S]*?\}, Math\.max\(50, speakPlaying\.maxEnd - now\)\);/);
-    assert.match(HTML, /if\(speakEndTimer\)\{ clearTimeout\(speakEndTimer\); speakEndTimer=null; \}\s*window\.__NAVI_SPEAKING = false;/);
+    assert.match(HTML, /if\(speakEndTimer\)\{ clearTimeout\(speakEndTimer\); speakEndTimer=null; \}\s*_setNaviSpeaking\(false\);/);
   });
   NV.speak("정리"); window.speechSynthesis.speak = realSpeak; window.fetch = prevFetch5;
 }
@@ -2273,6 +2379,15 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     const t = $("naviSheetBody").textContent;
     assert.match(t, /1호선/);
   });
+  {
+    // v2.18.0 — 응답을 받으면 카드 표시는 '추천'으로 돌아가지만, 이탈 재탐색은 고른 방식(도보+지하철)을 지킨다
+    const NVr = window.NAVI._internals();
+    lastPlanQuery = null;
+    await NVr.requestRoute(NVr.tripDest(), { reroute: 987654 });
+    check("이탈 재탐색은 이번 여정에서 고른 방식(도보+지하철)으로 다시 찾는다 (v2.18.0)", () => {
+      assert.match(lastPlanQuery || "", /mode=walk_subway/, "재탐색 요청: " + lastPlanQuery);
+    });
+  }
   window.fetch = prevFetchPF;
 }
 
@@ -3233,6 +3348,339 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   check("실증 계정 아님: 길안내·상담을 거쳐도 기록 전송(events·audio) 0건 (v1.58.0)", () => {
     assert.equal(fetchLog.filter((u) => /\/api\/v1\/trial\/(events|audio)/.test(u)).length, 0);
   });
+}
+
+// ── v2.8.0 한 번에 한 목소리 (#359) — 상담원 음성과 길안내 문장이 겹치지 않는다 ──
+{
+  const NV = window.NAVI._internals();
+  const C2 = window.__CHAT;
+  const orig = { busy: C2.aiBusy, act: C2.aiAudioActive, hold: C2.holdAi };
+  let aiOn = false; const holds = [];
+  C2.aiBusy = () => aiOn; C2.aiAudioActive = () => aiOn; C2.holdAi = (on) => { holds.push(on); };
+  NV.speak("준비");          // 앞 블록에서 남은 합성 대기·대기열을 비운다
+  await sleep(100);
+  aiOn = true; holds.length = 0;
+  const n0 = spoken.length;
+  NV.speak("다음 안내까지 약 200미터입니다", { queue: true, kind: "interim" });
+  NV.speak("우회전 후 40m 이동합니다.", { queue: true, kind: "step" });
+  await sleep(300);
+  check("상담원 음성 중에는 턴바이턴 안내가 재생되지 않고 대기한다 (#359)", () => {
+    assert.equal(spoken.length, n0, JSON.stringify(spoken.slice(n0)));
+  });
+  aiOn = false;
+  for (let i = 0; i < 40 && !spoken.slice(n0).includes("우회전 후 40m 이동합니다."); i++) await sleep(50);
+  check("상담원 음성이 끝나면 대기한 안내를 말하고 중간 거리 안내는 버린다 (#359)", () => {
+    assert.deepEqual(spoken.slice(n0), ["우회전 후 40m 이동합니다."]);
+  });
+  check("안내 문장 재생 동안 상담원 음성을 멈췄다가 끝나면 푼다 (#359)", () => {
+    assert.ok(holds.includes(true) && holds.at(-1) === false, JSON.stringify(holds));
+  });
+  await sleep(20);
+  const realNow = window.Date.now; let vn = realNow(); window.Date.now = () => vn;
+  aiOn = true; const n1 = spoken.length;
+  NV.speak("좌회전 후 30m 이동합니다.", { queue: true, kind: "step" });
+  vn += 3000; NV.drainSpeak();   // 앞 안내의 재생 창이 지난 뒤 — 이때부터 상담원 음성을 기다린다
+  const waited = spoken.length === n1;
+  vn += 6500; NV.drainSpeak(); await sleep(5);
+  window.Date.now = realNow;
+  check("상담원 음성이 6초 넘게 이어지면 안내를 말한다 (#359)", () => {
+    assert.ok(waited, "곧바로 말했다");
+    assert.equal(spoken.at(-1), "좌회전 후 30m 이동합니다.");
+  });
+  await sleep(20);
+  const n2 = spoken.length;
+  NV.speak("경로를 다시 탐색합니다.");
+  check("즉시 발화도 상담원 음성 중이면 기다린다 (#359)", () => assert.equal(spoken.length, n2));
+  aiOn = false;
+  for (let i = 0; i < 40 && spoken.at(-1) !== "경로를 다시 탐색합니다."; i++) await sleep(50);
+  check("상담원 음성이 끝나면 즉시 발화가 재생된다 (#359)", () => assert.equal(spoken.at(-1), "경로를 다시 탐색합니다."));
+  C2.aiBusy = orig.busy; C2.aiAudioActive = orig.act; C2.holdAi = orig.hold;
+  check("상담원 음성 대기 수·보류 배선 (소스 레벨 가드, #359)", () => {
+    assert.match(HTML, /aiQueued\+\+;\s*pendingPlayback = pendingPlayback\.then/);
+    assert.match(HTML, /\} finally \{ aiQueued = Math\.max\(0, aiQueued - 1\); \}/);
+    assert.match(HTML, /if \(aiHeld\) \{ try \{ playbackCtx\.suspend\(\); \} catch \(e\) \{\} \}/);
+    assert.match(HTML, /var chimeMs = \(kind === "step"\) \? _playChime\(\) : 0;/);
+  });
+}
+
+// ── v2.9.0 횡단보도 지도 표시 (#361, 경로 서비스 v1.37.0 crosswalks) ──
+{
+  const NV = window.NAVI._internals();
+  NV.resetTrip();
+  window.show("view-navi");
+  const P0 = [37.4185, 126.9110], P1 = [37.4170, 126.9135];
+  const mkRoute = (cw) => ({ status: "success", route_id: "r_cw361", destination: { poi_id: "TBF-361" }, routes: [{
+    summary: { total_distance_m: 300, duration_sec: 280, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 1, warnings: [] },
+    geometry: [P0, P1],
+    ...(cw ? { crosswalks: cw } : {}),
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "35m 앞으로 이동합니다.", distance_m: 35, coord: P0, warnings: [] },
+      { idx: 1, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: P1, warnings: [] },
+    ] }] });
+  const ov0 = overlays.length;
+  NV.showRoute(mkRoute([
+    { id: "2024121334", lat: 37.41851, lng: 126.91134, length_m: 32.1, role: "cross" },
+    { id: "2024121372", lat: 37.41625, lng: 126.91574, length_m: 7.2, role: "side" },
+    { id: "2024121232", lat: 37.41918, lng: 126.90980, length_m: 9.0, role: "near" },
+    { id: null, lat: null, lng: 126.9, length_m: 5, role: "cross" },
+  ]), "횡단보도 테스트");
+  check("응답의 횡단보도 목록을 지도에 표시한다 — 좌표 없는 항목은 건너뜀 (#361)", () => {
+    const m = NV.cwMarks();
+    assert.equal(m.length, 3);
+    assert.ok(m.every((o) => o.visible), "지도에 올라가지 않음");
+    const cls = m.map((o) => o.content.className);
+    assert.equal(JSON.stringify(cls), JSON.stringify(["cw-mark", "cw-mark", "cw-mark cw-mark--near"]));
+    assert.equal(m[0].content.getAttribute("aria-hidden"), "true");
+    assert.match(m[0].content.title, /약 32m/);
+    assert.equal(overlays.length - ov0, 3);
+  });
+  const first = NV.cwMarks().slice();
+  NV.showRoute(mkRoute([{ id: "A", lat: 37.418, lng: 126.912, length_m: 9, role: "cross" }]), "재탐색");
+  check("새 경로를 그리면 이전 횡단보도 표시를 지운다 (#361)", () => {
+    assert.ok(first.every((o) => !o.visible), "이전 표시가 남음");
+    assert.equal(NV.cwMarks().length, 1);
+  });
+  NV.clearRouteDisplay();
+  check("경로 지우기 때 횡단보도 표시도 지운다 (#361)", () => assert.equal(NV.cwMarks().length, 0));
+  NV.showRoute(mkRoute(null), "구버전 응답");
+  check("crosswalks 가 없는 구버전 응답은 표시 없음 (#361)", () => assert.equal(NV.cwMarks().length, 0));
+  NV.clearRouteDisplay();
+}
+
+// ── v2.14.0 안내 중 말소리 조기 감지 — 먼저 볼륨만 낮추고 '들었어요', 소음이면 되돌린다 ──
+{
+  const G = window.__NAVI_GATE;
+  check("조기 감지: 기준 넘는 청크 2개면 duck 성립, 끊기(hit)는 아직 아님 (v2.14.0)", () => {
+    G.reset();
+    assert.equal(G.hit(0.05), false); assert.equal(G.duck(), false, "1청크로는 낮추지 않는다");
+    assert.equal(G.hit(0.05), false); assert.equal(G.duck(), true, "2청크면 낮춘다");
+    G.reset();
+  });
+  check("조기 감지: 스피커 에코 수준(0.02)·끊어진 충격음은 duck 아님 (v2.14.0)", () => {
+    G.reset();
+    for (const r of [0.02, 0.022, 0.018]) G.hit(r);
+    assert.equal(G.duck(), false);
+    G.reset(); G.hit(0.06); G.hit(0.0); G.hit(0.0);
+    assert.equal(G.duck(), false);
+    G.reset();
+  });
+  const NV = window.NAVI._internals();
+  const prevFetch5 = window.fetch;
+  window.fetch = async (url, opt) => {
+    const u = String(url);
+    if (u.includes("/api/v1/tts")) return { ok: true, blob: async () => ({}) };
+    return prevFetch5(url, opt);
+  };
+  const made = [];
+  window.URL.createObjectURL = () => "blob:duck";
+  window.Audio = function(){ const self = this; this.duration = 30.0; this.volume = 1; made.push(self); this.play = () => Promise.resolve(); this.pause = () => { self.paused = true; }; };
+  window.show("view-navi");
+  NV.stopSpeak();
+  NV.speak("조기 감지 시험 문장입니다", { queue: true, kind: "interim" });
+  await sleep(30);
+  const a = made.at(-1);
+  check("시험 준비 — 안내 재생 중, 평소 볼륨 0.8", () => {
+    assert.ok(a, "Audio 생성 안 됨");
+    assert.equal(window.__NAVI_SPEAKING, true);
+    assert.equal(a.volume, 0.8);
+  });
+  const ok1 = window.NAVI.bargeDuck();
+  check("bargeDuck: 볼륨을 0.2 로 낮추고 '들었어요' 표시, 안내는 계속 (v2.14.0)", () => {
+    assert.equal(ok1, true);
+    assert.equal(a.volume, 0.2);
+    assert.equal(a.paused, undefined, "낮추기만 해야 하는데 멈췄다");
+    assert.equal(window.__NAVI_SPEAKING, true);
+    const el = $("naviMicState");
+    assert.ok(el.classList.contains("heard"));
+    assert.match(el.textContent, /들었어요/);
+    assert.equal(NV.duckState().ducked, true);
+  });
+  check("이미 낮춘 상태에서 다시 불러도 그대로 (v2.14.0)", () => {
+    assert.equal(window.NAVI.bargeDuck(), true);
+    assert.equal(a.volume, 0.2);
+  });
+  await sleep(1350);
+  check("1.2초 안에 끊기 판정이 없으면 소음 — 볼륨 0.8 복귀, 표시 내림 (v2.14.0)", () => {
+    assert.equal(a.volume, 0.8);
+    assert.equal(NV.duckState().ducked, false);
+    assert.ok(!$("naviMicState").classList.contains("heard"));
+    assert.equal(window.__NAVI_SPEAKING, true, "소음 판정으로 안내가 끊기면 안 된다");
+  });
+  check("되돌린 직후 1초는 다시 낮추지 않는다 — 소음에 볼륨 출렁임 방지 (v2.14.0)", () => {
+    assert.equal(window.NAVI.bargeDuck(), false);
+    assert.equal(a.volume, 0.8);
+  });
+  await sleep(1050);
+  const ok2 = window.NAVI.bargeDuck();
+  window.NAVI.bargeStop();
+  check("낮춘 뒤 끊기 판정이 서면 안내를 멈추고 '들었어요'는 유지 (v2.14.0)", () => {
+    assert.equal(ok2, true);
+    assert.equal(window.__NAVI_SPEAKING, false);
+    assert.equal(NV.duckState().ducked, false, "복귀 타이머가 남아 있다");
+    assert.equal(NV.duckState().heard, true);
+  });
+  check("재생 중이 아니면 낮추지 않는다 (v2.14.0)", () => {
+    assert.equal(window.NAVI.bargeDuck(), false);
+  });
+  check("마이크 게이트가 끊기 판정 전 조기 감지로 bargeDuck 을 부른다 (소스 가드)", () => {
+    assert.match(HTML, /\} else if \(naviDuckHit\(\) && window\.NAVI && window\.NAVI\.bargeDuck\) \{/);
+    assert.match(HTML, /ttsAudio\.volume = NAVI_TTS_VOL;/);
+  });
+  window.fetch = prevFetch5;
+  NV.resetTrip(); NV.stopSpeak();
+}
+
+// ── v2.16.0 내 말 + 상담원 답을 한 영역에 · 듣는 중 색 표시 · 목록 크게 단계 ──
+{
+  window.show("view-navi");
+  const A = () => $("naviAnswer");
+  window.NAVI.onAiTurnComplete();
+  window.NAVI.onUserText(" 안양아트센터");
+  window.NAVI.onUserText("까지 얼마나 남았어?");
+  check("내 말이 답변 영역에 파란 줄(ln-me)로 들어간다 — 별도 영역 없음 (v2.16.0)", () => {
+    assert.equal($("naviHeard"), null, "별도 '내 말' 영역이 남아 있다");
+    assert.equal($("naviAnsToggle"), null, "답변 펼치기 버튼이 남아 있다");
+    assert.equal(A().hidden, false);
+    const me = A().querySelector(".ln-me");
+    assert.ok(me); assert.equal(me.textContent, "안양아트센터까지 얼마나 남았어?");
+  });
+  window.NAVI.onAiText("약 300미터 ");
+  window.NAVI.onUserText(" 남았어");
+  window.NAVI.onAiText("남았어요.");
+  check("답은 같은 영역에서 내 말 바로 아래로 이어진다, 늦은 조각은 같은 말에 (v2.16.0)", () => {
+    const kids = [...A().children].map((e) => e.className);
+    assert.equal(JSON.stringify(kids), JSON.stringify(["ln-me", "ln-ai"]));
+    assert.equal(A().querySelector(".ln-ai").textContent, "약 300미터 남았어요.");
+    assert.match(A().querySelector(".ln-me").textContent, /남았어\? 남았어$/);
+  });
+  window.NAVI.onAiTurnComplete();
+  window.NAVI.onUserText("화장실 어디야");
+  check("답이 끝난 뒤 새 말은 지난 말·답을 지우고 새로 시작 (v2.16.0)", () => {
+    assert.equal(A().children.length, 1);
+    assert.equal(A().textContent, "화장실 어디야");
+  });
+  window.show("view-chat");
+  window.NAVI.onUserText(" 상담 화면 말");
+  check("길안내 화면이 아닐 때는 건드리지 않는다 (v2.16.0)", () => assert.equal(A().textContent, "화장실 어디야"));
+  window.show("view-navi");
+  window.NAVI.onAiTurnComplete();
+  // 듣는 중 표시 — 마이크 쪽 호출(NAVI.noteUserSpeech). 앞 블록의 '들었어요' 표시가 끝난 뒤에 본다
+  await sleep(1700);
+  window.NAVI.noteUserSpeech();
+  check("말소리를 보내는 동안 '말씀 듣는 중' + 입력칸 초록 테두리 (v2.16.0)", () => {
+    assert.match($("naviMicState").textContent, /말씀 듣는 중/);
+    assert.ok(window.document.querySelector(".navi-askbar").classList.contains("hearing"));
+  });
+  check("WS user_transcript 가 길안내 화면으로 이어진다 (소스 가드)", () => {
+    assert.match(HTML, /appendUserTranscript\(msg\.content\);\s*\/\/[^\n]*\n\s*try \{ if \(window\.NAVI && window\.NAVI\.onUserText\) window\.NAVI\.onUserText\(msg\.content\); \} catch \(e\) \{\}/);
+    assert.match(HTML, /\.navi-askbar\.hearing \.field\{border-color:#16A34A;/);
+  });
+  // 목록 단계 — 손잡이 하나로 접힘 → 1단계 → 2단계(크게) → 접힘 (v2.17.0)
+  const V = $("view-navi"), G = $("naviGrip"), L = () => $("naviGripLabel").textContent, SH = $("naviSheet");
+  const tapG = () => { G.dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 500, bubbles: true })); G.dispatchEvent(new window.MouseEvent("pointerup", { clientY: 500, bubbles: true })); };
+  window.NAVI.sheetSetBig(false);
+  check("별도 크게/작게 버튼은 없다 (v2.17.0)", () => assert.equal($("naviBigBtn"), null));
+  check("1단계(기본)에서 손잡이 라벨은 '목록 펼치기' (v2.17.0)", () => {
+    assert.ok(!SH.classList.contains("collapsed")); assert.ok(!V.classList.contains("big"));
+    assert.equal(L(), "목록 펼치기");
+  });
+  tapG();
+  check("누르면 2단계(지도는 위쪽 띠만), 라벨 '목록 접기' (v2.17.0)", () => {
+    assert.ok(V.classList.contains("big"));
+    assert.equal(L(), "목록 접기");
+    assert.match(HTML, /html\.nmap #view-navi\.big \.navi-wrap\{grid-template-rows:auto 64px auto;\}/);
+  });
+  tapG();
+  check("다시 누르면 목록 최소화(접힘), 라벨 '목록 펼치기' (v2.17.0)", () => {
+    assert.ok(SH.classList.contains("collapsed")); assert.ok(!V.classList.contains("big"));
+    assert.equal(L(), "목록 펼치기"); assert.equal(G.getAttribute("aria-expanded"), "false");
+  });
+  tapG();
+  check("또 누르면 1단계로 (v2.17.0)", () => {
+    assert.ok(!SH.classList.contains("collapsed")); assert.ok(!V.classList.contains("big"));
+  });
+  G.dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 360, bubbles: true }));
+  G.dispatchEvent(new window.MouseEvent("pointerup", { clientY: 300, bubbles: true }));
+  check("위로 끌면 한 단계 크게 (v2.17.0)", () => assert.ok(V.classList.contains("big")));
+  G.dispatchEvent(new window.MouseEvent("pointerdown", { clientY: 300, bubbles: true }));
+  G.dispatchEvent(new window.MouseEvent("pointerup", { clientY: 360, bubbles: true }));
+  check("아래로 끌면 한 단계 작게 (v2.17.0)", () => { assert.ok(!V.classList.contains("big")); assert.ok(!SH.classList.contains("collapsed")); });
+  window.NAVI.sheetSetBig(false);
+}
+
+// ── v2.18.0 지나친 안내 지점 따라잡기 · 지하철 하차 범위 ──
+{
+  const NV = window.NAVI._internals();
+  const realNowR = window.Date.now; let vnowR = realNowR() + 900000; window.Date.now = () => vnowR;
+  NV.stopSpeak();
+  // 북쪽으로 곧게 가는 도보 경로 — 스텝 지점 약 55m 간격
+  const pt = (k) => [37.40000 + 0.0005 * k, 126.95000];
+  NV.showRoute({ status: "success", route_id: "r_resync", destination: { poi_id: "RS-1" }, routes: [{
+    summary: { total_distance_m: 330, duration_sec: 300, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+    geometry: [pt(0), pt(1), pt(2), pt(3), pt(4), pt(5), pt(6)],
+    legs: [{ kind: "walk", geometry: [pt(0), pt(6)] }],
+    steps: [0, 1, 2, 3, 4, 5].map((k) => ({ idx: k, maneuver: k ? "turn_left" : "depart", instruction: "구간 " + k, distance_m: 55, coord: pt(k), warnings: [] }))
+      .concat([{ idx: 6, maneuver: "arrive", instruction: "도착", distance_m: 0, coord: pt(6), warnings: [] }]) }] }, "따라잡기 시험");
+  NV.setHere({ lat: pt(0)[0], lng: pt(0)[1] });
+  NV.startGuidance();
+  await sleep(5);
+  const idx = () => window.NAVI._internals().stepIdx;
+  // 앱이 뒤에 있는 동안 구간 3 지점을 지나 3.4 지점까지 왔다 — 바로 다음(1)·(2) 지점 25m 안을 거치지 않았다
+  const far = { lat: 37.40000 + 0.0005 * 3.4, lng: 126.95000 };
+  NV.setHere(far); vnowR += 5000; NV.advanceStep();
+  check("측위 한 번으로는 건너뛰지 않는다 — 튐 방지 (v2.18.0)", () => assert.equal(idx(), 0));
+  vnowR += 5000; NV.advanceStep();
+  check("같은 위치가 두 번 이어지면 마지막으로 지나친 구간(3)으로 따라잡는다 (v2.18.0)", () => assert.equal(idx(), 3));
+  // 경로에서 떨어진 곳(동쪽 80m)은 건너뛰기 대상이 아니다 — 이탈 판정이 맡는다
+  NV.setHere({ lat: 37.40000 + 0.0005 * 5.5, lng: 126.95090 }); vnowR += 5000; NV.advanceStep(); vnowR += 5000; NV.advanceStep();
+  check("경로에서 30m 넘게 떨어진 위치로는 건너뛰지 않는다 (v2.18.0)", () => assert.equal(idx(), 3));
+  // 도착 지점은 건너뛰기로 넘기지 않는다(도착 판정은 25m 도달로만)
+  NV.setHere({ lat: 37.40000 + 0.0005 * 5.75, lng: 126.95000 }); vnowR += 5000; NV.advanceStep(); vnowR += 5000; NV.advanceStep();
+  check("도착 스텝은 건너뛰지 않고 그 앞(5)까지만 따라잡는다 (v2.18.0)", () => assert.equal(idx(), 5));
+  NV.resetTrip(); NV.stopSpeak();
+
+  // 지하철 하차 — 승강장 가운데 점에서 100m 떨어진 승강장 끝(10-4)에서 내려도 하차로 본다
+  const W0 = [37.4182, 126.9183], SB = [37.419578, 126.908476], SA = [37.384435, 126.935579];
+  const W1 = [37.3854642, 126.9350199], WE = [37.384688, 126.931893];
+  NV.showRoute({ status: "success", route_id: "r_alight", mode: "walk_subway", destination: { poi_id: "16779" }, routes: [{
+    summary: { total_distance_m: 6000, duration_sec: 2000, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+    geometry: [W0, SB, SA, W1, WE],
+    legs: [{ kind: "walk", geometry: [W0, SB] }, { kind: "subway", line: "1호선", geometry: [SB, SA], board: { name: "관악" }, alight: { name: "명학" } }, { kind: "walk", geometry: [W1, WE] }],
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "앞으로", distance_m: 900, coord: W0, warnings: [] },
+      { idx: 1, maneuver: "subway_board", instruction: "관악역에서 승차합니다", distance_m: 0, coord: SB, warnings: [] },
+      { idx: 2, maneuver: "subway_alight", instruction: "명학역에서 하차합니다", distance_m: 0, coord: SA, warnings: [] },
+      { idx: 3, maneuver: "turn_left", instruction: "출구로", distance_m: 100, coord: W1, warnings: [] },
+      { idx: 4, maneuver: "arrive", instruction: "도착", distance_m: 0, coord: WE, warnings: [] },
+    ] }] }, "하차 시험");
+  NV.setHere({ lat: W0[0], lng: W0[1] });
+  NV.startGuidance(); await sleep(5);
+  NV.setStepIdxForTest(1);
+  const end104 = { lat: 37.38530, lng: 126.93520 };   // 하차 점에서 약 100m
+  NV.setHere(end104); vnowR += 5000; NV.advanceStep(); vnowR += 5000; NV.advanceStep();
+  check("지하철 하차 점에서 150m 안(승강장 끝)이면 하차 단계로 넘어간다 (v2.18.0)", () => assert.equal(idx(), 2));
+  NV.resetTrip(); NV.stopSpeak();
+  NV.setHere({ lat: W0[0], lng: W0[1] });
+  NV.showRoute({ status: "success", route_id: "r_alight2", mode: "walk_subway", destination: { poi_id: "16779" }, routes: [{
+    summary: { total_distance_m: 6000, duration_sec: 2000, max_slope_deg: 1, stairs_cnt: 0, crossing_cnt: 0, warnings: [] },
+    geometry: [W0, SB, SA, W1, WE],
+    legs: [{ kind: "walk", geometry: [W0, SB] }, { kind: "subway", line: "1호선", geometry: [SB, SA], board: { name: "관악" }, alight: { name: "명학" } }, { kind: "walk", geometry: [W1, WE] }],
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "앞으로", distance_m: 900, coord: W0, warnings: [] },
+      { idx: 1, maneuver: "subway_board", instruction: "관악역에서 승차합니다", distance_m: 0, coord: SB, warnings: [] },
+      { idx: 2, maneuver: "subway_alight", instruction: "명학역에서 하차합니다", distance_m: 0, coord: SA, warnings: [] },
+      { idx: 3, maneuver: "arrive", instruction: "도착", distance_m: 0, coord: WE, warnings: [] },
+    ] }] }, "하차 시험2");
+  NV.startGuidance(); await sleep(5);
+  NV.setStepIdxForTest(1);
+  NV.setHere({ lat: 37.3920, lng: 126.9300 }); vnowR += 5000; NV.advanceStep(); vnowR += 5000; NV.advanceStep();   // 하차역 900m 전
+  check("하차역에 닿기 전(열차 안)에는 넘어가지 않는다 (v2.18.0)", () => assert.equal(idx(), 1));
+  check("앱 복귀 시 위치를 바로 다시 받는다 (소스 가드)", () => {
+    assert.match(HTML, /document\.visibilityState !== "visible" \|\| !guiding \|\| simActive/);
+    assert.match(HTML, /_tev\("navi_resync"/);
+  });
+  NV.resetTrip(); NV.stopSpeak();
+  window.Date.now = realNowR;
 }
 
 // ── 결과 ──

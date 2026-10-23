@@ -26,8 +26,10 @@
 sdk.dir=<Android SDK 경로>
 accessnavi.baseUrl=https://<서비스 주소>
 
-./gradlew assembleRelease -Paccessnavi.keystoreProps=<keystore.properties 경로>
+./gradlew clean assembleRelease -Paccessnavi.keystoreProps=<keystore.properties 경로>
 ```
+
+버전을 올린 배포본은 반드시 `clean` 을 붙여 빌드한다. 증분 빌드는 `BuildConfig.VERSION_CODE`·`VERSION_NAME` 을 쓰는 코드(업데이트 검사)를 다시 컴파일하지 않아 이전 버전 번호가 남을 수 있다(2.1.1 에서 설치 뒤에도 업데이트 안내가 반복된 원인).
 
 `local.properties`, `keystore.properties`, 키 파일, 빌드 산출물은 저장소에 두지 않는다(`.gitignore`).
 서명 정보가 없으면 release 빌드는 서명되지 않는다.

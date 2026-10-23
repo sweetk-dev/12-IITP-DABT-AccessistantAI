@@ -757,7 +757,103 @@ def _out_of_service_area(kind: str, place: str, tool_name: str = _ROUTE_TOOL) ->
     }
 
 
-AUTO_TRANSIT_MIN_M = 700     # 이 직선거리 미만이면 자동 모드는 도보를 쓴다
+AUTO_TRANSIT_MIN_M = 700     # 도보 경로가 이 거리 미만이면 자동 모드는 대중교통을 찾지 않고 도보를 쓴다
+
+# ── 자동 추천 비교 (v2.20.0) ─────────────────────────────────────────────
+# 종전(v1.32.0~v2.19.1): 도보 경로가 700m 이상이면 버스+지하철 경로로 '무조건' 바꿨다(리프트 승강장 예외만).
+# 2026-10-22 실증 1-A 에서 도보 1.3km 대신 마을버스 순환 노선 58정거장·총 20km 경로가 기본으로 나왔다
+# (02 쪽 계산 결함은 02 v1.43.0 에서 따로 고침). 이제 도보와 대중교통 후보를 모두 만들어 비교한다.
+#
+#   1) 후보: 도보(항상) + 도보+지하철 / 도보+버스 / 도보+버스+지하철 (도보가 AUTO_TRANSIT_MIN_M 이상일 때,
+#      세 방식을 동시에 요청). 같은 실제 방식(legs 기준)이 겹치면 하나만 쓴다.
+#   2) 제외: ① 오류·경로 없음 ② 총거리가 도보 거리의 AUTO_TRANSIT_MAX_DIST_RATIO 배 초과(상식 밖 우회)
+#      ③ 리프트만 있는 승강장을 거치면서 덜 걷는 이득이 감점 이하(_lift_only_keeps_walk, 종전 규칙)
+#   3) 점수 = (예상 소요시간 + 대중교통 구간당 AUTO_TRANSIT_LEG_OVERHEAD_SEC) × 방식 가중치. 가장 낮은 후보 채택.
+#      방식 가중치는 사용자 지정 우선순위(2026-10-23): 도보 > 도보+지하철 > 도보+버스 > 도보+버스+지하철.
+#      휠체어 이용자에게 탈것이 하나 늘 때마다 승하차·대기·환승 부담이 커지므로 같은 시간이면 앞 순위를 고른다.
+#      예) 도보 24분 vs 버스 경로 15분+3분 → 도보 24 vs 버스 18×1.30=23.4 → 버스(시간 차가 충분할 때만 넘어간다)
+#   4) 동점이면 우선순위가 앞선 방식.
+AUTO_MODE_WEIGHT = {
+    "walk": 1.00,             # 1순위 도보
+    "walk_subway": 1.15,      # 2순위 도보+지하철
+    "walk_bus": 1.30,         # 3순위 도보+버스
+    "walk_bus_subway": 1.45,  # 4순위 도보+버스+지하철
+}
+AUTO_MODE_ORDER = ("walk", "walk_subway", "walk_bus", "walk_bus_subway")
+# 대중교통 구간당 더하는 시간(초) — 02 의 예상 소요시간은 정거장 수 기반이라 휠체어 승하차(리프트·경사판)·
+# 정류장/승강장 이동 시간이 빠져 있다. 저상버스 대기(실시간)는 02 가 이미 더하므로 여기서는 승하차만 본다.
+AUTO_TRANSIT_LEG_OVERHEAD_SEC = 180
+# 대중교통 총거리가 도보 거리의 이 배수를 넘으면 후보에서 뺀다(02 이상치 점검과 별개인 12 쪽 안전장치)
+AUTO_TRANSIT_MAX_DIST_RATIO = 3.0
+
+
+def _route_summary(data: dict) -> dict:
+    return ((data.get("routes") or [{}])[0] or {}).get("summary") or {}
+
+
+def _auto_score(data: dict, mode: str):
+    """자동 추천 점수(초 단위, 낮을수록 좋음)와 계산 근거. 소요시간을 모르면 (None, ...)."""
+    summ = _route_summary(data)
+    dur = summ.get("duration_sec")
+    if not isinstance(dur, (int, float)) or dur <= 0:
+        return None, {}
+    legs = ((data.get("routes") or [{}])[0] or {}).get("legs") or []
+    n_transit = sum(1 for l in legs if isinstance(l, dict) and l.get("kind") in ("bus", "subway"))
+    eff = float(dur) + AUTO_TRANSIT_LEG_OVERHEAD_SEC * n_transit
+    w = AUTO_MODE_WEIGHT.get(mode, 1.5)
+    return eff * w, {"duration_sec": round(float(dur)), "overhead_sec": AUTO_TRANSIT_LEG_OVERHEAD_SEC * n_transit,
+                     "weight": w}
+
+
+async def _auto_pick(origin_pt, dest, profile, low_floor, walk_data):
+    """자동 추천 — 도보와 대중교통 후보를 비교해 하나를 고른다(v2.20.0, 위 설명 참조).
+
+    반환: (선택된 경로 응답, 실제 방식, 리프트 때문에 버린 후보의 경고 문장들 또는 None, 비교 기록 목록)
+    """
+    walk_m = _route_summary(walk_data).get("total_distance_m") or 0
+    compare = []
+    ws, wbasis = _auto_score(walk_data, "walk")
+    cands = [("walk", walk_data, ws if ws is not None else 0.0)]
+    compare.append(dict({"mode": "walk", "distance_m": walk_m, "score": round(ws or 0), "status": "후보"}, **wbasis))
+    if walk_m < AUTO_TRANSIT_MIN_M:
+        return walk_data, "walk", None, compare
+    req_modes = ("walk_subway", "walk_bus", "walk_bus_subway")
+    results = await asyncio.gather(*[
+        route_client.plan_route(origin_pt, dest, profile=profile, mode=m, realtime=True, low_floor=low_floor)
+        for m in req_modes], return_exceptions=True)
+    lift_cautions = None
+    seen = set()
+    for req, res in zip(req_modes, results):
+        if isinstance(res, Exception) or not isinstance(res, dict) or res.get("status") == "error" \
+                or not (res.get("routes") or []):
+            compare.append({"mode": req, "status": "경로 없음"})
+            continue
+        legs = (res["routes"][0] or {}).get("legs") or []
+        actual = _mode_from_legs(legs, req)
+        if actual == "walk" or actual in seen:
+            continue                     # 대중교통 구간이 없거나 이미 본 방식 — 중복 비교하지 않는다
+        seen.add(actual)
+        dist = _route_summary(res).get("total_distance_m") or 0
+        if walk_m and dist > AUTO_TRANSIT_MAX_DIST_RATIO * walk_m:
+            compare.append({"mode": actual, "distance_m": dist, "status": "제외(우회 과다)"})
+            continue
+        if _lift_only_keeps_walk(walk_data, res):
+            # 리프트만 있는 승강장을 거치고 덜 걷는 이득도 작다(종전 규칙) — 이 후보는 쓰지 않는다
+            lift_cautions = lift_cautions or _platform_cautions(res)
+            compare.append({"mode": actual, "distance_m": dist, "status": "제외(리프트 승강장)"})
+            continue
+        sc, basis = _auto_score(res, actual)
+        if sc is None:
+            compare.append({"mode": actual, "distance_m": dist, "status": "제외(소요시간 없음)"})
+            continue
+        cands.append((actual, res, sc))
+        compare.append(dict({"mode": actual, "distance_m": dist, "score": round(sc), "status": "후보"}, **basis))
+    best = min(cands, key=lambda c: (c[2], AUTO_MODE_ORDER.index(c[0]) if c[0] in AUTO_MODE_ORDER else 9))
+    for c in compare:
+        if c.get("mode") == best[0] and c.get("status") == "후보":
+            c["status"] = "선택"
+    kept = lift_cautions if best[0] == "walk" else None
+    return best[1], best[0], kept, compare
 
 # 리프트만 있는 승강장 감점의 기본값(m) — 경로 서비스 v1.35.0 의 LIFT_ONLY_PLATFORM_PENALTY_M 과 같다.
 # 경로 응답에 summary.platform_access_penalty_m 이 있으면 그 값을 쓴다(감점 기준을 두 곳에서 따로 정하지
@@ -1033,6 +1129,9 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                 "message": "지원하지 않는 이동 방식입니다: %s" % mode,
                 "ai_instruction": "이동 방식은 도보/도보+지하철/도보+버스/도보+버스+지하철 중에서만 "
                                   "고를 수 있다고 짧게 안내하세요."}
+    # 화면의 이동 방식 카드에 표시할 '사용자가 고른 방식' — 자동 추천이면 None('추천' 카드).
+    # 역 안 출발로 도보가 강제되는 경우(아래)는 사용자가 고른 것이 아니므로 이 값을 바꾸지 않는다.
+    user_mode = None if auto else req_mode
 
     origin_pt = {"lat": origin_lat, "lng": origin_lng}
     st_in = None
@@ -1044,23 +1143,15 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     if _set_ctx:
         _set_ctx(log_ctx)
     auto_kept_walk = None     # 자동 추천이 리프트 승강장 때문에 도보를 유지했을 때의 사유 문장들
+    auto_compare = None       # 자동 추천 비교 기록(v2.20.0) — 방식별 거리·점수·채택 여부
     if auto:
         data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk")
         if data.get("status") == "error":
             return data
-        mode_used = "walk"
-        walk_dist = ((data.get("routes") or [{}])[0].get("summary") or {}).get(
-            "total_distance_m") or 0
-        if walk_dist >= AUTO_TRANSIT_MIN_M:
-            upgraded = await route_client.plan_route(
-                origin_pt, dest, profile=profile, mode="walk_bus_subway", realtime=True,
-                low_floor=low_floor)
-            if upgraded.get("status") != "error" and (upgraded.get("routes") or []):
-                if _lift_only_keeps_walk(data, upgraded):
-                    # 대중교통이 리프트만 있는 승강장을 거치고, 그만큼 덜 걷는 이득도 작다 — 도보 유지
-                    auto_kept_walk = _platform_cautions(upgraded)
-                else:
-                    data, mode_used = upgraded, "walk_bus_subway"
+        # 도보·대중교통 후보 비교 후 선택(v2.20.0) — 상세 규칙은 AUTO_MODE_WEIGHT 위 설명
+        data, mode_used, auto_kept_walk, auto_compare = await _auto_pick(
+            origin_pt, dest, profile, low_floor, data)
+        logger.info("자동 추천 비교: %s", auto_compare)
     elif st_in is not None:
         data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk",
                                              origin_station=st_in)
@@ -1157,13 +1248,17 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         "platform_cautions": platform_cautions,
         # 자동 추천이 리프트 승강장 때문에 대중교통 대신 도보를 고른 경우의 사유(없으면 None)
         "auto_kept_walk": auto_kept_walk,
+        # 자동 추천이 비교한 후보(v2.20.0) — 방식·거리·점수·선택/제외 사유. 자동 추천이 아니면 None
+        "auto_compare": auto_compare,
         "fallback": data.get("fallback", {}),
         "first_steps": [s.get("instruction") for s in (primary.get("steps") or [])[:2]],
         # 02 v1.28.0(#79) — 출발점이 역 가까이면 역 안/밖 질문, 역 안 출발이면 승강장→출구 안내
         "station_nearby": _brief_station_nearby(data.get("station_nearby")),
         "station_start": _brief_station_start(data.get("station_start")),
         # 프런트가 지도·경로·턴바이턴을 그리도록 원본 경로를 그대로 전달
-        "ui_action": {"action": "show_route", "route": data},
+        # mode_requested: 사용자가 고른 이동 방식(자동 추천이면 None) — 화면이 이동 방식 카드 선택을 맞춘다.
+        # 경로 원본만으로는 '자동 추천이 도보를 골랐다'와 '도보로 요청했다'를 구분할 수 없다(v2.11.0).
+        "ui_action": {"action": "show_route", "route": data, "mode_requested": user_mode},
         "ai_instruction": (
             ("출발지는 %s 기준임을 먼저 밝히세요. " % origin_label if origin_label else "")
             + ("목적지는 %s 입니다. " % dest_label if dest_label else "")

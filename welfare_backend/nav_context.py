@@ -205,6 +205,25 @@ def inject_handoff(fname: str, fargs: dict, session_mode) -> dict:
     return fargs
 
 
+LOCATION_TOOLS = ("find_nearby_transit", "find_emergency_support", "find_toilet",
+                  "find_accessible_restaurants", "find_culture_sports", "check_building_accessibility",
+                  "find_bf_tour_spots")
+
+
+def needs_current_location(fname: str, fargs: dict, nav: dict) -> bool:
+    """이 도구 호출이 현재 위치를 기준점으로 쓰는가 (v2.19.0).
+
+    정책상담 화면은 위치를 계속 보내지 않는다 — 기준 장소를 말하지 않은 '근처' 찾기가 들어왔을 때만
+    세션이 화면에 위치를 한 번 물어본다. 장소를 말했거나(place) 안내 중인 승차 정류장이 있으면 묻지 않는다.
+    """
+    fargs = fargs or {}
+    if fname in LOCATION_TOOLS:
+        return not fargs.get("place")
+    if fname == "get_bus_arrivals":
+        return not (fargs.get("station_id") or fargs.get("place") or (nav or {}).get("board_station_id"))
+    return False
+
+
 def inject_nav_defaults(fname: str, fargs: dict, nav: dict, user_location: dict) -> dict:
     """도구 호출 인자에 세션이 아는 사실을 주입한다 — 모델이 지어내지 못하게.
 
