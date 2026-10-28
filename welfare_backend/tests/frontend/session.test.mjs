@@ -583,7 +583,7 @@ function boot(preset, url) {
   st().textContent = "경로를 만들지 못했습니다."; fixIn();
   check("위치 오류 뒤 상태 줄이 다른 안내로 바뀌었으면 측위 성공이 그 안내를 덮지 않는다", () => assert.equal(st().textContent, "경로를 만들지 못했습니다."));
 
-  // 경로 요약 '목록으로' — 구간별 경로선(도보·버스·도보 3줄)을 모두 지운다
+  // 경로 요약 '취소'(종전 '목록으로') — 구간별 경로선(도보·버스·도보 3줄)을 모두 지운다
   const MM = JSON.parse(JSON.stringify(ROUTE));
   MM.ui_action.route.routes[0].legs = [
     { kind: "walk", to_label: "정류장", summary: { total_distance_m: 110, duration_sec: 90 }, geometry: [P(0), P(1)] },
@@ -592,9 +592,9 @@ function boot(preset, url) {
   w.__planHook = async () => ({ ok: true, json: async () => MM });
   await N().requestRoute({ poi_id: "T1", name: "테스트 박물관" }); await sleep(30);
   check("(준비) 구간별 경로선 3줄이 그려짐", () => assert.equal(N().routeLines().length, 3));
-  const back = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "목록으로");
+  const back = $("naviCancelBtn");   // v2.22.0: '목록으로' → 시트 맨 위 '취소'
   back.click(); await sleep(30);
-  check("'목록으로' — 구간 경로선을 전부 지운다", () => assert.equal(N().routeLines().length, 0));
+  check("'취소' — 구간 경로선을 전부 지운다", () => assert.equal(N().routeLines().length, 0));
   w.close();
 }
 
