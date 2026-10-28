@@ -425,6 +425,20 @@ check("첫 턴바이턴 스텝 카드 + 음성 발화", () => {
   assert.equal(spoken.at(-1), "중앙로를 따라 120m 앞으로 이동합니다.");
   assert.equal(window.document.querySelector(".step-now").getAttribute("aria-live"), "assertive");
 });
+check("다음 방향 띠·전체 경로 바 표시 (v2.21.0)", () => {
+  assert.equal($("mvBanner").hidden, false, "방향 띠가 숨겨져 있음");
+  assert.equal($("routeBar").hidden, false, "경로 바가 숨겨져 있음");
+  assert.ok($("mvArrow").querySelector(".mv-emoji"), "다음 안내(횡단보도)는 그림 문자 표식이어야 함");
+  assert.match($("mvIns").textContent, /횡단보도/);
+  assert.match($("mvDist").textContent, /m$/);
+  assert.match($("mvRemain").textContent, /남은 거리/);
+  assert.ok($("rbMe"), "내 위치 표식 없음");
+  assert.ok($("rbMe").classList.contains("pb-electric"), "기본 전동 기준 아이콘이 아님");
+  assert.ok($("rbMe").querySelector("svg"), "휠체어 아이콘 없음");
+  const marks = [...$("rbTrack").querySelectorAll(".rb-mark")].map((m) => m.textContent);
+  assert.ok(marks.includes("🧱"), "턱낮춤 없는 횡단보도는 턱 표식이어야 함: " + marks.join(","));   // 같은 지점의 횡단보도 표식보다 턱이 우선
+  assert.ok($("mvBanner").compareDocumentPosition($("naviMap")) & window.Node.DOCUMENT_POSITION_FOLLOWING, "띠가 지도 앞(위)에 있지 않음");
+});
 
 // 5) 다음 지점 근접 -> 스텝 자동 전환
 watchCb({ coords: { latitude: 37.39051, longitude: 126.95051 } });
@@ -442,6 +456,12 @@ check("앞 안내가 끝난 뒤 다음 스텝 안내 재발화", () => {
   const card = window.document.querySelector(".step-now .ins");
   assert.equal(spoken.at(-1), "횡단보도를 건너 60m 이동합니다.");
   assert.match(window.document.querySelector(".step-now .wr").textContent, /턱낮춤 없음/);
+});
+check("스텝 전환 뒤 방향 띠는 도착 표식, 진행 바가 채워짐 (v2.21.0)", () => {
+  assert.match($("mvIns").textContent, /도착/);
+  assert.equal($("mvArrow").textContent.trim(), "🏁");
+  assert.ok(parseFloat($("rbFill").style.height) > 0, "진행 바가 채워지지 않음: " + $("rbFill").style.height);
+  assert.equal($("rbMe").style.bottom, $("rbFill").style.height, "내 위치 표식이 채움 높이와 다름");
 });
 
 // 5-b) 이동 중 대화 (#248) — nav_state 송신·답변 스트립·안내 복귀
@@ -1420,6 +1440,11 @@ check("안내 중에는 대화 실패 신호가 와도 안내를 끊지 않는�
   assert.match($("naviStatus").textContent, /안내는 그대로 계속됩니다/);
 });
 NAV.clearRouteDisplay();   // 안내 종료 상태로 되돌린다
+check("경로를 지우면 방향 띠·경로 바도 숨긴다 (v2.21.0)", () => {
+  assert.equal($("mvBanner").hidden, true);
+  assert.equal($("routeBar").hidden, true);
+  assert.equal(NAV.hudOn(), false);
+});
 NAV.resetTrip();
 planResponse = ROUTE;
 NAV.requestRoute({ poi_id: "TBF-1", name: "테스트 무장애 공원" });
@@ -3588,7 +3613,7 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   check("누르면 2단계(지도는 위쪽 띠만), 라벨 '목록 접기' (v2.17.0)", () => {
     assert.ok(V.classList.contains("big"));
     assert.equal(L(), "목록 접기");
-    assert.match(HTML, /html\.nmap #view-navi\.big \.navi-wrap\{grid-template-rows:auto 64px auto;\}/);
+    assert.match(HTML, /html\.nmap #view-navi\.big \.navi-wrap\{grid-template-rows:auto auto 64px auto;\}/);   // v2.21.0: 1행이 방향 띠
   });
   tapG();
   check("다시 누르면 목록 최소화(접힘), 라벨 '목록 펼치기' (v2.17.0)", () => {
