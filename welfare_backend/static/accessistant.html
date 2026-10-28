@@ -302,7 +302,9 @@ html.nmap .st-close{position:relative;top:auto;right:auto;grid-column:4;grid-row
 .mv-ins{font-size:1rem;font-weight:700;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mv-remain{flex:none;text-align:right;font-size:.8rem;line-height:1.3;opacity:.88;}
 .mv-remain b{display:block;font-size:1.02rem;white-space:nowrap;}
-.navi-wrap.mv-on .navi-status,.navi-wrap.mv-on .st-close{top:calc(var(--mv-h,72px) + 10px);}
+/* v2.23.2: 웹 지도 전용 — 앱 지도(html.nmap)에서는 상태 줄이 격자 2행에 흐름으로 놓이는데(position:relative) 이 top 이 그대로 먹혀
+   상태 줄이 지도 위로 90px 밀려 내려가고 2행은 빈 띠로 남았다(실기기 2026-10-28) */
+html:not(.nmap) .navi-wrap.mv-on .navi-status,html:not(.nmap) .navi-wrap.mv-on .st-close{top:calc(var(--mv-h,72px) + 10px);}
 /* v2.21.1 바 다듬기(2026-10-28 검토): 배경·출발/도착 표식 없이 선만, 지나온 곳 회색·남은 곳 파랑, 표식·내 위치 축소 */
 .rbar{position:absolute;right:8px;top:calc(var(--mv-h,0px) + 64px);bottom:132px;width:36px;z-index:5;display:flex;flex-direction:column;align-items:center;padding:14px 0;}
 .rbar[hidden]{display:none;}
