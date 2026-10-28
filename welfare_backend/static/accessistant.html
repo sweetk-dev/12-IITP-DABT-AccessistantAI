@@ -270,10 +270,12 @@ html.nmap .st-close{position:relative;top:auto;right:auto;grid-column:4;grid-row
 .intro-dots i{width:8px;height:8px;border-radius:50%;background:#CBD5E1;}
 .intro-dots i.on{background:var(--c-primary);}
 .ut-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;align-content:stretch;}
-.ut-btn{min-height:104px;border-radius:18px;border:2px solid var(--c-border-strong);background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-family:var(--font-body);color:var(--c-secondary);padding:10px;}
-.ut-btn .ut-ic{width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--c-primary);}
-.ut-btn .ut-ic svg{width:40px;height:40px;}
-.ut-btn .ut-emoji{font-size:36px;line-height:1;}
+.ut-btn{min-height:128px;border-radius:18px;border:2px solid var(--c-border-strong);background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-family:var(--font-body);color:var(--c-secondary);padding:10px;}
+/* v2.22.1 시작 흐름 다듬기: 유형 아이콘은 공용 픽토그램(KS 안내 표지 계열) 단색·크게, 온보딩 각 장에 로고 */
+.ut-btn .ut-ic{width:68px;height:68px;display:flex;align-items:center;justify-content:center;color:var(--c-primary);}
+.ut-btn .ut-ic svg{width:68px;height:68px;display:block;}
+.intro .mark--sm{width:64px;height:64px;border-radius:16px;margin:4px auto 14px;box-shadow:0 6px 18px rgba(37,99,235,.14);}
+.intro .mark--sm img{width:44px;height:44px;}
 .ut-btn .ut-lab{font-size:1.15rem;font-weight:800;}
 .ut-btn .ut-sub{font-size:.8rem;color:var(--c-text-muted);}
 .ut-btn[aria-pressed="true"]{border-color:var(--c-primary);background:var(--c-primary-soft);}
@@ -5294,12 +5296,20 @@ window.NAVI = (function(){
          전동·수동은 경로 추천 + 관광지, 나머지 셋은 관광지 정보만 — 경로 추천은 현장 검증 뒤 제공(2026-10-28 사용자 결정).
          유형이 정해지면 관광지 필터(selTypes)·경로 기준(profile)을 맞추고, 시트의 종전 유형 게이트(renderTypeSelectPanel)는 건너뛴다.
        · 앱은 시작 화면(view-mode)에 머물지 않으므로 유형을 고르면 곧바로 세션 연결·길안내 화면으로 간다(naviEntry). 웹은 시작 화면으로. */
+  // 이용자 유형 픽토그램 — 휠체어(국제 접근성 심벌)·전동휠체어·흰지팡이·귀+사선·유모차. 단색(currentColor), 고정 문자열이라 innerHTML (v2.22.1)
+  var UT_ICON = {
+    manual: '<svg viewBox="0 0 48 48" fill="currentColor" aria-hidden="true"><circle cx="19" cy="8.5" r="4.2"/><path d="M15.6 14.5h5.2l1.2 9.5h9.6a2 2 0 0 1 1.8 1.1l5.2 10.4-3.3 1.7-4.6-9.2h-11a2.2 2.2 0 0 1-2.2-1.9z"/><path d="M12.5 20.5a11.5 11.5 0 1 0 17.4 12.4" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/></svg>',
+    electric: '<svg viewBox="0 0 48 48" fill="currentColor" aria-hidden="true"><circle cx="17" cy="8.5" r="4.2"/><path d="M13.6 14.5h5.2l1.2 9.5h8.6a2 2 0 0 1 2 2v6h-3.6v-4.4h-9a2.2 2.2 0 0 1-2.2-1.9z"/><path d="M8 24v9a2 2 0 0 0 2 2h22v-3.6H11.6V24z"/><circle cx="13" cy="39" r="4"/><circle cx="29" cy="39" r="4"/><path d="M38 13l-4.2 7h3.6l-3.2 7 7.8-9.4h-3.6l3-4.6z"/></svg>',
+    visual: '<svg viewBox="0 0 48 48" fill="currentColor" aria-hidden="true"><circle cx="23" cy="7.5" r="4.2"/><path d="M19.2 13.5h7.6l2.4 11-3.4.9-1.6-7.4-.4 9 3.2 14.5h-4l-2.6-11-2.6 11h-4l2.6-14.5V17.4L13.2 24l-3-1.6z"/><path d="M27.5 25.5l9.5 15.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
+    hearing: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 15.5a9 9 0 0 1 18 0c0 5.5-4.2 7.4-5.4 11.4-1 3.4-2.6 6.6-6.6 6.6"/><path d="M23.5 16.5a3.5 3.5 0 0 1 6.5 1.5"/><path d="M10 38L38 10"/></svg>',
+    infant: '<svg viewBox="0 0 48 48" fill="currentColor" aria-hidden="true"><circle cx="9.5" cy="7" r="3.6"/><path d="M7 11.5h5l2.6 10.4 8.2 2.4-.9 3.4-8.6-2.5L10.4 41H6.6l3.3-16.6L7.8 20l-1 7.5H3.4l1.4-11.5z"/><path d="M22 17h14a9 9 0 0 1-9 9h-5z"/><circle cx="25" cy="31" r="3.2"/><circle cx="36" cy="31" r="3.2"/><path d="M14 11.5l9.5 5.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><circle cx="31" cy="12.5" r="2.6"/></svg>'
+  };
   var USER_TYPES = [
-    {id:"electric", label:"전동휠체어", sub:"경로 추천 · 관광지", dis:"지체장애", profile:"wheelchair_electric", route:true, icon:PROF_ICON.wheelchair_electric},
-    {id:"manual",   label:"수동휠체어", sub:"경로 추천 · 관광지", dis:"지체장애", profile:"wheelchair_manual",   route:true, icon:PROF_ICON.wheelchair_manual},
-    {id:"visual",   label:"시각장애",   sub:"관광지 안내",        dis:"시각장애", profile:"visual",              route:false, icon:PROF_ICON.visual},
-    {id:"hearing",  label:"청각장애",   sub:"관광지 안내",        dis:"청각장애", profile:null,                  route:false, icon:'<span class="ut-emoji">👂</span>'},
-    {id:"infant",   label:"영유아 동반", sub:"관광지 안내",       dis:"영유아동반", profile:null,                route:false, icon:'<span class="ut-emoji">👶</span>'}
+    {id:"electric", label:"전동휠체어", sub:"경로 추천 · 관광지", dis:"지체장애", profile:"wheelchair_electric", route:true, icon:UT_ICON.electric},
+    {id:"manual",   label:"수동휠체어", sub:"경로 추천 · 관광지", dis:"지체장애", profile:"wheelchair_manual",   route:true, icon:UT_ICON.manual},
+    {id:"visual",   label:"시각장애",   sub:"관광지 안내",        dis:"시각장애", profile:"visual",              route:false, icon:UT_ICON.visual},
+    {id:"hearing",  label:"청각장애",   sub:"관광지 안내",        dis:"청각장애", profile:null,                  route:false, icon:UT_ICON.hearing},
+    {id:"infant",   label:"영유아 동반", sub:"관광지 안내",       dis:"영유아동반", profile:null,                route:false, icon:UT_ICON.infant}
   ];
   var userType = null;
   function userTypeDef(id){ id = id || userType; for(var i=0;i<USER_TYPES.length;i++) if(USER_TYPES[i].id===id) return USER_TYPES[i]; return null; }
@@ -5341,6 +5351,10 @@ window.NAVI = (function(){
       var skip = done() && !guideAgain;
       var p = skip ? 3 : page;
       box.setAttribute("data-page", String(p));
+      if(p!==0){   // 모든 장에 로고 — 어느 서비스인지 계속 보이게 (v2.22.1)
+        var mk0=el("div","mark mark--sm"), im0=document.createElement("img"), s0=document.querySelector("#view-splash .mark img");
+        if(s0) im0.src=s0.src; im0.alt=""; mk0.appendChild(im0); box.appendChild(mk0);
+      }
       if(p===0){
         var mk=el("div","mark"), img=document.createElement("img"), src0=document.querySelector("#view-splash .mark img");
         if(src0) img.src=src0.src; img.alt="로고"; mk.appendChild(img); box.appendChild(mk);
