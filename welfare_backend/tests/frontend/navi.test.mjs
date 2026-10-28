@@ -408,6 +408,14 @@ check("'추천' 복귀 시 mode 파라미터 없이 재요청", () => {
 // 4) 안내 시작 -> 스텝 + 음성
 const startBtn = [...$("naviSheetBody").querySelectorAll("button")].find((b) => b.textContent === "안내 시작");
 check("'안내 시작' 버튼 존재", () => assert.ok(startBtn));
+check("경로 표시 직후: 시트 맨 위에 안내시작·취소, 신고·긴급·기준 배지는 숨김 (v2.22.0)", () => {
+  const acts = $("routeActs");
+  assert.ok(acts, "맨 위 버튼 줄 없음");
+  assert.equal(acts.previousElementSibling.className, "rhead", "제목 줄 바로 아래가 아님");
+  assert.equal($("naviGoBtn").textContent, "안내 시작"); assert.equal($("naviCancelBtn").textContent, "취소");
+  assert.ok($("view-navi").classList.contains("route-ready"), "route-ready 아님");
+  assert.ok(![...$("naviSheetBody").querySelectorAll("button")].some((b) => b.textContent === "목록으로"), "'목록으로' 버튼이 남아 있음");
+});
 // ── 이동 중 대화 (#248): 가짜 WS 로 nav_state 송신 관찰 ──
 const wsSent = [];
 const fakeWs = { readyState: 1, send: (s) => wsSent.push(JSON.parse(s)) };
@@ -419,6 +427,7 @@ check("세션 연결 시 이동 중 질문바 노출", () => {
 });
 startBtn.dispatchEvent(new window.Event("click"));
 await sleep(30);
+check("안내를 시작하면 신고·긴급 버튼 복귀 (v2.22.0)", () => assert.ok(!$("view-navi").classList.contains("route-ready")));
 check("첫 턴바이턴 스텝 카드 + 음성 발화", () => {
   const card = window.document.querySelector(".step-now .ins");
   assert.match(card.textContent, /중앙로를 따라 120m/);
@@ -1440,6 +1449,15 @@ check("안내 중에는 대화 실패 신호가 와도 안내를 끊지 않는�
   assert.match($("naviStatus").textContent, /안내는 그대로 계속됩니다/);
 });
 NAV.clearRouteDisplay();   // 안내 종료 상태로 되돌린다
+check("취소 버튼: 경로를 지우고 관광지 목록으로, 도착지 초기화 (v2.22.0)", () => {
+  NAV.showRoute(ROUTE.ui_action.route, "테스트");
+  assert.ok($("naviCancelBtn"));
+  $("naviCancelBtn").dispatchEvent(new window.Event("click"));
+  assert.equal(NAV.routeLines().length, 0); assert.equal(NAV.tripDest(), null);
+  assert.ok(!$("view-navi").classList.contains("route-ready"));
+  assert.match($("naviStatus").textContent, /경로를 취소했습니다/);
+  assert.ok($("naviSpots") || /무장애 관광지/.test($("naviSheetBody").textContent), "목록 화면이 아님");
+});
 check("경로를 지우면 방향 띠·경로 바도 숨긴다 (v2.21.0)", () => {
   assert.equal($("mvBanner").hidden, true);
   assert.equal($("routeBar").hidden, true);
