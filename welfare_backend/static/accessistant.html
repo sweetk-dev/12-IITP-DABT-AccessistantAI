@@ -321,7 +321,7 @@ html.nmap .st-close{position:relative;top:auto;right:auto;grid-column:4;grid-row
    앱 지도는 웹 화면 위에 겹치므로 지도 칸 위에 떠 있던 상태 문구·버튼을 지도 위·아래 줄로 옮긴다. */
 html.nmap .navi-wrap{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto;grid-template-rows:auto auto minmax(0,1fr) auto;}
 html.nmap .mv-banner{grid-column:1/-1;grid-row:1;}
-html.nmap .rbar{position:relative;right:auto;top:auto;bottom:auto;grid-column:5;grid-row:3;align-self:stretch;margin:0 4px 0 0;}
+html.nmap .rbar{display:none;}   /* v2.23.0 앱 진행 바: 앱 지도 위에 앱이 그린다(mapCmd progress) — 지도 옆 칸을 쓰지 않는다 */
 html.nmap .navi-status{position:relative;top:auto;left:auto;right:auto;grid-column:1/-1;grid-row:2;margin:6px 10px 4px;box-shadow:none;border:1px solid var(--c-border);}
 html.nmap #naviMap,html.nmap #naviMapFallback{grid-column:1/5;grid-row:3;}
 html.nmap .reportbtn,html.nmap .sosbtn,html.nmap .prof-badge,html.nmap .locbtn{position:relative;left:auto;right:auto;top:auto;bottom:auto;grid-row:4;margin:6px 0 6px 8px;box-shadow:none;}
@@ -2752,6 +2752,9 @@ window.NAVI = (function(){
       soon();
     }
 
+    /** 전체 경로 진행 바 (앱 2.2.0) — 웹 바 대신 앱이 지도 위 오른쪽에 그린다. 값은 updateGuideHud 가 만든다. */
+    self.progress = function(spec){ if(!self.on) return; var c = {op:"progress"}; for(var k in spec) c[k] = spec[k]; send(c); };
+    self.progressOff = function(){ if(self.on) send({op:"progress_off"}); };
     /** 앱 지도를 쓸지 정한다(init 에서 지도를 만들기 전에 한 번). html.nmap 은 앱 지도용 배치(CSS). */
     self.decide = function(){
       self.on = want();
@@ -5485,9 +5488,12 @@ window.NAVI = (function(){
     if(m === "crossing" || m === "crossing_point") return {icon:"🚸", pri:6, label:"횡단보도"};
     return null;
   }
-  // 경로가 바뀔 때 한 번 — 승차 구간 띠·주의 지점 표식·내 위치 표식을 바 위에 놓는다
+  // 경로가 바뀔 때 한 번 — 승차 구간 띠·주의 지점 표식·내 위치 표식을 바 위에 놓는다.
+  // 앱 지도(v2.23.0 앱 진행 바)에서는 같은 값을 앱에 보내려고 {segs, marks} 를 _rbLast 에 남긴다.
+  var _rbLast = null;
   function _rbBuild(){
     var tr = $("rbTrack"); if(!tr) return;
+    _rbLast = {segs:[], marks:[]};
     [].slice.call(tr.querySelectorAll(".rb-mark,.rb-seg,.rb-me")).forEach(function(n){ n.parentNode.removeChild(n); });
     var total = cumDist[cumDist.length - 1] || 0;
     var pct = function(i){ return total ? Math.max(0, Math.min(100, (stepAlong[i] || 0) / total * 100)) : 0; };
@@ -5498,6 +5504,7 @@ window.NAVI = (function(){
       seg.className = "rb-seg " + (m === "subway_board" ? "rb-seg--subway" : "rb-seg--bus");
       seg.style.bottom = a + "%"; seg.style.height = Math.max(0, b - a) + "%";
       tr.appendChild(seg);
+      _rbLast.segs.push({a: Math.round(a * 10) / 10, b: Math.round(b * 10) / 10, kind: (m === "subway_board" ? "subway" : "bus")});
     }
     var marks = [];
     steps.forEach(function(st, i){ var mk = _rbMarkOf(st); if(mk && i < steps.length - 1){ mk.pct = pct(i); marks.push(mk); } });
@@ -5512,6 +5519,7 @@ window.NAVI = (function(){
     kept.forEach(function(mk){
       var el = document.createElement("span"); el.className = "rb-mark"; el.textContent = mk.icon;
       el.title = mk.label; el.style.bottom = mk.pct + "%"; tr.appendChild(el);
+      _rbLast.marks.push({pct: Math.round(mk.pct * 10) / 10, icon: mk.icon});
     });
     var me = document.createElement("div"); me.className = "rb-me"; me.id = "rbMe"; tr.appendChild(me);
   }
@@ -5522,8 +5530,10 @@ window.NAVI = (function(){
     if(guiding && here && routeGeom.length >= 2) return alongOnRoute(here);
     return (typeof stepAlong[stepIdx] === "number") ? stepAlong[stepIdx] : 0;
   }
+  var _npLast = "";   // 앱에 마지막으로 보낸 진행 값 — 같은 값은 다시 보내지 않는다
   function hideHud(){
-    hudOn = false; _rbRouteKey = null;
+    hudOn = false; _rbRouteKey = null; _npLast = "";
+    try{ NMAP.progressOff(); }catch(e){}
     var bn = $("mvBanner"), bar = $("routeBar"), w = document.querySelector(".navi-wrap");
     if(bn) bn.hidden = true;
     if(bar) bar.hidden = true;
@@ -5535,7 +5545,8 @@ window.NAVI = (function(){
     if(!hudOn || !route || !steps.length){ hideHud(); return; }
     var total = cumDist[cumDist.length - 1] || 0;
     var key = (route.route_id || "") + ":" + steps.length + ":" + Math.round(total);
-    if(key !== _rbRouteKey){ _rbRouteKey = key; _rbBuild(); }
+    var routeChanged = (key !== _rbRouteKey);
+    if(routeChanged){ _rbRouteKey = key; _rbBuild(); }
     bn.hidden = false; bar.hidden = false; w.classList.add("mv-on");
     try{ var bh = bn.offsetHeight; if(bh) w.style.setProperty("--mv-h", bh + "px"); }catch(e){}
     var along = _hudAlong(alongOverride);
@@ -5571,6 +5582,17 @@ window.NAVI = (function(){
       me.setAttribute("title", profileLabel(profile) + " 기준 · " + Math.round(pct) + "% 진행");
     }
     bar.setAttribute("aria-label", "전체 경로 " + Math.round(pct) + "% 진행, 남은 거리 " + fmtDistM(left));
+    // 앱 지도 — 앱이 지도 위에 그린다 (v2.23.0 앱 진행 바). 표식·구간은 경로가 바뀔 때만, 진행 값은 0.5% 단위로 바뀔 때만 보낸다
+    if(NMAP.on){
+      var prof = (profile === "visual") ? "visual" : (profile === "wheelchair_manual" ? "manual" : "electric");
+      var pk = Math.round(pct * 2) / 2, sig = pk + "|" + prof + "|" + (routeChanged ? key : "");
+      if(sig !== _npLast){
+        _npLast = sig;
+        var spec = {pct: pk, profile: prof};
+        if(routeChanged || !_npLast){ spec.segs = (_rbLast || {}).segs || []; spec.marks = (_rbLast || {}).marks || []; }
+        try{ NMAP.progress(spec); }catch(e){}
+      }
+    }
   }
   function distM(a, b){
     var R=6371008.8, t=Math.PI/180;

@@ -165,6 +165,17 @@ check("안내 중 위치 갱신 → follow(진행 방향 회전) 명령", () => 
   assert.ok(f, "follow 없음");
   assert.ok(Math.abs(f.lat - 37.3903) < 1e-9);
 });
+check("앱 진행 바 — 안내 시작 때 표식·구간을 담은 progress, 웹 바는 숨김 (v2.23.0)", () => {
+  const p = ops(A.cmds, "progress");
+  assert.ok(p.length >= 1, "progress 없음");
+  const first = p[0];
+  assert.ok(Array.isArray(first.marks) && Array.isArray(first.segs), "첫 progress 에 marks·segs 가 없음");
+  assert.equal(first.marks.length, 0, "이 경로(출발·도착뿐)에는 표식이 없어야 함");   // 표식 자체는 navi.test 에서 확인
+  assert.equal(first.profile, "electric");
+  assert.ok(typeof first.pct === "number" && first.pct >= 0 && first.pct <= 100);
+  assert.ok(p.at(-1).pct >= first.pct, "진행 값이 줄었다");
+  assert.equal(A.w.getComputedStyle($("routeBar")).display, "none", "앱 지도에서 웹 바가 보인다");
+});
 
 A.w.__NMAP.emit("dragstart", {});
 await sleep(10);
@@ -183,6 +194,7 @@ const lineId = ops(A.cmds, "line").at(-1).id;
 NV.clearRouteDisplay();
 await sleep(30);
 check("경로 지우기 → 경로선 remove 명령", () => assert.ok(ops(A.cmds, "remove").some((c) => c.id === lineId)));
+check("경로 지우기 → 앱 진행 바도 끈다(progress_off) (v2.23.0)", () => assert.ok(ops(A.cmds, "progress_off").length >= 1));
 
 A.w.__NMAP.emit("click", { lat: 37.3920, lng: 126.9520 });
 await sleep(20);
