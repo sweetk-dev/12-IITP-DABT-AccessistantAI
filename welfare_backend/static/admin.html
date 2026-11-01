@@ -71,6 +71,8 @@
   .modal .mbody{padding:12px 16px;overflow:auto;}
   .modal textarea{width:100%;height:52vh;font-family:ui-monospace,monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:10px;}
   .modal .mfoot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;}
+  #nrPhotoModal .mbody{display:flex;justify-content:center;align-items:center;min-height:120px;}
+  #nrPhotoModal img{max-width:100%;max-height:70vh;object-fit:contain;}
   .msg{font-size:12px;color:var(--muted);}
   .bulkbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border-bottom:1px solid var(--line);background:#fafbfc;position:sticky;top:0;z-index:5;}
   .bulkbar .qsel{display:flex;gap:8px;} .bulkbar .qsel a{font-size:11px;color:var(--accent);cursor:pointer;text-decoration:underline;}
@@ -256,6 +258,15 @@
       <button onclick="closeModal()">닫기</button>
       <span class="msg">저장 시 스키마 검증 + 회귀 가드 + DB 자동 재적재</span>
     </div>
+  </div>
+</div>
+
+<!-- 접근성 제보 사진 보기 (v2.24.0) — 사진은 이 창의 <img> 로만 표시한다(새 창으로 원본 주소를 열지 않는다) -->
+<div class="modal" id="nrPhotoModal" onclick="if(event.target===this)nrClosePhoto()">
+  <div class="box">
+    <div class="mhead"><b id="nrPhotoTitle">제보 사진</b><span class="msg" id="nrPhotoMsg" style="margin-left:auto"></span></div>
+    <div class="mbody"><img id="nrPhotoImg" alt="접근성 제보 사진" hidden></div>
+    <div class="mfoot"><button onclick="nrClosePhoto()">닫기</button></div>
   </div>
 </div>
 
@@ -1120,12 +1131,51 @@ async function loadNavReports(){
         <td>${escapeHtml(NR_REASONS[r.reason]||r.reason)}</td>
         <td>${escapeHtml(r.detail||"")}</td>
         <td><a href="https://map.kakao.com/link/map/제보,${ll}" target="_blank" rel="noopener">${ll}</a></td>
-        <td>${r.has_photo?`<a href="${NRAPI}/${r.report_id}/photo" target="_blank" rel="noopener">보기</a>`:"-"}</td>
+        <td>${r.has_photo?`<button onclick="nrShowPhoto(${Number(r.report_id)})">보기</button>`:"-"}</td>
         <td>${escapeHtml(NR_STATUS[r.status]||r.status)}</td>
         <td style="white-space:nowrap">${acts}</td></tr>`;
     }
     tb.innerHTML=html;
   }catch(e){ tb.innerHTML='<tr><td colspan="8"><div class="empty">불러오지 못했습니다.</div></td></tr>'; }
+}
+/* 제보 사진 보기 (v2.24.0)
+ * 사진 주소를 새 창으로 열면 응답이 콘솔 오리진의 문서로 열린다. 서버가 형식을 바이트로 판정하고
+ * 실행 차단 헤더를 붙이지만(admin_router · photo_guard), 화면에서도 한 번 더 막는다:
+ *  - 응답 형식이 허용 이미지(서버와 같은 목록)일 때만 표시하고, 아니면 표시하지 않는다
+ *  - 바이트를 그 형식으로 고정한 Blob 으로 만들어 <img> 에만 넣는다 — <img> 는 내용을 문서로
+ *    해석하거나 스크립트를 실행하지 않는다
+ *  - 연달아 누르면 마지막 요청만 반영하고, 닫을 때 Blob 주소를 해제한다 */
+const NR_PHOTO_TYPES=["image/jpeg","image/png","image/webp"];
+let nrPhotoUrl=null, nrPhotoSeq=0;
+function nrReleasePhoto(){
+  const img=document.getElementById("nrPhotoImg");
+  if(img){ img.hidden=true; img.removeAttribute("src"); }
+  if(nrPhotoUrl){ URL.revokeObjectURL(nrPhotoUrl); nrPhotoUrl=null; }
+}
+function nrClosePhoto(){
+  nrPhotoSeq++;
+  nrReleasePhoto();
+  document.getElementById("nrPhotoModal").classList.remove("on");
+}
+async function nrShowPhoto(id){
+  const seq=++nrPhotoSeq;
+  nrReleasePhoto();
+  const msg=document.getElementById("nrPhotoMsg"), img=document.getElementById("nrPhotoImg");
+  document.getElementById("nrPhotoTitle").textContent="제보 #"+id+" 사진";
+  msg.textContent="불러오는 중…";
+  document.getElementById("nrPhotoModal").classList.add("on");
+  try{
+    const r=await fetch(NRAPI+"/"+id+"/photo");
+    if(seq!==nrPhotoSeq) return;
+    if(!r.ok){ msg.textContent=(r.status===404)?"사진이 없습니다.":"사진을 불러오지 못했습니다."; return; }
+    const type=String(r.headers.get("content-type")||"").split(";")[0].trim().toLowerCase();
+    if(NR_PHOTO_TYPES.indexOf(type)<0){ msg.textContent="이미지 형식(JPEG·PNG·WebP)이 아니어서 표시하지 않습니다."; return; }
+    const buf=await r.arrayBuffer();
+    if(seq!==nrPhotoSeq) return;
+    nrPhotoUrl=URL.createObjectURL(new Blob([buf],{type:type}));
+    img.onerror=function(){ if(seq===nrPhotoSeq){ msg.textContent="사진을 표시할 수 없습니다."; img.hidden=true; } };
+    img.src=nrPhotoUrl; img.hidden=false; msg.textContent="";
+  }catch(e){ if(seq===nrPhotoSeq) msg.textContent="사진을 불러오지 못했습니다."; }
 }
 async function nrAct(id, action){
   const note=window.prompt(action==="reject"?"기각 사유 (경고가 철회됩니다)":"확인 메모 (경고가 확정 문구로 바뀝니다)","");

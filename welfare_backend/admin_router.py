@@ -644,6 +644,7 @@ def admin_page():
 # ─────────────────────────────────────────────────────────────
 import route_client as _rc  # noqa: E402
 from fastapi.responses import Response as _Resp  # noqa: E402
+import photo_guard as _pg  # noqa: E402
 
 
 @router.get("/admin/api/nav-reports")
@@ -653,10 +654,19 @@ async def nav_reports_list(status: str = "", limit: int = 100, offset: int = 0):
 
 @router.get("/admin/api/nav-reports/{report_id}/photo")
 async def nav_reports_photo(report_id: int):
-    data, mime = await _rc.get_report_photo(report_id)
+    """제보 사진 바이트 — 응답 형식은 경로 서비스가 준 값이 아니라 바이트 시그니처로 정한다.
+
+    저장된 형식 값은 제보 시점의 입력에서 왔다(v2.24.0 이전 접수분은 검증 없이 저장됐다).
+    그 값을 Content-Type 으로 쓰면 이미지가 아닌 바이트가 콘솔 오리진의 문서로 열릴 수 있다.
+    그래서 허용 이미지(JPEG·PNG·WebP)로 판정된 경우만 그 형식으로 inline 응답하고, 나머지는
+    application/octet-stream + attachment 로 내려받게만 한다. 어느 쪽이든 nosniff 와
+    CSP(default-src 'none'; sandbox) 를 붙여 문서로 해석·실행될 여지를 없앤다(photo_guard).
+    """
+    data, _upstream_mime = await _rc.get_report_photo(report_id)   # 경로 서비스 형식 값은 쓰지 않는다
     if data is None:
         raise HTTPException(status_code=404, detail="사진이 없습니다")
-    return _Resp(content=data, media_type=mime)
+    media_type, headers = _pg.photo_response_parts(data, report_id)
+    return _Resp(content=data, media_type=media_type, headers=headers)
 
 
 @router.delete("/admin/api/nav-reports/{report_id}")

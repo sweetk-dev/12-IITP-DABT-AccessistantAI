@@ -77,3 +77,7 @@ crawl_targets.local.json
 
 # 경로 호출 계측 로그(#294)
 welfare_backend/logs/
+
+# 로컬 작업 문서 (레포에 올리지 않는다)
+.workspace/
+WORKSPACE.md

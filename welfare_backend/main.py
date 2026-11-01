@@ -687,6 +687,45 @@ async def transit_access_points(
 # 참여자 식별자는 받지도 넘기지도 않는다 (route_id 익명).
 # ─────────────────────────────────────────────────────────────
 from fastapi import Body as _Body  # noqa: E402
+from fastapi.responses import JSONResponse as _JSONResponse  # noqa: E402
+import photo_guard  # noqa: E402
+
+# 주행 트랙 meta 에서 경로 서비스로 넘기는 항목 (v2.24.0).
+# 경로 서비스 계약(TrackMeta: profile·network_version·planned_dist_m·geometry·started_at·
+# finished_at·outcome)과 안내 화면 trackUpload 가 실제로 채우는 키가 이 일곱 개다.
+# 그 밖의 키는 경로 서비스가 쓰지 않으므로 넘기지 않는다 — 화면 밖에서 임의 항목을 실어
+# 저장 계층까지 보내는 통로를 닫고, 참여자 식별 정보가 섞여 들어가는 것을 막는다.
+_TRACK_META_STR_KEYS = {"profile": 40, "network_version": 80, "started_at": 40,
+                        "finished_at": 40, "outcome": 20}
+_TRACK_GEOM_MAX = 2000   # 화면은 경로선을 약 300점으로 줄여 보낸다. 여유를 두되 상한은 둔다.
+
+
+def _clean_track_meta(meta):
+    """트랙 meta 를 허용 키만 남겨 정리한다. dict 가 아니면 None.
+
+    값 형식도 경로 서비스 계약에 맞춘다 — 문자열은 길이를 자르고, planned_dist_m 은 정수(m),
+    geometry 는 [위도, 경도] 숫자 쌍 목록만 남긴다. 형식이 다른 값은 그 키만 뺀다.
+    """
+    if not isinstance(meta, dict):
+        return None
+    out = {}
+    for k, cap in _TRACK_META_STR_KEYS.items():
+        v = meta.get(k)
+        if isinstance(v, str) and v:
+            out[k] = v[:cap]
+    d = meta.get("planned_dist_m")
+    if isinstance(d, (int, float)) and not isinstance(d, bool) and d == d and abs(d) < 1e7:
+        out["planned_dist_m"] = int(round(d))
+    g = meta.get("geometry")
+    if isinstance(g, list):
+        pts = []
+        for pt in g[:_TRACK_GEOM_MAX]:
+            if (isinstance(pt, (list, tuple)) and len(pt) >= 2
+                    and all(isinstance(c, (int, float)) and not isinstance(c, bool) for c in pt[:2])):
+                pts.append([float(pt[0]), float(pt[1])])
+        if pts:
+            out["geometry"] = pts
+    return out or None
 
 
 @app.get("/api/v1/tools/bus_arrivals", tags=["tools"],
@@ -715,7 +754,7 @@ async def nav_track(payload: dict = _Body(...)):
         raise HTTPException(status_code=422, detail="points 는 5,000개 이하 배열이어야 합니다")
     # 경로 API 계약 밖 필드는 넘기지 않는다 (개인정보 유입 차단)
     clean = {"route_id": str(payload.get("route_id") or "")[:20],
-             "points": pts, "meta": payload.get("meta")}
+             "points": pts, "meta": _clean_track_meta(payload.get("meta"))}
     if not clean["route_id"]:
         raise HTTPException(status_code=422, detail="route_id 가 필요합니다")
     return await route_client.log_track(clean)
@@ -728,15 +767,24 @@ async def nav_report(payload: dict = _Body(...)):
         lat, lng = float(payload.get("lat")), float(payload.get("lng"))
     except (TypeError, ValueError):
         raise HTTPException(status_code=422, detail="lat/lng 가 필요합니다")
+    # 사진은 크기·형식·파일 시그니처를 여기서 확인하고, 통과한 것만 경로 서비스로 넘긴다
+    # (근거·허용 목록은 photo_guard 모듈 주석). 형식 값은 요청이 적은 값이 아니라 바이트로
+    # 판정한 값을 넘긴다. 거절은 400 + 화면이 그대로 보여 줄 수 있는 문구(message)로 돌려준다
+    # — 안내 화면은 실패 응답의 message 를 상태 줄에 띄우고, 붙인 사진은 지우지 않아 다시 고를 수 있다.
+    try:
+        photo_b64, photo_mime = photo_guard.validate_report_photo(
+            payload.get("photo_base64"), payload.get("photo_mime"))
+    except photo_guard.PhotoRejected as e:
+        return _JSONResponse(status_code=400, content={
+            "status": "error", "error": "invalid_photo", "message": str(e)})
     clean = {"lat": lat, "lng": lng,
              "reason": str(payload.get("reason") or "etc")[:20],
              "detail": (str(payload.get("detail"))[:500]
                         if payload.get("detail") else None),
              "route_id": (str(payload.get("route_id"))[:20]
                           if payload.get("route_id") else None),
-             "photo_base64": payload.get("photo_base64"),
-             "photo_mime": (str(payload.get("photo_mime"))[:40]
-                            if payload.get("photo_mime") else None)}
+             "photo_base64": photo_b64,
+             "photo_mime": photo_mime}
     return await route_client.report_accessibility(clean)
 
 

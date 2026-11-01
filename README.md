@@ -112,6 +112,18 @@ cd android && ./gradlew clean assembleRelease -Paccessnavi.keystoreProps=<경로
 외부 라이브러리 없이 플랫폼 API 만 쓴다(minSdk 26, targetSdk 35). 한계: 앱 안에서는 기기 내장 음성 합성(브라우저 기능)이 없어,
 서버 음성 합성이 실패하면 그 문장은 소리 없이 화면에만 나온다. 인터넷 전화(메신저 통화)는 통화로 감지하지 못한다.
 
+## 접근성 제보 사진 — 형식 확인 (v2.24.0)
+
+- **제보(`POST /api/v1/nav/report`)** — 사진은 JPEG·PNG·WebP 만 받는다. 디코드 후 2MB 이하이고, 선언한 형식(`photo_mime`, data URL 접두)과
+  파일 시그니처가 일치할 때만 경로 서비스로 넘긴다. 형식 값은 시그니처로 판정한 값을 넘긴다. 맞지 않으면 400
+  `{"status":"error","error":"invalid_photo","message":"…"}` 이고 경로 서비스는 부르지 않는다. 안내 화면은 이 문구를 상태 줄에 보여 준다.
+- **주행 기록(`POST /api/v1/nav/track`)** — `meta` 는 경로 서비스 계약 항목(profile·network_version·planned_dist_m·geometry·started_at·
+  finished_at·outcome)만 넘기고, `planned_dist_m` 은 정수(m)로 맞춘다.
+- **운영 콘솔 사진 보기** — 사진 응답의 형식은 저장된 형식 값이 아니라 바이트 시그니처로 정한다. 허용 이미지가 아니면
+  `application/octet-stream` 내려받기로만 응답하고, 늘 `X-Content-Type-Options: nosniff` 와
+  `Content-Security-Policy: default-src 'none'; img-src 'self' data:; sandbox` 를 붙인다. 콘솔은 사진을 새 창으로 열지 않고 창 안 이미지로 표시한다.
+- 경로 서비스 호출은 모두 `ROUTE_API_TOKEN` 을 `Authorization: Bearer` 헤더로 싣는다. 경로 서비스와 같은 값을 넣어야 한다.
+
 ## 시작 흐름 — 온보딩 · 이용자 유형 선택 · 안내시작/취소 (v2.22.0)
 
 이동경로 안내 제품(`/navi`)의 첫 화면을 바꿨다. 실증 1회차(2026-10-22) 뒤 개선.
