@@ -230,9 +230,14 @@ class NativeMapController(
     private var appliedDeg: Double? = null                 // 지금 지도에 적용된 진행 방향(도)
     private var lastLevel = -1
     private val headBtn = TextView(activity)
+    /** 전체 경로 진행 바 (앱 2.2.0) — 지도 위 오른쪽. 화면이 progress 명령을 보낼 때만 보인다. */
+    private val progressBar = RouteBarView(activity).apply { visibility = View.GONE }
 
     init {
         stage.addView(box, FrameLayout.LayoutParams(0, 0))
+        val bp = FrameLayout.LayoutParams(dp(36f), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.TOP or Gravity.END)
+        bp.setMargins(0, dp(64f), dp(6f), dp(14f))
+        box.addView(progressBar, bp)
         headBtn.apply {
             textSize = 15f
             setTypeface(typeface, Typeface.BOLD)
@@ -371,6 +376,10 @@ class NativeMapController(
         val arr = try { JSONArray(json) } catch (_: Exception) { return }
         for (i in 0 until arr.length()) {
             val c = arr.optJSONObject(i) ?: continue
+            when (c.optString("op")) {   // 진행 바는 지도 엔진과 무관 — 준비 전에도 바로 (앱 2.2.0)
+                "progress" -> { progressBar.update(c); progressBar.visibility = View.VISIBLE; progressBar.bringToFront(); continue }
+                "progress_off" -> { progressBar.visibility = View.GONE; continue }
+            }
             if (c.optString("op") == "init") {
                 // 화면을 새로 열었다 — 쌓인 것과 그려진 것을 모두 비우고 처음부터
                 pending.clear(); clearAll()
@@ -409,6 +418,7 @@ class NativeMapController(
     private fun ll(c: JSONObject) = LatLng.from(c.optDouble("lat"), c.optDouble("lng"))
 
     private fun clearAll() {
+        progressBar.visibility = View.GONE
         labels.values.forEach { try { it.remove() } catch (_: Exception) {} }
         labels.clear(); labelIds.clear(); clickable.clear(); roles.clear()
         lines.values.forEach { try { it.remove() } catch (_: Exception) {} }
@@ -652,6 +662,7 @@ class NativeMapController(
     /** 화면을 새로 만들었을 때(화면 프로세스 재시작) — 그려진 것을 비우고 화면이 다시 보낼 명령을 기다린다. */
     fun resetForNewPage() {
         pending.clear()
+        progressBar.visibility = View.GONE
         if (kmap != null) clearAll() else forget()
         box.visibility = View.GONE
     }

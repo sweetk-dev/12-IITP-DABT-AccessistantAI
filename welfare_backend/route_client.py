@@ -20,6 +20,11 @@ logger = logging.getLogger("route_client")
 
 BASE_URL = os.environ.get("ROUTE_API_BASE_URL", "").rstrip("/")
 API_TOKEN = os.environ.get("ROUTE_API_TOKEN", "")
+# 경로 서비스는 토큰이 없는 요청을 거절한다. 모든 호출은 _headers() 로 이 토큰을
+# Authorization: Bearer 헤더에 싣는다(_call · get_report_photo). 주소만 있고 토큰이 비어 있으면
+# 경로 기능 전체가 인증 오류로 실패하므로 기동 때 한 번 알린다.
+if BASE_URL and not API_TOKEN:
+    logger.warning("ROUTE_API_TOKEN 이 비어 있다 — 경로 서비스 호출이 인증 오류로 거절될 수 있다")
 TIMEOUT_SEC = float(os.environ.get("ROUTE_API_TIMEOUT", "6"))
 
 FEATURE_ROUTE = os.environ.get("FEATURE_ROUTE", "0") == "1"

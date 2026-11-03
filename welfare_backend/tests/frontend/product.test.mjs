@@ -71,6 +71,13 @@ function boot(url, opts) {
   return window;
 }
 const ready = async (w, ms) => { await sleep(50); w.document.dispatchEvent(new w.Event("DOMContentLoaded")); await sleep(ms || 200); };
+// 시작 흐름(v2.22.0) — 앱은 온보딩(첫 설치) → 이용자 유형 선택을 지나야 길안내 화면으로 간다
+const clickIntro = (w, label) => { const b = [...w.document.querySelectorAll("#introBody .intro-btn")].find((x) => x.textContent === label); if (!b) throw new Error("intro 버튼 없음: " + label); b.click(); };
+const pickType = async (w, id) => {
+  const box = w.document.getElementById("introBody");
+  if (box.getAttribute("data-page") !== "3") { clickIntro(w, "다음"); clickIntro(w, "다음"); clickIntro(w, "시작하기"); }
+  const b = box.querySelector('.ut-btn[data-ut="' + (id || "electric") + '"]'); if (!b) throw new Error("유형 버튼 없음"); b.click(); await sleep(30);
+};
 const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityState", { value: v, configurable: true }); w.document.dispatchEvent(new w.Event("visibilitychange")); };
 
 // ───────── 정책상담 ─────────
@@ -361,7 +368,39 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   const calls = [];
   const w = boot("https://example.test/navi", { ua: "Mozilla/5.0 (Linux; Android 14) AccessNaviApp/2.0.0", preset: (win) => { win.AccessNaviApp = { setBusy: (b) => calls.push(b) }; } });
   await ready(w, 1300);
-  check("앱 안: 넘겨받은 것이 없어도 바로 길안내 화면으로 · 상태를 앱에 알린다", () => { assert.equal(w.__sockets.length, 1); assert.ok(calls.length >= 1); });
+  check("앱 안: 넘겨받은 것이 없으면 시작 흐름(온보딩→이용자 유형)부터 (v2.22.0)", () => {
+    assert.ok(w.document.getElementById("view-intro").classList.contains("active"), "시작 흐름 화면이 아님");
+    assert.equal(w.document.getElementById("introBody").getAttribute("data-page"), "0");
+    assert.equal(w.__sockets.length, 0, "유형을 고르기 전에 세션을 열었다");
+  });
+  clickIntro(w, "다음"); clickIntro(w, "다음");
+  check("온보딩 마지막 장: '다음부터 보지 않기' 체크 + 시작하기", () => { assert.ok(w.document.getElementById("introSkipChk")); assert.equal(w.document.getElementById("introBody").getAttribute("data-page"), "2"); });
+  w.document.getElementById("introSkipChk").click();
+  clickIntro(w, "시작하기");
+  check("이용자 유형 선택: 큰 버튼 5개, 경로 없는 유형 안내문, 이용안내 다시 보기", () => {
+    assert.equal(w.document.querySelectorAll("#utGrid .ut-btn").length, 5);
+    assert.deepEqual([...w.document.querySelectorAll("#utGrid .ut-lab")].map((x) => x.textContent), ["전동휠체어", "수동휠체어", "시각장애", "청각장애", "영유아 동반"]);
+    assert.match(w.document.querySelector(".intro-note").textContent, /현장 검증 후 제공/);
+    assert.ok(w.document.getElementById("introGuideAgain"));
+    assert.equal(w.localStorage.getItem("acc_onboard_done"), "1");
+  });
+  w.document.querySelector('#utGrid .ut-btn[data-ut="hearing"]').click(); await sleep(60);
+  check("청각장애 선택 → 세션 연결·길안내 화면, 경로 추천은 막힘, 기준 배지 숨김", () => {
+    assert.equal(w.__sockets.length, 1); assert.ok(calls.length >= 1);
+    const N = w.NAVI._internals(); assert.equal(N.userType(), "hearing"); assert.equal(N.routeAllowed(), false);
+    assert.ok(w.document.getElementById("view-navi").classList.contains("no-route"));
+    assert.equal(w.localStorage.getItem("acc_user_type"), "hearing");
+  });
+  check("경로 추천이 없는 유형의 경로 요청은 안내문으로 막는다", () => {
+    const N = w.NAVI._internals();
+    N.showRoute(ROUTE.ui_action.route, "테스트");
+    assert.equal(N.routeLines().length, 0, "경로가 그려졌다");
+    assert.match(w.document.getElementById("naviStatus").textContent, /청각장애 이용자의 경로 추천은 현장 검증 후/);
+  });
+  check("전동휠체어로 바꾸면 경로 추천 허용·기준 전동", () => {
+    const N = w.NAVI._internals(); N.applyUserType("electric");
+    assert.equal(N.routeAllowed(), true); assert.ok(!w.document.getElementById("view-navi").classList.contains("no-route"));
+  });
   check("앱에 로그아웃 기능이 없으면 버튼을 보이지 않는다", () => assert.equal(w.document.getElementById("naviLogoutBtn").hidden, true));
   check("앱 안에서는 화면이 뒤로 가기를 붙잡지 않는다(앱이 직접 묻는다)", () => { w.__BACK.arm(); assert.equal(w.__BACK.armed(), false); });
   w.close();
@@ -372,6 +411,7 @@ const setVisible = (w, v) => { Object.defineProperty(w.document, "visibilityStat
   const w = boot("https://example.test/navi", { ua: "Mozilla/5.0 (Linux; Android 15) AccessNaviApp/2.0.3", preset: (win) => { win.AccessNaviApp = { setBusy() {}, logout: () => { out++; } }; } });
   const $ = (id) => w.document.getElementById(id);
   await ready(w, 700);
+  await pickType(w, "electric");   // 시작 흐름(v2.22.0)을 지나야 세션이 열린다
   await w.__sockets[0]._open(); await sleep(30);
   const lo = $("naviLogoutBtn");
   check("앱 안: 길안내 화면 위쪽에 '로그아웃' — 초기화 버튼 바로 앞, 같은 모양", () => {
