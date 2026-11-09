@@ -22,7 +22,7 @@ import json
 import logging
 import os
 import re
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -32,6 +32,29 @@ try:
     from .llm_backends import get_backend, LLMBackend
 except ImportError:
     from llm_backends import get_backend, LLMBackend  # type: ignore
+
+# 용도별 모델 설정(운영 콘솔) — welfare_backend/model_router.py. 크롤러는 policy_db 에서 따로 돌기 때문에
+# 백엔드 루트를 경로에 넣어 둔다. 설정이 없으면 종전 get_backend() 경로 그대로.
+try:
+    import model_router as _mr
+except ImportError:
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    try:
+        import model_router as _mr  # type: ignore
+    except ImportError:          # 단독 실행 등으로 모듈이 없으면 교차검증·모델 설정 없이 동작
+        _mr = None
+
+# 한 번의 크롤 실행에서 교차검증을 돌리는 최대 정책 수 — 검증 모델 호출 한도·실행 시간 보호
+def _env_int(name, default):
+    try:
+        return int((os.environ.get(name) or "").strip() or default)
+    except ValueError:
+        return default
+
+
+XCHECK_MAX_PER_RUN = _env_int("XCHECK_MAX_PER_RUN", 15)
+_xcheck_count = 0
 
 logger = logging.getLogger(__name__)
 
@@ -427,6 +450,66 @@ def _apply_patch(existing: dict, patches: list):
     return new_doc, applied, review
 
 
+def _parse_patches(raw: str):
+    """모델 응답 → 패치 목록. 해석 실패면 None."""
+    t = (raw or "").strip()
+    t = re.sub(r"^```(?:json)?\s*", "", t)
+    t = re.sub(r"\s*```$", "", t).strip()
+    salvaged = False
+    try:
+        obj = json.loads(t)
+    except Exception:
+        try:
+            obj = _loads_lenient(t)
+            salvaged = True
+        except Exception:
+            return None
+    if not (isinstance(obj, dict) and isinstance(obj.get("patches"), list)):
+        return None
+    out = [p for p in obj["patches"] if isinstance(p, dict)]
+    if salvaged:                   # 잘린 꼬리 패치(값 누락)는 비교에서 뺀다
+        out = [p for p in out if p.get("path") and (
+            (p.get("op") == "update" and "new" in p) or (p.get("op") == "add" and "value" in p)
+            or p.get("op") == "delete")]
+    return out
+
+
+async def _cross_check(route, used_model, user_msg, patches, max_tokens):
+    """검증 모델로 같은 입력의 패치를 다시 만들고 기본 결과와 비교한 기록을 돌려준다.
+    실패해도 정책 갱신 흐름은 막지 않는다(status 로만 남긴다)."""
+    global _xcheck_count
+    ver = route["verifier"]
+    rec = {"primary": used_model, "verifier": ver,
+           "checked_at": datetime.now().isoformat(timespec="seconds")}
+    if _mr is not None:
+        rec["primary_label"] = _mr.MODELS.get(used_model, {}).get("label", used_model)
+        rec["verifier_label"] = _mr.MODELS.get(ver, {}).get("label", ver)
+    if used_model == ver:
+        rec.update(status="skipped", reason="기본 모델 호출이 실패해 검증 모델이 패치를 만들었다 — 같은 모델이라 비교하지 않음")
+        return rec
+    if _xcheck_count >= XCHECK_MAX_PER_RUN:
+        rec.update(status="skipped", reason=f"이번 실행의 교차검증 상한({XCHECK_MAX_PER_RUN}건) 도달")
+        return rec
+    _xcheck_count += 1
+    try:
+        vraw = await _mr.acall_model(ver, prompt=user_msg, system=SYSTEM_PROMPT, json_mode="object",
+                                     max_tokens=max_tokens, role="policy_update")
+    except Exception as e:
+        rec.update(status="verifier_failed", error=str(e)[:200])
+        return rec
+    try:
+        vpatches = _parse_patches(vraw)
+        if vpatches is None:
+            rec.update(status="verifier_failed", error="검증 모델 응답이 패치 형식이 아님")
+            return rec
+        rec.update(_mr.compare_patches(patches, vpatches))
+        rec["verifier_patches"] = vpatches[:40]
+    except Exception as e:          # 비교 단계의 어떤 오류도 정책 갱신을 막지 않는다
+        logger.warning("교차검증 비교 실패: %s", e)
+        rec.update(status="verifier_failed", error=f"비교 실패: {type(e).__name__}")
+    return rec
+
+
 async def update_item_via_llm(
     *,
     item_path: Path,
@@ -449,16 +532,28 @@ async def update_item_via_llm(
         sources_block=sources_block,
     )
 
-    if backend is None:
-        backend = get_backend()
-    logger.info("📡 LLM 호출 (backend=%s, model=%s, prompt=%dB)",
-                backend.name, backend.model, len(user_msg))
+    route = None
+    used_model = None
+    if backend is None and _mr is not None:
+        route = _mr.explicit_route("policy_update")
+    if route:
+        # 콘솔 설정 경로 — 기본 → 차선 순으로 호출
+        logger.info("📡 모델 호출 (설정 경로 %s → %s, prompt=%dB)", route["primary"],
+                    "/".join(route.get("fallback") or []) or "-", len(user_msg))
+        res = await _mr.agenerate("policy_update", prompt=user_msg, system=SYSTEM_PROMPT,
+                                  json_mode="object", max_tokens=max_tokens, route=route)
+        raw, used_model = res["text"], res["model"]
+    else:
+        if backend is None:
+            backend = get_backend()
+        logger.info("📡 LLM 호출 (backend=%s, model=%s, prompt=%dB)",
+                    backend.name, backend.model, len(user_msg))
 
-    raw = await backend.generate_json_update(
-        system_prompt=SYSTEM_PROMPT,
-        user_message=user_msg,
-        max_tokens=max_tokens,
-    )
+        raw = await backend.generate_json_update(
+            system_prompt=SYSTEM_PROMPT,
+            user_message=user_msg,
+            max_tokens=max_tokens,
+        )
     # 종종 코드블록(```json ... ```)으로 올 수 있어 펜스 제거 (문자집합 strip 대신 정규식)
     raw = raw.strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
@@ -519,6 +614,12 @@ async def update_item_via_llm(
             err_msgs = [f"{list(e.path)}: {e.message[:100]}" for e in errs[:5]]
             raise RuntimeError(f"schema 검증 실패 ({len(errs)}건): " + " / ".join(err_msgs))
 
+    # 교차검증 — 검토 큐에 올라갈(스키마를 통과한) 패치만 검증 모델로 한 번 더 만들어 비교한다.
+    # 결과는 사이드카에 남기고 반영은 사람이 고른다.
+    xcheck = None
+    if route and route.get("verifier"):
+        xcheck = await _cross_check(route, used_model, user_msg, patches, max_tokens)
+
     # staging 저장 + 검토 리포트(있으면)
     staging_dir.mkdir(parents=True, exist_ok=True)
     fname = item_path.name.replace(".json", f".{date.today().isoformat()}.staged.json")
@@ -536,6 +637,10 @@ async def update_item_via_llm(
     ]
     (staging_dir / fname.replace(".staged.json", ".sources.json")).write_text(
         json.dumps(sources_meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    if xcheck is not None:
+        (staging_dir / fname.replace(".staged.json", ".xcheck.json")).write_text(
+            json.dumps(xcheck, ensure_ascii=False, indent=2), encoding="utf-8")
+        logger.info("교차검증 %s: %s", existing.get("id"), xcheck.get("status"))
     logger.info("staging 저장: %s (적용 %d / 검토 %d)", staged_path, len(applied), len(review))
 
     diff = _diff_summary(existing, new_data)
