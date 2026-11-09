@@ -150,6 +150,26 @@ def _gemini(prompt, grounding=False, max_tokens=24000, retries=3, model=None):
     return ""
 
 
+def _classify_generate(prompt):
+    """군집 분류 호출. 운영 콘솔에서 이 용도의 모델을 정했으면 그 설정(기본 → 차선)으로,
+    아니면 종전 경로(Gemini + LLM_FALLBACK)로 부른다. 분류는 외부검색이 필요 없어 모델을 바꿀 수 있다."""
+    global _LAST_GEMINI_ERR
+    try:
+        import model_router as _mr
+    except ImportError:
+        _mr = None
+    if _mr is not None and _mr.explicit_route("discovery_classify"):
+        try:
+            res = _mr.generate("discovery_classify", prompt=prompt, json_mode="array", max_tokens=24000)
+            _LAST_GEMINI_ERR = ""
+            return res["text"]
+        except Exception as e:
+            _LAST_GEMINI_ERR = str(e)[:200]
+            logger.warning("분류 모델 호출 실패: %s", e)
+            return ""
+    return _gemini(prompt, model=_model_for("classify"))
+
+
 def _gemma_generate(prompt, max_tokens=8000):
     """온프레미스 Gemma(Ollama 기본 / OpenAI 호환) 동기 호출 — Gemini 차선책.
     환경변수(llm_backends.py 와 동일 체계):
@@ -351,7 +371,7 @@ def run_discovery():
         "보수적으로: 확신 없으면 gap 으로 분류하지 말고 new 또는 covered 로(신뢰된 기존 정책을 잘못 건드리지 않도록)."
     )
     try:
-        clf = _parse_json(_gemini(clf_prompt, model=_model_for("classify")))
+        clf = _parse_json(_classify_generate(clf_prompt))
     except Exception as e:
         return {"clusters": len(clusters), "candidates": 0, "error": f"분류 실패: {e}"}
 

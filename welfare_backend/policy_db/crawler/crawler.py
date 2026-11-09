@@ -161,7 +161,7 @@ def _purge_staging(scope_pids):
         if scope_pids and pid not in scope_pids:
             continue
         shutil.move(str(f), str(rej / f.name))
-        for ext in (".sources.json", ".review.json", ".triage.json"):
+        for ext in (".sources.json", ".review.json", ".triage.json", ".xcheck.json"):
             side = f.parent / f.name.replace(".staged.json", ext)
             if side.exists():
                 shutil.move(str(side), str(rej / side.name))

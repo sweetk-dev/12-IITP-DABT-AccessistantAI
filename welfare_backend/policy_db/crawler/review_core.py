@@ -54,6 +54,17 @@ def _read_disc(staged: Path) -> dict:
     return {}
 
 
+def _read_xcheck(staged: Path) -> dict:
+    """교차검증 기록(.xcheck.json). 검증 모델을 설정하지 않았거나 이전 실행분이면 빈 dict."""
+    xf = _sidecar(staged, ".xcheck.json")
+    if xf.exists():
+        try:
+            return json.loads(xf.read_text(encoding="utf-8")) or {}
+        except Exception:
+            return {}
+    return {}
+
+
 def set_triage(policy_id, priority=None, hold=None, note=None):
     found = ca._find_staged(policy_id)
     if not found:
@@ -124,6 +135,7 @@ def get_review(policy_id, _staged=None):
         "regression": regression, "schema_ok": schema_ok, "schema_errors": schema_errors,
         "triage": _read_triage(staged),
         "discovery": _read_disc(staged),
+        "xcheck": _read_xcheck(staged),
     }
 
 
@@ -158,6 +170,7 @@ def list_pending():
             "priority": tri.get("priority"),
             "hold": bool(tri.get("hold")),
             "note": tri.get("note"),
+            "xcheck_status": (info.get("xcheck") or {}).get("status"),
         })
     # 정렬: 비보류 우선 → 우선순위(high→low) → 최신순
     out.sort(key=lambda x: x["mtime"], reverse=True)
@@ -215,7 +228,7 @@ def apply_selected(policy_id, selected_keys, reingest=True):
     # 포함한다 — staging 에 남기면 discovery_core.referenced_query_ids 가 staging 의
     # *.disc.json 을 모두 "검토 대기 중"으로 읽으므로, 반영이 끝난 제안의 질의 행이
     # 보존기간 파기에서 계속 빠진다. 반려(reject)와 같은 방식으로 옮긴다.
-    for ext in (".sources.json", ".review.json", ".triage.json", ".disc.json"):
+    for ext in (".sources.json", ".review.json", ".triage.json", ".disc.json", ".xcheck.json"):
         side = _sidecar(staged, ext)
         if side.exists():
             shutil.move(str(side), str(applied / side.name))
@@ -260,7 +273,7 @@ def reject(policy_id):
     rej = ca.STAGING_DIR / ".rejected"
     rej.mkdir(parents=True, exist_ok=True)
     shutil.move(str(staged), str(rej / staged.name))
-    for ext in (".sources.json", ".review.json", ".triage.json", ".disc.json"):
+    for ext in (".sources.json", ".review.json", ".triage.json", ".disc.json", ".xcheck.json"):
         side = _sidecar(staged, ext)
         if side.exists():
             shutil.move(str(side), str(rej / side.name))

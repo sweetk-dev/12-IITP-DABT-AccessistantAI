@@ -190,6 +190,14 @@ async def llm_cluster(stats: dict) -> str:
 마크다운 표 형태로 답해주세요."""
 
     try:
+        # 운영 콘솔에서 이 용도의 모델을 정했으면 그 설정(기본 → 차선)으로 호출
+        try:
+            import model_router as _mr
+            if _mr.explicit_route("weekly_report"):
+                res = await _mr.agenerate("weekly_report", prompt=prompt, max_tokens=4000, temperature=0.2)
+                return res["text"]
+        except ImportError:
+            pass
         try:
             from policy_db.crawler.llm_backends import get_backend
         except ImportError:
