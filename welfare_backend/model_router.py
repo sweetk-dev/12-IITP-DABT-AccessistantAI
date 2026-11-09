@@ -656,7 +656,7 @@ _RANGE_RE = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*[~∼\-]\s*(\d[\d,]*(?:\.\d+)?)\
 _NUM_RE = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*(" + _UNIT + r")?")
 _QUAL_RE = re.compile(r"^\s*(이상|이하|미만|초과|까지|부터|이내)")
 _SEV_RE = re.compile(r"(중증|경증|심하지\s*않은|심한)")
-_SEP = "/,;|·\n"
+_SEP = "/,;|·.\n"
 
 
 def _norm_num(num: str, unit: str) -> str:
@@ -729,6 +729,12 @@ def _flatten(path: str, val, out: dict, op: str) -> None:
     out.setdefault((op, path), []).append(val)
 
 
+def norm_path(path: str) -> str:
+    """목록 첨자 표기를 점 표기로 맞춘다 — 모델마다 faq[0].a / faq.0.a 로 다르게 쓴다."""
+    p = re.sub(r"\[\s*(\d+)\s*\]", r".\1", (path or "").strip())
+    return re.sub(r"\.{2,}", ".", p).strip(".")
+
+
 def _patch_map(patches) -> dict:
     m = {}
     for p in patches or []:
@@ -737,6 +743,7 @@ def _patch_map(patches) -> dict:
         path, op = p.get("path"), p.get("op") or "update"
         if not isinstance(path, str) or not path or not isinstance(op, str):
             continue
+        path = norm_path(path)
         val = p.get("new") if op == "update" else p.get("value")
         _flatten(path, val, m, op)
     return m

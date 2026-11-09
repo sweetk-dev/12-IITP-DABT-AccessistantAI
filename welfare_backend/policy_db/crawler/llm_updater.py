@@ -464,6 +464,8 @@ def _parse_patches(raw: str):
             salvaged = True
         except Exception:
             return None
+    if isinstance(obj, dict) and not obj:
+        return []                   # 빈 객체 {} 는 "변경 없음"으로 본다(엑사원이 이렇게 답하는 경우가 있다)
     if not (isinstance(obj, dict) and isinstance(obj.get("patches"), list)):
         return None
     out = [p for p in obj["patches"] if isinstance(p, dict)]
@@ -591,6 +593,11 @@ async def update_item_via_llm(
         patches = [op for op in patches if _complete(op)]
         if len(patches) != _before:
             logger.warning("복구 패치 중 불완전 %d건 제거(%s)", _before - len(patches), existing.get("id"))
+
+    # 목록 첨자 표기(faq[0].a)를 점 표기(faq.0.a)로 맞춘다 — 모델마다 표기가 달라 검토·비교가 어긋나지 않게
+    for op in patches:
+        if isinstance(op, dict) and isinstance(op.get("path"), str):
+            op["path"] = re.sub(r"\[\s*(\d+)\s*\]", r".\1", op["path"]).strip(".")
 
     # 패치 적용 — 미변경 필드는 그대로 두고, delete 는 검토로 분리
     new_data, applied, review = _apply_patch(existing, patches)
