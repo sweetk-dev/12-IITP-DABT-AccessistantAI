@@ -322,26 +322,50 @@ def _diff_summary(old: dict, new: dict) -> str:
 #   ]}
 # path 는 점(.)으로 dict 를 따라가는 경로. add 의 대상이 list 면 value 를 append.
 
+def _list_index(seq: list, key: str):
+    """목록 첨자("0", "12")를 정수로. 범위 밖이거나 숫자가 아니면 None."""
+    if not isinstance(key, str) or not key.isdigit():
+        return None
+    i = int(key)
+    return i if 0 <= i < len(seq) else None
+
+
 def _get_parent(doc: dict, path: str, create: bool = False):
-    """점 경로의 부모 dict 와 마지막 키를 반환. 실패 시 (None, None)."""
+    """점 경로의 부모(dict 또는 list)와 마지막 키를 반환. 실패 시 (None, None).
+    목록 안 항목은 첨자로 찾는다 — faq.0.a, operating_agencies.3.notes, exceptions_and_caveats.12.
+    create 는 dict 의 없는 중간 키만 만든다(목록 칸은 새로 만들지 않는다)."""
     keys = path.split(".")
     cur = doc
     for k in keys[:-1]:
-        if isinstance(cur, dict) and k in cur:
-            cur = cur[k]
-        elif create and isinstance(cur, dict):
-            cur[k] = {}
-            cur = cur[k]
+        if isinstance(cur, dict):
+            if k in cur:
+                cur = cur[k]
+            elif create:
+                cur[k] = {}
+                cur = cur[k]
+            else:
+                return None, None
+        elif isinstance(cur, list):
+            i = _list_index(cur, k)
+            if i is None:
+                return None, None
+            cur = cur[i]
         else:
             return None, None
-    return (cur, keys[-1]) if isinstance(cur, dict) else (None, None)
+    return (cur, keys[-1]) if isinstance(cur, (dict, list)) else (None, None)
 
 
 def _set_by_path(doc: dict, path: str, value, require_exists: bool = True) -> bool:
-    """update: 기존 키가 있을 때만(require_exists) 값 교체."""
+    """update: 기존 키(목록이면 기존 칸)가 있을 때만(require_exists) 값 교체."""
     parent, last = _get_parent(doc, path, create=not require_exists)
     if parent is None:
         return False
+    if isinstance(parent, list):
+        i = _list_index(parent, last)
+        if i is None:                # 목록에 없는 칸 — 새 칸은 add 로만
+            return False
+        parent[i] = value
+        return True
     if require_exists and last not in parent:
         return False
     parent[last] = value
@@ -351,9 +375,16 @@ def _set_by_path(doc: dict, path: str, value, require_exists: bool = True) -> bo
 def _add_by_path(doc: dict, path: str, value) -> bool:
     """add: 대상이 list 면 append, 없는 키면 신규 설정. 이미 스칼라면 거부.
     중간 경로(부모)가 없으면 새 dict 를 만들지 않고 실패시킨다 — LLM 의 잘못된 깊은
-    path 로 의도치 않은 구조가 생기는 것을 방지(마지막 키 1단계만 신설 허용)."""
+    path 로 의도치 않은 구조가 생기는 것을 방지(마지막 키 1단계만 신설 허용).
+    목록 칸을 가리키면(faq.3) 그 칸이 목록일 때만 append 한다."""
     parent, last = _get_parent(doc, path, create=False)
     if parent is None:
+        return False
+    if isinstance(parent, list):
+        i = _list_index(parent, last)
+        if i is not None and isinstance(parent[i], list):
+            parent[i].append(value)
+            return True
         return False
     if last in parent and isinstance(parent[last], list):
         parent[last].append(value)
@@ -417,6 +448,35 @@ def _loads_lenient(raw):
     raise ValueError("패치 JSON 복구 실패")
 
 
+_LIST_STEP_RE = re.compile(r"\.\d+(?:\.|$)")
+
+
+def _norm_text(v) -> str:
+    s = v if isinstance(v, str) else json.dumps(v, ensure_ascii=False, sort_keys=True)
+    return re.sub(r"\s+", "", s or "")
+
+
+def _current_value(doc: dict, path: str):
+    parent, last = _get_parent(doc, path, create=False)
+    if parent is None:
+        return False, None
+    if isinstance(parent, list):
+        i = _list_index(parent, last)
+        return (True, parent[i]) if i is not None else (False, None)
+    return (last in parent), parent.get(last)
+
+
+def _old_matches(op: dict, cur) -> bool:
+    """목록 칸 수정은 패치의 기존 값(old)이 지금 그 칸 내용과 맞을 때만 반영한다.
+    모델이 목록 번호를 하나 잘못 세면 엉뚱한 칸을 덮어쓰므로 — 앞부분(30자)이 같으면 같은 칸으로 본다."""
+    if "old" not in op or op.get("old") is None:
+        return False
+    a, b = _norm_text(op.get("old")), _norm_text(cur)
+    if not a or not b:
+        return a == b
+    return a == b or b.startswith(a[:30]) or a.startswith(b[:30])
+
+
 def _apply_patch(existing: dict, patches: list):
     """패치를 기존 문서에 적용한다. add/update 만 자동 적용하고, 패치에 명시되지
     않은 필드는 절대 변경하지 않는다(미변경 필드 불변 보장). delete 는 적용하지
@@ -429,6 +489,11 @@ def _apply_patch(existing: dict, patches: list):
         kind = op.get("op")
         path = op.get("path", "")
         if kind == "update":
+            if isinstance(path, str) and _LIST_STEP_RE.search(path):
+                found, cur = _current_value(existing, path)   # 같은 묶음의 앞 패치와 무관하게 원래 값과 대조
+                if found and not _old_matches(op, cur):
+                    review.append({"reason": "목록 칸 기존 값 불일치(번호 확인 필요)", "path": path, "op": op})
+                    continue
             if _set_by_path(new_doc, path, op.get("new"), require_exists=True):
                 applied.append({"op": "update", "path": path})
             else:

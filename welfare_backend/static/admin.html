@@ -505,7 +505,7 @@ async function loadDetail(pid){ current=pid; loadList();
       <div class="meta">${escapeHtml(d.staged_name)}${d.sources_changed&&d.sources_changed.length?" · 출처: "+escapeHtml(d.sources_changed.join(", ")):""}</div>`;
     if(reg) h+=`<div class="alert bad">회귀 가드 차단: ${escapeHtml(d.regression.join(" / "))}</div>`;
     if(!d.schema_ok) h+=`<div class="alert bad">스키마 오류: ${escapeHtml((d.schema_errors||[]).join(" / "))}</div>`;
-    if(d.review&&d.review.length) h+=`<div class="review"><b>검토 필요 ${d.review.length}건</b>: `+escapeHtml(d.review.map(x=>`${x.reason||x.classification||""} ${x.path||""}`).join(" · "))+`</div>`;
+    if(d.review&&d.review.length) h+=`<div class="review"><b>검토 필요 ${d.review.length}건</b>`+(d.review.length>3?': ':'')+reviewItemsHtml(d.review)+`</div>`;
     h+=xcheckHtml(d.xcheck);
     if(d.discovery&&d.discovery.source==="discovery_gap") h+=`<div class="review">🔎 <b>발굴 보강 제안</b>(미답변 질의 기반) — 사유: ${escapeHtml(d.discovery.gap_detail||"")} · 반려 시 원 질의는 재분류 대기로 되돌아갑니다.</div>`;
     curDetail=d; _gid=0; const hasContent=(d.diffs||[]).some(function(x){return !x.is_meta;});
@@ -1082,6 +1082,18 @@ async function loadOverview(){
     let t = b.last_run ? ("마지막 "+b.last_run.replace("T"," ").slice(5,16)) : "기록 없음";
     if(nx) t += `<div class="msg" style="font-size:11px;font-weight:400">다음 ${nx.replace("T"," ").slice(5,16)}</div>`;
     document.getElementById("ov-backup").innerHTML=t; }catch(e){ document.getElementById("ov-backup").textContent="-"; }
+}
+function reviewItemsHtml(list){
+  // 바로 반영되지 않은 패치 — 사유·경로와 함께 모델이 제안한 값을 보여 줘서 사람이 직접 판단·수정할 수 있게
+  const one=function(x){
+    const op=(x&&x.op&&typeof x.op==="object")?x.op:{};
+    const v=op.new!=null?op.new:(op.value!=null?op.value:null);
+    let t=escapeHtml(String((x&&(x.reason||x.classification))||"")+" "+String((x&&x.path)||""));
+    if(v!=null) t+=' → <span class="msg">'+escapeHtml(String(typeof v==="string"?v:JSON.stringify(v)).slice(0,160))+'</span>';
+    return t;
+  };
+  if(list.length<=3) return '<ul style="margin:4px 0 0 18px;padding:0">'+list.map(function(x){return '<li>'+one(x)+'</li>';}).join("")+'</ul>';
+  return '<details><summary>'+escapeHtml(list.slice(0,3).map(function(x){return String((x&&x.path)||"");}).join(" · "))+' …</summary><ul style="margin:4px 0 0 18px;padding:0">'+list.map(function(x){return '<li>'+one(x)+'</li>';}).join("")+'</ul></details>';
 }
 function xcheckHtml(x){
   if(!x||!x.status) return "";
