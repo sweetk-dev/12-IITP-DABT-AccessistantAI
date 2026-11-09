@@ -378,3 +378,33 @@ def test_updater_schema_failure_skips_verifier(data_dir, monkeypatch):
         asyncio.run(lu.update_item_via_llm(item_path=_item(data_dir), related_changes=[],
                                            staging_dir=data_dir / "staging", schema_path=schema))
     assert "schema" in str(e.value)
+
+
+# ── 실제 사례 비교에서 드러난 표기 차이 (v2.25.1) ──────────────
+def test_bracket_and_dot_paths_compare_equal():
+    a = [{"op": "update", "path": "faq.0.a", "new": "태아 1인당 120만원"},
+         {"op": "update", "path": "operating_agencies.0.agency", "new": "장애인건강과"}]
+    b = [{"op": "update", "path": "faq[0].a", "new": "태아 1인당 120만원입니다"},
+         {"op": "update", "path": "operating_agencies[0].agency", "new": "보건복지부 장애인건강과"}]
+    assert mr.compare_patches(a, b)["status"] == "agree"
+    assert mr.norm_path("exceptions_and_caveats[ 0 ]") == "exceptions_and_caveats.0"
+
+
+def test_sentence_end_cuts_severity_label():
+    assert mr._facts("경증: 본인만. 고객센터 1544-1122") == mr._facts("고객센터 1544-1122")
+
+
+def test_empty_object_means_no_change():
+    from crawler import llm_updater as lu
+    assert lu._parse_patches("{}") == []
+    assert lu._parse_patches('{"other": 1}') is None
+
+
+def test_updater_normalizes_bracket_paths(data_dir, monkeypatch):
+    mr.save_routing({"policy_update": {"primary": "exaone", "fallback": [], "verifier": None}})
+    p = json.dumps({"patches": [{"op": "update", "path": "supported_amount[0]", "new": "x"},
+                                {"op": "update", "path": "supported_amount.rate", "new": "중증 60%"}]})
+    staged, staging = _run_update(data_dir, monkeypatch, p, used="exaone")
+    rv = staging / staged.name.replace(".staged.json", ".review.json")
+    assert json.loads(staged.read_text(encoding="utf-8"))["supported_amount"]["rate"] == "중증 60%"
+    assert "supported_amount.0" in rv.read_text(encoding="utf-8")
