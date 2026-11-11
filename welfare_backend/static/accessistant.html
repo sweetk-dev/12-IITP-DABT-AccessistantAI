@@ -2469,6 +2469,8 @@ window.NAVI = (function(){
     var texts = steps.map(function(st, i){ return (_isMergedCrossing(i) || st.maneuver === "crossing") ? stepUtterance(i) : st.instruction; }).filter(Boolean);
     texts = texts.filter(function(t, k){ return texts.indexOf(t) === k; });   // 체인 문장은 노드 스텝과 머리 스텝에서 겹친다
     texts.push("다음 안내까지 약 300미터입니다", "다음 안내까지 약 150미터입니다");
+    // 회전 예고 (v2.27.0) — 이 경로에 나오는 회전 종류만
+    steps.forEach(function(st){ if(st && TURN_WORD[st.maneuver]){ var pt = turnPreText(st.maneuver); if(texts.indexOf(pt) < 0) texts.push(pt); } });
     var pcs = platformCautionSpeech((route && route.routes || [])[0]);   // 안내 시작 때 말할 승강장 주의 (v2.0.8)
     if(pcs) texts.unshift(pcs);
     landmarks.forEach(function(x){ if(x.speech) texts.push(x.speech); });   // 주변 랜드마크 (#308)
@@ -5742,16 +5744,73 @@ window.NAVI = (function(){
   /* 전환 판정 (v1.43.0) — 반경 25m 안이면서, 경로 진행거리가 그 스텝 지점의 (앞 스텝 길이의 절반,
      5~25m) 전에 도달했을 때. 반경만으로 판정하면 짧은 스텝이 연달아 있을 때 한 지점에서
      여러 스텝이 한꺼번에 조건을 만족해 연쇄 전환됐다. */
+  /* 회전 안내를 두 번 (v2.27.0)
+     전에는 회전 문장("좌회전 후 60m 이동합니다")을 회전 지점 5~25m 앞에서 한 번만 말했다. 이동 속도에 따라
+     이르거나 늦게 들렸고, 한 번 놓치면 다시 들을 수 없었다(현장 실증 2026-10-22 — 가장 불편한 점으로 꼽힘).
+       ① 예고 — 회전 지점 약 TURN_PRE_M(30m) 앞에서 "약 30미터 앞에서 좌회전입니다" (_turnPreAnnounce)
+       ② 직전 — 회전 지점 약 5m 앞에서 들리도록 TURN_LEAD_M(8m) 앞에서 그 스텝 문장을 말한다 (_reachedStep)
+          8m = 5m + 위치 갱신(약 1초)·음성 시작 지연 동안 전동휠체어(약 1.1m/s)가 가는 거리. 문장은 미리 합성해 둔다.
+     적용 범위: 회전 스텝(TURN_WORD 에 있는 maneuver)이고, 앞 구간이 TURN_MIN_SEG_M 이상이며, 위치 정확도가
+     TURN_ACC_MAX 이하일 때. 그 밖(짧은 구간·위치가 거칠 때·횡단보도·승하차·도착)은 종전 규칙 그대로다 —
+     위치가 거칠 때 8m 를 고집하면 지나친 뒤에야 안내가 나온다. 늦는 것보다 이른 쪽이 안전하다.
+     회전 지점을 TURN_PAST_M 넘게 지나친 뒤에야 전환되면(위치가 늦게 따라옴) "좌회전" 대신 "○○를 따라 계속
+     이동하세요"를 말한다(_announceStep) — 이미 돈 사람이 한 번 더 돌지 않게. */
+  var TURN_WORD = {left:"좌회전", right:"우회전", slight_left:"좌측 방향", slight_right:"우측 방향",
+                   sharp_left:"급좌회전", sharp_right:"급우회전", uturn:"유턴"};
+  var TURN_PRE_M = 30, TURN_PRE_FAR_M = 36, TURN_PRE_NEAR_M = 16, TURN_LEAD_M = 8, TURN_PAST_M = 10,
+      TURN_MIN_SEG_M = 45, TURN_ACC_MAX = 15;
+  // 지금의 경로 진행거리 — 모의 주행은 정확한 값, 실제 주행은 경로 위 투영
+  function _alongNow(pos){ return simActive ? simDist : alongOnRoute(pos); }
+  // 스텝 j 가 '두 번 안내' 대상인지
+  function _turnTwice(j){
+    var st = steps[j];
+    if(!st || !TURN_WORD[st.maneuver] || _isMergedCrossing(j)) return false;
+    if(typeof stepAlong[j] !== "number" || typeof stepAlong[j-1] !== "number") return false;
+    if(stepAlong[j] - stepAlong[j-1] < TURN_MIN_SEG_M) return false;
+    if(!simActive && lastFixAcc != null && lastFixAcc > TURN_ACC_MAX) return false;
+    return routeGeom.length >= 2;
+  }
+  function _turnPreAnnounce(pos){
+    if(!guiding || !pos) return;
+    var j = stepIdx + 1, k = "pre:" + j;
+    if(_interimDone[k] || !_turnTwice(j)) return;
+    var along = _alongNow(pos);
+    if(along < stepAlong[stepIdx] - 30) return;            // 투영이 지나온 구간으로 튐 — 남은 거리를 믿을 수 없다
+    var d = stepAlong[j] - along;
+    if(d <= TURN_PRE_FAR_M && d > TURN_PRE_NEAR_M){
+      _interimDone[k] = true;                               // 안내 시작·모의 주행 시작 때 _interimDone 과 함께 초기화된다
+      speakInterim(turnPreText(steps[j].maneuver));
+    }
+  }
+  function turnPreText(man){ return "약 " + TURN_PRE_M + "미터 앞에서 " + TURN_WORD[man] + "입니다"; }
+  // 회전 지점을 지나친 뒤에야 전환됐는지 — 전환 직전(stepIdx 를 올리기 전)에 부른다
+  function _turnPassed(pos, j){
+    var st = steps[j];
+    if(!st || !TURN_WORD[st.maneuver] || typeof stepAlong[j] !== "number" || routeGeom.length < 2) return false;
+    return _alongNow(pos) - stepAlong[j] > TURN_PAST_M;
+  }
+  // "○○를 따라 계속 이동하세요" — 회전을 이미 마친 사람에게 하는 말
+  function continueUtterance(i){
+    var st = steps[i]; if(!st) return "";
+    var name = String(st.link_name || "").trim();
+    if(!name){ var mm = String(st.instruction || "").match(/([^\s()]+)[을를] 따라/); if(mm) name = mm[1]; }
+    var warn = (st.warnings && st.warnings.length) ? " (" + st.warnings.join(", ") + ")" : "";
+    return (name ? name + _josaEul(name) + " 따라 " : "") + "계속 이동하세요." + warn;
+  }
   function _reachedStep(pos, j){
     var st = steps[j]; if(!st || !st.coord) return false;
     if(distM(pos, {lat:st.coord[0], lng:st.coord[1]}) > 25) return false;
     if(!stepAlong.length || stepAlong[j] === undefined) return true;
+    // 회전 스텝 — 지점 바로 앞(TURN_LEAD_M)에서 (v2.27.0)
+    if(_turnTwice(j)) return _alongNow(pos) >= stepAlong[j] - TURN_LEAD_M;
     var prevLen = j > 0 ? (stepAlong[j] - stepAlong[j-1]) : 0;
     var lead = Math.min(25, Math.max(5, prevLen * 0.5));
     return distAlongNearest([pos.lat, pos.lng]) >= stepAlong[j] - lead;
   }
-  function _announceStep(i){
+  function _announceStep(i, passed){
     if(_spokenAhead[i]){ delete _spokenAhead[i]; return; }   // 앞 스텝에서 합쳐 말했다
+    // 회전 지점을 이미 지나친 뒤에 전환됐다 (v2.27.0) — 회전 문장을 다시 말하지 않는다
+    if(passed && !_isMergedCrossing(i)){ _tev("navi_turn_passed", {step: i}); speakStep(continueUtterance(i)); return; }
     var u = stepUtterance(i, true);
     if(u) speakStep(u);                                       // 횡단보도 체인의 같은 조각은 무음 (v1.57.0)
   }
@@ -5835,13 +5894,15 @@ window.NAVI = (function(){
     if(!nxt || !nxt.coord) return;
     if(Date.now() - _tripSaveTs > 60000) saveTrip();   // 진행 중임을 1분마다 갱신 (v1.59.0)
     _interimAnnounce(here);
+    _turnPreAnnounce(here);              // 회전 예고 (v2.27.0)
     _landmarkAnnounce(here);
     _drainSpeak();
     if(_reachedStep(here, stepIdx+1)){   // 다음 안내 지점 도달 -> 스텝 전환
+      var _passed = _turnPassed(here, stepIdx+1);   // 올리기 전에 잰다 — 진행거리 창이 지금 스텝 기준이다
       _lastAdvanceTs = Date.now();
       stepIdx += 1;
       renderStep();
-      _announceStep(stepIdx);
+      _announceStep(stepIdx, _passed);
       // 도착 — 응답을 기다리던 이탈 재탐색을 무효로 만든다('찾는 중' 표시가 도착 뒤에 남거나, 다음 도착지 경로를 덮지 않게)
       if(steps[stepIdx].maneuver === "arrive") cancelPendingReroute();
       if(steps[stepIdx].maneuver === "arrive"){ guiding = false; clearTrip(); stationAnswered = {}; trackUpload("arrived"); setEndBtn("home"); stopArrivalPolling(); scheduleArrivalReset(); }
@@ -5993,6 +6054,7 @@ window.NAVI = (function(){
     var nxt=steps[stepIdx+1];
     if(!nxt || !nxt.coord) return;
     _interimAnnounce(simPos, simDist);
+    _turnPreAnnounce(simPos);            // 회전 예고 (v2.27.0)
     _landmarkAnnounce(simPos, simDist);
     if(_reachedStep(simPos, stepIdx+1)){
       stepIdx+=1;
@@ -6674,6 +6736,8 @@ window.NAVI = (function(){
       steps:steps, stepIdx:stepIdx, spots:spots, speak:speak, showRoute:showRoute,
                                      isGuiding:function(){ return guiding; }, voiceStartGuidance:voiceStartGuidance,
                                      resumeDecide:_resumeDecide, resumeShort:resumeShort,
+                                     reachedStep:_reachedStep, turnPreAnnounce:_turnPreAnnounce, turnPassed:_turnPassed,
+                                     continueUtterance:continueUtterance, setFixAccForTest:function(a){ lastFixAcc = a; },
                                      resumeRepForTest:function(v){ if(v) _resumeRep = v; return _resumeRep; },
                                      resumeUtterance:resumeUtterance, saveTrip:saveTrip, clearTrip:clearTrip, pendingTrip:pendingTrip, offerTripResume:offerTripResume,
                                      speakBusy:speakBusy, stepUtterance:stepUtterance, drainSpeak:_drainSpeak,
