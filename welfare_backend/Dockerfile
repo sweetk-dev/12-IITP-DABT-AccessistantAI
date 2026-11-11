@@ -13,12 +13,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # 의존성 레이어 (캐시 활용)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# constraints.txt 가 설치 버전을 고정한다 — 다시 빌드해도 같은 버전이 설치된다(그 파일 머리말 참고)
+COPY requirements.txt constraints.txt ./
+RUN pip install --no-cache-dir -c constraints.txt -r requirements.txt
 
 # Gemini Live 폴백(온프레미스 음성) 의존성 — 별도 레이어(무거움: torch/faster-whisper)
 COPY requirements-fallback.txt .
-RUN pip install --no-cache-dir -r requirements-fallback.txt
+RUN pip install --no-cache-dir -c constraints.txt -r requirements-fallback.txt
 
 # 앱 소스
 COPY . .
