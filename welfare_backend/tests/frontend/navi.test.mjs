@@ -769,6 +769,14 @@ for (let i = 0; i < 6 && !singleTag; i++) {
   m.content.dispatchEvent(new window.Event("click"));
   await sleep(10);
 }
+// 도착지 유지 상태를 다시 만든다 (v2.26.0) — 앞에서 말로 받은 경로(6번)는 좌표 목적지라 도착지 기억을 지운다.
+// 관광지 번호가 있는 목적지의 경로를 받아 '도착지가 기억된 상태'를 이 시험의 전제로 분명히 둔다.
+{
+  const keepDest = JSON.parse(JSON.stringify(ROUTE.ui_action));
+  keepDest.route.destination = Object.assign({}, keepDest.route.destination, { poi_id: "TBF-1" });
+  window.NAVI.onUiAction({ type: "ui_action", action: "show_route", payload: keepDest });
+  await sleep(20);
+}
 lastPlanQuery = null;
 singleTag.content.dispatchEvent(new window.Event("click"));
 await sleep(20);
@@ -3724,6 +3732,116 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   });
   NV.resetTrip(); NV.stopSpeak();
   window.Date.now = realNowR;
+}
+
+// ── v2.26.0: 말로 안내 시작 · 안내 중 새 경로에도 안내 유지 · 안내 복귀 반복 억제 ──
+{
+  const I = () => window.NAVI._internals();
+  const act = (action, payload) => window.NAVI.onUiAction({ type: "ui_action", action, payload: payload || {} });
+  const realNow = window.Date.now; let vnow = realNow() + 50_000_000; window.Date.now = () => vnow;
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+
+  // 1) 경로 없이 "안내 시작해"
+  act("start_guidance");
+  check("말로 안내 시작: 표시된 경로가 없으면 시작하지 않고 알린다 (v2.26.0)", () => {
+    assert.equal(I().isGuiding(), false);
+    assert.match($("naviStatus").textContent, /표시된 경로가 없습니다/);
+  });
+
+  // 2) 말로 받은 경로 → 안내 전 → "안내 시작해"
+  act("show_route", ROUTE.ui_action);
+  await sleep(10);
+  check("말로 받은 경로는 안내 전 상태로 표시된다", () => assert.equal(I().isGuiding(), false));
+  const r1 = act("start_guidance");
+  await sleep(10);
+  check("말로 안내 시작: 버튼 없이 안내가 시작된다 (v2.26.0)", () => {
+    assert.equal(r1, null, "이동 버튼 라벨을 만들면 안 된다");
+    assert.equal(I().isGuiding(), true);
+    assert.equal(I().stepIdx, 0);
+  });
+
+  // 3) 안내 중 "안내 시작해" — 처음부터 다시 시작하지 않는다
+  I().setStepIdxForTest(1);
+  check("말로 안내 시작: 이미 안내 중이면 다시 시작하지 않는다 (v2.26.0)", () => {
+    assert.equal(I().voiceStartGuidance(), false);
+    assert.equal(I().stepIdx, 1, "진행 단계가 처음으로 돌아가면 안 된다");
+  });
+
+  // 4) 안내 중에 말로 새 경로 — 안내가 꺼지지 않는다
+  act("show_route", MMROUTE.ui_action);
+  await sleep(10);
+  check("안내 중 말로 받은 새 경로: 안내가 꺼지지 않고 새 경로로 이어진다 (v2.26.0)", () => {
+    assert.equal(I().isGuiding(), true, "안내가 꺼졌다");
+    assert.equal(I().steps.length, 4, "새 경로의 단계가 아니다");
+    assert.equal(I().stepIdx, 0);
+  });
+  check("안내 전에 받은 새 경로는 종전대로 안내 전 상태 (소스 가드)", () => {
+    assert.match(HTML, /if\(guiding && !simActive\) _ro\.keepGuiding = true;/);
+  });
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+
+  // 5) 안내 복귀 반복 억제 — 지하철 승차 단계(긴 문장, 탈 칸이 끝에 있다)
+  const LONG = "2번 출구 승강기로 대합실에 올라가 승강기 전용 개찰구를 지나세요. 1호선 2개 역 뒤 명학역에서 내립니다. 10-4 칸에 타세요";
+  I().showRoute({ route_id: "r_rep", routes: [{ summary: { total_distance_m: 900, duration_sec: 600 },
+    geometry: [[37.4090, 126.9080], [37.4000, 126.9150], [37.3850, 126.9350]],
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "앞으로", distance_m: 100, coord: [37.4090, 126.9080], warnings: [] },
+      { idx: 1, maneuver: "subway_board", instruction: LONG, distance_m: 0, coord: [37.4000, 126.9150], link_type: "subway", warnings: [],
+        ingress: { car: { text: "10-4 칸에 타세요" } } },
+      { idx: 2, maneuver: "subway_alight", instruction: "명학역에서 하차합니다", distance_m: 0, coord: [37.3850, 126.9350], link_type: "subway", warnings: [] },
+      { idx: 3, maneuver: "arrive", instruction: "도착", distance_m: 0, coord: [37.3850, 126.9350], warnings: [] },
+    ] }] }, "반복 시험");
+  I().startGuidance(); await sleep(5);
+  I().setStepIdxForTest(1);
+  I().resumeRepForTest({ key: null, n: 0, ts: 0 });
+  const said = [];
+  said.push(I().resumeDecide()); vnow += 5000;
+  said.push(I().resumeDecide()); vnow += 5000;
+  said.push(I().resumeDecide()); vnow += 5000;
+  said.push(I().resumeDecide()); vnow += 5000;
+  check("안내 복귀: 같은 단계 첫 복귀는 전체 문장 (v2.26.0)", () => assert.equal(said[0], LONG));
+  check("안내 복귀: 두 번째부터는 핵심(탈 칸)만 (v2.26.0)", () => {
+    assert.equal(said[1], "10-4 칸에 타세요.");
+    assert.equal(said[2], "10-4 칸에 타세요.");
+  });
+  check("안내 복귀: 세 번 말한 뒤 1분 안에는 다시 말하지 않는다 (v2.26.0)", () => assert.equal(said[3], ""));
+  vnow += 61000;
+  check("안내 복귀: 1분이 지나면 다시 짧게 말한다 (v2.26.0)", () => assert.equal(I().resumeDecide(), "10-4 칸에 타세요."));
+  // 상담원이 현재 안내를 조회해 직접 답했다 — 복귀 발화는 건너뛴다(한 번만)
+  I().resumeRepForTest({ key: null, n: 0, ts: 0 });
+  window.NAVI.onToolCall("get_current_guidance");
+  check("안내 복귀: 상담원이 방금 현재 안내를 답했으면 다시 읽지 않는다 (v2.26.0)", () => assert.equal(I().resumeDecide(), ""));
+  check("안내 복귀: 그다음 복귀는 정상으로 돌아온다 (v2.26.0)", () => assert.equal(I().resumeDecide(), LONG));
+  // 단계가 바뀌면 처음부터 다시 센다
+  I().setStepIdxForTest(2);
+  check("안내 복귀: 단계가 바뀌면 다시 전체 문장부터 (v2.26.0)", () => assert.match(I().resumeDecide(), /명학역에서 하차합니다/));
+  check("짧게 말하기: 탈 칸 정보가 없는 긴 문장은 첫 문장만 (v2.26.0)", () => {
+    I().setStepIdxForTest(1);
+    const st = I().steps[1]; const keep = st.ingress; st.ingress = null;
+    assert.equal(I().resumeShort(1), "2번 출구 승강기로 대합실에 올라가 승강기 전용 개찰구를 지나세요.");
+    st.ingress = keep;
+  });
+  check("짧게 말하기: 그 구간의 주의는 줄이지 않는다 (v2.26.0)", () => {
+    const st = I().steps[1]; const keep = st.ingress, kw = st.warnings; st.ingress = null; st.warnings = ["턱 있음", "경사 7.0도"];
+    assert.equal(I().resumeShort(1), "2번 출구 승강기로 대합실에 올라가 승강기 전용 개찰구를 지나세요. (턱 있음, 경사 7.0도)");
+    st.ingress = keep; st.warnings = kw;
+  });
+  check("안내 복귀: 소리로만 끊긴 복귀는 반복으로 세지 않는다 (v2.26.0)", () => {
+    I().setStepIdxForTest(1); I().resumeRepForTest({ key: null, n: 0, ts: 0 });
+    for (let k = 0; k < 5; k++) assert.equal(I().resumeDecide(true), LONG, "소음 복귀는 늘 전체 문장");
+    assert.equal(I().resumeRepForTest().n, 0, "소음 복귀가 반복 횟수에 들어갔다");
+  });
+  // 말로 받은 좌표 목적지 — 이전 도착지 기억이 남지 않는다
+  {
+    const RC = JSON.parse(JSON.stringify(ROUTE.ui_action)); RC.route.destination = { lat: 37.3909, lng: 126.9511 };
+    const RP = JSON.parse(JSON.stringify(ROUTE.ui_action)); RP.route.destination = { poi_id: "TBF-1" };
+    act("show_route", RP); await sleep(5);
+    check("(준비) 관광지 목적지는 도착지로 기억된다", () => assert.equal(String(I().tripDest().poi_id), "TBF-1"));
+    act("show_route", RC); await sleep(5);
+    check("말로 받은 좌표 목적지: 이전 도착지 기억을 지운다 — 이탈 재탐색이 옛 도착지로 가지 않게 (v2.26.0)", () => assert.equal(I().tripDest(), null));
+  }
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+  window.Date.now = realNow;
 }
 
 // ── 결과 ──

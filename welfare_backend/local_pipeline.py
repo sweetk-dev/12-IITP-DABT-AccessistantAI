@@ -36,6 +36,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 import trial_recorder
 
 from nav_context import (update_nav_state, current_guidance_result,
+                         annotate_route_success, start_guidance_result,
                          note_new_route, inject_nav_defaults, inject_handoff)
 from tool_handlers import run_tool, summarize_tool_result
 
@@ -273,8 +274,10 @@ def _ollama_route_tools() -> list:
     return [
         fn("find_bf_tour_spots",
            "장애 유형에 맞는 무장애 관광지를 추천한다. '갈 만한 곳', '휠체어로 갈 수 있는 곳' 질문에 사용.",
-           {"disabilities": {"type": "array", "items": S,
-                             "description": "지체장애/휠체어/시각장애/청각장애/영유아동반 중 해당하는 것"},
+           {"disabilities": {"type": "array",
+                             "items": {"type": "string", "enum": ["지체장애", "시각장애", "청각장애", "영유아동반"]},
+                             "description": "해당하는 유형을 한 칸에 하나씩 넣는다. 휠체어 이용자는 지체장애. "
+                                            "말하지 않았으면 비운다 (v2.26.0)"},
             "sigungu": {"type": "string", "description": "지역명, 기본 '안양'"},
             "topk": I}),
         fn("plan_accessible_route",
@@ -297,6 +300,10 @@ def _ollama_route_tools() -> list:
         fn("get_current_guidance",
            "진행 중인 길안내의 현재 상태(지금 할 안내·다음 안내·남은 거리·목적지)를 조회한다. "
            "이동 중 \"지금 어디로 가야 해\", \"얼마나 남았어\" 질문에는 반드시 이 도구를 먼저 호출한다.",
+           {}),
+        fn("start_guidance",
+           "화면에 표시된 경로로 길안내를 시작한다(화면의 '안내 시작' 버튼을 말로 누르는 것). "
+           "\"안내 시작해\", \"출발\" 이라고 하거나 \"안내를 시작할까요?\" 물음에 그렇다고 답하면 사용한다. (v2.26.0)",
            {}),
         fn("find_nearby_transit",
            "주변의 버스 정류장·지하철역을 찾는다. 기준 위치는 현재 위치가 자동 주입된다. "
@@ -464,6 +471,9 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                 if fname == "get_current_guidance":
                     # 세션 상태만 읽는 도구 — 디스패처를 거치지 않는다
                     result = current_guidance_result(_nav)
+                elif fname == "start_guidance":
+                    # 말로 안내 시작 (v2.26.0) — 세션 상태만 보고 화면에 지시한다
+                    result = start_guidance_result(_nav)
                 elif fname not in dispatcher:
                     result = {"error": f"unknown tool: {fname}"}
                 else:
@@ -472,7 +482,9 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                     logger.info("✓ [로컬] 도구 %s 결과: %s", fname, summarize_tool_result(result))
                 if (fname == "plan_accessible_route" and isinstance(result, dict)
                         and result.get("status") == "success"):
-                    note_new_route(_nav, result.get("route_id"))
+                    annotate_route_success(result, _nav)   # note_new_route 가 지우기 전에 (v2.26.0)
+                    note_new_route(_nav, result.get("route_id"),
+                                   continues=bool(result.get("guidance_continues")))
                 if tracker is not None:
                     try:
                         tracker.on_tool_call(fname, fargs, result)

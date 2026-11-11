@@ -22,7 +22,8 @@ from fastapi import WebSocket, WebSocketDisconnect
 from google.genai import types
 from starlette.websockets import WebSocketState
 
-from nav_context import (annotate_route_failure,
+from nav_context import (annotate_route_failure, annotate_route_success,
+                         start_guidance_result,
                          update_nav_state, current_guidance_result,
                          inject_nav_defaults, inject_handoff, note_new_route,
                          needs_current_location)
@@ -294,7 +295,7 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 표·코드블록·이모지는 사용하지 마세요.
 
 ## 이동경로·무장애 관광 (경로·관광 도구)
-- 사용자가 "어디 갈 만한 곳", "무장애 관광지", "휠체어로 갈 수 있는 곳" 등을 물으면 `find_bf_tour_spots` 를 호출합니다. 결과는 상위 2~3곳만 간단히 말하고, 나머지는 화면 목록으로 넘깁니다.
+- 사용자가 "어디 갈 만한 곳", "무장애 관광지", "휠체어로 갈 수 있는 곳" 등을 물으면 `find_bf_tour_spots` 를 호출합니다. 결과는 상위 2~3곳만 간단히 말하고, 나머지는 화면 목록으로 넘깁니다. `disabilities` 에는 유형을 **한 칸에 하나씩** 넣습니다(휠체어 이용자는 "지체장애"). 여러 유형을 빗금(/)이나 쉼표로 이어 한 값으로 넣지 마세요.
 - **경로 안내가 가능한 지역은 안양시뿐입니다.** 다만 안내하지 못하는 사유는 두 가지이고, **절대 섞어 말하지 마세요.**
   - `out_of_service_area` — 장소는 찾았지만 안양시 밖입니다. "아직 안양시 안에서만 안내할 수 있다"고 정확히 말하고 안양시 안의 장소를 여쭤 보세요.
   - `place_not_found` — 말씀하신 이름을 찾지 못한 것입니다. **"안양시 밖"이라고 말하면 안 됩니다.** 안양시청·복지관·도서관처럼 안양시 안에 있는 곳도 이름이 조금 다르면 여기에 해당합니다. 더 정확한 이름을 여쭙거나, 이동·관광 화면 지도에서 그 지점을 직접 눌러 목적지로 지정할 수 있다고 안내하세요.
@@ -303,6 +304,8 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - **도구 결과에 `active_guidance` 가 있으면** 지금 진행 중인 길안내가 그대로 계속된다는 뜻입니다. 새 목적지를 안내하지 못했다고만 말하고 끝내지 말고, 진행 중인 안내가 계속된다는 사실을 반드시 한 문장으로 덧붙이세요. 안내가 멈췄다고 말하지 마세요.
 - 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 목적지 `poi_id` 를 모르면 사용자가 말한 이름을 `destination_place` 에 담습니다 — poi_id 를 지어내지 마세요. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
 - **이동 방식**: 사용자가 "버스로", "지하철 타고", "대중교통으로" 처럼 방식을 말하면 `plan_accessible_route` 의 `mode` 에 담습니다(walk_subway / walk_bus / walk_bus_subway). **"지하철로", "전철 타고", "버스 말고 지하철"** 처럼 지하철만 원하면 `mode: "walk_subway"` 입니다 — 버스 조합을 만들지 않습니다. **"도보로", "걸어서", "걸어갈게", "휠체어로만", "타지 않고"** 처럼 도보만 원한다고 말하면 반드시 `mode: "walk"` 로 담습니다(자동 추천에 맡기면 거리에 따라 버스 조합으로 바뀝니다). 방식을 말하지 않았을 때만 비워 두세요 — 자동 추천이 적용되고 결과의 `mode_used`/`mode_label` 이 알려 줍니다. 결과에 `transit` 이 있으면 **노선 번호·유형·방면(end_station)·정거장 수**를 함께 말합니다. `low_floor_note` 가 있으면 그 문장(저상버스 실시간 확인 결과)을 그대로 전하고, 없으면 **저상버스 정차는 보장되지 않으므로 실시간 도착정보 확인이 필요**하다고 알립니다. 대중교통 포함 소요시간은 대기 미포함 추정(`eta_note`)임을 밝힙니다. 결과에 `platform_cautions`(승강기 없이 휠체어리프트만 있는 승강장)가 있으면 **경로 요약보다 먼저** 그 문장을 그대로 전합니다 — 열차에서 내린 뒤에 알면 되돌아갈 수 없습니다. 결과에 `auto_kept_walk` 가 있으면 자동 추천이 도보를 유지한 이유 — 지하철 경로가 휠체어리프트만 있는 승강장을 거치게 되어 도보가 낫다고 판단했다는 점(역 이름 포함) — 를 한 문장으로 알립니다.
+- **안내 시작은 말로 받습니다.** 경로를 알려 준 뒤 도구 결과가 시키면 "안내를 시작할까요?"라고 한 번만 여쭙고, 사용자가 "응", "시작해", "안내 시작", "출발", "가자" 처럼 답하면 `start_guidance` 를 호출합니다. 경로가 표시된 상태에서 사용자가 먼저 "안내 시작해"라고 말해도 같습니다. 호출한 뒤에는 "네, 안내를 시작할게요" 한 문장만 답합니다 — 첫 안내는 화면 음성이 말합니다. **버튼을 눌러 달라고 요구하지 마세요**(손을 쓰기 어려운 분이 있습니다). 단, "안양역으로 가자", "문화원으로 출발"처럼 **장소 이름이 들어간 말은 새 목적지 요청**입니다 — `start_guidance` 가 아니라 `plan_accessible_route` 를 호출합니다(화면에 남아 있던 이전 경로로 안내를 시작하면 안 됩니다).
+- 길안내가 진행 중일 때 사용자가 목적지나 이동 방식을 다시 말해 새 경로를 받으면(`guidance_continues`), 안내는 꺼지지 않고 새 경로로 곧바로 이어집니다. "안내를 다시 시작해 달라"거나 "안내 시작을 눌러 달라"고 말하지 마세요.
 - 경로에 경고가 있거나 권장 경사를 완화해 탐색한 경우(`fallback.used`) 반드시 그 사실을 알립니다.
 - "왜 이렇게 돌아가", "이 구간 뭐야" 같은 질문에는 `explain_route_segment` 로 사유(경사·계단·턱낮춤)를 설명합니다.
 - 사용자가 "지도로 이동해줘", "지도 화면 보여줘", "무장애 관광지 보기 화면으로 가줘" 처럼 **화면 이동 자체를 요청**하면 `open_navi_screen` 을 호출하고 "지도 화면으로 이동했어요" 정도로 짧게만 답합니다. 관광지·경로 결과를 안내할 때는 화면이 자동으로 바뀌지 않고 화면에 이동 버튼이 표시되므로, 필요하면 "화면의 버튼을 누르시면 지도로 이동해요"라고 안내하세요.
@@ -360,10 +363,15 @@ def _route_tool_declarations() -> list:
             parameters=types.Schema(
                 type=types.Type.OBJECT,
                 properties={
+                    # 유형은 한 칸에 하나씩 — 여러 유형을 빗금으로 이어 한 값으로 넘기면 추천이 0건이 됐다.
+                    # 서버(normalize_disabilities)가 한 번 더 쪼개고 이름을 맞춘다 (v2.26.0)
                     "disabilities": types.Schema(
                         type=types.Type.ARRAY,
-                        items=types.Schema(type=types.Type.STRING),
-                        description="지체장애/휠체어/시각장애/청각장애/영유아동반 중 해당하는 것",
+                        items=types.Schema(type=types.Type.STRING,
+                                           enum=["지체장애", "시각장애", "청각장애", "영유아동반"]),
+                        description=("해당하는 유형을 한 칸에 하나씩 넣는다. 휠체어 이용자는 \"지체장애\". "
+                                     "예: [\"지체장애\"] 또는 [\"지체장애\", \"영유아동반\"]. "
+                                     "말하지 않았으면 비운다"),
                     ),
                     "sigungu": types.Schema(type=types.Type.STRING, description="지역명, 기본 '안양'"),
                     "topk": types.Schema(type=types.Type.INTEGER, description="반환 개수, 기본 10(화면 목록·추천 평가용). 말로는 상위 2~3곳만 안내"),
@@ -412,6 +420,14 @@ def _route_tool_declarations() -> list:
                          "지점까지 남은 거리·목적지)를 조회한다. 이동 중 \"지금 어디로 "
                          "가야 해\", \"방금 뭐라고 했어\", \"다음엔 뭐야\", \"얼마나 "
                          "남았어\" 질문에는 반드시 이 도구를 먼저 호출한다."),
+        ),
+        types.FunctionDeclaration(
+            name="start_guidance",
+            description=("화면에 표시된 경로로 길안내를 시작한다 — 화면의 '안내 시작' 버튼을 말로 누르는 것. "
+                         "사용자가 \"안내 시작해\", \"시작해\", \"출발\", \"가자\" 라고 하거나, "
+                         "\"안내를 시작할까요?\" 물음에 그렇다고 답하면 사용한다. 경로가 있는지·이미 안내 "
+                         "중인지는 서버가 확인한다. \"○○로 가자\", \"○○역으로 출발\" 처럼 장소 이름이 들어간 "
+                         "말에는 쓰지 않는다 — 그때는 plan_accessible_route 로 그 장소의 경로부터 찾는다."),
         ),
         types.FunctionDeclaration(
             name="find_nearby_transit",
@@ -914,6 +930,26 @@ _NAVI_GREETING_NOTE = (
 )
 
 
+# 사용자 말을 글자로 바꿀 때 쓸 언어 (v2.26.0). 비우면 지정하지 않는다(모델 자동 판별).
+INPUT_TRANSCRIPTION_LANG = os.environ.get("GEMINI_INPUT_LANG", "ko-KR").strip()
+
+
+def input_transcription_config():
+    """입력 음성 전사 설정 — 한국어로 지정한다.
+
+    언어를 지정하지 않으면 모델이 언어를 스스로 고르는데, 소음이 섞이거나 짧은 한국어 발화가
+    일본어·영어 글자로 전사되는 일이 있었다(현장 실증 2026-10-22). 전사 글자는 화면 표시와
+    기록에 쓰이므로 한국어로 고정한다. 출력 음성의 언어 지정(speech_config)과는 별개 설정이다.
+    SDK 가 이 필드를 모르는 버전이면 지정 없이 만든다(종전 동작).
+    """
+    if INPUT_TRANSCRIPTION_LANG:
+        try:
+            return types.AudioTranscriptionConfig(language_codes=[INPUT_TRANSCRIPTION_LANG])
+        except Exception as e:   # 필드 없음(TypeError)·검증 실패(ValidationError) — SDK 버전에 따라 다르다
+            logger.warning("⚠️ 입력 전사 언어 지정 미지원 — 지정 없이 진행 (%s)", type(e).__name__)
+    return types.AudioTranscriptionConfig()
+
+
 def navi_system_instruction(base: str) -> str:
     """길안내 화면 세션에 쓰는 지침 — 정책상담 인사말 문장을 뺀다. 문장이 없으면(지침 개정) 그대로 돌려준다."""
     if _POLICY_GREETING_BLOCK in base:
@@ -1064,7 +1100,7 @@ async def handle_live_chat(
     # SDK 버전에 따라 transcription 설정 명칭이 다름 — 호환성 시도
     _has_output_transcription = False
     try:
-        config_kwargs["input_audio_transcription"] = types.AudioTranscriptionConfig()
+        config_kwargs["input_audio_transcription"] = input_transcription_config()
         config_kwargs["output_audio_transcription"] = types.AudioTranscriptionConfig()
         _has_output_transcription = True
     except AttributeError:
@@ -1578,6 +1614,9 @@ async def handle_live_chat(
                                     if fname == "get_current_guidance":
                                         # 세션 상태만 읽는 도구 — 디스패처를 거치지 않는다
                                         result = current_guidance_result(nav_state)
+                                    elif fname == "start_guidance":
+                                        # 말로 안내 시작 (v2.26.0) — 세션 상태만 보고 화면에 지시한다
+                                        result = start_guidance_result(nav_state)
                                     elif fname not in dispatcher:
                                         result = {"error": f"unknown tool: {fname}"}
                                     else:
@@ -1591,7 +1630,10 @@ async def handle_live_chat(
                                     # 프런트 nav_state 도착 전 공백에 이전 경로가 주입되는 것 방지 (#248)
                                     if (fname == "plan_accessible_route" and isinstance(result, dict)
                                             and result.get("status") == "success"):
-                                        note_new_route(nav_state, result.get("route_id"))
+                                        # 안내 중이었는지는 note_new_route 가 지우기 전에 읽는다 (v2.26.0)
+                                        annotate_route_success(result, nav_state)
+                                        note_new_route(nav_state, result.get("route_id"),
+                                                       continues=bool(result.get("guidance_continues")))
                                     # 경로를 만들지 못했는데 안내가 진행 중이면, 그 안내는 그대로
                                     # 계속된다. 그 사실을 말하지 않으면 "안내할 수 없다"는 말과
                                     # 화면·음성으로 진행되는 안내가 어긋나 보인다.

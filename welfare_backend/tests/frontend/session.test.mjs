@@ -687,12 +687,14 @@ function boot(preset, url) {
     const RB = JSON.parse(JSON.stringify(ROUTE_B.ui_action.route)); RB.destination = { type: "tour", poi_id: "T2", lat: P(8)[0], lng: P(8)[1] };
     await w.__sockets[0]._msg({ type: "ui_action", action: "show_route", payload: { action: "show_route", route: RB } });
     await sleep(50);
-    check("재탐색 대기 중 말로 요청한 B 경로는 표시만 하고 안내를 자동으로 시작하지 않는다", () => {
-      assert.ok(hold.release, "재탐색 요청이 나가지 않음"); showsB(N, "말로 요청"); assert.equal(w.NAVI.isBusy(), false, "누르지 않은 안내가 시작됨");
+    // 안내 중에 말로 새 경로를 받으면 안내가 꺼지지 않는다 (v2.26.0) — 종전에는 표시만 하고 안내 전 상태로 돌아가,
+    // 다시 '안내 시작'을 누르기 전까지 안내 없이 이동했다. 직접 고른 경로((다))는 종전대로 표시만 한다.
+    check("재탐색 대기 중 말로 요청한 B 경로는 안내를 끄지 않고 B 로 이어 간다 (v2.26.0)", () => {
+      assert.ok(hold.release, "재탐색 요청이 나가지 않음"); showsB(N, "말로 요청"); assert.equal(w.NAVI.isBusy(), true, "안내가 꺼졌다");
       assert.equal(N().rerouting(), false); assert.ok(!$("naviStatus").classList.contains("navi-status--busy"), "'찾는 중' 표시가 남음");
     });
     await lateA(hold);
-    check("늦게 온 A 재탐색 응답이 B 경로를 덮어쓰지 않는다(말로 요청한 경로 뒤)", () => { showsB(N, "늦은 응답 뒤"); assert.equal(w.NAVI.isBusy(), false); });
+    check("늦게 온 A 재탐색 응답이 B 경로·안내를 덮어쓰지 않는다(말로 요청한 경로 뒤)", () => { showsB(N, "늦은 응답 뒤"); assert.equal(w.NAVI.isBusy(), true, "B 안내가 멈춤"); });
     w.close();
   }
   // (마) 응답이 끝내 오지 않는 재탐색 — 응답 대기 한도를 넘기면 요청을 끊고 기존 경로로 계속 안내한다

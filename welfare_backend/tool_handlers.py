@@ -419,6 +419,56 @@ def _fac_labels(facilities: dict) -> list:
     return [v for k, v in label.items() if (facilities or {}).get(k)]
 
 
+# ── 장애 유형 값 정규화 (v2.26.0) ──
+# 경로 서비스의 관광지 추천은 정해진 유형 이름만 안다. 모르는 이름이 하나라도 섞이면 조건이 비어
+# 추천이 0건이 된다 — 음성 모델이 "지체장애/휠체어"처럼 여러 유형을 한 값으로 넘기거나
+# "wheelchair" 같은 다른 표기를 넘겨 실제로 0건이 나왔다(현장 실증 2026-10-22, 리허설 2026-10-16).
+# 여기서 받은 값을 쪼개고(빗금·쉼표·가운뎃점) 아는 이름으로 바꾼다. 모르는 값은 버린다.
+DISABILITY_TYPES = ("지체장애", "휠체어", "시각장애", "청각장애", "영유아동반")
+_DISABILITY_ALIASES = {
+    # 지체·휠체어 — 휠체어 이용자의 관광지 조건은 '지체장애'(화장실·승강기·주차·경사로·휠체어 대여)가 기준
+    "지체장애": "지체장애", "지체": "지체장애", "지체장애인": "지체장애", "physical": "지체장애",
+    "휠체어": "휠체어", "wheelchair": "휠체어", "전동휠체어": "휠체어", "수동휠체어": "휠체어",
+    "휠체어이용자": "휠체어", "전동": "휠체어", "수동": "휠체어",
+    "wheelchair_electric": "휠체어", "wheelchair_manual": "휠체어",
+    "시각장애": "시각장애", "시각": "시각장애", "시각장애인": "시각장애", "visual": "시각장애", "blind": "시각장애",
+    "청각장애": "청각장애", "청각": "청각장애", "청각장애인": "청각장애", "hearing": "청각장애", "deaf": "청각장애",
+    "영유아동반": "영유아동반", "영유아": "영유아동반", "유아동반": "영유아동반", "유아동행": "영유아동반",
+    "유모차": "영유아동반", "유아차": "영유아동반", "infant": "영유아동반", "stroller": "영유아동반",
+}
+_DISABILITY_SPLIT_RE = re.compile(r"[/,·ㆍ、|&+]+|\s+및\s+|\s+and\s+", re.IGNORECASE)
+# 구분자 없이 이어 온 값("시각장애와 청각장애")에서 찾을 낱말 — 긴 것부터 본다
+_DISABILITY_KEYWORDS = (("휠체어", "휠체어"), ("지체", "지체장애"), ("시각", "시각장애"), ("청각", "청각장애"),
+                        ("영유아", "영유아동반"), ("유모차", "영유아동반"), ("유아", "영유아동반"))
+
+
+def normalize_disabilities(values) -> list:
+    """장애 유형 값을 경로 서비스가 아는 이름 목록으로 바꾼다.
+
+    values: 문자열 하나 또는 목록(음성 모델·화면이 넘긴 그대로).
+    반환: DISABILITY_TYPES 안의 이름만, 받은 순서대로, 중복 없이. 알아볼 값이 하나도 없으면
+    ["지체장애"](이 서비스의 기본 이용자 = 휠체어 이용자).
+    """
+    if values is None:
+        values = []
+    elif isinstance(values, str):
+        values = [values]
+    out = []
+    for v in values:
+        for tok in _DISABILITY_SPLIT_RE.split(str(v or "")):
+            key = tok.strip().lower().replace(" ", "")
+            name = _DISABILITY_ALIASES.get(key)
+            if name:
+                if name not in out:
+                    out.append(name)
+                continue
+            # 별칭에 없는 값 — 안에 든 낱말로 찾는다("시각장애와청각장애" → 시각장애, 청각장애)
+            for kw, kname in _DISABILITY_KEYWORDS:
+                if kw in key and kname not in out:
+                    out.append(kname)
+    return out or ["지체장애"]
+
+
 async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
                                   topk: int = 10,
                                   origin_lat: float = None, origin_lng: float = None,
@@ -429,7 +479,7 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
     offset 페이징(total/has_more)을 지원한다 — 프런트 무한스크롤용.
     """
     data = await route_client.tour_recommend(
-        disabilities or ["지체장애"], sigungu=sigungu, topk=topk,
+        normalize_disabilities(disabilities), sigungu=sigungu, topk=topk,
         origin_lat=origin_lat, origin_lng=origin_lng, offset=offset,
     )
     if data.get("status") == "error":
