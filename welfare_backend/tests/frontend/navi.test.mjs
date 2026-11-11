@@ -3844,6 +3844,59 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   window.Date.now = realNow;
 }
 
+// ── v2.27.0: 회전 안내를 두 번 (예고 약 30m 앞 + 직전 약 5m 앞) ──
+{
+  const I = () => window.NAVI._internals();
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+  // 북쪽으로 곧은 길 — 0m 출발, 200m 지점 좌회전, 230m 지점 우회전(앞 구간 30m — 짧다), 400m 도착
+  const B0 = [37.4000, 126.9300], P = (m) => [B0[0] + m / 110540, B0[1]], LL = (m) => ({ lat: P(m)[0], lng: P(m)[1] });
+  I().showRoute({ route_id: "r_turn", routes: [{ summary: { total_distance_m: 400, duration_sec: 360 },
+    geometry: [P(0), P(100), P(200), P(230), P(400)],
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "문예로를 따라 200m 이동합니다.", distance_m: 200, coord: P(0), link_name: "문예로", warnings: [] },
+      { idx: 1, maneuver: "left", instruction: "좌회전 후 30m 이동합니다.", distance_m: 30, coord: P(200), link_name: "만안로", warnings: ["턱 있음"] },
+      { idx: 2, maneuver: "right", instruction: "우회전 후 170m 이동합니다.", distance_m: 170, coord: P(230), warnings: [] },
+      { idx: 3, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: P(400), warnings: [] },
+    ] }] }, "회전 시험");
+  I().startGuidance(); await sleep(5); I().stopSpeak();
+  I().setFixAccForTest(5);
+  const pre = () => !!I().interimDone()["pre:1"];
+  I().setStepIdxForTest(0);
+  I().setHere(LL(150)); I().turnPreAnnounce(LL(150));
+  check("회전 예고: 50m 앞에서는 아직 말하지 않는다 (v2.27.0)", () => assert.equal(pre(), false));
+  I().turnPreAnnounce(LL(168));
+  check("회전 예고: 약 30m 앞에서 한 번 말한다 (v2.27.0)", () => assert.equal(pre(), true));
+  check("회전 예고 문장 (v2.27.0)", () => assert.match(HTML, /"약 " \+ TURN_PRE_M \+ "미터 앞에서 " \+ TURN_WORD\[man\] \+ "입니다"/));
+  check("회전 직전: 20m 앞에서는 아직 넘어가지 않는다 — 종전에는 여기서 말했다 (v2.27.0)", () => assert.equal(I().reachedStep(LL(180), 1), false));
+  check("회전 직전: 10m 앞에서도 아직 (v2.27.0)", () => assert.equal(I().reachedStep(LL(190), 1), false));
+  check("회전 직전: 8m 앞에서 넘어간다 — 약 5m 앞에서 들린다 (v2.27.0)", () => assert.equal(I().reachedStep(LL(192.5), 1), true));
+  check("회전 지점을 10m 넘게 지나쳤는지 판정 (v2.27.0)", () => {
+    assert.equal(I().turnPassed(LL(205), 1), false);
+    assert.equal(I().turnPassed(LL(215), 1), true);
+  });
+  check("지나친 뒤에는 회전 문장 대신 '계속 이동' + 그 구간의 주의 (v2.27.0)", () => {
+    assert.equal(I().continueUtterance(1), "만안로를 따라 계속 이동하세요. (턱 있음)");
+  });
+  check("앞 구간이 짧은 회전(30m)은 종전 규칙 — 예고 없음 (v2.27.0)", () => {
+    I().setStepIdxForTest(1); I().turnPreAnnounce(LL(205));
+    assert.ok(!I().interimDone()["pre:2"]);
+    assert.equal(I().reachedStep(LL(218), 2), true, "종전 규칙(앞 구간 절반)으로 넘어가야 한다");
+  });
+  check("위치가 거칠면(정확도 15m 초과) 종전 규칙으로 일찍 말한다 (v2.27.0)", () => {
+    I().setStepIdxForTest(0); I().setFixAccForTest(30);
+    assert.equal(I().reachedStep(LL(180), 1), true);
+    delete I().interimDone()["pre:1"]; I().turnPreAnnounce(LL(168));
+    assert.ok(!I().interimDone()["pre:1"], "위치가 거칠 때는 예고도 하지 않는다");
+    I().setFixAccForTest(5);
+  });
+  check("주행 루프에 예고·지나침 판정이 걸려 있다 (소스 가드, v2.27.0)", () => {
+    assert.match(HTML, /_turnPreAnnounce\(here\);/);
+    assert.match(HTML, /_turnPreAnnounce\(simPos\);/);
+    assert.match(HTML, /_announceStep\(stepIdx, _passed\);/);
+  });
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak(); I().setFixAccForTest(null);
+}
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {
