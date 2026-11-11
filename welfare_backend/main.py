@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 from dotenv import load_dotenv
 from google import genai
+from genai_client import make_client
 
 from database import get_db, engine
 import models
@@ -24,7 +25,8 @@ load_dotenv()  # GEMINI_API_KEY 로딩
 
 # Gemini 임베딩 클라이언트 (도구 #5 의 자연어 → 768차원 벡터 변환용)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+# API 버전을 명시해 만든다 — SDK 기본값이 바뀌면 모델 호출·음성 연결이 404 가 된다(genai_client.py)
+ai_client = make_client(GEMINI_API_KEY)
 
 
 # 임베딩 모델 — DB 청크 임베딩과 반드시 동일 모델 사용

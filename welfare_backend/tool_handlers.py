@@ -59,8 +59,8 @@ def _get_expand_client():
         key = os.environ.get("GEMINI_API_KEY")
         if not key:
             return None
-        from google import genai
-        _expand_client = genai.Client(api_key=key)
+        from genai_client import make_client  # API 버전 명시(genai_client.py)
+        _expand_client = make_client(key)
     return _expand_client
 
 
