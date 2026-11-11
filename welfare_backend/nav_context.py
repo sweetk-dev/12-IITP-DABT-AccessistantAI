@@ -24,6 +24,7 @@ def update_nav_state(nav: dict, msg: dict) -> None:
     guiding=false(안내 종료·경로만 표시)도 그대로 저장한다 —
     '방금 안내가 끝났다'는 것 자체가 답변 근거가 되기 때문.
     """
+    nav.pop("switching", None)   # 화면이 실제 상태를 알려 왔다 — 넘어가는 중 표시는 끝 (v2.26.0)
     for k in _NAV_FIELDS:
         nav[k] = msg.get(k)
     nav["guiding"] = bool(nav.get("guiding"))
@@ -74,17 +75,78 @@ def _clean_wait(v):
     return {"kind": v["kind"], "station": str(v.get("station") or "")[:20] or None, "choices": choices}
 
 
-def note_new_route(nav: dict, route_id: str) -> None:
+def note_new_route(nav: dict, route_id: str, continues: bool = False) -> None:
     """대화(plan_accessible_route)로 새 경로가 만들어진 직후 호출.
 
     프런트가 새 경로를 받아 nav_state 를 보내기 전의 공백 동안, 이전 경로의
     route_id·step_idx 가 explain_route_segment 에 주입되는 것을 막는다(리뷰 #3).
+
+    continues=True 는 안내 중에 받은 새 경로다(v2.26.0) — 화면이 새 경로로 안내를 이어 가는 중이므로,
+    그 공백에 "안내 중이 아니다 / 안내를 시작할까요"라고 답하지 않도록 switching 표시를 남긴다.
+    표시는 화면의 다음 nav_state 가 오면 지워진다(update_nav_state).
     """
     if not route_id:
         return
     if nav.get("route_id") != route_id:
         nav.clear()
         nav.update({"route_id": route_id, "guiding": False})
+    if continues:
+        nav["switching"] = True
+
+
+def annotate_route_success(result, nav: dict):
+    """경로 생성 성공 결과에 '안내 시작을 어떻게 이어갈지'를 덧붙인다 (v2.26.0).
+
+    반드시 note_new_route 보다 먼저 부른다(그 함수가 안내 상태를 비운다).
+    - 안내가 진행 중이었다: 화면은 안내를 끄지 않고 새 경로로 곧바로 이어 간다. 그러니 상담원이
+      "안내 시작을 눌러 달라"고 말하면 화면과 어긋난다 — 이어진다는 사실만 알리게 한다.
+    - 안내 전이다: 버튼을 누르라고 하지 않고 말로 시작할지 한 번 묻게 한다. 손을 쓰기 어려운
+      이용자는 버튼을 누르지 못해 안내 없이 이동했다(현장 실증 2026-10-22, "길안내가 진행 중이
+      아니에요" 응답 약 10회).
+    """
+    if not isinstance(result, dict) or result.get("status") != "success":
+        return result
+    if nav and nav.get("guiding"):
+        extra = (" 길안내가 진행 중이었으므로 화면은 새 경로로 안내를 곧바로 이어 갑니다. "
+                 "경로 요약(거리·시간·주의 사항)은 그대로 말하되, '안내 시작'을 묻거나 버튼을 눌러 "
+                 "달라고 하지 말고 끝에 새 경로로 안내를 이어 간다고 한 문장을 덧붙이세요.")
+        result["guidance_continues"] = True
+    else:
+        extra = (" 요약 끝에 '안내를 시작할까요?'라고 한 번만 여쭤 보세요. 그렇다고 답하면 "
+                 "start_guidance 를 호출합니다. 버튼을 눌러 달라고 요구하지 마세요.")
+    result["ai_instruction"] = (result.get("ai_instruction") or "") + extra
+    return result
+
+
+def start_guidance_result(nav: dict) -> dict:
+    """start_guidance 도구 응답 — "안내 시작해"를 말로 받는다 (v2.26.0).
+
+    화면에 경로가 표시돼 있고 아직 안내 전이면 화면에 안내 시작을 지시한다(ui_action).
+    경로가 없거나 이미 안내 중이면 화면을 건드리지 않고 그 사실만 답하게 한다.
+    세션 상태(nav)만 읽으므로 get_current_guidance 처럼 디스패처를 거치지 않는다.
+    """
+    nav = nav or {}
+    if nav.get("guiding") or nav.get("switching"):   # switching: 새 경로로 안내를 이어 가는 중
+        return {
+            "status": "already_guiding", "tool_name": "start_guidance",
+            "destination": nav.get("dest_name"),
+            "ai_instruction": ("이미 길안내가 진행 중입니다. 그렇다고 한 문장으로만 알리세요. "
+                               "지금 안내 내용을 물으면 get_current_guidance 로 확인하세요."),
+        }
+    if not nav.get("route_id") or _arrived(nav):
+        return {
+            "status": "no_route", "tool_name": "start_guidance",
+            "ai_instruction": ("아직 화면에 안내할 경로가 없습니다. 어디로 가실지 목적지를 한 문장으로 "
+                               "여쭤 보세요. 목적지를 들으면 plan_accessible_route 를 호출합니다."),
+        }
+    return {
+        "status": "success", "tool_name": "start_guidance",
+        "route_id": nav.get("route_id"),
+        "ui_action": {"action": "start_guidance"},
+        "ai_instruction": ("화면이 길안내를 시작했습니다. '네, 안내를 시작할게요' 한 문장만 답하세요. "
+                           "경로나 첫 안내를 다시 설명하지 마세요 — 첫 안내는 화면 음성이 말합니다. "
+                           "내부 번호(route_id)는 읽지 마세요."),
+    }
 
 
 # 경로를 만들지 못한 결과의 status — "실패했지만 서비스는 정상"인 사유들이다.
@@ -130,13 +192,23 @@ def annotate_route_failure(result, nav: dict):
 def _arrived(nav: dict) -> bool:
     """마지막 구간까지 간 뒤 안내가 끝났으면 도착으로 본다."""
     si, ts = nav.get("step_idx"), nav.get("total_steps")
-    return (si is not None and ts is not None and ts > 0 and si >= ts - 1)
+    # ts > 1 — 단계가 하나뿐이면 안내 전(step_idx 0)도 마지막 단계라 도착으로 잘못 본다 (v2.26.0)
+    return (si is not None and ts is not None and ts > 1 and si >= ts - 1)
 
 
 def current_guidance_result(nav: dict) -> dict:
     """get_current_guidance 도구 응답 — 세션의 nav_state 를 그대로 읽는다."""
     if not nav or not nav.get("guiding"):
         route_id = (nav or {}).get("route_id")
+        if nav and nav.get("switching"):
+            # 안내 중에 새 경로를 받아 화면이 넘어가는 중 (v2.26.0) — 안내가 꺼진 것이 아니다
+            return {
+                "status": "switching",
+                "tool_name": "get_current_guidance",
+                "route_id": route_id,
+                "ai_instruction": ("새 경로로 안내를 이어 가는 중입니다. 곧 화면 음성이 첫 안내를 말한다고 "
+                                   "한 문장으로만 알리세요. 안내를 시작할지 묻지 마세요."),
+            }
         if nav and _arrived(nav):
             # 도착 직후의 "지금 어디야?" — 다시 안내를 시작하라고 하면 엉뚱하다(리뷰 #5)
             return {
@@ -155,8 +227,8 @@ def current_guidance_result(nav: dict) -> dict:
             "route_id": route_id,
             "ai_instruction": (
                 "지금은 길안내가 진행 중이 아니라고 짧게 알리세요. "
-                + ("직전에 안내한 경로는 남아 있으니, 원하시면 화면의 '안내 시작'으로 "
-                   "이어갈 수 있다고 덧붙이세요." if route_id else
+                + ("직전에 안내한 경로는 남아 있으니, 안내를 시작할지 여쭤 보세요. 그렇다고 답하면 "
+                   "start_guidance 를 호출합니다(화면의 '안내 시작' 버튼으로도 됩니다)." if route_id else
                    "원하시면 목적지를 말씀해 주시라고 안내하세요.")
             ),
         }

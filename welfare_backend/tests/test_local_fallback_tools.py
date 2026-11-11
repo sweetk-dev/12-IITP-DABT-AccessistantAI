@@ -50,7 +50,8 @@ ROUTE = {"find_bf_tour_spots", "plan_accessible_route", "explain_route_segment",
          "report_station_position",                        # v1.52.0 역 안/밖·출구 확인을 말로
          "find_accessible_restaurants", "check_building_accessibility",   # v1.55.0 음식점·건물 편의시설
          "find_service_providers", "find_standard_workplaces",            # v1.55.0 기관·사업장 명부
-         "find_culture_sports"}                                           # v2.4.0 문화·체육 시설
+         "find_culture_sports",                                           # v2.4.0 문화·체육 시설
+         "start_guidance"}                                                # v2.26.0 말로 안내 시작
 
 results = []
 
@@ -120,8 +121,8 @@ def t_explain_segment_ids_optional():
 def t_dispatcher_backs_every_tool():
     disp = set(get_tool_dispatcher(None).keys())
     declared = names(lp._ollama_tools())
-    # get_current_guidance 는 세션 상태만 읽어 디스패처를 거치지 않는다
-    unbacked = declared - disp - {"get_current_guidance"}
+    # get_current_guidance·start_guidance 는 세션 상태만 읽어 디스패처를 거치지 않는다
+    unbacked = declared - disp - {"get_current_guidance", "start_guidance"}
     assert not unbacked, "구현 없는 도구를 선언함: %s" % sorted(unbacked)
 
 

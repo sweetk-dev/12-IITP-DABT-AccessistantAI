@@ -3519,8 +3519,53 @@ window.NAVI = (function(){
       cancelResume();
       var st = steps[stepIdx];
       // "안내를 이어갈게요"는 상담원과 대화가 있었을 때만 붙인다 — 소리로 끊긴 문장은 그대로 다시 읽는다 (#359)
-      if(st) speak(((sawAi || !opt.barge) ? "안내를 이어갈게요. " : "") + resumeUtterance(stepIdx));
+      // 같은 단계에서 되풀이되면 짧게, 더 되풀이되면 말하지 않는다 (v2.26.0, _resumeDecide)
+      if(st){
+        var ru = _resumeDecide(!!opt.barge && !sawAi);
+        if(ru) speak(((sawAi || !opt.barge) ? "안내를 이어갈게요. " : "") + ru);
+        else _tev("navi_resume_skip");
+      }
     }, 400);
+  }
+  /* 안내 복귀 반복 억제 (v2.26.0)
+     대화가 끝날 때마다 현재 안내 문장을 처음부터 다시 읽으면, 역 안처럼 한 단계에 오래 머무는 곳에서는
+     같은 긴 문장이 되풀이되어 핵심이 묻힌다(현장 실증 2026-10-22 — 같은 20초 문장 13회, 탈 칸이 문장 끝에 묻힘).
+       · 같은 단계의 첫 복귀 — 종전대로(resumeUtterance)
+       · 두 번째부터 — 핵심만 짧게(resumeShort)
+       · RESUME_QUIET_AFTER 번 말한 뒤에는, 마지막 복귀 발화로부터 RESUME_QUIET_MS 가 지나야 다시 말한다(그 사이는 화면 안내만)
+       · 상담원이 방금 현재 안내를 조회해 직접 답했으면(get_current_guidance) 말하지 않는다 — 같은 내용을 두 번 듣게 된다
+     단계나 경로가 바뀌면 처음부터 다시 센다. 처음 그 단계에 들어설 때의 안내(_announceStep)는 여기서 세지 않는다. */
+  var RESUME_QUIET_AFTER = 3, RESUME_QUIET_MS = 60000, AI_GUIDE_FRESH_MS = 20000;
+  var _resumeRep = {key:null, n:0, ts:0}, _aiGuideTs = 0;
+  function _resumeKey(){ return ((route && route.route_id) || "") + ":" + stepIdx; }
+  // 반환: 말할 문장. 빈 문자열이면 이번에는 말하지 않는다.
+  // noise=true — 상담원 답 없이 소리만으로 끊겼던 것. 이용자는 그 문장을 끝까지 듣지 못했으므로 종전대로
+  //   다시 읽고 반복으로 세지 않는다(세면 소음 몇 번에 그 단계 안내가 침묵한다).
+  function _resumeDecide(noise){
+    if(noise) return resumeUtterance(stepIdx);
+    var k = _resumeKey(), now = Date.now();
+    if(_resumeRep.key !== k) _resumeRep = {key:k, n:0, ts:0};
+    if(_aiGuideTs && now - _aiGuideTs < AI_GUIDE_FRESH_MS){ _aiGuideTs = 0; return ""; }
+    var n = _resumeRep.n;
+    if(n >= RESUME_QUIET_AFTER && now - _resumeRep.ts < RESUME_QUIET_MS) return "";
+    _resumeRep.n = n + 1; _resumeRep.ts = now;
+    return n === 0 ? resumeUtterance(stepIdx) : resumeShort(stepIdx);
+  }
+  // 되풀이할 때 읽는 짧은 문장 — 그 단계에서 지금 해야 할 일 하나
+  function resumeShort(i){
+    var st = steps[i]; if(!st) return "";
+    var trim = function(s){ return String(s || "").replace(/[.\s]*$/, ""); };
+    // 지하철 승차 — 탈 칸이 핵심이다(경로 서비스 ingress.car)
+    if(st.ingress && st.ingress.car && st.ingress.car.text) return trim(st.ingress.car.text) + ".";
+    // 하차역 역 안/밖 질문 — 답을 기다리는 중이므로 질문만
+    if(st.maneuver === "subway_alight" && st.egress && st.egress.question) return st.egress.question;
+    // 역 안 출발 — 첫 번째 할 일(승강장 승강기)만
+    if(st.maneuver === "station_start" && st.egress && (st.egress.inside || []).length) return trim(st.egress.inside[0]) + ".";
+    var full = resumeUtterance(i);
+    if(full.length <= 40) return full;
+    // 그 밖의 긴 문장 — 첫 문장만. 그 구간의 주의(턱·경사 등)는 줄이지 않고 그대로 붙인다
+    var warn = (st.warnings && st.warnings.length) ? " (" + st.warnings.join(", ") + ")" : "";
+    return trim(full.replace(/\s*\([^)]*\)\s*$/, "").split(". ")[0]) + "." + warn;
   }
   /* 안내 재개 문장 (v1.59.0) — 구간 중간에서 처음 문장("좌회전 후 … 673m")을 다시 읽으면 이미 지난 회전과
      처음 거리를 말하게 된다. 시작점을 지났으면 "○○를 따라 계속 직진하세요", 끝에 다 왔으면 다음 안내를 말한다.
@@ -4339,7 +4384,8 @@ window.NAVI = (function(){
     if(!routeAllowed()){ noRouteNotice(); return; }   // 말로 요청한 경로도 같은 기준 (v2.22.0)
     var viaReroute = !!(opts && opts.autoResume);
     // 표시 뒤 안내를 곧바로 시작할지 — 재탐색 성공이거나, 이 경로를 요청한 흐름이 걸어 둔 예약(이어서 안내·저상 정보 만료·역 안 출발)이 있을 때.
-    var resumeNow = viaReroute || autoResumeGuide;
+    // keepGuiding — 안내 중에 말로 받은 새 경로 (v2.26.0)
+    var resumeNow = viaReroute || autoResumeGuide || !!(opts && opts.keepGuiding);
     // 재탐색 성공이 아닌 경로 표시 — 응답을 기다리던 이탈 재탐색을 무효로 만든다. 그러지 않으면 늦게 온
     // 이전 도착지의 재탐색 응답이 지금 표시하는 경로를 덮어쓴다. 예약은 위에서 읽었으므로 여기서 함께 지운다.
     if(!viaReroute) cancelPendingReroute();
@@ -6002,6 +6048,8 @@ window.NAVI = (function(){
     _busyPrev = null; _busyText = null;
   }
   function onToolCall(name){
+    // 상담원이 현재 안내를 조회했다 = 곧 그 내용을 직접 답한다 — 안내 복귀가 같은 문장을 또 읽지 않게 표시해 둔다 (v2.26.0)
+    if(name === "get_current_guidance") _aiGuideTs = Date.now();
     if(!IS_NAVI || !BUSY_TOOLS[name]) return;
     var navi = false; try{ navi = $("view-navi").classList.contains("active"); }catch(e){}
     if(navi) routeBusy(true, BUSY_TOOLS[name]);
@@ -6090,6 +6138,20 @@ window.NAVI = (function(){
     else if(guiding) scheduleResume(800);
   }
 
+  /* 말로 안내 시작 (v2.26.0) — 상담원 도구 start_guidance → ui_action start_guidance.
+     '안내 시작' 버튼과 같은 동작이다(역 근처 출발이면 역 안/밖을 먼저 묻는 것까지 같다).
+     이미 안내 중이면 처음부터 다시 시작하지 않는다 — 서버도 같은 판단을 하지만, 화면 상태가 그 사이
+     바뀌었을 수 있어 여기서 한 번 더 본다. 반환: 안내를 시작했으면 true. */
+  function voiceStartGuidance(){
+    if(guiding && !simActive) return false;
+    if(!steps.length || !routeAllowed()){ status("표시된 경로가 없습니다. 목적지를 먼저 말씀해 주세요."); return false; }
+    var naviOn = false; try{ naviOn = $("view-navi").classList.contains("active"); }catch(e){}
+    if(!naviOn) showPreparedView();
+    _tev("navi_voice_start");
+    startGuidance();
+    return true;
+  }
+
   function onUiAction(msg){
     var p = msg.payload || {};
     // 서버는 도구 결과의 ui_action 전체를 payload 로 보낸다 — 카드형 액션은 그 안에 payload 가 한 겹 더 있다
@@ -6106,7 +6168,16 @@ window.NAVI = (function(){
     } else if(msg.action === "show_route"){
       // mode_requested: 말로 고른 이동 방식(자동 추천이면 null) — 이동 방식 카드 선택을 맞춘다(v2.11.0).
       // 구버전 서버는 이 키가 없다 → undefined 면 카드는 종전대로 둔다.
-      showRoute(p.route, "", ("mode_requested" in p) ? {voiceMode: p.mode_requested} : null);
+      // 안내 중에 말로 새 경로를 받았다(목적지·이동 방식을 다시 말함) — 안내를 끄지 않고 새 경로로 곧바로 이어 간다 (v2.26.0).
+      // 전에는 새 경로가 화면을 바꾸면서 안내가 꺼져, '안내 시작'을 다시 누르기 전까지 안내 없이 이동했다(현장 실증 2026-10-22).
+      // 모의 주행은 해당 없음 — 새 경로가 오면 종전대로 모의 주행을 끝내고 안내 전 상태로 둔다.
+      // 말로 받은 목적지에 관광지 번호가 없으면(건물·주소) 이전 도착지 기억을 지운다. 남겨 두면 이탈 재탐색이
+      // 이전 도착지로 경로를 다시 찾는다. 지우면 이탈 때 경고만 하고 지금 안내를 유지한다(좌표 목적지의 종전 동작).
+      var _rd0 = (p.route && p.route.destination) || {};
+      if(!_rd0.poi_id) tripDest = null;
+      var _ro = ("mode_requested" in p) ? {voiceMode: p.mode_requested} : {};
+      if(guiding && !simActive) _ro.keepGuiding = true;
+      showRoute(p.route, "", _ro);
       return {label: "🗺️ 지도에서 경로 보기"};
     } else if(msg.action === "route_unavailable"){
       // 대화로 요청한 경로가 만들어지지 않았다 — 말로만 알리고 화면은 그대로 두면
@@ -6127,6 +6198,9 @@ window.NAVI = (function(){
       return null;   // 상담 화면용 이동 버튼은 만들지 않는다
     } else if(msg.action === "station_position"){
       onStationVoice(p.where, p.travel);   // 말로 한 역 안/밖·출구 답 (v1.52.0)
+      return null;
+    } else if(msg.action === "start_guidance"){
+      voiceStartGuidance();   // "안내 시작해" — 말로 안내 시작 (v2.26.0)
       return null;
     } else if(msg.action === "open_navi"){
       // 사용자가 음성으로 화면 이동을 '직접' 요청한 경우(#215) — 즉시 전환한다.
@@ -6598,6 +6672,9 @@ window.NAVI = (function(){
     // 테스트용 노출
     _internals: function(){ return {duckState: function(){ return {ducked: !!duckTimer, heard: Date.now() < heardUntil, coolUntil: duckCoolUntil, vol: ttsAudio ? ttsAudio.volume : null}; },
       steps:steps, stepIdx:stepIdx, spots:spots, speak:speak, showRoute:showRoute,
+                                     isGuiding:function(){ return guiding; }, voiceStartGuidance:voiceStartGuidance,
+                                     resumeDecide:_resumeDecide, resumeShort:resumeShort,
+                                     resumeRepForTest:function(v){ if(v) _resumeRep = v; return _resumeRep; },
                                      resumeUtterance:resumeUtterance, saveTrip:saveTrip, clearTrip:clearTrip, pendingTrip:pendingTrip, offerTripResume:offerTripResume,
                                      speakBusy:speakBusy, stepUtterance:stepUtterance, drainSpeak:_drainSpeak,
                                      platformCautionSpeech:platformCautionSpeech,
