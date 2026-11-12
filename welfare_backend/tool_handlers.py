@@ -479,6 +479,40 @@ def is_indoor_name(name: str) -> bool:
     return bool(_INDOOR_RE.search(name or ""))
 
 
+# 장소 찾기 결과는 한 곳씩 (v2.29.4) — 한 번에 여러 곳을 들으면 이동 중에 기억하기 어렵다
+_ONE_AT_A_TIME = ("나머지 곳은 먼저 말하지 마세요. 사용자가 '다른 곳', '또 있어?'처럼 물으면 도구를 다시 부르지 말고 "
+                  "이 목록의 다음 항목 하나만 같은 방식으로 말하세요. 목록을 다 말했으면 더 넓게 찾아볼지 물으세요. ")
+
+# 시각을 오전·오후로 (v2.29.4) — "08:00~23:00" 을 그대로 주면 "팔시부터 이십삼시까지"로 읽는다
+_CLOCK_RE = re.compile(r"(?<!\d)([01]?\d|2[0-4])\s*:\s*([0-5]\d)(?!\d)")
+_ALLDAY_RE = re.compile(r"^\s*0?0\s*:\s*00\s*[~\-–]\s*(24\s*:\s*00|23\s*:\s*59)\s*$")
+
+
+def ko_clock(h: int, mi: int = 0) -> str:
+    if h in (0, 24):
+        lab = "밤 12시"
+    elif h == 12:
+        lab = "낮 12시"
+    elif h < 12:
+        lab = "오전 %d시" % h
+    else:
+        lab = "오후 %d시" % (h - 12)
+    return lab + (" %d분" % mi if mi else "")
+
+
+def ko_clock_text(s) -> Optional[str]:
+    """운영·개방 시간 문자열의 HH:MM 을 말하기 좋은 오전·오후 표현으로. 시각이 없으면 원문 그대로."""
+    if not isinstance(s, str) or not s.strip():
+        return s if isinstance(s, str) else None
+    if _ALLDAY_RE.match(s):
+        return "24시간"
+    out = _CLOCK_RE.sub(lambda m: ko_clock(int(m.group(1)), int(m.group(2))), s)
+    # "오전 8시~오후 11시" → "오전 8시부터 오후 11시까지"
+    out = re.sub(r"((?:오전|오후|낮|밤) \d+시(?: \d+분)?)\s*[~\-–]\s*((?:오전|오후|낮|밤) \d+시(?: \d+분)?)",
+                 r"\1부터 \2까지", out)
+    return out
+
+
 async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
                                   topk: int = 10,
                                   origin_lat: float = None, origin_lng: float = None,
@@ -535,7 +569,7 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
         "ui_action": {"action": "show_tour_spots", "items": items},
         "ai_instruction": (
             ("실내 시설만 시설 이름으로 골랐습니다. " if indoor else "")
-            + "상위 2~3곳만 이름과 대표 편의시설 위주로 짧게 안내하세요. 목록은 무장애 편의시설을 "
+            + "맨 앞의 한 곳만 이름과 대표 편의시설 위주로 짧게 안내하세요. " + _ONE_AT_A_TIME + "목록은 무장애 편의시설을 "
             "많이 갖춘 곳(tier 1)을 먼저, 같은 등급 안에서는 가까운 순으로 정렬돼 있습니다. "
             "화면에 지도와 목록이 함께 표시되므로 전부 나열하지 마세요. "
             + ("결과가 없으면 실내 관광지를 찾지 못했다고 말하고, 도서관·체육관은 find_culture_sports 로 "
@@ -1511,6 +1545,7 @@ async def tool_find_emergency_support(lat: float = None, lng: float = None, plac
             "tel_owner": it.get("tel_owner") or "site",
             "tel_owner_name": it.get("tel_owner_name"),
             "open_hours": it.get("open_hours"),
+            "open_hours_ko": ko_clock_text(it.get("open_hours")),   # 말하기용 오전·오후 (v2.29.4)
             "open_hours_status": it.get("open_hours_status") or ("known" if it.get("open_hours") else "unknown"),
             "source_label": it.get("source_label"), "confidence": it.get("confidence"),
             "coord_suspect": bool(it.get("coord_suspect")),
@@ -1521,8 +1556,9 @@ async def tool_find_emergency_support(lat: float = None, lng: float = None, plac
         by_type[it["support_type"]] = by_type.get(it["support_type"], 0) + 1
     missing = [SUPPORT_TYPE_LABEL[t] for t in tsel.split(",") if t not in by_type]
     ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
-          + "유형별로 가장 가까운 1~2곳만 이름·거리·전화번호로 말하세요. "
-          "open_hours 가 있으면 그대로 전하고, open_hours_status 가 unknown 이면 운영시간을 "
+          + "가장 가까운 한 곳만 이름·거리·전화번호로 말하세요(충전·수리·콜택시처럼 여러 유형을 함께 찾았으면 유형마다 한 곳). "
+          + _ONE_AT_A_TIME +
+          "운영시간은 open_hours_ko 를 그대로 읽고(24시간제로 읽지 않습니다), open_hours_status 가 unknown 이면 운영시간을 "
           "지어내지 말고 '운영시간은 확인이 필요하니 전화해 보시라'고 하세요. "
           "coord_suspect 가 true 인 곳은 '위치가 정확하지 않을 수 있다'고 덧붙이세요. "
           "tel_owner 가 manager 인 번호는 설치장소가 아니라 관리기관(tel_owner_name) 번호이니 "
@@ -1577,6 +1613,7 @@ async def tool_find_toilet(lat: float = None, lng: float = None, place: str = ""
             "dis_male_cnt": it.get("dis_male_cnt"), "dis_female_cnt": it.get("dis_female_cnt"),
             "unisex": bool(it.get("unisex")),
             "open_time": it.get("open_time"), "open_time_detail": it.get("open_time_detail"),
+            "open_time_ko": ko_clock_text(it.get("open_time")),   # 말하기용 오전·오후 (v2.29.4)
             "emg_bell": bool(it.get("emg_bell")), "tel": it.get("tel"),
             # 시설 내 장애인화장실(관광시설, 02 v1.27.0) — 시설 운영시간에만 이용 가능 (#298)
             "facility_toilet": bool(it.get("facility_toilet")),
@@ -1587,7 +1624,7 @@ async def tool_find_toilet(lat: float = None, lng: float = None, place: str = ""
         })
     ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
           + ("가장 가까운 한 곳(items 의 첫 항목)만 말하세요 — 첫 문장에 이름과 거리, 둘째 문장에 개방시간. "
-             "open_time 이 없으면 '개방시간은 확인이 필요하다'고 하세요. facility_toilet 이 true 인 곳은 그 시설 안의 "
+             "개방시간은 open_time_ko 를 그대로 읽고(24시간제로 읽지 않습니다), open_time 이 없으면 '개방시간은 확인이 필요하다'고 하세요. facility_toilet 이 true 인 곳은 그 시설 안의 "
              "화장실이라 시설 운영시간에만 쓸 수 있고, building_toilet 이 true 인 곳은 공공건물 안이라 건물이 문을 연 "
              "시간(대개 평일 낮)에 쓸 수 있다고 개방시간 문장에 함께 말하세요. 나머지 곳은 먼저 말하지 마세요. "
              "사용자가 '다른 곳', '또 있어?', '더 가까운 데'처럼 물으면 도구를 다시 부르지 말고 이 목록의 다음 항목 "
@@ -1622,7 +1659,8 @@ def _toilet_brief(t):
         return None
     nb = t.get("nearby") if isinstance(t.get("nearby"), dict) else None
     return {"status": t.get("status") or "none",
-            "nearby": ({"name": nb.get("name"), "dist_m": nb.get("dist_m"), "open_time": nb.get("open_time")}
+            "nearby": ({"name": nb.get("name"), "dist_m": nb.get("dist_m"), "open_time": nb.get("open_time"),
+                        "open_time_ko": ko_clock_text(nb.get("open_time"))}
                        if nb else None)}
 
 
@@ -1684,7 +1722,7 @@ async def tool_find_accessible_restaurants(lat: float = None, lng: float = None,
     if lat is None:
         where += "현재 위치를 몰라 안양시 전체에서 찾았습니다 — 거리는 말하지 마세요. "
     if confirmed:
-        ai = (where + "entry_status 가 yes 인 곳을 먼저 1~2곳 이름·거리로 말하세요. 근거는 '접근로나 경사로가 "
+        ai = (where + "entry_status 가 yes 인 곳 중 가장 가까운 한 곳만 이름·거리로 말하세요. " + _ONE_AT_A_TIME + "근거는 '접근로나 경사로가 "
               "있다고 등록된 곳'이라고 표현하고, 문턱이 전혀 없다고 단정하지 마세요. record_type 이 "
               "building_survey 인 곳은 건물 실태조사 기록이라 지금 같은 가게가 영업 중인지 확인이 필요하다고 "
               "덧붙이세요. 반경 안 %d곳 중 휠체어 정보가 확인된 곳은 %d곳뿐이라는 점을 한 문장으로 알리고, "
@@ -1693,8 +1731,8 @@ async def tool_find_accessible_restaurants(lat: float = None, lng: float = None,
               + _toilet_instruction(items))
     elif items:
         ai = (where + "반경 안에 휠체어 출입이 확인된 음식점은 없다고 분명히 말하세요. 목록의 곳들은 "
-              "'휠체어 정보가 없는 곳'이지 못 가는 곳이 아닙니다 — 1~2곳만 이름을 말하고 방문 전 전화 확인을 "
-              "권하세요. 필요하면 google_search 로 경사로·문턱 정보를 찾아볼 수 있다고 제안하세요. "
+              "'휠체어 정보가 없는 곳'이지 못 가는 곳이 아닙니다 — 가장 가까운 한 곳만 이름을 말하고 방문 전 전화 확인을 "
+              "권하세요. " + _ONE_AT_A_TIME + "필요하면 google_search 로 경사로·문턱 정보를 찾아볼 수 있다고 제안하세요. "
               + _toilet_instruction(items))
     else:
         ai = (where + "반경 %dm 안에 등록된 음식점이 없다고 말하고, 범위를 넓히거나 다른 장소를 기준으로 "
@@ -2011,7 +2049,8 @@ async def tool_find_culture_sports(lat: float = None, lng: float = None, place: 
         by_type[it["facility_type"]] = by_type.get(it["facility_type"], 0) + 1
     radius_text = _km_text(radius_m).replace("약 ", "")
     ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
-          + "종류별로 가장 가까운 1~2곳만 이름·거리(dist_text)·전화번호로 말하세요. "
+          + "가장 가까운 한 곳만 이름·거리(dist_text)·전화번호로 말하세요(여러 종류를 함께 물었으면 종류마다 한 곳). "
+          + _ONE_AT_A_TIME +
           "beyond_radius 가 true 인 곳은 '반경 %s 안에는 없고, 경기도 자료 중 가장 가까운 곳은 ○○(dist_text)'라고 "
           "가까운 곳과 분명히 구분해 말하세요. 이 자료는 경기도 자료라 서울 등 인접 지역의 더 가까운 시설이 "
           "빠져 있을 수 있으니 '가장 가까운 곳'이라고 단정하지 마세요. "
@@ -2102,7 +2141,7 @@ async def tool_find_service_providers(service: str = "", district: str = "", nam
               "tel": it.get("tel")} for it in (data.get("items") or []) if isinstance(it, dict)]
     base = data.get("base_date")
     if items:
-        ai = ("2~3곳만 이름·제공 서비스·전화번호로 말하세요. %s 기준 명부라 운영 여부와 빈자리는 기관에 전화로 "
+        ai = ("한 곳만 이름·제공 서비스·전화번호로 말하세요. " + _ONE_AT_A_TIME + "%s 기준 명부라 운영 여부와 빈자리는 기관에 전화로 "
               "확인하시라고 권하세요. 바우처·주간활동 같은 서비스는 먼저 행정복지센터에 신청해 자격을 받아야 "
               "이용할 수 있으니, 신청 방법을 물으면 정책 도구(search_by_keyword)로 안내하세요. "
               "전체 %d곳이 있습니다. " % (base or "적재 시점", data.get("total", len(items))))
@@ -2123,7 +2162,7 @@ async def tool_find_standard_workplaces(district: str = "", keyword: str = "", s
               "tel": it.get("tel"), "cert_date": it.get("cert_date")}
              for it in (data.get("items") or []) if isinstance(it, dict)]
     base = data.get("base_date")
-    ai = (("2~3곳만 이름·업종·전화번호로 말하세요. 표준사업장은 장애인 고용 요건을 갖춰 인증받은 사업장이며, "
+    ai = (("한 곳만 이름·업종·전화번호로 말하세요. " + _ONE_AT_A_TIME + "표준사업장은 장애인 고용 요건을 갖춰 인증받은 사업장이며, "
            "지금 채용 중인지는 알 수 없으니 회사나 한국장애인고용공단(1588-1519)에 문의하시라고 권하세요. "
            "%s 기준 인증 현황입니다. " % (base or "적재 시점")) if items else
           "조건에 맞는 표준사업장이 없다고 말하고, 업종이나 지역을 바꿔 찾아볼지 물어보세요. ")
@@ -2223,7 +2262,7 @@ async def tool_find_nearby_transit(lat: float = None, lng: float = None,
         "items": out,
         "ai_instruction": (
             ("기준 위치는 %s 입니다. " % base_label if base_label else "")
-            + "가까운 순으로 2~3곳만 이름·거리와 함께 말하고, 나머지는 생략하세요. "
+            + "가장 가까운 한 곳만 이름·거리와 함께 말하세요. " + _ONE_AT_A_TIME +
             "accessible_status 가 unknown 인 정류장은 '이용 불가'가 아니라 "
             "'저상버스 정차 여부는 실시간 도착정보로 확인이 필요하다'고 말하세요. "
             "버스 방면은 end_station(종점명)으로 안내하되, 양방향 종점명이 같은 순환 "

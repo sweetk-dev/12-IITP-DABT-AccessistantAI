@@ -3717,7 +3717,7 @@ window.NAVI = (function(){
      "이어서 말씀드릴까요?", "거기로 안내해 드릴까요?" 바로 뒤 1.5초 만에 "안내를 이어갈게요"가 나오면 답할 틈이 없다.
      이용자가 말을 시작하면 그동안은 복귀하지 않고(lastUserSpeechTs), 답이 없으면 ANSWER_WAIT_MS 뒤에 안내로 돌아온다.
      이동 중이므로 한없이 기다리지 않는다. 다음 안내 지점에 닿으면 그 안내는 기다리지 않고 바로 나온다(_announceStep). */
-  var ANSWER_WAIT_MS = 8000;
+  var ANSWER_WAIT_MS = 5000;
   function endsWithQuestion(t){
     var s = String(t || "").replace(/[\s"'”’)\]]+$/, "");
     return /[?？]$/.test(s) || /(까요|나요|습니까|래요)[.!]?$/.test(s);
