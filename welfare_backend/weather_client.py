@@ -69,6 +69,16 @@ def rain_label(mm_h: float) -> str:
     return "약한 비"
 
 
+def feels_word(v) -> str:
+    """체감온도 → 말로 쓸 느낌(과장 방지). 모델이 '많이 춥다'를 지어내지 않게 이 낱말을 따르게 한다."""
+    if not isinstance(v, (int, float)):
+        return ""
+    for lim, w in ((-10, "매우 추움"), (0, "추움"), (10, "쌀쌀함"), (20, "선선함"), (27, "따뜻함"), (32, "더움")):
+        if v <= lim:
+            return w
+    return "매우 더움"
+
+
 def dust_grade(pm10, pm25) -> Optional[str]:
     """환경부 기준 미세먼지 등급 — PM10·PM2.5 중 나쁜 쪽."""
     def g10(v):
@@ -184,6 +194,8 @@ def summarize(fc: dict, air: Optional[dict], day: str = "today", now: Optional[d
             "temp_min": _r(at(daily.get("temperature_2m_min") or [], di)),
             "feels_max": _r(at(daily.get("apparent_temperature_max") or [], di)),
             "feels_min": _r(at(daily.get("apparent_temperature_min") or [], di)),
+            "feels_word_low": feels_word(at(daily.get("apparent_temperature_min") or [], di)),
+            "feels_word_high": feels_word(at(daily.get("apparent_temperature_max") or [], di)),
             "precip_prob_max": _r(at(daily.get("precipitation_probability_max") or [], di)),
             "precip_mm": round(_num(at(daily.get("precipitation_sum") or [], di)), 1),
             "snow_cm": round(_num(at(daily.get("snowfall_sum") or [], di)), 1),
@@ -220,7 +232,7 @@ def summarize(fc: dict, air: Optional[dict], day: str = "today", now: Optional[d
         # 앞으로 6시간 안의 비 — 오늘이 6시간 안 남았으면 다음 날 새벽까지 본다
         nxt = [i for i in range(hi + 1, min(hi + 7, len(times)))]
         nxt_wet = [i for i in nxt if _wet(at(prob, i), at(prec, i), at(codes, i))]
-        now_b = {"temp": temp, "feels_like": feels, "sky": sky_label(code),
+        now_b = {"temp": temp, "feels_like": feels, "feels_word": feels_word(feels), "sky": sky_label(code),
                  "raining": raining, "snowing": snowing,
                  "rain_mm_h": round(mm_h, 1) if (raining or snowing) else 0.0,
                  "rain_label": rain_label(mm_h) if raining else "",
