@@ -481,7 +481,9 @@ def is_indoor_name(name: str) -> bool:
 
 # 장소 찾기 결과는 한 곳씩 (v2.29.4) — 한 번에 여러 곳을 들으면 이동 중에 기억하기 어렵다
 _ONE_AT_A_TIME = ("나머지 곳은 먼저 말하지 마세요. 사용자가 '다른 곳', '또 있어?'처럼 물으면 도구를 다시 부르지 말고 "
-                  "이 목록의 다음 항목 하나만 같은 방식으로 말하세요. 목록을 다 말했으면 더 넓게 찾아볼지 물으세요. ")
+                  "이 목록의 다음 항목 하나만 같은 방식으로 말하세요. 목록을 다 말했으면 더 넓게 찾아볼지 물으세요. "
+                  "다음 곳도 한두 문장으로만 말하고 '더 안내해 드릴까요?'처럼 되묻지 마세요 — 원하면 사용자가 먼저 묻습니다. "
+                  "화면 카드의 '여기로 안내'는 사용자가 가는 길을 물을 때만 말하세요. ")
 
 # 시각을 오전·오후로 (v2.29.4) — "08:00~23:00" 을 그대로 주면 "팔시부터 이십삼시까지"로 읽는다
 _CLOCK_RE = re.compile(r"(?<!\d)([01]?\d|2[0-4])\s*:\s*([0-5]\d)(?!\d)")
@@ -1563,11 +1565,12 @@ async def tool_find_emergency_support(lat: float = None, lng: float = None, plac
           "coord_suspect 가 true 인 곳은 '위치가 정확하지 않을 수 있다'고 덧붙이세요. "
           "tel_owner 가 manager 인 번호는 설치장소가 아니라 관리기관(tel_owner_name) 번호이니 "
           "'관리기관 번호'라고 밝히고 전하세요. "
-          "화면에 카드가 떴고 '여기로 안내' 를 누르면 경로를 안내받을 수 있다고 알리세요. ")
+          )
     if missing:
         ai += "%s 은(는) 반경 %dm 안에 없다고 분명히 말하세요. " % ("·".join(missing), radius_m)
     if "charge" in tsel:
-        ai += "배터리 상황이면 이동 가능 거리를 먼저 묻고, 멀면 콜택시를 함께 권하세요. "
+        ai += ("배터리 상황이면 가장 가까운 충전소를 먼저 말하고, 멀다고 하면 장애인콜택시 전화번호를 알려 드리세요. "
+               "콜택시를 직접 부르거나 전화를 연결해 드릴 수는 없으니 '불러 드릴까요?'라고 묻지 마세요. ")
     return {
         "status": "success",
         "tool_name": "find_emergency_support",
@@ -1674,8 +1677,8 @@ def _toilet_instruction(items: list) -> str:
         return ""
     return ("이름을 말하는 식당에만 toilet 을 보고 화장실 한 마디를 덧붙이세요(목록 전체를 읽지 마세요): "
             "status 가 own 이면 '장애인 화장실이 등록된 곳', nearby 면 toilet.nearby 의 dist_m 와 name 값을 넣어 "
-            "'가게 화장실 정보는 없지만 (dist_m)m 에 (name)이 있다', none 이면 '근처 200m 안에 확인된 화장실은 "
-            "없다', unknown 이면 화장실은 말하지 마세요. ")
+            "'가게 화장실 정보는 없지만 (dist_m)m 에 (name)이 있다'. none·unknown 이면 화장실은 먼저 말하지 마세요"
+            "(물으면 none 은 '근처 200m 안에 확인된 화장실은 없다'). ")
 
 
 async def tool_find_accessible_restaurants(lat: float = None, lng: float = None, place: str = "",
@@ -1725,9 +1728,8 @@ async def tool_find_accessible_restaurants(lat: float = None, lng: float = None,
         ai = (where + "entry_status 가 yes 인 곳 중 가장 가까운 한 곳만 이름·거리로 말하세요. " + _ONE_AT_A_TIME + "근거는 '접근로나 경사로가 "
               "있다고 등록된 곳'이라고 표현하고, 문턱이 전혀 없다고 단정하지 마세요. record_type 이 "
               "building_survey 인 곳은 건물 실태조사 기록이라 지금 같은 가게가 영업 중인지 확인이 필요하다고 "
-              "덧붙이세요. 반경 안 %d곳 중 휠체어 정보가 확인된 곳은 %d곳뿐이라는 점을 한 문장으로 알리고, "
-              "방문 전 전화로 출입구·좌석을 확인하시라고 권하세요. 화면 목록의 '여기로 안내' 로 경로를 받을 "
-              "수 있다고 알리세요. " % (total, confirmed)
+              "덧붙이세요. 휠체어 정보가 확인된 곳이 몇 곳인지(반경 안 %d곳 중 %d곳)는 사용자가 물을 때만 말하고, "
+              "방문 전 전화로 출입구·좌석을 확인하시라고 짧게 권하세요. " % (total, confirmed)
               + _toilet_instruction(items))
     elif items:
         ai = (where + "반경 안에 휠체어 출입이 확인된 음식점은 없다고 분명히 말하세요. 목록의 곳들은 "
@@ -2067,7 +2069,7 @@ async def tool_find_culture_sports(lat: float = None, lng: float = None, place: 
         ai += ("in_service_area 가 true 가 아닌 곳은 길안내 지역 밖이라 경로 안내는 할 수 없으니 전화로 문의하거나 "
                "대중교통을 이용하시라고 하세요. ")
     if items:
-        ai += "화면에 카드가 떴고, 길안내 지역 안이면 '여기로 안내' 로 경로를 받을 수 있다고 알리세요. "
+        ai += "길안내 지역 안이면 화면 카드의 '여기로 안내'로 경로를 받을 수 있습니다 — 이 말은 사용자가 가는 길을 물을 때만 하세요. "
     else:
         ai += ("찾는 시설이 없다고 분명히 말하세요. 이 자료는 경기도 자료라 경기도 밖 시설은 알 수 없다고 "
                "덧붙이세요. 시설을 지어내지 마세요. ")
