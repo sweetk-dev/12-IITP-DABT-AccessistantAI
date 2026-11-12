@@ -14,6 +14,8 @@ _NAV_FIELDS = ("route_id", "guiding", "step_idx", "total_steps",
                "board_station_id", "board_route_id", "board_stop_name",
                # 지하철 하차역 역 안/밖 안내 (#298) — {station, exit_no, where, inside[], outside}
                "station_egress",
+               # 지금 또는 곧 탈 역의 승차 전 역 안 이동 (v2.29.6) — {station, inside[], car}
+               "station_ingress",
                # 화면이 지금 역 안/밖·출구 확인을 기다리는지 (v1.52.0) — {kind, station, choices[]}
                "station_wait",
                # 이용자가 말로 안내를 멈춘 상태인지 (v2.28.0) — 안내 상태(guiding)는 유지된다
@@ -32,6 +34,7 @@ def update_nav_state(nav: dict, msg: dict) -> None:
     nav["guiding"] = bool(nav.get("guiding"))
     nav["paused"] = bool(nav.get("paused"))
     nav["station_egress"] = _clean_egress(nav.get("station_egress"))
+    nav["station_ingress"] = _clean_ingress(nav.get("station_ingress"))
     nav["station_wait"] = _clean_wait(nav.get("station_wait"))
     # step_idx/total_steps/remaining_m 은 정수화 실패 시 None 으로 방어
     for k in ("step_idx", "total_steps", "remaining_m"):
@@ -58,6 +61,40 @@ def _clean_egress(v):
         "outside": str(v.get("outside") or "")[:200] or None,
     }
     return out if (out["station"] and (inside or out["outside"])) else None
+
+
+def _clean_ingress(v):
+    """프런트가 보낸 승차 전 역 안 이동(경로 서비스 ingress)을 허용 필드·길이로 정리한다 (v2.29.6)."""
+    if not isinstance(v, dict):
+        return None
+    inside = [str(x)[:160] for x in (v.get("inside") or []) if x][:4]
+    out = {"station": str(v.get("station") or "")[:20] or None, "inside": inside,
+           "car": str(v.get("car") or "")[:80] or None}
+    return out if (out["station"] and inside) else None
+
+
+def _st_key(s) -> str:
+    s = "".join(str(s or "").split())
+    return s[:-1] if s.endswith("역") and len(s) > 1 else s
+
+
+def route_elevator(nav: dict, station: str = ""):
+    """안내 중인 경로에서 이용할 승강기 하나 (v2.29.6) — "엘리베이터 어디야"에는 이것만 답한다.
+
+    타는 역은 승차 승강장 승강기(ingress 의 '승강장' 문장), 내리는 역은 내린 승강장의 승강기(egress 첫 문장).
+    역을 말하지 않았으면 타는 역을 먼저 본다. 경로에 없는 역이면 None.
+    반환: {"side": "board"|"alight", "station", "text", "car"?}
+    """
+    nav = nav or {}
+    want = _st_key(station)
+    ing, eg = nav.get("station_ingress"), nav.get("station_egress")
+    if ing and (not want or _st_key(ing.get("station")) == want):
+        lines = ing.get("inside") or []
+        plat = [x for x in lines if "승강장" in x] or lines
+        return {"side": "board", "station": ing.get("station"), "text": plat[0], "car": ing.get("car")}
+    if eg and (not want or _st_key(eg.get("station")) == want) and (eg.get("inside") or []):
+        return {"side": "alight", "station": eg.get("station"), "text": eg["inside"][0]}
+    return None
 
 
 # 화면이 기다리는 역 안/밖 확인의 종류 (v1.52.0)
@@ -420,6 +457,15 @@ def inject_nav_defaults(fname: str, fargs: dict, nav: dict, user_location: dict)
         elif not fargs.get("place"):
             fargs.pop("lat", None)
             fargs.pop("lng", None)
+    elif fname == "get_station_facilities":
+        # 안내 중이면 경로에서 탈(내릴) 승강기를 세션이 준다 — 모델이 고르지 않게 (v2.29.6)
+        re_ = route_elevator(nav, fargs.get("station") or "")
+        if re_:
+            fargs["route_elevator"] = re_
+            if not fargs.get("station"):
+                fargs["station"] = re_["station"]
+        else:
+            fargs.pop("route_elevator", None)
     elif fname == "report_station_position":
         # 화면이 무엇을 기다리는지는 세션만 안다 (v1.52.0) — 모델이 지어내지 못하게 덮어쓴다
         fargs["station_wait"] = (nav or {}).get("station_wait")

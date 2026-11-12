@@ -3437,8 +3437,15 @@ window.NAVI = (function(){
       for(var gi2 = stepIdx; gi2 < steps.length && gi2 <= stepIdx + 3; gi2++){
         if(steps[gi2] && steps[gi2].egress){ eg = steps[gi2].egress; break; }
       }
+      // 지금 또는 곧 탈 역의 역 안 이동 — "엘리베이터 어디야"에 경로의 승강기 하나만 답하는 근거 (v2.29.6)
+      var ig = null;
+      for(var gi3 = stepIdx; gi3 < steps.length && gi3 <= stepIdx + 3; gi3++){
+        if(steps[gi3] && steps[gi3].ingress){ ig = steps[gi3].ingress; break; }
+        if(steps[gi3] && steps[gi3].egress) break;   // 이미 내릴 역 쪽 — 다음 승차 안내는 아직 보내지 않는다
+      }
       wsRef.send(JSON.stringify({type:"nav_state",
         route_id: (route && route.route_id) || null,
+        station_ingress: ig ? {station: ig.station, inside: ig.inside || [], car: (ig.car && ig.car.text) || null} : null,
         leg_kind: lk,
         station_egress: eg ? {station: eg.station, exit_no: eg.exit ? eg.exit.exit_no : null,
                               where: egressWhere[egressKey(eg)] || null,

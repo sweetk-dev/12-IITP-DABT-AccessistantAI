@@ -2560,7 +2560,7 @@ def _station_query_name(text: str) -> str:
     return q
 
 
-async def tool_get_station_facilities(station: str = "") -> dict:
+async def tool_get_station_facilities(station: str = "", route_elevator: dict = None) -> dict:
     """역의 교통약자 편의시설 — "범계역 엘리베이터 어디 있어", "안양역 장애인 화장실 있어?".
 
     승강기·리프트는 출입구별 위치를, 화장실은 게이트 안/밖·출구를, 승강장은 안전발판·
@@ -2619,9 +2619,15 @@ async def tool_get_station_facilities(station: str = "") -> dict:
         "platform_gap_max_cm": max(gaps) if gaps else None,
         "platforms": platforms,
         "base_dt": data.get("base_dt"),
+        "route_elevator": route_elevator if isinstance(route_elevator, dict) else None,
         "ai_instruction": (
-            "역 이름과 노선을 말한 뒤, 사용자가 물은 항목만 답하세요. 엘리베이터를 물으면 "
-            "elevators 의 출입구·위치를 2~3개까지 읽어 주고, 화장실을 물으면 dis_toilets 의 "
+            ("안내 중인 경로에서 이용할 승강기는 route_elevator.text 입니다. 엘리베이터를 물으면 이 승강기 하나만 "
+             "말하세요(타는 역이면 탈 승강장 쪽 승강기, 내리는 역이면 내린 승강장의 승강기). "
+             "다른 승강기 위치는 사용자가 물을 때만 elevators 에서 하나씩 말하세요. "
+             if isinstance(route_elevator, dict) and route_elevator.get("text") else
+             "엘리베이터를 물으면 elevators 에서 하나만 말하세요 — 사용자가 방향(○○ 방면)이나 출구를 말했으면 그에 맞는 것, "
+             "아니면 첫 항목. 다른 위치는 물을 때만 하나씩 말하세요. ")
+            + "역 이름과 노선은 처음 한 번만 말하고, 사용자가 물은 항목만 답하세요. 화장실을 물으면 dis_toilets 의 "
             "게이트 안/밖·출구를 말하세요. 리프트만 있는 역은 도움이 필요할 수 있다고 알리세요. "
             "상태 값이 unknown 이면 '없다'가 아니라 '자료가 없다'고 말하세요. "
             "승강장 이격거리(platform_gap_max_cm)는 휠체어 승차를 물었을 때만 '최대 약 n cm 틈, "
