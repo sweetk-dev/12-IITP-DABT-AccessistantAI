@@ -501,4 +501,50 @@ def inject_nav_defaults(fname: str, fargs: dict, nav: dict, user_location: dict)
             fargs.pop("lng", None)
         if nav and nav.get("route_id"):
             fargs["route_id"] = nav["route_id"]
+        _report_step(fargs, nav)
     return fargs
+
+
+REPORT_PENDING_TTL_SEC = 180
+
+
+def _report_step(fargs: dict, nav: dict, now: float = None) -> None:
+    """말로 한 신고의 되묻기 → 접수 단계 (v2.31.0).
+
+    propose(기본): 처음 말한 순간의 위치·사유를 세션(nav["report_pending"])에 기억한다 — 되묻고 답을 듣는 사이
+                   이용자는 이동한다. 문제 지점은 처음 말한 곳이다.
+    confirm      : 기억한 신고가 있을 때만 접수한다. 위치·route_id 는 기억한 값, 사유는 모델이 다시 준 값이 있으면 그것.
+                   기억한 신고가 없거나 오래됐으면(REPORT_PENDING_TTL_SEC) 접수하지 않고 다시 되묻는다 —
+                   되묻지 않고 바로 접수하는 길을 막는다.
+    cancel       : 기억한 신고를 버린다.
+    nav 는 프런트 nav_state 로 갱신돼도 이 키는 지워지지 않는다(update_nav_state 는 정해진 필드만 쓴다).
+    """
+    import time as _t
+    now = _t.time() if now is None else now
+    if nav is None:
+        nav = {}
+    step = str(fargs.get("step") or "propose").strip().lower()
+    pend = nav.get("report_pending")
+    if pend and now - pend.get("ts", 0) > REPORT_PENDING_TTL_SEC:
+        pend = None
+        nav.pop("report_pending", None)
+    if step == "cancel":
+        nav.pop("report_pending", None)
+        fargs["step"] = "cancel"
+        return
+    if step == "confirm" and pend:
+        for k in ("lat", "lng", "route_id"):
+            if pend.get(k) is not None:
+                fargs[k] = pend[k]
+            else:
+                fargs.pop(k, None)
+        fargs["reason"] = fargs.get("reason") or pend.get("reason")
+        fargs["detail"] = fargs.get("detail") or pend.get("detail")
+        nav.pop("report_pending", None)
+        fargs["step"] = "confirm"
+        return
+    # propose (또는 기억한 신고 없이 온 confirm) — 기억하고 되묻는다
+    fargs["step"] = "propose"
+    if fargs.get("lat") is not None:
+        nav["report_pending"] = {"lat": fargs["lat"], "lng": fargs["lng"], "route_id": fargs.get("route_id"),
+                                 "reason": fargs.get("reason"), "detail": fargs.get("detail"), "ts": now}

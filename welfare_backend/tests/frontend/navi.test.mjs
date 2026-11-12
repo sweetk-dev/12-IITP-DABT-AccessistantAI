@@ -4035,6 +4035,77 @@ check("nav_state 에 탈 역의 역 안 이동(station_ingress)을 싣고, 내�
   I().resetTrip(); I().stopSpeak(); I().setGuideLevel(1);
 }
 
+// ── v2.31.0: 위치 고착 알림 (실증 S-16) ──
+{
+  const I = () => window.NAVI._internals();
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+  const B0 = [37.4000, 126.9300], P = (m) => [B0[0] + m / 110540, B0[1]];
+  const fix = (m, ts, east) => ({ timestamp: ts, coords: { latitude: P(m)[0], longitude: P(m)[1] + (east || 0) / 88400, accuracy: 5 } });
+  I().showRoute({ route_id: "r_stuck", routes: [{ summary: { total_distance_m: 400, duration_sec: 360 },
+    geometry: [P(0), P(200), P(400)],
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "문예로를 따라 200m 이동합니다.", distance_m: 200, coord: P(0), warnings: [] },
+      { idx: 1, maneuver: "crossing", instruction: "횡단보도를 건너 16m 이동합니다.", distance_m: 16, coord: P(200), warnings: [] },
+      { idx: 2, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: P(400), warnings: [] },
+    ] }] }, "고착 시험");
+  I().startGuidance(); await sleep(5); I().stopSpeak();
+  I().setStepIdxForTest(0);
+  const T = 1_800_000_000_000;
+  I().stuckResetForTest();
+  // 이동 중 — 알리지 않는다
+  for (let k = 0; k <= 12; k++) I().noteFixForTest(fix(50 + k * 5, T + k * 5000), T + k * 5000);
+  check("위치 고착: 움직이는 동안에는 알리지 않는다 (v2.31.0)", () => assert.equal(I().stuckCheckForTest(T + 60000), null));
+  // 같은 자리 측위가 45초 넘게 — frozen
+  for (let k = 1; k <= 10; k++) I().noteFixForTest(fix(110, T + 60000 + k * 5000), T + 60000 + k * 5000);
+  check("위치 고착: 측위는 오는데 45초 넘게 같은 자리면 알린다 (v2.31.0)", () => {
+    assert.equal(I().stuckCheckForTest(T + 112000), "frozen");
+    assert.match($("naviStatus").textContent, /위치가 한동안 바뀌지 않고 있습니다/);
+  });
+  check("위치 고착: 한 번 알리면 되풀이하지 않는다 (v2.31.0)", () => assert.equal(I().stuckCheckForTest(T + 120000), null));
+  I().noteFixForTest(fix(125, T + 125000), T + 125000);
+  check("위치 고착: 10m 넘게 움직이면 풀고 '다시 찾았습니다' (v2.31.0)", () => {
+    assert.equal(I().stuckState(), null);
+    assert.match($("naviStatus").textContent, /위치를 다시 찾았습니다/);
+  });
+  // 새 측위가 끊김 — nofix (같은 timestamp 되풀이는 새 측위가 아니다)
+  I().stuckResetForTest(); I().setStepIdxForTest(0);
+  const T2 = T + 400000;
+  I().noteFixForTest(fix(130, T2), T2);
+  for (let k = 1; k <= 5; k++) I().noteFixForTest(fix(130, T2), T2 + k * 5000);
+  check("위치 고착: 같은 측위가 되풀이되며 20초 넘게 새 측위가 없으면 알린다 (v2.31.0)", () => {
+    assert.equal(I().stuckCheckForTest(T2 + 26000), "nofix");
+    assert.match($("naviStatus").textContent, /위치 신호가 잠시 끊겼습니다/);
+  });
+  I().noteFixForTest(fix(131, T2 + 30000), T2 + 30000);
+  check("위치 고착: 새 측위가 오면 nofix 해제 (v2.31.0)", () => assert.equal(I().stuckState(), null));
+  // 횡단보도 단계에서 경로 위에 서 있으면(신호 대기) 알리지 않는다
+  I().stuckResetForTest(); I().setStepIdxForTest(1);
+  const T3 = T + 800000;
+  I().setHere({ lat: P(198)[0], lng: P(198)[1] });
+  for (let k = 0; k <= 12; k++) I().noteFixForTest(fix(198, T3 + k * 5000), T3 + k * 5000);
+  check("위치 고착: 횡단보도 앞 경로 위 대기는 알리지 않는다 (v2.31.0)", () => assert.equal(I().stuckCheckForTest(T3 + 61000), null));
+  // 같은 횡단 단계라도 경로에서 20m 떨어져 멈추면(S-16) 알린다
+  I().stuckResetForTest(); I().setStepIdxForTest(1);
+  const T4 = T + 1200000, off = { lat: P(205)[0], lng: P(205)[1] + 22 / 88400 };
+  I().setHere(off);
+  for (let k = 0; k <= 12; k++) I().noteFixForTest(fix(205, T4 + k * 5000, 22), T4 + k * 5000);
+  check("위치 고착: 횡단 단계라도 경로에서 20m 떨어져 멈추면 알린다 — S-16 (v2.31.0)", () => assert.equal(I().stuckCheckForTest(T4 + 61000), "frozen"));
+  check("위치 고착: 측위 루프·안내 시작·경로 지우기에 걸려 있다 (소스 가드, v2.31.0)", () => {
+    assert.match(HTML, /if\(guiding && !simActive\) _noteFix\(pos\);/);
+    assert.match(HTML, /followCamera\(\); _stuckCheck\(\); \}/);
+    assert.match(HTML, /_stuckReset\(\); _stuckArm\(\);/);
+    assert.match(HTML, /guiding=false; _markPaused\(false\); _stuckReset\(\);/);
+    assert.match(HTML, /maximumAge: fresh \? 0 : 5000/);
+  });
+  I().clearRouteDisplay();
+  check("위치 고착: 경로를 지우면 상태도 비운다 (v2.31.0)", () => assert.equal(I().stuckState(), null));
+  check("방향 띠: 높이 52px·화살표 46px 로 줄임 (v2.31.0)", () => {
+    assert.match(HTML, /\.mv-banner\{[^}]*min-height:52px;\}/);
+    assert.match(HTML, /\.mv-arrow\{flex:none;width:46px;height:46px;/);
+  });
+  I().resetTrip(); I().stopSpeak();
+}
+
 // ── 결과 ──
 let failed = 0;
 for (const [st, name] of results) {

@@ -9,6 +9,8 @@
   2) 위치를 모르면 API 를 호출하지 않고 need_location 으로 안내한다
   3) reason 화이트리스트 밖 값은 etc 로 강등된다
   4) 경로 서비스 오류는 route_client 의 안내문(ai_instruction) 그대로 전달한다
+  5) (v2.31.0) 말로 한 신고는 되묻고(propose) 이용자가 그렇다고 한 뒤(confirm)에만 접수한다.
+     접수 위치는 처음 말한 곳(세션이 기억), 기억한 신고 없이 온 confirm 은 다시 되묻는다
 """
 import asyncio
 import os
@@ -66,12 +68,12 @@ async def main():
 
     # 1) 정상 접수 + reason 화이트리스트
     r = await tool_handlers.tool_report_accessibility(reason="curb", detail="턱이 높음",
-                                                      lat=37.39, lng=126.95, route_id="r_x")
+                                                      lat=37.39, lng=126.95, route_id="r_x", step="confirm")
     check("정상 접수 -> success + 감사 안내문", r["status"] == "success" and "감사" in r["ai_instruction"], str(r))
     check("페이로드에 좌표·사유·route_id 전달", CALLS[-1]["lat"] == 37.39 and CALLS[-1]["reason"] == "curb"
           and CALLS[-1]["route_id"] == "r_x", str(CALLS[-1]))
 
-    r = await tool_handlers.tool_report_accessibility(reason="이상한값", lat=37.39, lng=126.95)
+    r = await tool_handlers.tool_report_accessibility(reason="이상한값", lat=37.39, lng=126.95, step="confirm")
     check("화이트리스트 밖 reason -> etc 강등", CALLS[-1]["reason"] == "etc", str(CALLS[-1]))
 
     # 2) 위치 없음 -> API 미호출
@@ -95,8 +97,39 @@ async def main():
 
     # 4) 경로 서비스 오류 전달
     route_client.report_accessibility = _fake_report_error
-    r = await tool_handlers.tool_report_accessibility(reason="curb", lat=37.39, lng=126.95)
+    r = await tool_handlers.tool_report_accessibility(reason="curb", lat=37.39, lng=126.95, step="confirm")
     check("서비스 오류 -> route_client 안내문 그대로", r["status"] == "error" and r.get("ai_instruction"), str(r))
+
+    # 6) 되묻기 → 접수 (v2.31.0)
+    route_client.report_accessibility = _fake_report
+    n0 = len(CALLS)
+    r = await tool_handlers.tool_report_accessibility(reason="steep", lat=37.39, lng=126.95)
+    check("기본(propose)은 접수하지 않고 되묻는다", r["status"] == "confirm_needed" and len(CALLS) == n0
+          and r["summary"] == "경사 심함" and "접수됐다고 말하지" in r["ai_instruction"], str(r))
+    r = await tool_handlers.tool_report_accessibility(reason="etc", detail="볼라드가 길을 막음", lat=37.39, lng=126.95)
+    check("기타는 요약에 말한 내용을 붙인다", r["summary"] == "기타 — 볼라드가 길을 막음", str(r))
+    r = await tool_handlers.tool_report_accessibility(step="cancel")
+    check("cancel 은 접수하지 않는다", r["status"] == "cancelled" and len(CALLS) == n0, str(r))
+
+    nav = {"route_id": "r_nav", "guiding": True}
+    a = inject_nav_defaults("report_accessibility_issue", {"reason": "curb"}, nav, {"lat": 37.4001, "lng": 126.9201})
+    check("propose: 세션이 처음 말한 위치를 기억", a["step"] == "propose" and nav["report_pending"]["lat"] == 37.4001, str(nav))
+    # 프런트 nav_state 가 와도 기억은 남는다
+    from nav_context import update_nav_state, _report_step
+    update_nav_state(nav, {"route_id": "r_nav", "guiding": True, "step_idx": 3})
+    check("nav_state 갱신에도 기억한 신고 유지", "report_pending" in nav)
+    b = inject_nav_defaults("report_accessibility_issue", {"step": "confirm"}, nav, {"lat": 37.4009, "lng": 126.9209})
+    check("confirm: 접수 위치는 처음 말한 곳, 사유는 기억한 값", b["step"] == "confirm" and b["lat"] == 37.4001
+          and b["reason"] == "curb" and b["route_id"] == "r_nav" and "report_pending" not in nav, str(b))
+    c = inject_nav_defaults("report_accessibility_issue", {"step": "confirm", "reason": "curb"}, {}, {"lat": 37.4, "lng": 126.92})
+    check("기억한 신고 없이 온 confirm 은 propose 로 돌린다", c["step"] == "propose", str(c))
+    nav2 = {}
+    inject_nav_defaults("report_accessibility_issue", {"reason": "steep"}, nav2, {"lat": 37.4, "lng": 126.92})
+    f = {"step": "confirm", "lat": 37.4, "lng": 126.92}
+    _report_step(f, nav2, now=nav2["report_pending"]["ts"] + 200)
+    check("3분 넘게 지난 기억은 버리고 다시 되묻는다", f["step"] == "propose", str(f))
+    d = inject_nav_defaults("report_accessibility_issue", {"step": "cancel"}, nav2, {"lat": 37.4, "lng": 126.92})
+    check("cancel: 기억한 신고를 버린다", d["step"] == "cancel" and "report_pending" not in nav2, str(nav2))
 
     # 5) 디스패처 등록
     disp = tool_handlers.get_tool_dispatcher(lambda x: [0.0])
