@@ -1778,7 +1778,8 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
       "좌회전 후 60m 이동합니다.",
       "목적지에 도착했습니다.",   // 종료 확인 질문은 확인 창이 뜰 때 말한다 (v1.46.0)
     ], JSON.stringify(spoken.slice(before)));
-    assert.equal(busyAfter, false);
+    // 막혀 있지 않은지만 본다 — 실제 시간으로 뜬 도착 확인 질문이 지금 재생 중일 수는 있다
+    assert.ok(!busyAfter || spoken.slice(before).some((t) => /처음 화면으로 돌아갈까요/.test(t)), "안내 음성이 끝나지 않았다");
   });
   NV.cancelArrivalReset();   // 이 블록은 발화만 본다 — 첫 화면 복귀는 v1.44.0 블록에서 따로 검증
   check("스텝 안내가 대기 중이면 중간 거리 안내는 버린다 / 즉시 발화는 대기열을 비운다 (v1.43.0)", () => {
@@ -3896,6 +3897,42 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.match(HTML, /_announceStep\(stepIdx, _passed\);/);
   });
   I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak(); I().setFixAccForTest(null);
+}
+
+// ── v2.29.3: 상담원이 물음으로 답을 끝내면 답할 틈을 두고 안내로 돌아온다 ──
+{
+  const I = () => window.NAVI._internals();
+  check("물음으로 끝난 답 판정 (v2.29.3)", () => {
+    for (const t of ["이어서 말씀드릴까요?", "거기로 안내해 드릴까요", "더 들으시겠어요?", "도착하신 뒤에 자세히 안내해 드릴까요? "])
+      assert.equal(I().endsWithQuestion(t), true, t);
+    for (const t of ["약 300미터 남았어요.", "왼쪽으로 이동하세요.", ""]) assert.equal(I().endsWithQuestion(t), false, t);
+    assert.equal(I().resumeGraceAfterAnswer("이어서 말씀드릴까요?"), 8000);
+    assert.equal(I().resumeGraceAfterAnswer("남았어요."), 1500);
+  });
+  check("상담원 턴이 끝나면 물음 여부로 복귀 대기를 고른다 (소스 가드, v2.29.3)", () =>
+    assert.match(HTML, /scheduleResume\(_askWait \? ANSWER_WAIT_MS : 1500\);/));
+  const act = (action, payload) => window.NAVI.onUiAction({ type: "ui_action", action, payload: payload || {} });
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+  window.show("view-navi");
+  act("show_route", ROUTE.ui_action); await sleep(10);
+  window.NAVI.showPreparedView(); await sleep(10);
+  act("start_guidance"); await sleep(10);
+  const resumed = () => spoken.some((t) => /안내를 이어갈게요/.test(t));
+  // 대조: 물음이 아닌 답은 곧 안내로 돌아온다
+  // 앞 블록의 반복 억제 횟수·'방금 말했다' 시각을 비운다 — 남아 있으면 복귀가 늦어져 대조가 안 된다
+  const freshRep = () => { I().resumeRepForTest({ key: null, n: 0, ts: 0 }); I().setUserSpeechTsForTest(0); };
+  I().stopSpeak(); spoken.length = 0; freshRep();
+  window.NAVI.onAiTurnComplete(); window.NAVI.onAiText("약 300미터 남았어요."); window.NAVI.onAiTurnComplete();
+  await sleep(2400);
+  const plainResumed = resumed();
+  // 물음으로 끝난 답은 2초 넘게 지나도 기다린다
+  I().stopSpeak(); spoken.length = 0; freshRep();
+  window.NAVI.onAiText("두 번째 단계까지 말씀드렸어요. 이어서 말씀드릴까요?"); window.NAVI.onAiTurnComplete();
+  await sleep(2400);
+  const askResumed = resumed();
+  check("물음이 아닌 답 뒤에는 곧 안내로 돌아온다 (대조, v2.29.3)", () => assert.equal(plainResumed, true));
+  check("'이어서 말씀드릴까요?' 뒤에는 답할 틈 동안 안내를 이어 말하지 않는다 (v2.29.3)", () => assert.equal(askResumed, false));
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
 }
 
 // ── v2.28.0: 말로 하는 안내 제어 — 멈춤·재개·지도 크기·시작 확대·상담원 말없이 ──

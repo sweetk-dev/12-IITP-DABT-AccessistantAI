@@ -216,6 +216,22 @@ def test_weather_can_be_turned_off(monkeypatch):
     assert "get_weather" not in {t["function"]["name"] for t in lp._ollama_tools()}
 
 
+def test_toilet_one_at_a_time(monkeypatch):
+    async def base(place, lat, lng, name):
+        return 37.38, 126.93, None
+
+    async def near(lat, lng, radius_m=800, limit=5, accessible_only=True):
+        return {"items": [{"name": "브레인빌딩 개방화장실", "dist_m": 66, "accessible": True},
+                          {"name": "명학역 공중화장실", "dist_m": 107, "accessible": True}]}
+    monkeypatch.setattr(th, "_resolve_base", base)
+    monkeypatch.setattr(th.route_client, "toilet_nearby", near)
+    r = _run(th.tool_find_toilet(lat=37.38, lng=126.93))
+    assert r["count"] == 2   # 화면 카드에는 모두 보인다
+    assert "가장 가까운 한 곳" in r["ai_instruction"] and "다음 항목 하나만" in r["ai_instruction"]
+    lb = pytest.importorskip("live_bridge")
+    assert "**가장 가까운 한 곳만**" in lb.SYSTEM_INSTRUCTION and "가까운 1~2곳을 거리·개방시간" not in lb.SYSTEM_INSTRUCTION
+
+
 def test_instruction_rules():
     lb = pytest.importorskip("live_bridge")
     s = lb.SYSTEM_INSTRUCTION
