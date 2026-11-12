@@ -6403,6 +6403,10 @@ window.NAVI = (function(){
       _dropAiTurn();
       voiceZoom(p.dir === "in" ? "in" : "out");   // "지도 확대해줘" (v2.28.0)
       return null;
+    } else if(msg.action === "list_sheet"){
+      _dropAiTurn();
+      voiceSheet(p.dir === "open" ? "open" : "close");   // "목록 열어줘"·"목록 닫아줘" (v2.30.2)
+      return null;
     } else if(msg.action === "open_navi"){
       // 사용자가 음성으로 화면 이동을 '직접' 요청한 경우(#215) — 즉시 전환한다.
       // 준비된 목록/경로가 있으면 그대로, 처음이면 장애유형 게이트부터.
@@ -6506,6 +6510,21 @@ window.NAVI = (function(){
     if(el) el.classList.toggle("collapsed", sheetCollapsed);
     _gripLabel();   // 무엇을 누르면 어떻게 되는지 손잡이 자체가 말해 준다 (v2.17.0)
     _sheetRelayout();
+  }
+  /* 말로 목록 펼치기·접기 (v2.30.2) — 손잡이와 같은 단계: open 은 접힘 → 기본 → 크게, close 는 접기 */
+  function voiceSheet(dir){
+    if(dir === "open"){
+      if(sheetCollapsed) sheetSetCollapsed(false);
+      else if(!sheetBig) sheetSetBig(true);
+      else { status("목록이 가장 크게 펼쳐져 있습니다"); return false; }
+      status(sheetBig ? "목록을 크게 펼쳤습니다" : "목록을 펼쳤습니다");
+    } else {
+      if(sheetCollapsed){ status("목록이 이미 접혀 있습니다"); return false; }
+      sheetSetCollapsed(true);
+      status("목록을 접었습니다");
+    }
+    _tev("navi_sheet_voice", {dir: dir});
+    return true;
   }
   function sheetMini(on){
     var el=$("naviSheet");
@@ -6883,6 +6902,7 @@ window.NAVI = (function(){
                                      resumeDecide:_resumeDecide, resumeShort:resumeShort,
                                      reachedStep:_reachedStep, turnPreAnnounce:_turnPreAnnounce, turnPassed:_turnPassed,
                                      pauseGuidance:pauseGuidance, resumeGuidance:resumeGuidance, isPaused:function(){ return guidePaused; },
+                                     voiceSheet:voiceSheet, sheetState:function(){ return {collapsed: sheetCollapsed, big: sheetBig}; },
                                      endsWithQuestion:endsWithQuestion, resumeGraceAfterAnswer:resumeGraceAfterAnswer, setUserSpeechTsForTest:function(v){ lastUserSpeechTs = v; },
                                      voiceZoom:voiceZoom, guideLevel:function(){ return guideLevel; }, setGuideLevel:function(v){ guideLevel = v; },
                                      continueUtterance:continueUtterance, setFixAccForTest:function(a){ lastFixAcc = a; },

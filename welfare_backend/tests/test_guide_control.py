@@ -69,10 +69,25 @@ def test_map_zoom_on_policy_screen_does_nothing():
     assert r["status"] == "idle" and "ui_action" not in r
 
 
+@pytest.mark.parametrize("given,a", [("open", "open"), ("펼쳐", "open"), ("열어", "open"),
+                                     ("close", "close"), ("닫아", "close"), ("줄여", "close"), ("접어", "close")])
+def test_list_sheet_action(given, a):
+    r = nc.list_sheet_result(given)
+    assert r["ui_action"] == {"action": "list_sheet", "dir": a} and r["ai_instruction"] == nc.SILENT_INSTRUCTION
+
+
+def test_list_sheet_unknown_and_policy():
+    assert nc.list_sheet_result("")["status"] == "idle"
+    r = nc.list_sheet_result("open", mode="policy")
+    assert r["status"] == "idle" and "ui_action" not in r
+
+
 def test_live_declares_control_tools():
     lb = pytest.importorskip("live_bridge")
     decls = [d for t in lb.build_tool_declarations() if t is not None for d in (getattr(t, "function_declarations", None) or [])]
     names = {d.name for d in decls}
-    assert {"start_guidance", "pause_guidance", "map_zoom"} <= names
+    assert {"start_guidance", "pause_guidance", "map_zoom", "list_sheet"} <= names
+    s = next(d for d in decls if d.name == "list_sheet")
+    assert list(s.parameters.properties["action"].enum) == ["open", "close"]
     z = next(d for d in decls if d.name == "map_zoom")
     assert list(z.parameters.properties["direction"].enum) == ["in", "out"]
