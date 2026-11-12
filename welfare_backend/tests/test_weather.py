@@ -221,15 +221,43 @@ def test_toilet_one_at_a_time(monkeypatch):
         return 37.38, 126.93, None
 
     async def near(lat, lng, radius_m=800, limit=5, accessible_only=True):
-        return {"items": [{"name": "브레인빌딩 개방화장실", "dist_m": 66, "accessible": True},
-                          {"name": "명학역 공중화장실", "dist_m": 107, "accessible": True}]}
+        return {"items": [{"name": "브레인빌딩 개방화장실", "dist_m": 66, "accessible": True, "open_time": "08:00~23:00"},
+                          {"name": "명학역 공중화장실", "dist_m": 107, "accessible": True, "open_time": "04:30~24:20"}]}
     monkeypatch.setattr(th, "_resolve_base", base)
     monkeypatch.setattr(th.route_client, "toilet_nearby", near)
     r = _run(th.tool_find_toilet(lat=37.38, lng=126.93))
     assert r["count"] == 2   # 화면 카드에는 모두 보인다
+    assert [x["open_time_ko"] for x in r["items"]] == ["오전 8시부터 오후 11시까지", "오전 4시 30분부터 밤 12시 20분까지"]
+    assert "open_time_ko 를 그대로 읽고" in r["ai_instruction"]
     assert "가장 가까운 한 곳" in r["ai_instruction"] and "다음 항목 하나만" in r["ai_instruction"]
     lb = pytest.importorskip("live_bridge")
     assert "**가장 가까운 한 곳만**" in lb.SYSTEM_INSTRUCTION and "가까운 1~2곳을 거리·개방시간" not in lb.SYSTEM_INSTRUCTION
+
+
+def test_clock_text_reads_am_pm():
+    f = th.ko_clock_text
+    assert f("08:00~23:00") == "오전 8시부터 오후 11시까지"
+    assert f("09:00-18:00 (토 09:00~13:00)") == "오전 9시부터 오후 6시까지 (토 오전 9시부터 오후 1시까지)"
+    assert f("00:00~24:00") == "24시간" and f("0:00-23:59") == "24시간"
+    assert f("12:30") == "낮 12시 30분" and f("상시 개방") == "상시 개방" and f(None) is None and f("") == ""
+
+
+def test_place_tools_answer_one_at_a_time():
+    import inspect
+    src = inspect.getsource(th)
+    assert src.count("_ONE_AT_A_TIME") >= 9   # 정의 1 + 관광·긴급·식당 2·문화·제공기관·표준사업장·정류장 (화장실은 자체 문구)
+    for fn in (th.tool_find_bf_tour_spots, th.tool_find_emergency_support, th.tool_find_accessible_restaurants,
+               th.tool_find_culture_sports, th.tool_find_service_providers, th.tool_find_standard_workplaces,
+               th.tool_find_nearby_transit):
+        s = inspect.getsource(fn)
+        assert "1~2곳" not in s and "2~3곳" not in s, fn.__name__
+        assert "_ONE_AT_A_TIME" in s, fn.__name__
+    lb = pytest.importorskip("live_bridge")
+    s = lb.SYSTEM_INSTRUCTION
+    assert "**장소를 찾아 주는 답은 한 곳씩**" in s and "**시각은 오전·오후로**" in s
+    for frag in ("상위 2~3곳만 간단히", "유형별 가장 가까운 1~2곳", "가까운 1~2곳을 거리로"):
+        assert frag not in s, frag
+    assert "장소를 찾아 주는 답은 가장 가까운 한 곳만" in lp.LOCAL_SYSTEM_PROMPT
 
 
 def test_instruction_rules():

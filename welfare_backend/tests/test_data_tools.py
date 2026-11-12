@@ -95,7 +95,8 @@ def t_restaurants_confirmed():
     assert "building_survey" in ai and "단정하지" in ai
     assert "toilet" in ai and "목록 전체를 읽지 마세요" in ai                  # v1.56.0 화장실 한 마디 — 1~2곳에만
     assert r["items"][0]["toilet"] == {"status": "own", "nearby": None}
-    assert r["items"][1]["toilet"]["nearby"] == {"name": "공원 공중화장실", "dist_m": 44, "open_time": "24시간"}
+    assert r["items"][1]["toilet"]["nearby"] == {"name": "공원 공중화장실", "dist_m": 44, "open_time": "24시간",
+                                                 "open_time_ko": "24시간"}   # 말하기용 오전·오후 (v2.29.4)
     assert r["items"][2]["toilet"] is None                                    # 02 가 toilet 을 안 주면 None
     ua = r["ui_action"]
     assert ua["action"] == "show_restaurants" and len(ua["payload"]["items"]) == 3

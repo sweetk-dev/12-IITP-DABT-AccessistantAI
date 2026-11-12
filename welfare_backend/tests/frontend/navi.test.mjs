@@ -3906,7 +3906,7 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     for (const t of ["이어서 말씀드릴까요?", "거기로 안내해 드릴까요", "더 들으시겠어요?", "도착하신 뒤에 자세히 안내해 드릴까요? "])
       assert.equal(I().endsWithQuestion(t), true, t);
     for (const t of ["약 300미터 남았어요.", "왼쪽으로 이동하세요.", ""]) assert.equal(I().endsWithQuestion(t), false, t);
-    assert.equal(I().resumeGraceAfterAnswer("이어서 말씀드릴까요?"), 8000);
+    assert.equal(I().resumeGraceAfterAnswer("이어서 말씀드릴까요?"), 5000);
     assert.equal(I().resumeGraceAfterAnswer("남았어요."), 1500);
   });
   check("상담원 턴이 끝나면 물음 여부로 복귀 대기를 고른다 (소스 가드, v2.29.3)", () =>
