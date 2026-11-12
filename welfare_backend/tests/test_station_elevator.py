@@ -95,7 +95,8 @@ def test_tool_answers_route_elevator_only(monkeypatch):
 def test_tool_without_route_says_one(monkeypatch):
     r = _run_tool(monkeypatch, station="명학")
     assert r["route_elevator"] is None
-    assert "elevators 에서 하나만" in r["ai_instruction"] and "2~3개" not in r["ai_instruction"]
+    assert "하나만 말하세요" in r["ai_instruction"] and "어느 방면으로 타세요?" in r["ai_instruction"]
+    assert "2~3개" not in r["ai_instruction"]
 
 
 def test_declaration_station_optional_and_instruction():
