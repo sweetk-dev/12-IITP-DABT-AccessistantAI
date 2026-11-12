@@ -116,6 +116,14 @@ def test_tomorrow_uses_forecast_wording():
     assert s["cautions"] == ["비 예보가 있어 우비나 방수 덮개를 챙기는 게 좋습니다"]
 
 
+def test_feels_word_keeps_answers_honest():
+    assert [wc.feels_word(v) for v in (-12, -3, 8, 14, 25, 30, 36)] == [
+        "매우 추움", "추움", "쌀쌀함", "선선함", "따뜻함", "더움", "매우 더움"]
+    s = wc.summarize(_fc(), None, now=NOW)
+    assert s["now"]["feels_word"] == "선선함" and s["today"]["feels_word_low"] == "쌀쌀함"
+    assert "feels_word" in th._WEATHER_AI and "'좋음'이면 묻지 않습니다" in th._WEATHER_AI
+
+
 def test_rain_label_and_dust_grade():
     assert [wc.rain_label(v) for v in (0.5, 3, 15)] == ["약한 비", "비", "강한 비"]
     assert wc.dust_grade(None, None) is None and wc.dust_grade(200, 10) == "매우 나쁨"
