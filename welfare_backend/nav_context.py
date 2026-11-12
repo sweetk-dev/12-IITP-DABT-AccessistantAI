@@ -412,6 +412,14 @@ def inject_nav_defaults(fname: str, fargs: dict, nav: dict, user_location: dict)
             else:
                 fargs.pop("lat", None)
                 fargs.pop("lng", None)
+    elif fname == "get_weather":
+        # 날씨는 시·구 단위면 충분하다 — 위치를 모르면 서버가 안양시 기준으로 답한다 (v2.29.0)
+        if not fargs.get("place") and user_location and user_location.get("lat") is not None:
+            fargs["lat"] = user_location["lat"]
+            fargs["lng"] = user_location["lng"]
+        elif not fargs.get("place"):
+            fargs.pop("lat", None)
+            fargs.pop("lng", None)
     elif fname == "report_station_position":
         # 화면이 무엇을 기다리는지는 세션만 안다 (v1.52.0) — 모델이 지어내지 못하게 덮어쓴다
         fargs["station_wait"] = (nav or {}).get("station_wait")

@@ -76,13 +76,14 @@ LOCAL_SYSTEM_PROMPT = """당신은 대한민국 장애인 복지 정책을 안�
 - get_policy_details: 특정 정책의 상세(지원 금액·신청 방법)
 - check_eligibility_criteria: 자격 요건 판정
 - find_operating_agencies: 지역·기관·연락처
+- get_weather: 날씨·기온·비·미세먼지 질문, 바깥 날씨를 말하는 "추워"·"더워" (집이 춥다는 말은 정책 질문)
 
 한 번 검색해 관련 결과가 나오면 같은 질문으로 도구를 반복 호출하지 말고 바로 답하세요.
 도구 결과가 비어 있거나 오류이면, 추측하지 말고 정확히 찾지 못했다고 말한 뒤 보건복지부 129를 안내하세요.
 
 ## 답변 규칙
 - 도구 결과에 실제로 있는 사실만 사용하세요. 금액·자격·시행일·신청처를 지어내지 마세요.
-- 한국어 음성 상담체로 간결하게(2~5문장). 금액·날짜는 발화하기 쉬운 한국어로("월 만 육천원" 등).
+- 한국어 음성 상담체로 간결하게. 한 번에 4문장을 넘기지 말고, 한 문장에는 한 가지만 담으세요. 더 길어야 하면 앞부분만 말한 뒤 "이어서 말씀드릴까요?"라고 물으세요. 금액·날짜는 발화하기 쉬운 한국어로("월 만 육천원" 등).
 - 내부 정책 ID(B001 등)와 URL은 음성으로 읽지 마세요.
 - 인사말은 이미 상담 시작에 했으니 다시 하지 말고, 사용자의 질문에 바로 답하세요.
 - 새 정책을 처음 안내하거나 신청 절차를 안내할 때만 마지막에 문의처(예: 보건복지부 129)를 한 번 덧붙이세요."""
@@ -234,7 +235,20 @@ def _ollama_tools() -> list:
            {"policy_id": S}, ["policy_id"]),
         fn("find_operating_agencies", "지역·기관 관련 질문에서 운영기관·연락처 청크를 벡터 검색.",
            {"query": S, "limit": I}, ["query"]),
-    ] + _ollama_stats_tools() + _ollama_route_tools()
+    ] + _ollama_stats_tools() + _ollama_weather_tools() + _ollama_route_tools()
+
+
+def _ollama_weather_tools() -> list:
+    """날씨 조회 도구 — Live 선언(live_bridge._weather_tool_declarations)과 1:1 (v2.29.0)."""
+    import weather_client
+    if not weather_client.enabled():
+        return []
+    return [{"type": "function", "function": {
+        "name": "get_weather",
+        "description": "지금 날씨와 오늘·내일 예보(기온·체감온도·비·눈·바람·미세먼지)를 조회하고 휠체어로 바깥에 나갈 때의 주의 사항을 함께 돌려준다. '밖에 비 많이 와?', '오늘 추워?', '내일 비 와?', '우산 필요해?', '미세먼지 어때?' 같은 날씨 질문과, 바깥 날씨를 말하는 '추워', '더워'에 사용한다. 기준 위치는 현재 위치가 자동 주입되고 모르면 안양시 기준이다.",
+        "parameters": {"type": "object", "properties": {
+            "place": {"type": "string", "description": "다른 지역 날씨를 물을 때만 그 지역 이름(예: '수원', '부산'). 비우면 현재 위치"},
+            "day": {"type": "string", "enum": ["today", "tomorrow"], "description": 'today(지금·오늘, 기본) / tomorrow(내일)'}}}}}]
 
 
 def _ollama_stats_tools() -> list:
@@ -280,7 +294,8 @@ def _ollama_route_tools() -> list:
                              "description": "해당하는 유형을 한 칸에 하나씩 넣는다. 휠체어 이용자는 지체장애. "
                                             "말하지 않았으면 비운다 (v2.26.0)"},
             "sigungu": {"type": "string", "description": "지역명, 기본 '안양'"},
-            "topk": I}),
+            "topk": I,
+            "indoor": {"type": "boolean", "description": '비·눈·추위·더위로 실내 장소를 원할 때 true — 박물관·아트센터·체육관 같은 실내 시설만 고른다'}}),
         fn("plan_accessible_route",
            "출발지에서 목적지까지 무장애 보행 경로를 만든다. 경로 안내가 가능한 지역은 안양시뿐이다. "
            "출발지는 현재 위치가 자동 주입된다. 목적지 poi_id 를 모르면 사용자가 말한 이름을 "
