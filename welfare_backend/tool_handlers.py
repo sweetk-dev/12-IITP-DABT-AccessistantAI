@@ -1586,12 +1586,12 @@ async def tool_find_toilet(lat: float = None, lng: float = None, place: str = ""
             "lat": it.get("lat"), "lng": it.get("lng"),
         })
     ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
-          + ("가까운 순으로 1~2곳만 이름·거리·개방시간으로 말하세요. open_time 이 없으면 "
-             "'개방시간은 확인이 필요하다'고 하세요. facility_toilet 이 true 인 곳은 그 시설 안의 "
-             "화장실이라 시설 운영시간에만 쓸 수 있다고 덧붙이세요. building_toilet 이 true 인 곳은 "
-             "청사·도서관·병원 같은 공공건물 안의 장애인 화장실이라 건물이 문을 연 시간(대개 평일 낮)에 "
-             "이용할 수 있다고 말하세요. 화면 카드의 '여기로 안내' 로 "
-             "경로를 받을 수 있다고 알리세요. " if items else
+          + ("가장 가까운 한 곳(items 의 첫 항목)만 말하세요 — 첫 문장에 이름과 거리, 둘째 문장에 개방시간. "
+             "open_time 이 없으면 '개방시간은 확인이 필요하다'고 하세요. facility_toilet 이 true 인 곳은 그 시설 안의 "
+             "화장실이라 시설 운영시간에만 쓸 수 있고, building_toilet 이 true 인 곳은 공공건물 안이라 건물이 문을 연 "
+             "시간(대개 평일 낮)에 쓸 수 있다고 개방시간 문장에 함께 말하세요. 나머지 곳은 먼저 말하지 마세요. "
+             "사용자가 '다른 곳', '또 있어?', '더 가까운 데'처럼 물으면 도구를 다시 부르지 말고 이 목록의 다음 항목 "
+             "하나만 같은 방식으로 말하세요. 목록을 다 말했으면 더 넓게 찾아볼지 물으세요(radius_m 을 늘려 다시 호출). " if items else
              "반경 %dm 안에 장애인 화장실이 등록된 공중화장실이 없다고 분명히 말하고, 가까운 "
              "지하철역 화장실은 get_station_facilities 로 확인할 수 있다고 안내하세요. " % radius_m))
     return {

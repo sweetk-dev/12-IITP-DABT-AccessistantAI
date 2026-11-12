@@ -3713,13 +3713,27 @@ window.NAVI = (function(){
     naviAnswerBuf += t;
     _renderConvo();   // 내 말 아래에 이어서 (v2.16.0)
   }
+  /* 상담원이 물음으로 답을 끝냈으면 안내 복귀를 늦춘다 (v2.29.3)
+     "이어서 말씀드릴까요?", "거기로 안내해 드릴까요?" 바로 뒤 1.5초 만에 "안내를 이어갈게요"가 나오면 답할 틈이 없다.
+     이용자가 말을 시작하면 그동안은 복귀하지 않고(lastUserSpeechTs), 답이 없으면 ANSWER_WAIT_MS 뒤에 안내로 돌아온다.
+     이동 중이므로 한없이 기다리지 않는다. 다음 안내 지점에 닿으면 그 안내는 기다리지 않고 바로 나온다(_announceStep). */
+  var ANSWER_WAIT_MS = 8000;
+  function endsWithQuestion(t){
+    var s = String(t || "").replace(/[\s"'”’)\]]+$/, "");
+    return /[?？]$/.test(s) || /(까요|나요|습니까|래요)[.!]?$/.test(s);
+  }
+  function resumeGraceAfterAnswer(t){ return endsWithQuestion(t) ? ANSWER_WAIT_MS : 1500; }
   // 상담원 턴 종료 — 안내 중이면 답변 음성이 끝난 뒤 직전 안내 문장으로 복귀.
   function onAiTurnComplete(){
     naviAnswerDone = true;
     naviHeardDone = true; naviAnsStartTs = 0;   // 이번 말·답 끝 — 다음 전사부터 새 질문 (v2.15.0)
     var naviActive = false;
     try{ naviActive = document.getElementById("view-navi").classList.contains("active"); }catch(e){}
-    if(guiding && naviActive) scheduleResume(1500);
+    if(guiding && naviActive){
+      var _askWait = endsWithQuestion(naviAnswerBuf);   // 물었으면 답할 틈을 둔다 (v2.29.3)
+      if(_askWait) _tev("navi_resume_wait_answer");
+      scheduleResume(_askWait ? ANSWER_WAIT_MS : 1500);
+    }
   }
   function drawMe(){
     if(!map || !here) return;
@@ -6862,6 +6876,7 @@ window.NAVI = (function(){
                                      resumeDecide:_resumeDecide, resumeShort:resumeShort,
                                      reachedStep:_reachedStep, turnPreAnnounce:_turnPreAnnounce, turnPassed:_turnPassed,
                                      pauseGuidance:pauseGuidance, resumeGuidance:resumeGuidance, isPaused:function(){ return guidePaused; },
+                                     endsWithQuestion:endsWithQuestion, resumeGraceAfterAnswer:resumeGraceAfterAnswer, setUserSpeechTsForTest:function(v){ lastUserSpeechTs = v; },
                                      voiceZoom:voiceZoom, guideLevel:function(){ return guideLevel; }, setGuideLevel:function(v){ guideLevel = v; },
                                      continueUtterance:continueUtterance, setFixAccForTest:function(a){ lastFixAcc = a; },
                                      resumeRepForTest:function(v){ if(v) _resumeRep = v; return _resumeRep; },
