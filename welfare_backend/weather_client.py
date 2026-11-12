@@ -5,8 +5,9 @@
 젖은 바닥·빙판에서 미끄러지며, 추위에 전동 휠체어 배터리가 빨리 닳는다). 상담원이 날씨 질문에
 답하고 실내 장소를 권할 수 있도록 예보를 요약해 돌려준다.
 
-자료: Open-Meteo 예보(api.open-meteo.com)·대기질(air-quality-api.open-meteo.com). 키 없이 쓰는
-공개 API 이며, 관측값이 아니라 예보 모델 값이다. 같은 지점(소수 둘째 자리)은 10분 동안 다시 묻지 않는다.
+자료(v2.30.0~): 기상청 단기예보 조회서비스(kma_weather — 지금은 초단기실황 관측값, 앞으로는 초단기·단기예보).
+기상청 호출이 실패하거나 키가 없으면 Open-Meteo 예보(api.open-meteo.com)로 답한다. 미세먼지는 Open-Meteo
+대기질(air-quality-api.open-meteo.com). 같은 지점(소수 둘째 자리)은 10분 동안 다시 묻지 않는다.
 
 환경변수
   WEATHER_ENABLED      0 이면 도구를 선언하지 않는다(기본 1)
@@ -120,7 +121,7 @@ def _wet(prob, mm, code) -> bool:
     return _num(mm) >= 0.5 or _num(prob) >= 60 or (code in RAIN_CODES | SNOW_CODES and _num(mm) > 0)
 
 
-def _cautions(feels, temp, rain_mm_h, raining, snowing, rain_expected, gust, dust, future=False):
+def _cautions(feels, temp, rain_mm_h, raining, snowing, rain_expected, gust, dust, future=False, wind=None):
     """휠체어 바깥 이동 주의 — 중요한 것부터. (문구, 심각도 2=어려움 1=주의).
 
     future=True 는 내일 예보 — 지금 일어나는 일처럼 말하지 않는다.
@@ -151,6 +152,12 @@ def _cautions(feels, temp, rain_mm_h, raining, snowing, rain_expected, gust, dus
         if gust >= 20:
             out.append(("바람이 매우 강해 이동이 위험할 수 있습니다", 2))
         elif gust >= 14:
+            out.append(("바람이 강해 휠체어가 밀릴 수 있습니다", 1))
+    elif wind is not None:
+        # 순간풍속이 없는 원천(기상청)은 평균 풍속 — 기상청 예보 표현의 '강'(9m/s)·'매우 강'(14m/s)
+        if wind >= 14:
+            out.append(("바람이 매우 강해 이동이 위험할 수 있습니다", 2))
+        elif wind >= 9:
             out.append(("바람이 강해 휠체어가 밀릴 수 있습니다", 1))
     if dust == "매우 나쁨":
         out.append(("미세먼지가 매우 나쁩니다", 2))
@@ -189,7 +196,7 @@ def summarize(fc: dict, air: Optional[dict], day: str = "today", now: Optional[d
         wet = [i for i in hours if _wet(at(prob, i), at(prec, i), at(codes, i))]
         return {
             "date": ds,
-            "sky": sky_label(at(daily.get("weather_code") or [], di)),
+            "sky": at(daily.get("sky_label") or [], di) or sky_label(at(daily.get("weather_code") or [], di)),
             "temp_max": _r(at(daily.get("temperature_2m_max") or [], di)),
             "temp_min": _r(at(daily.get("temperature_2m_min") or [], di)),
             "feels_max": _r(at(daily.get("apparent_temperature_max") or [], di)),
@@ -200,39 +207,49 @@ def summarize(fc: dict, air: Optional[dict], day: str = "today", now: Optional[d
             "precip_mm": round(_num(at(daily.get("precipitation_sum") or [], di)), 1),
             "snow_cm": round(_num(at(daily.get("snowfall_sum") or [], di)), 1),
             "wind_max_ms": _r(at(daily.get("wind_gusts_10m_max") or [], di)),
+            "_wind_mean_max": _r(at(daily.get("wind_speed_10m_max") or [], di)),
             "rain_hours": ("%s~%s" % (_hour_label(times[wet[0]]), _hour_label(times[wet[-1]]))
                            if wet else ""),
             "_wet": wet,
         }
 
-    out = {"source": SOURCE, "observed": False,
+    out = {"source": fc.get("_source") or SOURCE, "observed": bool(fc.get("_observed")),
            "updated": _hour_label(cur.get("time") or key) or None, "dust": dust,
            "pm10": _r(pm10), "pm25": _r(pm25)}
 
     if day == "tomorrow":
         t = day_block(tomorrow, 0)
         wet = t.pop("_wet")
+        wmean = t.pop("_wind_mean_max")
+        if t["wind_max_ms"] is None:
+            t["wind_max_ms"] = wmean
         snowing = t["snow_cm"] > 0 or any(at(codes, i) in SNOW_CODES for i in wet)
         peak = max([_num(at(prec, i)) for i in wet] or [0.0])
         # 추운 날은 최저 체감, 아니면 최고 체감으로 본다
         fl = t["feels_min"] if (t["feels_min"] is not None and t["feels_min"] <= 0) else t["feels_max"]
         cautions = _cautions(fl, t["temp_min"], peak, bool(wet) and not snowing, snowing and bool(wet), False,
-                             t["wind_max_ms"], None, future=True)
+                             t["wind_max_ms"] if wmean is None or t["wind_max_ms"] != wmean else None, None,
+                             future=True, wind=wmean)
         out.update({"day": "tomorrow", "tomorrow": t})
     else:
         temp = _r(cur.get("temperature_2m"))
         feels = _r(cur.get("apparent_temperature"))
         code = cur.get("weather_code")
-        # 지금 15분 강수 ×4 와 이번 시간 예보 중 큰 값을 시간당 강수로 본다
-        mm_h = max(_num(cur.get("precipitation")) * 4, _num(at(prec, hi)))
+        # 관측 1시간 강수(precip_mm_h, 기상청 실황)가 있으면 그것만 본다 — 예보 값이 섞이면 안 오는 비를 온다고 한다.
+        # 없으면(Open-Meteo) 지금 15분 강수 ×4 와 이번 시간 예보 중 큰 값.
+        if cur.get("precip_mm_h") is not None:
+            mm_h = _num(cur.get("precip_mm_h"))
+        else:
+            mm_h = max(_num(cur.get("precipitation")) * 4, _num(at(prec, hi)))
         snowing = _num(cur.get("snowfall")) > 0 or code in SNOW_CODES
         raining = (not snowing) and (code in RAIN_CODES or mm_h >= 0.1)
         rest = day_block(today, hi + 1)
         wet = rest.pop("_wet")
+        rest.pop("_wind_mean_max", None)
         # 앞으로 6시간 안의 비 — 오늘이 6시간 안 남았으면 다음 날 새벽까지 본다
         nxt = [i for i in range(hi + 1, min(hi + 7, len(times)))]
         nxt_wet = [i for i in nxt if _wet(at(prob, i), at(prec, i), at(codes, i))]
-        now_b = {"temp": temp, "feels_like": feels, "feels_word": feels_word(feels), "sky": sky_label(code),
+        now_b = {"temp": temp, "feels_like": feels, "feels_word": feels_word(feels), "sky": cur.get("sky_label") or sky_label(code),
                  "raining": raining, "snowing": snowing,
                  "rain_mm_h": round(mm_h, 1) if (raining or snowing) else 0.0,
                  "rain_label": rain_label(mm_h) if raining else "",
@@ -244,7 +261,7 @@ def summarize(fc: dict, air: Optional[dict], day: str = "today", now: Optional[d
         else:
             now_b["starts_around"] = _hour_label(times[nxt_wet[0]]) if nxt_wet else ""
         cautions = _cautions(feels, temp, mm_h, raining, snowing, bool(nxt_wet),
-                             _r(cur.get("wind_gusts_10m")), dust)
+                             _r(cur.get("wind_gusts_10m")), dust, wind=_r(cur.get("wind_speed_10m")))
         out.update({"day": "today", "now": now_b, "today": rest})
 
     out["cautions"] = [c for c, _ in cautions]
@@ -260,11 +277,18 @@ async def _get(client: httpx.AsyncClient, url: str, params: dict) -> Optional[di
 
 
 async def fetch(lat: float, lng: float) -> dict:
-    """예보·대기질 원자료. 실패하면 {"error": 사유}. 대기질만 실패하면 air=None."""
-    k = (round(float(lat), 2), round(float(lng), 2))
+    """예보·대기질 원자료. 기상청이 되면 기상청, 아니면 Open-Meteo. 둘 다 실패하면 {"error": 사유}. 대기질만 실패하면 air=None."""
+    import kma_weather
+    k = (round(float(lat), 2), round(float(lng), 2), kma_weather.enabled())
     hit = _cache.get(k)
     if hit and time.monotonic() - hit[0] < CACHE_TTL_S:
         return hit[1]
+    kma_fc = None
+    if kma_weather.enabled():
+        try:
+            kma_fc = await kma_weather.fetch(float(lat), float(lng))
+        except Exception as e:                  # noqa: BLE001 — 어떤 실패든 예비 원천으로
+            logger.warning("기상청 단기예보 조회 실패 — Open-Meteo 로 대신함: %s", type(e).__name__)
     fp = {"latitude": k[0], "longitude": k[1], "timezone": "Asia/Seoul", "forecast_days": 2,
           "wind_speed_unit": "ms",
           "current": ("temperature_2m,apparent_temperature,precipitation,rain,snowfall,weather_code,"
@@ -276,10 +300,13 @@ async def fetch(lat: float, lng: float) -> dict:
     ap = {"latitude": k[0], "longitude": k[1], "timezone": "Asia/Seoul", "current": "pm10,pm2_5"}
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT_S) as c:
-            fc, air = await asyncio.gather(_get(c, FORECAST_URL, fp), _get(c, AIR_URL, ap),
-                                           return_exceptions=True)
+            if kma_fc is not None:
+                fc, air = kma_fc, (await asyncio.gather(_get(c, AIR_URL, ap), return_exceptions=True))[0]
+            else:
+                fc, air = await asyncio.gather(_get(c, FORECAST_URL, fp), _get(c, AIR_URL, ap),
+                                               return_exceptions=True)
     except Exception as e:                      # noqa: BLE001
-        fc, air = e, None
+        fc, air = (kma_fc, None) if kma_fc is not None else (e, None)
     if isinstance(fc, BaseException) or not isinstance(fc, dict) or not fc.get("current"):
         logger.warning("날씨 예보 조회 실패: %s", type(fc).__name__ if isinstance(fc, BaseException) else "빈 응답")
         return {"error": "forecast_unavailable"}
