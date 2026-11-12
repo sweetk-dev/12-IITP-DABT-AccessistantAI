@@ -242,6 +242,28 @@ def map_zoom_result(direction: str = "", mode=None) -> dict:
             "ai_instruction": SILENT_INSTRUCTION}
 
 
+_SHEET_OPEN = ("open", "expand", "열어", "펼쳐", "열기", "펼치기", "크게", "올려")
+_SHEET_CLOSE = ("close", "collapse", "닫아", "줄여", "접어", "닫기", "접기", "작게", "내려")
+
+
+def list_sheet_result(action: str = "", mode=None) -> dict:
+    """list_sheet 도구 응답 — "목록 열어줘/펼쳐줘", "목록 닫아줘/줄여줘"를 말로 받는다 (v2.30.2).
+
+    open 은 한 단계 펼치기(접힘 → 기본 → 크게), close 는 접기(손잡이의 '목록 접기'와 같다). 상담원은 말하지 않는다.
+    """
+    a = (action or "").strip().lower()
+    a = "open" if a in _SHEET_OPEN else "close" if a in _SHEET_CLOSE else ""
+    if mode == "policy":
+        return {"status": "idle", "tool_name": "list_sheet",
+                "ai_instruction": "이 화면에는 길안내 목록이 없다고, 이동경로 안내 화면에서 쓸 수 있다고 한 문장으로만 알리세요."}
+    if not a:
+        return {"status": "idle", "tool_name": "list_sheet",
+                "ai_instruction": "목록을 펼칠지 접을지 한 문장으로 여쭤 보세요."}
+    return {"status": "success", "tool_name": "list_sheet", "action": a,
+            "ui_action": {"action": "list_sheet", "dir": a},
+            "ai_instruction": SILENT_INSTRUCTION}
+
+
 # 경로를 만들지 못한 결과의 status — "실패했지만 서비스는 정상"인 사유들이다.
 ROUTE_FAILURE_STATUSES = ("place_not_found", "out_of_service_area",
                           "need_destination", "need_location", "error")

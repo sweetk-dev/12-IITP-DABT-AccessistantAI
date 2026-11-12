@@ -37,7 +37,7 @@ import trial_recorder
 
 from nav_context import (update_nav_state, current_guidance_result,
                          annotate_route_success, start_guidance_result,
-                         pause_guidance_result, map_zoom_result,
+                         pause_guidance_result, map_zoom_result, list_sheet_result,
                          note_new_route, inject_nav_defaults, inject_handoff)
 from tool_handlers import run_tool, summarize_tool_result
 
@@ -323,6 +323,9 @@ def _ollama_route_tools() -> list:
         fn("map_zoom",
            "길안내 지도를 한 단계 키우거나(in) 줄인다(out). \"지도 확대해줘\" 는 in, \"지도 축소해줘\" 는 out. 호출 뒤에는 말하지 않는다. (v2.28.0)",
            {"direction": {"type": "string", "enum": ["in", "out"]}}, ["direction"]),
+        fn("list_sheet",
+           "길안내 화면 아래쪽 목록을 펼치거나(open) 접는다(close). \"목록 열어줘·펼쳐줘\" 는 open, \"목록 닫아줘·줄여줘\" 는 close. 호출 뒤에는 말하지 않는다. (v2.30.2)",
+           {"action": {"type": "string", "enum": ["open", "close"]}}, ["action"]),
         fn("start_guidance",
            "화면에 표시된 경로로 길안내를 시작한다(화면의 '안내 시작' 버튼을 말로 누르는 것). "
            "\"안내 시작해\", \"출발\" 이라고 하거나 \"안내를 시작할까요?\" 물음에 그렇다고 답하면 사용한다. (v2.26.0)",
@@ -499,6 +502,8 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                     result = pause_guidance_result(_nav)                         # (v2.28.0)
                 elif fname == "map_zoom":
                     result = map_zoom_result(fargs.get("direction"), session_mode)   # (v2.28.0)
+                elif fname == "list_sheet":
+                    result = list_sheet_result(fargs.get("action"), session_mode)    # (v2.30.2)
                 elif fname not in dispatcher:
                     result = {"error": f"unknown tool: {fname}"}
                 else:

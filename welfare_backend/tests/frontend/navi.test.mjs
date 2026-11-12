@@ -3899,6 +3899,35 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak(); I().setFixAccForTest(null);
 }
 
+// ── v2.30.2: 말로 목록 펼치기·접기 ──
+{
+  const I = () => window.NAVI._internals();
+  const act = (action, payload) => window.NAVI.onUiAction({ type: "ui_action", action, payload: payload || {} });
+  let drops = 0; const keepChat = window.__CHAT;
+  window.__CHAT = Object.assign({}, keepChat || {}, { dropTurn: () => { drops++; } });
+  window.show("view-navi");
+  window.NAVI.sheetSetBig(false); I().voiceSheet("close");
+  act("list_sheet", { dir: "open" }); await sleep(5);
+  check("목록 열어줘: 접힘 → 기본, 상담원 말없이 (v2.30.2)", () => {
+    assert.equal(JSON.stringify(I().sheetState()), JSON.stringify({ collapsed: false, big: false }));
+    assert.match($("naviStatus").textContent, /목록을 펼쳤습니다/);
+    assert.equal(drops, 1);
+  });
+  act("list_sheet", { dir: "open" }); await sleep(5);
+  check("목록 펼쳐줘: 기본 → 크게 (v2.30.2)", () => assert.equal(JSON.stringify(I().sheetState()), JSON.stringify({ collapsed: false, big: true })));
+  act("list_sheet", { dir: "open" }); await sleep(5);
+  check("가장 크게 펼친 상태면 알리기만 (v2.30.2)", () => assert.match($("naviStatus").textContent, /가장 크게 펼쳐져/));
+  act("list_sheet", { dir: "close" }); await sleep(5);
+  check("목록 닫아줘: 손잡이 '목록 접기'처럼 접는다 (v2.30.2)", () => {
+    assert.equal(JSON.stringify(I().sheetState()), JSON.stringify({ collapsed: true, big: false }));
+    assert.match($("naviStatus").textContent, /목록을 접었습니다/);
+  });
+  act("list_sheet", { dir: "close" }); await sleep(5);
+  check("이미 접혀 있으면 알리기만 (v2.30.2)", () => assert.match($("naviStatus").textContent, /이미 접혀/));
+  I().voiceSheet("open");
+  window.__CHAT = keepChat;
+}
+
 // ── v2.29.6: 탈 역의 역 안 이동을 세션에 보낸다 — 승강기는 경로의 하나만 답하는 근거 ──
 check("nav_state 에 탈 역의 역 안 이동(station_ingress)을 싣고, 내릴 역 쪽이면 싣지 않는다 (소스 가드, v2.29.6)", () => {
   assert.match(HTML, /station_ingress: ig \? \{station: ig\.station, inside: ig\.inside \|\| \[\], car: \(ig\.car && ig\.car\.text\) \|\| null\} : null,/);
