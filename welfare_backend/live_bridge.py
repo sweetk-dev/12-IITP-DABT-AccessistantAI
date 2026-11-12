@@ -23,7 +23,7 @@ from google.genai import types
 from starlette.websockets import WebSocketState
 
 from nav_context import (annotate_route_failure, annotate_route_success,
-                         start_guidance_result,
+                         start_guidance_result, pause_guidance_result, map_zoom_result,
                          update_nav_state, current_guidance_result,
                          inject_nav_defaults, inject_handoff, note_new_route,
                          needs_current_location)
@@ -304,7 +304,8 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - **도구 결과에 `active_guidance` 가 있으면** 지금 진행 중인 길안내가 그대로 계속된다는 뜻입니다. 새 목적지를 안내하지 못했다고만 말하고 끝내지 말고, 진행 중인 안내가 계속된다는 사실을 반드시 한 문장으로 덧붙이세요. 안내가 멈췄다고 말하지 마세요.
 - 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 목적지 `poi_id` 를 모르면 사용자가 말한 이름을 `destination_place` 에 담습니다 — poi_id 를 지어내지 마세요. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
 - **이동 방식**: 사용자가 "버스로", "지하철 타고", "대중교통으로" 처럼 방식을 말하면 `plan_accessible_route` 의 `mode` 에 담습니다(walk_subway / walk_bus / walk_bus_subway). **"지하철로", "전철 타고", "버스 말고 지하철"** 처럼 지하철만 원하면 `mode: "walk_subway"` 입니다 — 버스 조합을 만들지 않습니다. **"도보로", "걸어서", "걸어갈게", "휠체어로만", "타지 않고"** 처럼 도보만 원한다고 말하면 반드시 `mode: "walk"` 로 담습니다(자동 추천에 맡기면 거리에 따라 버스 조합으로 바뀝니다). 방식을 말하지 않았을 때만 비워 두세요 — 자동 추천이 적용되고 결과의 `mode_used`/`mode_label` 이 알려 줍니다. 결과에 `transit` 이 있으면 **노선 번호·유형·방면(end_station)·정거장 수**를 함께 말합니다. `low_floor_note` 가 있으면 그 문장(저상버스 실시간 확인 결과)을 그대로 전하고, 없으면 **저상버스 정차는 보장되지 않으므로 실시간 도착정보 확인이 필요**하다고 알립니다. 대중교통 포함 소요시간은 대기 미포함 추정(`eta_note`)임을 밝힙니다. 결과에 `platform_cautions`(승강기 없이 휠체어리프트만 있는 승강장)가 있으면 **경로 요약보다 먼저** 그 문장을 그대로 전합니다 — 열차에서 내린 뒤에 알면 되돌아갈 수 없습니다. 결과에 `auto_kept_walk` 가 있으면 자동 추천이 도보를 유지한 이유 — 지하철 경로가 휠체어리프트만 있는 승강장을 거치게 되어 도보가 낫다고 판단했다는 점(역 이름 포함) — 를 한 문장으로 알립니다.
-- **안내 시작은 말로 받습니다.** 경로를 알려 준 뒤 도구 결과가 시키면 "안내를 시작할까요?"라고 한 번만 여쭙고, 사용자가 "응", "시작해", "안내 시작", "출발", "가자" 처럼 답하면 `start_guidance` 를 호출합니다. 경로가 표시된 상태에서 사용자가 먼저 "안내 시작해"라고 말해도 같습니다. 호출한 뒤에는 "네, 안내를 시작할게요" 한 문장만 답합니다 — 첫 안내는 화면 음성이 말합니다. **버튼을 눌러 달라고 요구하지 마세요**(손을 쓰기 어려운 분이 있습니다). 단, "안양역으로 가자", "문화원으로 출발"처럼 **장소 이름이 들어간 말은 새 목적지 요청**입니다 — `start_guidance` 가 아니라 `plan_accessible_route` 를 호출합니다(화면에 남아 있던 이전 경로로 안내를 시작하면 안 됩니다).
+- **안내 시작은 말로 받습니다.** 경로를 알려 준 뒤 도구 결과가 시키면 "안내를 시작할까요?"라고 한 번만 여쭙고, 사용자가 "응", "시작해", "안내 시작", "출발", "가자" 처럼 답하면 `start_guidance` 를 호출합니다. 경로가 표시된 상태에서 사용자가 먼저 "안내 시작해"라고 말해도 같습니다. **호출한 뒤에는 아무 말도 하지 마세요** — 첫 안내는 화면 음성이 바로 말합니다.
+- **안내 멈춤·지도 크기도 말로 받습니다.** "안내 그만", "안내 멈춰", "안내 중단해줘", "조용히 해줘" → `pause_guidance`(경로는 그대로 두고 안내 음성만 멈춤). "다시 안내해줘", "안내 다시 시작해" → `start_guidance`(멈춘 곳부터 이어서). "지도 확대해줘", "지도 크게" → `map_zoom`(in), "지도 축소해줘", "지도 작게", "넓게 보여줘" → `map_zoom`(out). **이 세 도구를 호출한 뒤에는 아무 말도 하지 마세요** — 화면이 바로 처리하고 표시합니다. **버튼을 눌러 달라고 요구하지 마세요**(손을 쓰기 어려운 분이 있습니다). 단, "안양역으로 가자", "문화원으로 출발"처럼 **장소 이름이 들어간 말은 새 목적지 요청**입니다 — `start_guidance` 가 아니라 `plan_accessible_route` 를 호출합니다(화면에 남아 있던 이전 경로로 안내를 시작하면 안 됩니다).
 - 길안내가 진행 중일 때 사용자가 목적지나 이동 방식을 다시 말해 새 경로를 받으면(`guidance_continues`), 안내는 꺼지지 않고 새 경로로 곧바로 이어집니다. "안내를 다시 시작해 달라"거나 "안내 시작을 눌러 달라"고 말하지 마세요.
 - 경로에 경고가 있거나 권장 경사를 완화해 탐색한 경우(`fallback.used`) 반드시 그 사실을 알립니다.
 - "왜 이렇게 돌아가", "이 구간 뭐야" 같은 질문에는 `explain_route_segment` 로 사유(경사·계단·턱낮춤)를 설명합니다.
@@ -422,9 +423,26 @@ def _route_tool_declarations() -> list:
                          "남았어\" 질문에는 반드시 이 도구를 먼저 호출한다."),
         ),
         types.FunctionDeclaration(
+            name="pause_guidance",
+            description=("진행 중인 길안내 음성을 멈춘다(홀드) — 경로와 진행 단계는 그대로 둔다. 사용자가 \"안내 그만\", "
+                         "\"안내 멈춰\", \"안내 중단해줘\", \"그만 말해\", \"조용히 해줘\" 라고 하면 사용한다. "
+                         "다시 들으려면 start_guidance. 호출한 뒤에는 아무 말도 하지 않는다(화면이 표시한다)."),
+        ),
+        types.FunctionDeclaration(
+            name="map_zoom",
+            description=("길안내 지도를 한 단계 키우거나 줄인다. \"지도 확대해줘\", \"지도 크게\", \"더 가까이\" 는 in, "
+                         "\"지도 축소해줘\", \"지도 작게\", \"넓게 보여줘\" 는 out. 호출한 뒤에는 아무 말도 하지 않는다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                required=["direction"],
+                properties={"direction": types.Schema(type=types.Type.STRING, enum=["in", "out"],
+                                                      description="in(확대·크게) / out(축소·작게)")},
+            ),
+        ),
+        types.FunctionDeclaration(
             name="start_guidance",
             description=("화면에 표시된 경로로 길안내를 시작한다 — 화면의 '안내 시작' 버튼을 말로 누르는 것. "
-                         "사용자가 \"안내 시작해\", \"시작해\", \"출발\", \"가자\" 라고 하거나, "
+                         "사용자가 \"안내 시작해\", \"시작해\", \"출발\", \"가자\", \"다시 안내해줘\" 라고 하거나, "
                          "\"안내를 시작할까요?\" 물음에 그렇다고 답하면 사용한다. 경로가 있는지·이미 안내 "
                          "중인지는 서버가 확인한다. \"○○로 가자\", \"○○역으로 출발\" 처럼 장소 이름이 들어간 "
                          "말에는 쓰지 않는다 — 그때는 plan_accessible_route 로 그 장소의 경로부터 찾는다."),
@@ -1617,6 +1635,10 @@ async def handle_live_chat(
                                     elif fname == "start_guidance":
                                         # 말로 안내 시작 (v2.26.0) — 세션 상태만 보고 화면에 지시한다
                                         result = start_guidance_result(nav_state)
+                                    elif fname == "pause_guidance":
+                                        result = pause_guidance_result(nav_state)          # (v2.28.0)
+                                    elif fname == "map_zoom":
+                                        result = map_zoom_result(fargs.get("direction"), mode)   # (v2.28.0)
                                     elif fname not in dispatcher:
                                         result = {"error": f"unknown tool: {fname}"}
                                     else:

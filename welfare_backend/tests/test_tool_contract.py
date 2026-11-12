@@ -64,7 +64,7 @@ FAILS = []
 SKIPS = []
 
 # 세션 상태만 읽어 디스패처를 거치지 않는 도구
-_SESSION_ONLY = {"get_current_guidance", "start_guidance"}   # start_guidance: 말로 안내 시작 (v2.26.0)
+_SESSION_ONLY = {"get_current_guidance", "start_guidance", "pause_guidance", "map_zoom"}   # start_guidance: 말로 안내 시작 (v2.26.0)
 
 
 class _Skip(Exception):

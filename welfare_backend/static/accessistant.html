@@ -167,6 +167,7 @@ body{font-family:var(--font-body);background:#cfd8e3;color:var(--c-text);line-he
 .prof-seg button[aria-pressed="true"]{background:var(--c-primary);color:#fff;}
 /* 찾는 중 표시 (v2.0.1) — 경로·주변 시설을 찾는 몇 초 동안 멈춘 것처럼 보이지 않게 */
 .navi-status--busy{padding-bottom:16px;font-weight:700;}
+.navi-status--paused{background:#FEF3C7;border:2px solid #D97706;font-weight:700;cursor:pointer;}
 .navi-status--busy::after{content:"";position:absolute;left:12px;right:12px;bottom:6px;height:5px;border-radius:3px;background:linear-gradient(90deg,#DBEAFE 0%,#2563EB 50%,#DBEAFE 100%);background-size:200% 100%;animation:navibusy 1.1s linear infinite;}
 @keyframes navibusy{from{background-position:200% 0;}to{background-position:0 0;}}
 @media (prefers-reduced-motion:reduce){.navi-status--busy::after{animation:none;background:#2563EB;}}
@@ -1069,12 +1070,19 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     else pendingAnswerCard = cardDiv;   // 다음 답변 말풍선이 생길 때 맨 위에 부착
   };
   // 테스트 노출 (NAVI._internals 와 같은 목적 — jsdom 이 WS 없이 카드 배치를 검증)
-  window.__CHAT = { appendAiTranscript, finalizeAiBubble, applyAnswerCard, aiAudioActive: () => aiAudioActive(), aiBusy: () => aiBusy(), holdAi: (on) => holdAi(on) };
+  window.__CHAT = { appendAiTranscript, finalizeAiBubble, applyAnswerCard, aiAudioActive: () => aiAudioActive(), aiBusy: () => aiBusy(), holdAi: (on) => holdAi(on),
+    dropTurn: () => { dropAiUntil = Date.now() + DROP_TURN_MAX_MS; try { stopAllPlayback(); } catch (e) {} trialEv("ai_drop_turn", {}); } };
 
   // ────── 폴백(서버 음성 없음) 시 기기 내장 음성으로 답변 낭독 (접근성) ──────
   // Gemini 정상 모드는 서버가 audio 를 보내므로 turnHadAudio=true → 동작 안 함.
   // 결제 소진 등으로 서버 음성이 없는 턴에서만 브라우저 SpeechSynthesis 로 음성 복원.
   let turnHadAudio = false;
+  /* 이 턴의 상담원 음성·글자를 내지 않는다 (v2.28.0) — 화면이 말없이 처리하는 도구(안내 시작·멈춤·지도 크기)의
+     결과가 오면 길안내 화면이 dropTurn() 을 부른다. 상담원이 "네, 안내를 시작할게요"라고 답하면 막 시작한 안내 음성이
+     끊겼다가 이어졌다(실기기 2026-11-12). 턴이 끝나면(turn_complete·interrupted) 풀린다. 안전장치로 최대 DROP_TURN_MAX_MS. */
+  let dropAiUntil = 0;
+  const DROP_TURN_MAX_MS = 12000;
+  const dropping = () => Date.now() < dropAiUntil;
   let localTtsNoticeShown = false;
   let ttsSpeaking = false;   // 기기음성 재생 중 → 마이크 입력 차단(에코 루프 방지)
   // 기기 내장 음성 즉시 중단 (#217) — 서버 음성 도착·사용자 개입 시 호출.
@@ -1344,7 +1352,8 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           }
           break;  // #105 STT 활성 시 중복 억제
         case "ui_action":       { const _act = window.NAVI ? window.NAVI.onUiAction(msg) : null; if (_act && _act.label) addNaviJumpBubble(_act.label, _act.handoff); } break;   // 지도 이동은 사용자가 버튼으로 선택 (#213)
-        case "ai_transcript":   appendAiTranscript(msg.content); if (window.NAVI && window.NAVI.onAiText) window.NAVI.onAiText(msg.content); if (pendingSources.length) { clearTimeout(srcFlushTimer); srcFlushTimer = setTimeout(flushSources, 800); } break;
+        case "ai_transcript":   if (dropping()) break;   // 말없이 처리한 도구의 턴 (v2.28.0)
+                                appendAiTranscript(msg.content); if (window.NAVI && window.NAVI.onAiText) window.NAVI.onAiText(msg.content); if (pendingSources.length) { clearTimeout(srcFlushTimer); srcFlushTimer = setTimeout(flushSources, 800); } break;
         case "text":            appendAiTranscript(msg.content); break;
         case "answer_card":     applyAnswerCard(msg.content); break;   // 정책 템플릿 카드 (#205)
         case "location_request": onLocationRequest(); break;   // 상담원이 '근처'를 찾을 때만 묻는다 (v2.19.0 · 권한 버튼 v2.19.1)
@@ -1356,6 +1365,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           // turn_complete 가 "서버 음성이 없던 턴"으로 보면 기기 내장 음성이 답변 전체를 읽는다.
           turnHadAudio = true;
           if (micHold) break;   // 멈춘 동안 온 음성은 내지 않는다 (v2.0.0)
+          if (dropping()) break;   // 말없이 처리한 도구의 턴 — 길안내 음성을 끊지 않게 (v2.28.0)
           await playAudioChunk(msg.data, msg.mime_type); break;
         case "tool_call":
           // 도구 호출 칩은 사용자에게 비노출. 길안내 화면에는 '찾는 중' 표시만 켠다 (v2.0.1)
@@ -1370,6 +1380,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           break;
         case "turn_complete":
           finalizeUserBubble();
+          if (dropping()) { dropAiUntil = 0; activeAiText = ""; }   // 내지 않은 턴 — 기기 음성으로도 읽지 않는다 (v2.28.0)
           maybeSpeakLocal(activeAiText);
           finalizeAiBubble();
           sttFinal = "";   // #105 사용자 턴 누적 초기화
@@ -1377,6 +1388,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           if (window.NAVI && window.NAVI.onAiTurnComplete) window.NAVI.onAiTurnComplete();   // 안내 복귀 (#248)
           break;
         case "interrupted":
+          dropAiUntil = 0;
           stopAllPlayback();
           finalizeAiBubble();
           pendingSources = []; if (srcFlushTimer) { clearTimeout(srcFlushTimer); srcFlushTimer = null; }
@@ -2297,6 +2309,8 @@ window.NAVI = (function(){
   }
   function speak(text, opts){
     if(appMuted) return;          // 통화 중 — 소리를 낼 수 없다. 끝나면 직전 안내로 돌아온다 (v2.0.0)
+    // 말로 안내를 멈춘 동안에는 길안내 음성을 내지 않는다 (v2.28.0) — 위치 따라가기·단계 진행은 계속된다
+    if(guidePaused && !(opts && opts.force)){ if(text) _tev("navi_paused_drop", {text:text}); return; }
     if(!voiceOn || !text){ if(text) _tev("navi_muted", {text:text}); return; }
     opts = opts || {};
     cancelResume();               // 새 발화가 시작되면 예약된 안내 복귀는 폐기 (#248)
@@ -3440,6 +3454,7 @@ window.NAVI = (function(){
         next: nx ? nx.instruction : null,
         remaining_m: rem,
         dest_name: (tripDest && tripDest.name) || null,
+        paused: !!guidePaused,   // 말로 멈춘 안내 (v2.28.0)
         profile: profile}));
     }catch(e){}
   }
@@ -3503,6 +3518,7 @@ window.NAVI = (function(){
   // 답변(상담원 음성·길안내 음성)이 끝나고 graceMs 만큼 조용하면 직전 안내 문장을 재생.
   function scheduleResume(graceMs, opt){
     cancelResume();
+    if(guidePaused) return;   // 말로 멈춘 안내 — 대화가 끝나도 되돌아오지 않는다 (v2.28.0)
     opt = opt || {};
     var quietSince = Date.now(), since = Date.now(), sawAi = false;
     resumePoll = setInterval(function(){
@@ -4206,7 +4222,8 @@ window.NAVI = (function(){
     hideHud();   // 다음 방향 띠·진행 바 (v2.21.0)
     setRouteReady(false);   // (v2.22.0)
     route=null; steps=[]; stepIdx=0; routeGeom=[]; cumDist=[0]; landmarks=[]; _lmDone={}; _lmPassCnt={}; _chainSpoken=-1;
-    guiding=false;
+    guiding=false; _markPaused(false);
+    restoreLevelAfterGuide();   // 안내 전 지도 단계로 (v2.28.0)
     setEndBtn("home");
     sendNavState();   // 세션의 안내 상태도 함께 비운다 — 상담원이 이전 경로를 답하지 않도록
   }
@@ -4462,7 +4479,7 @@ window.NAVI = (function(){
     renderSummary(primary, destName);
     setRouteReady(true);   // 안내 전 — 안내시작·취소만 (v2.22.0)
     status((destName||"목적지") + " 경로를 표시했습니다.");
-    if(resumeNow){ _lmKeepOnStart = true; startGuidance(); }   // 이탈 재탐색 등 — 안내 자동 재개 (v1.35.0)
+    if(resumeNow){ _lmKeepOnStart = true; if(viaReroute && guidePaused) _keepPauseOnStart = true; startGuidance(); }   // 이탈 재탐색 등 — 안내 자동 재개 (v1.35.0)
     sendNavState();   // 경로 준비 상태(안내 전)도 세션에 알린다 (#248)
   }
 
@@ -4830,6 +4847,8 @@ window.NAVI = (function(){
     staleRetried = false;
     if(stationHint && !stationAnswered[stationAskKey(stationHint)]){ renderStationAsk(); return; }
     stopSimulation();
+    if(!_keepPauseOnStart) _markPaused(false);   // 이탈 재탐색으로 이어 가는 경우만 멈춤 유지 (v2.28.0)
+    _keepPauseOnStart = false;
     guiding = true; stepIdx = 0; _interimDone = {};
     hudOn = true;   // 다음 방향 띠·진행 바 (v2.21.0)
     setRouteReady(false);   // 안내 중 — 신고·긴급 버튼 복귀 (v2.22.0)
@@ -4837,6 +4856,7 @@ window.NAVI = (function(){
     if(!_lmKeepOnStart){ _lmDone = {}; _lmLastTs = 0; }   // 이탈 재탐색 자동 재개는 말한 목록을 잇는다
     _lmKeepOnStart = false; _lmPassCnt = {};
     offRouteCnt = 0; offRouteSince = 0; setFollow(true);
+    zoomForGuide(here);               // 축척 20m 로 확대한 뒤 안내 (v2.28.0)
     trackBegin();                     // 주행 트랙 수집 시작 (v1.34.0)
     sendActivity("guidance_start");
     setEndBtn("guide");   // 상단 버튼 = '안내 종료' (#251, v1.35.0 항시 활성)
@@ -5902,6 +5922,7 @@ window.NAVI = (function(){
       _lastAdvanceTs = Date.now();
       stepIdx += 1;
       renderStep();
+      _unpauseOnArrive();   // (v2.28.0)
       _announceStep(stepIdx, _passed);
       // 도착 — 응답을 기다리던 이탈 재탐색을 무효로 만든다('찾는 중' 표시가 도착 뒤에 남거나, 다음 도착지 경로를 덮지 않게)
       if(steps[stepIdx].maneuver === "arrive") cancelPendingReroute();
@@ -6024,11 +6045,13 @@ window.NAVI = (function(){
     stopSimulation();
     hudOn = true;   // 다음 방향 띠·진행 바 (v2.21.0)
     setRouteReady(false);   // 안내 중 — 신고·긴급 버튼 복귀 (v2.22.0)
+    _markPaused(false);   // (v2.28.0)
     simActive=true; guiding=true; stepIdx=0; simDist=0; _interimDone = {}; _lmDone = {}; _lmLastTs = 0; _lmPassCnt = {};
     setFollow(true);
     sendActivity("simulation_start");
     prefetchTts();
     simPos=posAtDist(0);
+    zoomForGuide(simPos);             // 축척 20m 로 확대한 뒤 안내 (v2.28.0)
     sheetMini(true); sheetSetCollapsed(false);   // 모의 주행 중에도 지도를 넓게
     drawSim();
     renderStep();
@@ -6039,6 +6062,7 @@ window.NAVI = (function(){
     simTimer=setInterval(function(){
       _drainSpeak();
       if(speakBusy()) return;          // 안내 음성이 끝날 때까지 가상 이동 일시정지 (v1.43.0)
+      if(guidePaused) return;          // 말로 멈춘 동안 모의 주행도 그 자리에 (v2.28.0)
       simDist += SIM_SPEED_MPS*SIM_FACTOR*(TICK/1000);
       simPos=posAtDist(simDist);
       drawSim();
@@ -6059,6 +6083,7 @@ window.NAVI = (function(){
     if(_reachedStep(simPos, stepIdx+1)){
       stepIdx+=1;
       renderStep();
+      _unpauseOnArrive();   // (v2.28.0)
       _announceStep(stepIdx);
       // 도착 안내는 지점 5~25m 앞에서 미리 나온다(전환 판정의 여유). 예전에는 여기서 곧바로 모의 주행을 끝내
       // 화살표가 도착지 앞에 멈춘 채 종료 창이 떴다(실기기 2026-10-19). 경로 끝까지 마저 움직인 뒤
@@ -6204,7 +6229,89 @@ window.NAVI = (function(){
      '안내 시작' 버튼과 같은 동작이다(역 근처 출발이면 역 안/밖을 먼저 묻는 것까지 같다).
      이미 안내 중이면 처음부터 다시 시작하지 않는다 — 서버도 같은 판단을 하지만, 화면 상태가 그 사이
      바뀌었을 수 있어 여기서 한 번 더 본다. 반환: 안내를 시작했으면 true. */
+  /* ── 안내 지도 확대 단계 (v2.28.0) ──
+     전체 경로가 한 화면에 보이는 단계로 안내를 시작하면, 이동해도 움직임이 보이지 않았다(실기기 2026-11-12).
+     안내·모의 주행을 시작하면 축척 20m 단계(GUIDE_LEVEL_DEFAULT)로 부드럽게 확대한 뒤 안내한다.
+     확대 단계는 카카오 지도의 정해진 단계를 따른다 — 축척 20m·30m·50m·100m·250m·500m·1km(LEVEL_SCALE).
+     말로 "지도 확대해줘"·"지도 작게"(map_zoom) 하면 한 단계씩 바꾸고, 안내 중이면 그 단계를 이번 안내 동안 기억한다. */
+  var GUIDE_LEVEL_DEFAULT = 1, GUIDE_LEVEL_MIN = 1, GUIDE_LEVEL_MAX = 7, guideLevel = GUIDE_LEVEL_DEFAULT;
+  var LEVEL_SCALE = {1:"20m", 2:"30m", 3:"50m", 4:"100m", 5:"250m", 6:"500m", 7:"1km"};
+  // 숫자가 아니면(지도 준비 전·대역 지도) 안내 단계로 본다
+  function _mapLevel(){ try{ var v = (map && typeof map.getLevel === "function") ? map.getLevel() : null; return (typeof v === "number" && isFinite(v)) ? v : guideLevel; }catch(e){ return guideLevel; } }
+  function _setMapLevel(lv, p){
+    if(!map) return;
+    try{
+      var o = {animate: {duration: 400}};
+      if(p) o.anchor = new (KM().LatLng)(p.lat, p.lng);
+      map.setLevel(lv, o);
+    }catch(e){}
+  }
+  // 안내 전 지도 단계 — 안내가 끝나 경로를 지우면 되돌린다(목록·관광지 태그를 다시 넓게 보이게)
+  var _levelBeforeGuide = null;
+  function restoreLevelAfterGuide(){
+    if(_levelBeforeGuide === null) return;
+    var lv = _levelBeforeGuide; _levelBeforeGuide = null;
+    _setMapLevel(lv, null);
+  }
+  // 안내 시작 지점(지금 위치, 없으면 경로 출발점) 기준으로 확대
+  function zoomForGuide(p){
+    if(_levelBeforeGuide === null){ var cur = _mapLevel(); if(cur > guideLevel) _levelBeforeGuide = cur; }
+    if(!p && steps[0] && steps[0].coord) p = {lat: steps[0].coord[0], lng: steps[0].coord[1]};
+    _setMapLevel(guideLevel, p);
+    _tev("navi_zoom_guide", {level: guideLevel});
+  }
+  function voiceZoom(dir){
+    var cur = _mapLevel(), nx = cur + (dir === "in" ? -1 : 1);
+    if(nx < GUIDE_LEVEL_MIN || nx > GUIDE_LEVEL_MAX){
+      status(dir === "in" ? "지도가 가장 크게 보이는 단계입니다 (축척 " + LEVEL_SCALE[GUIDE_LEVEL_MIN] + ")"
+                          : "지도가 가장 넓게 보이는 단계입니다 (축척 " + LEVEL_SCALE[GUIDE_LEVEL_MAX] + ")");
+      return false;
+    }
+    _setMapLevel(nx, simActive ? simPos : here);
+    if(guiding) guideLevel = nx;
+    _tev("navi_zoom_voice", {dir: dir, level: nx});
+    status("지도를 " + (dir === "in" ? "확대" : "축소") + "했습니다 — 축척 " + (LEVEL_SCALE[nx] || ""));
+    return true;
+  }
+
+  /* ── 안내 멈춤(홀드) (v2.28.0) ──
+     "안내 그만"·"안내 멈춰" → pauseGuidance: 안내 음성을 바로 끊고 그 뒤로도 내지 않는다. 경로·진행 단계·위치 따라가기·
+     다음 방향 띠·진행 바는 그대로 돈다(이동하면 단계도 조용히 넘어간다). 모의 주행은 그 자리에 멈춘다.
+     "다시 안내해줘"·"안내 시작해"(start_guidance) 또는 상태 줄을 누르면 resumeGuidance: 지금 단계 안내부터 이어서 말한다.
+     도착하면 멈춤을 풀고 도착 안내를 말한다. 이탈 재탐색으로 새 경로를 받아도 멈춤은 유지된다. */
+  var guidePaused = false, _keepPauseOnStart = false;
+  var PAUSE_MSG = "⏸ 안내를 중단합니다 — '다시 안내해줘'라고 말하거나 여기를 누르면 이어서 안내합니다";
+  function _markPaused(on){
+    guidePaused = !!on;
+    var el = $("naviStatus");
+    if(el){ el.classList.toggle("navi-status--paused", guidePaused); if(guidePaused) el.setAttribute("tabindex", "0"); else el.removeAttribute("tabindex"); }
+  }
+  function pauseGuidance(){
+    if(!guiding){ status("진행 중인 안내가 없습니다."); return false; }
+    if(guidePaused){ status(PAUSE_MSG); return false; }
+    stopSpeak(); cancelResume();
+    _markPaused(true);
+    _tev("navi_pause", {step: stepIdx});
+    status(PAUSE_MSG);
+    sendNavState();
+    return true;
+  }
+  function resumeGuidance(){
+    if(!guiding || !guidePaused) return false;
+    _markPaused(false);
+    _tev("navi_resume", {step: stepIdx});
+    status("안내를 다시 시작합니다.");
+    _resumeRep = {key: null, n: 0, ts: 0};
+    speakStep(resumeUtterance(stepIdx));
+    sendNavState();
+    followCamera();
+    return true;
+  }
+  // 도착 단계로 넘어가면 멈춤을 푼다 — 도착 안내는 들려야 한다
+  function _unpauseOnArrive(){ var s = steps[stepIdx]; if(guidePaused && s && s.maneuver === "arrive") _markPaused(false); }
+
   function voiceStartGuidance(){
+    if(guiding && guidePaused) return resumeGuidance();   // 멈춘 안내를 이어서 (v2.28.0)
     if(guiding && !simActive) return false;
     if(!steps.length || !routeAllowed()){ status("표시된 경로가 없습니다. 목적지를 먼저 말씀해 주세요."); return false; }
     var naviOn = false; try{ naviOn = $("view-navi").classList.contains("active"); }catch(e){}
@@ -6213,6 +6320,8 @@ window.NAVI = (function(){
     startGuidance();
     return true;
   }
+
+  function _dropAiTurn(){ try{ if(window.__CHAT && window.__CHAT.dropTurn) window.__CHAT.dropTurn(); }catch(e){} }
 
   function onUiAction(msg){
     var p = msg.payload || {};
@@ -6262,7 +6371,16 @@ window.NAVI = (function(){
       onStationVoice(p.where, p.travel);   // 말로 한 역 안/밖·출구 답 (v1.52.0)
       return null;
     } else if(msg.action === "start_guidance"){
-      voiceStartGuidance();   // "안내 시작해" — 말로 안내 시작 (v2.26.0)
+      _dropAiTurn();          // 상담원은 말하지 않는다 — 안내 음성을 끊지 않게 (v2.28.0)
+      voiceStartGuidance();   // "안내 시작해" — 말로 안내 시작 (v2.26.0) · 멈춘 안내는 이어서 (v2.28.0)
+      return null;
+    } else if(msg.action === "pause_guidance"){
+      _dropAiTurn();
+      pauseGuidance();        // "안내 그만" — 바로 끊고 화면에 표시 (v2.28.0)
+      return null;
+    } else if(msg.action === "map_zoom"){
+      _dropAiTurn();
+      voiceZoom(p.dir === "in" ? "in" : "out");   // "지도 확대해줘" (v2.28.0)
       return null;
     } else if(msg.action === "open_navi"){
       // 사용자가 음성으로 화면 이동을 '직접' 요청한 경우(#215) — 즉시 전환한다.
@@ -6439,6 +6557,12 @@ window.NAVI = (function(){
 
     // 접근성 신고 (v1.34.0) — 언제든 원터치. 사유를 누르는 즉시 전송된다.
     var sc=$("naviStatusClose"); if(sc) sc.addEventListener("click", closeStatus);   // 상태 줄 닫기 (v2.13.0)
+    // 멈춘 안내는 상태 줄을 눌러도 이어서 듣는다 (v2.28.0)
+    var stEl=$("naviStatus");
+    if(stEl){
+      stEl.addEventListener("click", function(){ if(guidePaused) resumeGuidance(); });
+      stEl.addEventListener("keydown", function(e){ if(guidePaused && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); resumeGuidance(); } });
+    }
     var rb=$("naviReportBtn");
     if(rb) rb.addEventListener("click", openReportSheet);
     // 긴급·편의 (#296) — 충전소·수리센터·콜택시·화장실
@@ -6737,6 +6861,8 @@ window.NAVI = (function(){
                                      isGuiding:function(){ return guiding; }, voiceStartGuidance:voiceStartGuidance,
                                      resumeDecide:_resumeDecide, resumeShort:resumeShort,
                                      reachedStep:_reachedStep, turnPreAnnounce:_turnPreAnnounce, turnPassed:_turnPassed,
+                                     pauseGuidance:pauseGuidance, resumeGuidance:resumeGuidance, isPaused:function(){ return guidePaused; },
+                                     voiceZoom:voiceZoom, guideLevel:function(){ return guideLevel; }, setGuideLevel:function(v){ guideLevel = v; },
                                      continueUtterance:continueUtterance, setFixAccForTest:function(a){ lastFixAcc = a; },
                                      resumeRepForTest:function(v){ if(v) _resumeRep = v; return _resumeRep; },
                                      resumeUtterance:resumeUtterance, saveTrip:saveTrip, clearTrip:clearTrip, pendingTrip:pendingTrip, offerTripResume:offerTripResume,

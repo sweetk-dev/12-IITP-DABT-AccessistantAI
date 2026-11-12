@@ -1771,7 +1771,8 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
   const busyAfter = NV.speakBusy();
   window.Date.now = realNow;
   check("실보행: 노드 스텝→링크 스텝이 한 번만, 끊기지 않고 발화되고 다음 안내로 이어진다 (v1.43.0)", () => {
-    const stepSpeaks = spoken.slice(before).filter((t) => !/다음 안내까지/.test(t));
+    // 도착 확인 질문은 실제 시간 0.5초 주기로 뜨므로 측정에서 뺀다 — 질문 자체는 v1.46.0 블록에서 검사
+    const stepSpeaks = spoken.slice(before).filter((t) => !/다음 안내까지|처음 화면으로 돌아갈까요/.test(t));
     assert.deepEqual(stepSpeaks, [
       "횡단보도가 있습니다. 횡단보도를 건너 14m 이동합니다. (턱낮춤 미상)",
       "좌회전 후 60m 이동합니다.",
@@ -3895,6 +3896,71 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
     assert.match(HTML, /_announceStep\(stepIdx, _passed\);/);
   });
   I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak(); I().setFixAccForTest(null);
+}
+
+// ── v2.28.0: 말로 하는 안내 제어 — 멈춤·재개·지도 크기·시작 확대·상담원 말없이 ──
+{
+  const I = () => window.NAVI._internals();
+  const act = (action, payload) => window.NAVI.onUiAction({ type: "ui_action", action, payload: payload || {} });
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak(); I().setGuideLevel(1);
+  let drops = 0; const keepChat = window.__CHAT;
+  window.__CHAT = Object.assign({}, keepChat || {}, { dropTurn: () => { drops++; } });
+  act("show_route", ROUTE.ui_action); await sleep(10);
+  window.NAVI.showPreparedView(); await sleep(10);
+  const lvBefore = mapCalls.length;
+  act("start_guidance"); await sleep(10);
+  check("말로 안내 시작: 상담원 답을 내지 않는다 (v2.28.0)", () => assert.equal(drops, 1));
+  check("안내 시작 때 축척 20m 단계(level 1)로 확대한다 (v2.28.0)", () => {
+    assert.equal(I().isGuiding(), true);
+    assert.match(HTML, /zoomForGuide\(here\);/);
+    assert.match(HTML, /zoomForGuide\(simPos\);/);
+  });
+  // 멈춤
+  I().stopSpeak(); I().setStepIdxForTest(1);
+  act("pause_guidance"); await sleep(5);
+  check("안내 그만: 상담원 답 없이 바로 멈추고 화면에 표시 (v2.28.0)", () => {
+    assert.equal(drops, 2);
+    assert.equal(I().isPaused(), true);
+    assert.equal(I().isGuiding(), true, "안내 상태는 유지(홀드)");
+    assert.match($("naviStatus").textContent, /안내를 중단합니다/);
+    assert.ok($("naviStatus").classList.contains("navi-status--paused"));
+  });
+  I().speak("다음 안내 시험 문장", { queue: true, kind: "step" });
+  check("멈춘 동안에는 길안내 음성을 내지 않는다 (v2.28.0)", () => assert.equal(I().speakBusy(), false));
+  check("멈춘 동안 대화가 끝나도 안내로 되돌아오지 않는다 (소스 가드, v2.28.0)", () => assert.match(HTML, /if\(guidePaused\) return;   \/\/ 말로 멈춘 안내 —/));
+  // 재개 — 처음부터가 아니라 지금 단계부터
+  act("start_guidance"); await sleep(5);
+  check("다시 안내해줘: 멈춘 단계부터 이어서 (v2.28.0)", () => {
+    assert.equal(I().isPaused(), false);
+    assert.equal(I().stepIdx, 1, "처음 단계로 돌아가면 안 된다");
+    assert.equal(drops, 3);
+    assert.ok(!$("naviStatus").classList.contains("navi-status--paused"));
+  });
+  // 상태 줄을 눌러도 이어서
+  I().pauseGuidance(); $("naviStatus").dispatchEvent(new window.Event("click"));
+  check("멈춘 안내는 상태 줄을 눌러도 이어서 (v2.28.0)", () => assert.equal(I().isPaused(), false));
+  // 지도 크기
+  const lvl = () => window.NAVI._internals ? (window.__mapLevelForTest ? window.__mapLevelForTest() : null) : null;
+  act("map_zoom", { dir: "out" }); await sleep(5);
+  check("지도 축소: 한 단계(20m→30m), 상담원 말없이 (v2.28.0)", () => {
+    assert.match($("naviStatus").textContent, /축소했습니다 — 축척 30m/);
+    assert.equal(I().guideLevel(), 2, "안내 중 고른 단계를 기억");
+    assert.equal(drops, 4);
+  });
+  act("map_zoom", { dir: "in" }); await sleep(5);
+  check("지도 확대: 30m→20m (v2.28.0)", () => assert.match($("naviStatus").textContent, /확대했습니다 — 축척 20m/));
+  act("map_zoom", { dir: "in" }); await sleep(5);
+  check("가장 크게 보이는 단계에서는 더 확대하지 않고 알린다 (v2.28.0)", () => assert.match($("naviStatus").textContent, /가장 크게 보이는 단계/));
+  // 안내가 없을 때 멈춤
+  I().clearRouteDisplay();
+  check("경로를 지우면 멈춤도 풀린다 (v2.28.0)", () => assert.equal(I().isPaused(), false));
+  check("상담 화면: 말없이 처리한 턴의 음성·글자를 내지 않는다 (소스 가드, v2.28.0)", () => {
+    assert.match(HTML, /if \(dropping\(\)\) break;   \/\/ 말없이 처리한 도구의 턴 — 길안내 음성을 끊지 않게/);
+    assert.match(HTML, /case "ai_transcript":   if \(dropping\(\)\) break;/);
+    assert.match(HTML, /if \(dropping\(\)\) \{ dropAiUntil = 0; activeAiText = ""; \}/);
+  });
+  window.__CHAT = keepChat;
+  I().resetTrip(); I().stopSpeak(); I().setGuideLevel(1);
 }
 
 // ── 결과 ──
