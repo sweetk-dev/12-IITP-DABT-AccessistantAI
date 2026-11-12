@@ -469,21 +469,42 @@ def normalize_disabilities(values) -> list:
     return out or ["지체장애"]
 
 
+# 실내 시설로 보는 이름 (v2.29.0) — 관광지 자료에 실내·실외 구분이 없어 시설 이름으로 고른다.
+# 공원·하천·거리·운동장은 '실내'가 이름에 함께 있을 때만(예: 종합운동장(실내·외수영장)) 실내로 본다.
+_INDOOR_RE = re.compile(r"박물관|미술관|전시|기념관|과학관|도서관|문화원|문화센터|문화회관|예술회관|아트센터|아트홀|"
+                        r"공연장|극장|체육관|빙상장|수영장|실내|파빌리온|체험관|백화점|쇼핑")
+
+
+def is_indoor_name(name: str) -> bool:
+    return bool(_INDOOR_RE.search(name or ""))
+
+
 async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
                                   topk: int = 10,
                                   origin_lat: float = None, origin_lng: float = None,
-                                  offset: int = 0) -> dict:
+                                  offset: int = 0, indoor: bool = False) -> dict:
     """장애 유형별 무장애 관광지 추천.
 
     origin_lat/lng 를 주면 02 route-api 가 거리 오름차순으로 정렬하고
     offset 페이징(total/has_more)을 지원한다 — 프런트 무한스크롤용.
+    indoor=True 이면 실내 시설만 고른다(비·추위·더위 — v2.29.0). 이때는 한 번에 받아 거르고 페이징하지 않는다.
     """
+    indoor = indoor is True or str(indoor).lower() in ("true", "1", "yes")
+    try:
+        topk = max(1, min(int(topk or 10), 50))
+    except (TypeError, ValueError):
+        topk = 10
     data = await route_client.tour_recommend(
-        normalize_disabilities(disabilities), sigungu=sigungu, topk=topk,
-        origin_lat=origin_lat, origin_lng=origin_lng, offset=offset,
+        normalize_disabilities(disabilities), sigungu=sigungu, topk=50 if indoor else topk,
+        origin_lat=origin_lat, origin_lng=origin_lng, offset=0 if indoor else offset,
     )
     if data.get("status") == "error":
         return data
+    if indoor:
+        data = dict(data)
+        picked = [it for it in (data.get("items") or []) if is_indoor_name(it.get("name"))][:topk]
+        data.update({"items": picked, "total": len(picked), "has_more": False})
+        offset = 0
 
     items = []
     for it in data.get("items", []):
@@ -510,12 +531,16 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
         "offset": offset,
         "has_more": data.get("has_more", offset + len(items) < total),
         "results": items,
+        "indoor_only": indoor,
         "ui_action": {"action": "show_tour_spots", "items": items},
         "ai_instruction": (
-            "상위 2~3곳만 이름과 대표 편의시설 위주로 짧게 안내하세요. 목록은 무장애 편의시설을 "
+            ("실내 시설만 시설 이름으로 골랐습니다. " if indoor else "")
+            + "상위 2~3곳만 이름과 대표 편의시설 위주로 짧게 안내하세요. 목록은 무장애 편의시설을 "
             "많이 갖춘 곳(tier 1)을 먼저, 같은 등급 안에서는 가까운 순으로 정렬돼 있습니다. "
             "화면에 지도와 목록이 함께 표시되므로 전부 나열하지 마세요. "
-            "결과가 없으면 데이터가 아직 준비되지 않았다고 솔직히 말하세요."
+            + ("결과가 없으면 실내 관광지를 찾지 못했다고 말하고, 도서관·체육관은 find_culture_sports 로 "
+               "찾을 수 있다고 제안하세요." if indoor else
+               "결과가 없으면 데이터가 아직 준비되지 않았다고 솔직히 말하세요.")
         ),
     }
 
@@ -2688,6 +2713,47 @@ async def tool_report_accessibility(reason: str = "etc", detail: str = "",
 
 
 # ─────────────────────────────────────────────────────────────
+# 날씨 (v2.29.0) — 휠체어 바깥 이동에 직접 영향을 주는 비·눈·기온·바람·미세먼지
+# ─────────────────────────────────────────────────────────────
+import weather_client  # noqa: E402
+
+_WEATHER_AI = (
+    "질문에 맞춰 한두 문장으로만 답하세요. 먼저 물은 것(비가 오는지, 기온 등) 하나를 말하고, "
+    "cautions 가 있으면 가장 앞의 것 하나만 덧붙이세요. 나머지 수치(습도·풍속·미세먼지 등)는 묻지 않았으면 말하지 마세요. "
+    "기온은 정수로 '15도'처럼 말하고, 앞으로의 날씨는 '예보로는'이라고 말하세요. "
+    "outdoor 가 '어려움'이거나 사용자가 실내 활동을 원하면 실내 장소를 찾아 드릴지 한 번만 물으세요"
+    "(찾을 때는 find_bf_tour_spots 를 indoor=true 로, 도서관·체육관은 find_culture_sports). "
+    "자료 출처는 사용자가 물을 때만 '예보 자료'라고 말하세요."
+)
+
+
+async def tool_get_weather(lat: float = None, lng: float = None, place: str = "",
+                           day: str = "today") -> dict:
+    """지금 날씨·오늘/내일 예보·미세먼지와 휠체어 이동 주의. 위치: 말한 장소 > 현재 위치 > 안양시."""
+    day = "tomorrow" if str(day or "").strip().lower() in ("tomorrow", "내일") else "today"
+    label = None
+    if place:
+        hit = await _resolve_place(place)
+        if hit is None:
+            return {"status": "place_not_found", "tool_name": "get_weather", "place": place,
+                    "ai_instruction": ("말씀하신 곳(%s)을 찾지 못했다고 짧게 말하고, 시·구 이름으로 다시 말씀해 "
+                                       "달라고 하세요." % place)}
+        lat, lng, label = hit["lat"], hit["lng"], (hit.get("label") or place)
+    elif lat is not None and lng is not None:
+        label = "현재 위치"
+    else:
+        lat, lng, label = weather_client.DEFAULT_POINT
+    raw = await weather_client.fetch(lat, lng)
+    if raw.get("error"):
+        return {"status": "error", "tool_name": "get_weather", "error": raw["error"],
+                "ai_instruction": "지금은 날씨 정보를 가져오지 못했다고 한 문장으로만 말하세요. 날씨를 짐작해 말하지 마세요."}
+    out = weather_client.summarize(raw["fc"], raw.get("air"), day=day)
+    out.update({"status": "success", "tool_name": "get_weather", "place_label": label,
+                "ai_instruction": ("기준 위치는 %s 입니다. " % label) + _WEATHER_AI})
+    return out
+
+
+# ─────────────────────────────────────────────────────────────
 # 도구 디스패처 (Gemini 함수명 → 실제 핸들러)
 # ─────────────────────────────────────────────────────────────
 def get_tool_dispatcher(embed_fn):
@@ -2724,6 +2790,7 @@ def get_tool_dispatcher(embed_fn):
         "open_navi_screen": tool_open_navi_screen,
         "report_accessibility_issue": tool_report_accessibility,
         "report_station_position": tool_report_station_position,
+        "get_weather": tool_get_weather,                     # v2.29.0
     }
 
 
