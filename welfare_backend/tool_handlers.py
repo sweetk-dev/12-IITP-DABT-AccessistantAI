@@ -2725,16 +2725,29 @@ async def tool_report_station_position(where: str = "", travel: str = "",
 _REPORT_REASONS = ("curb", "no_sidewalk", "no_crossing", "steep", "blocked", "etc")
 
 
+_REPORT_LABELS = {"curb": "턱 있음", "no_sidewalk": "보도 없음·끊김", "no_crossing": "횡단보도 없음",
+                  "steep": "경사 심함", "blocked": "통행 불가(공사 등)", "etc": "기타"}
+
+
 async def tool_report_accessibility(reason: str = "etc", detail: str = "",
                                     lat: float = None, lng: float = None,
-                                    route_id: str = "") -> dict:
-    """접근성 문제 음성 제보 (v1.35.0) — 화면의 '신고' 버튼과 같은 02 수집 API 로 접수.
+                                    route_id: str = "", step: str = "propose") -> dict:
+    """접근성 문제 음성 제보 (v1.35.0, 확인 후 접수 v2.31.0) — 화면의 '신고' 버튼과 같은 02 수집 API 로 접수.
 
     사용자가 "여기 턱이 있어", "길이 끊겼어, 신고해줘" 처럼 말하면 호출된다.
     좌표는 모델이 지어내지 못하도록 서버가 현재 위치를 주입한다
     (inject_nav_defaults). 접수 즉시 해당 지점 경로 안내에
     '이용자 제보(미확인)' 경고가 붙는다.
+
+    v2.31.0 — 말로 한 신고는 바로 접수하지 않는다(실증 개선 목록 8). 잘못 알아들은 말이나 혼잣말이
+    신고로 들어가 경로 안내에 경고가 붙는 것을 막는다.
+      step=propose : 요약해 되묻기만 한다(접수 안 함). 세션이 처음 말한 위치를 기억한다(inject_nav_defaults)
+      step=confirm : 이용자가 '네'라고 한 뒤 — 기억한 위치로 접수한다
+      step=cancel  : 이용자가 '아니'라고 함 — 기억한 신고를 버린다
     """
+    if step == "cancel":
+        return {"status": "cancelled",
+                "ai_instruction": "신고하지 않았다고 한 문장으로만 말하세요."}
     if lat is None or lng is None:
         return {
             "status": "need_location",
@@ -2745,6 +2758,19 @@ async def tool_report_accessibility(reason: str = "etc", detail: str = "",
         }
     if reason not in _REPORT_REASONS:
         reason = "etc"
+    label = _REPORT_LABELS[reason]
+    summary = label + (" — " + str(detail)[:80] if (detail and reason == "etc") else "")
+    if step != "confirm":
+        return {
+            "status": "confirm_needed",
+            "summary": summary,
+            "ai_instruction": (
+                "아직 접수하지 않았습니다. 접수됐다고 말하지 마세요. "
+                "'여기를 %s(으)로 신고할까요?'처럼 지금 위치를 이 내용으로 신고할지 한 문장으로만 물으세요. "
+                "사용자가 네·응·그래·해줘 하면 step='confirm' 으로 다시 호출하고, 아니·됐어·취소 하면 step='cancel' 로 호출하세요. "
+                "사용자가 내용을 고쳐 말하면 고친 내용으로 step='propose' 를 다시 호출하세요." % summary
+            ),
+        }
     payload = {"lat": float(lat), "lng": float(lng), "reason": reason,
                "detail": (str(detail)[:500] if detail else None),
                "route_id": (str(route_id)[:20] if route_id else None)}

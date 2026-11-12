@@ -396,10 +396,13 @@ def _ollama_route_tools() -> list:
            ["where"]),
         fn("report_accessibility_issue",
            "현재 위치의 접근성 문제를 제보로 접수한다. \"여기 턱이 있어\", \"보도가 끊겼어\", "
-           "\"신고해줘\" 처럼 현장의 통행 문제를 말하면 사용한다. 위치는 자동 주입되므로 좌표를 만들지 않는다.",
+           "\"신고해줘\" 처럼 현장의 통행 문제를 말하면 사용한다. 위치는 자동 주입되므로 좌표를 만들지 않는다. "
+           "바로 접수하지 않는다 — 먼저 propose 로 호출해 받은 요약으로 신고할지 묻고, 그렇다고 하면 confirm, "
+           "아니라고 하면 cancel 로 다시 호출한다.",
            {"reason": {"type": "string",
                        "description": "curb / no_sidewalk / no_crossing / steep / blocked / etc"},
-            "detail": {"type": "string", "description": "사용자가 말한 문제 내용을 한 문장으로"}},
+            "detail": {"type": "string", "description": "사용자가 말한 문제 내용을 한 문장으로"},
+            "step": {"type": "string", "description": "propose(기본, 되묻기) / confirm(신고하라고 답함) / cancel"}},
            ["reason"]),
     ]
 

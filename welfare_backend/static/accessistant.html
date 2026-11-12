@@ -293,19 +293,20 @@ html.nmap .st-close{position:relative;top:auto;right:auto;grid-column:4;grid-row
    .mv-banner: 안내·모의 주행 중 지도 위쪽(흐름 안)에 다음 안내 지점의 방향(큰 화살표)·거리·이름과 전체 남은 거리를 보인다.
    .rbar: 세로 진행 바 — 아래 출발, 위 도착. 지나온 만큼 채우고 주의 지점 표식과 내 위치(휠체어 아이콘)를 놓는다.
    웹 지도에서는 바를 지도 위에 띄우고(상태 문구는 띠 높이만큼 내린다 — --mv-h), 앱 지도(html.nmap)에서는 둘 다 지도 칸 밖 격자 칸에 둔다. */
-.mv-banner{display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--c-secondary);color:#fff;min-height:72px;}
+/* v2.31.0 띠 크기 줄임(실기기 의견 "띠가 크다") — 높이 72px → 52px, 화살표 64px → 46px. 거리·이름 두 줄은 그대로 */
+.mv-banner{display:flex;align-items:center;gap:10px;padding:5px 10px;background:var(--c-secondary);color:#fff;min-height:52px;}
 .mv-banner[hidden]{display:none;}
-.mv-arrow{flex:none;width:64px;height:64px;display:flex;align-items:center;justify-content:center;}
-.mv-arrow svg{width:60px;height:60px;display:block;}
-.mv-arrow .mv-emoji{font-size:44px;line-height:1;}
+.mv-arrow{flex:none;width:46px;height:46px;display:flex;align-items:center;justify-content:center;}
+.mv-arrow svg{width:42px;height:42px;display:block;}
+.mv-arrow .mv-emoji{font-size:32px;line-height:1;}
 .mv-text{flex:1 1 auto;min-width:0;}
-.mv-dist{font-size:1.9rem;font-weight:800;line-height:1.1;letter-spacing:-.02em;}
-.mv-ins{font-size:1rem;font-weight:700;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mv-dist{font-size:1.45rem;font-weight:800;line-height:1.1;letter-spacing:-.02em;}
+.mv-ins{font-size:.92rem;font-weight:700;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mv-remain{flex:none;text-align:right;font-size:.8rem;line-height:1.3;opacity:.88;}
-.mv-remain b{display:block;font-size:1.02rem;white-space:nowrap;}
+.mv-remain b{display:block;font-size:.95rem;white-space:nowrap;}
 /* v2.23.2: 웹 지도 전용 — 앱 지도(html.nmap)에서는 상태 줄이 격자 2행에 흐름으로 놓이는데(position:relative) 이 top 이 그대로 먹혀
    상태 줄이 지도 위로 90px 밀려 내려가고 2행은 빈 띠로 남았다(실기기 2026-10-28) */
-html:not(.nmap) .navi-wrap.mv-on .navi-status,html:not(.nmap) .navi-wrap.mv-on .st-close{top:calc(var(--mv-h,72px) + 10px);}
+html:not(.nmap) .navi-wrap.mv-on .navi-status,html:not(.nmap) .navi-wrap.mv-on .st-close{top:calc(var(--mv-h,52px) + 10px);}
 /* v2.21.1 바 다듬기(2026-10-28 검토): 배경·출발/도착 표식 없이 선만, 지나온 곳 회색·남은 곳 파랑, 표식·내 위치 축소 */
 .rbar{position:absolute;right:8px;top:calc(var(--mv-h,0px) + 64px);bottom:132px;width:36px;z-index:5;display:flex;flex-direction:column;align-items:center;padding:14px 0;}
 .rbar[hidden]{display:none;}
@@ -2894,10 +2895,11 @@ window.NAVI = (function(){
   }
 
   /* ── 현재 위치 ── */
-  function startWatch(){
+  function startWatch(fresh){
     if(!navigator.geolocation){ status("이 브라우저는 위치 기능을 지원하지 않습니다."); return; }
     watchId = navigator.geolocation.watchPosition(function(pos){
       here = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+      if(guiding && !simActive) _noteFix(pos);   // 위치 고착 알림 (v2.31.0)
       lastFixAcc = (pos.coords.accuracy != null) ? +pos.coords.accuracy : null;
       drawMe();
       // 위치 오류 문구를 띄운 뒤 처음 성공한 측위 — 문구를 한 번 되돌리고 표식을 내린다.
@@ -2939,7 +2941,7 @@ window.NAVI = (function(){
       if(!simActive) sendLocation();   // 모의 주행 중엔 가상 이동이 상담 출발지를 오염시키지 않도록 실좌표만 유지·전송 억제
       if(guiding && !simActive){ trackPush(pos.coords); maybeReroute(); }
       // 위치로 역을 나섰다고 본 측위에서는 다음 단계 판정을 쉰다 — 한 번에 두 단계를 건너뛰지 않게 (v1.52.1)
-      if(guiding && !simActive){ if(!maybeAutoExit()) advanceStep(); followCamera(); }
+      if(guiding && !simActive){ if(!maybeAutoExit()) advanceStep(); followCamera(); _stuckCheck(); }
     }, function(err){
       // 위치 오류는 사유가 셋이다(GeolocationPositionError.code). 전부 "권한 없음"으로 말하면
       // 권한을 이미 허용한 이용자가 설정을 다시 뒤지게 된다.
@@ -2959,7 +2961,7 @@ window.NAVI = (function(){
         emsg = "위치 권한이 없어 현재 위치를 알 수 없습니다. 권한을 허용해 주세요.";
       }
       if(emsg){ status(emsg); locErrMsg = emsg; }
-    }, {enableHighAccuracy:true, maximumAge:5000, timeout:10000});
+    }, {enableHighAccuracy:true, maximumAge: fresh ? 0 : 5000, timeout:10000});
   }
   /* ── 위치 1회 조회 (v2.19.0) ──
      서버가 '근처' 도구를 기준 장소 없이 부르려는데 위치가 없을 때만 보낸다({type:"location_request"}).
@@ -3140,6 +3142,91 @@ window.NAVI = (function(){
     rerouteStartTs = Date.now();
     var done = function(){ if(token === rerouteToken) rerouteStartTs = 0; };   // 끝난 요청만 '진행 중'을 푼다
     requestRoute(tripDest, {reroute: token}).then(done, done);
+  }
+  /* ── 위치 고착 알림 (v2.31.0, 실증 S-16) ──
+     1회차 명학역 일대에서 단말 위치가 약 1분 동안 멈춘 채(보고 정확도 1~7m) 참여자는 계속 이동했고, 서비스는 같은 단계만
+     되풀이했다. 이탈 기준(45m)에도 다음 지점 기준(25m)에도 걸리지 않아 이용자는 안내가 틀린 줄 몰랐다.
+     안내 중(모의 주행 제외)에 두 경우를 알린다 — 한 번 알리면 위치가 다시 움직일 때까지 되풀이하지 않는다.
+       · nofix  : 새 측위가 STUCK_NOFIX_MS 동안 오지 않는다(같은 timestamp 가 되풀이되는 측위는 새 측위로 치지 않는다)
+       · frozen : 측위는 오는데 STUCK_FROZEN_MS 동안 STUCK_MOVE_M 안에 머문다
+     역 안·승하차 단계는 측위가 원래 안 되므로 보지 않는다. 횡단보도 단계는 신호 대기로 서 있을 수 있어 경로에서
+     STUCK_CROSS_OFF_M 이상 떨어져 멈춘 경우만 본다(S-16 은 경로에서 20~25m). 알릴 때 위치 감시를 한 번 새로 연다. */
+  var STUCK_NOFIX_MS = 20000, STUCK_FROZEN_MS = 45000, STUCK_MOVE_M = 4, STUCK_RESUME_M = 10,
+      STUCK_CROSS_OFF_M = 12, STUCK_REWARN_MS = 120000;
+  var _fixLog = [], _lastFixWall = 0, _lastFixTs = null, _stuck = null, _stuckMsg = null, _stuckLastWarn = 0, stuckTimer = null;
+  function _stuckReset(){
+    _fixLog = []; _lastFixWall = Date.now(); _lastFixTs = null; _stuck = null; _stuckLastWarn = 0;
+    if(_stuckMsg !== null){ var el = $("naviStatus"); if(el && el.textContent === _stuckMsg) setStatusWarn(false); _stuckMsg = null; }
+    if(stuckTimer){ clearInterval(stuckTimer); stuckTimer = null; }
+  }
+  function _stuckArm(){
+    if(stuckTimer) clearInterval(stuckTimer);
+    stuckTimer = setInterval(function(){
+      if(!guiding){ clearInterval(stuckTimer); stuckTimer = null; return; }
+      _stuckCheck(Date.now());
+    }, 5000);
+  }
+  function _hav(a, b){
+    var R = 6371000, r = Math.PI / 180, dl = (b.lat - a.lat) * r, dg = (b.lng - a.lng) * r;
+    var x = Math.sin(dl / 2) * Math.sin(dl / 2) + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dg / 2) * Math.sin(dg / 2);
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(x)));
+  }
+  function _noteFix(pos, now){
+    now = now || Date.now();
+    var ts = (pos && pos.timestamp != null) ? +pos.timestamp : null;
+    if(ts != null && _lastFixTs != null && ts === _lastFixTs) return;   // 같은 측위가 다시 온 것 — 새 측위가 아니다
+    _lastFixTs = ts; _lastFixWall = now;
+    var p = {t: now, lat: pos.coords.latitude, lng: pos.coords.longitude};
+    _fixLog.push(p);
+    while(_fixLog.length && _fixLog[0].t < now - STUCK_FROZEN_MS - 15000) _fixLog.shift();
+    if(_stuck && (_stuck.kind === "nofix" || _hav(_stuck.at, p) > STUCK_RESUME_M)) _stuckClear(now);
+  }
+  function _stuckSkipStep(){
+    var cur = steps[stepIdx] || {}, m = String(cur.maneuver || "");
+    if(/_board$|_alight$/.test(m) || m === "station_start" || m === "station_exit" || m === "arrive") return true;
+    if(m === "crossing" && here){ try{ return offRouteDistM(here) < STUCK_CROSS_OFF_M; }catch(e){ return true; } }
+    return false;
+  }
+  function _stuckCheck(now){
+    now = now || Date.now();
+    if(!guiding || simActive || _stuck) return null;
+    if(_stuckSkipStep()) return null;
+    if(now - _stuckLastWarn < STUCK_REWARN_MS) return null;
+    var kind = null;
+    if(_lastFixWall && now - _lastFixWall > STUCK_NOFIX_MS) kind = "nofix";
+    else if(_fixLog.length >= 4){
+      // 창(STUCK_FROZEN_MS) 시작 직전의 측위(anchor)부터 지금까지 전부 STUCK_MOVE_M 안이어야 한다 — 창 전체를 덮는 기록이 있을 때만
+      var last = _fixLog[_fixLog.length - 1], anchor = null, win = [];
+      _fixLog.forEach(function(f){ if(f.t <= now - STUCK_FROZEN_MS) anchor = f; else win.push(f); });
+      if(anchor && win.length >= 3 && _hav(anchor, last) <= STUCK_MOVE_M &&
+         win.every(function(f){ return _hav(f, last) <= STUCK_MOVE_M; })) kind = "frozen";
+    }
+    if(!kind) return null;
+    var at = _fixLog.length ? _fixLog[_fixLog.length - 1] : (here ? {lat: here.lat, lng: here.lng} : {lat: 0, lng: 0});
+    _stuck = {kind: kind, since: now, at: {lat: at.lat, lng: at.lng}};
+    _stuckLastWarn = now;
+    _tev("loc_stuck", {kind: kind, step: stepIdx, acc: lastFixAcc != null ? Math.round(lastFixAcc) : null});
+    if(kind === "nofix"){
+      _stuckMsg = "위치 신호가 잠시 끊겼습니다. 안내가 실제 위치와 다를 수 있으니 주변을 확인하며 이동해 주세요.";
+      speak("위치 신호가 잠시 끊겼어요. 주변을 확인하며 천천히 이동해 주세요.");
+    } else {
+      _stuckMsg = "위치가 한동안 바뀌지 않고 있습니다. 이동 중이시라면 안내가 실제 위치와 다를 수 있으니 주변을 확인하며 이동해 주세요.";
+      speak("위치가 한동안 바뀌지 않고 있어요. 이동 중이시면 안내가 실제 위치와 다를 수 있으니, 주변을 확인하며 천천히 이동해 주세요.");
+    }
+    setStatusWarn(true); status(_stuckMsg);
+    // 위치 감시를 새로 연다 — 저장된 측위를 되풀이해 받는 경우를 끊는다(maximumAge 0)
+    try{ if(watchId != null && navigator.geolocation){ navigator.geolocation.clearWatch(watchId); } startWatch(true); }catch(e){}
+    return kind;
+  }
+  function _stuckClear(now){
+    var was = _stuck; _stuck = null;
+    _tev("loc_unstuck", {kind: was && was.kind, ms: was ? (now || Date.now()) - was.since : null});
+    if(_stuckMsg !== null){
+      var el = $("naviStatus");
+      if(el && el.textContent === _stuckMsg){ setStatusWarn(false); status("위치를 다시 찾았습니다. 안내를 계속합니다."); }
+      _stuckMsg = null;
+      if(guiding && !simActive) speak("위치를 다시 찾았어요.");
+    }
   }
   /* 이탈 재탐색이 실패했을 때 — 기존 경로로 안내를 계속한다는 사실을 상태 줄과 음성으로 알린다.
      서버가 경로를 만들지 못한 경우와 통신 예외 모두 여기로 온다. 경로선·스텝·안내 상태는 건드리지 않는다.
@@ -4254,7 +4341,7 @@ window.NAVI = (function(){
     hideHud();   // 다음 방향 띠·진행 바 (v2.21.0)
     setRouteReady(false);   // (v2.22.0)
     route=null; steps=[]; stepIdx=0; routeGeom=[]; cumDist=[0]; landmarks=[]; _lmDone={}; _lmPassCnt={}; _chainSpoken=-1;
-    guiding=false; _markPaused(false);
+    guiding=false; _markPaused(false); _stuckReset();
     restoreLevelAfterGuide();   // 안내 전 지도 단계로 (v2.28.0)
     setEndBtn("home");
     sendNavState();   // 세션의 안내 상태도 함께 비운다 — 상담원이 이전 경로를 답하지 않도록
@@ -4888,6 +4975,7 @@ window.NAVI = (function(){
     if(!_lmKeepOnStart){ _lmDone = {}; _lmLastTs = 0; }   // 이탈 재탐색 자동 재개는 말한 목록을 잇는다
     _lmKeepOnStart = false; _lmPassCnt = {};
     offRouteCnt = 0; offRouteSince = 0; setFollow(true);
+    _stuckReset(); _stuckArm();       // 위치 고착 알림 (v2.31.0)
     zoomForGuide(here);               // 축척 20m 로 확대한 뒤 안내 (v2.28.0)
     trackBegin();                     // 주행 트랙 수집 시작 (v1.34.0)
     sendActivity("guidance_start");
@@ -6943,6 +7031,7 @@ window.NAVI = (function(){
                                      setWheelProfile:setWheelProfile,
                                      openSosSheet:openSosSheet, sosItems:function(){return sosItems;}, resetSosLoaded:function(k){ delete sosLoaded[k]; }, onUiAction:onUiAction,
                                      guiding:function(){return guiding;},
+                                     noteFixForTest:_noteFix, stuckCheckForTest:_stuckCheck, stuckState:function(){ return _stuck; }, stuckResetForTest:_stuckReset,
                                      egressWhere:function(){return egressWhere;}, gotoStep:gotoStep,
                                      stationHint:function(){return stationHint;},
                                      maybeAutoExit:maybeAutoExit, stationWait:stationWait, undoAutoExit:undoAutoExit,

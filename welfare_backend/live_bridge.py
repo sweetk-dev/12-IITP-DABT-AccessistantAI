@@ -648,7 +648,9 @@ def _route_tool_declarations() -> list:
             description=("현재 위치의 접근성 문제를 제보로 접수한다. 사용자가 \"여기 턱이 있어\", "
                          "\"보도가 끊겼어\", \"횡단보도가 없어\", \"경사가 너무 심해\", \"못 지나가겠어\", "
                          "\"신고해줘\" 처럼 현장의 통행 문제를 말하면 사용한다. 위치는 현재 위치가 "
-                         "자동 주입되므로 좌표를 만들지 않는다. 접수되면 그 지점의 경로 안내에 "
+                         "자동 주입되므로 좌표를 만들지 않는다. 바로 접수하지 않는다 — 먼저 step 없이(propose) "
+                         "호출하면 요약을 돌려주고, 사용자에게 그 내용으로 신고할지 묻는다. 사용자가 그렇다고 하면 "
+                         "step=confirm, 아니라고 하면 step=cancel 로 다시 호출한다. 접수되면 그 지점의 경로 안내에 "
                          "경고가 붙는다."),
             parameters=types.Schema(
                 type=types.Type.OBJECT,
@@ -663,6 +665,11 @@ def _route_tool_declarations() -> list:
                     "detail": types.Schema(
                         type=types.Type.STRING,
                         description="사용자가 말한 문제 내용을 한 문장으로 요약(예: '보도 턱이 높아 휠체어가 못 오름')",
+                    ),
+                    "step": types.Schema(
+                        type=types.Type.STRING,
+                        description=("propose(처음 — 접수하지 않고 요약해 되묻는다, 기본) / confirm(사용자가 신고하라고 "
+                                     "답한 뒤) / cancel(사용자가 신고하지 말라고 함)"),
                     ),
                 },
             ),
