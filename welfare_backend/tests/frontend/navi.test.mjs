@@ -3899,6 +3899,12 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak(); I().setFixAccForTest(null);
 }
 
+// ── v2.29.6: 탈 역의 역 안 이동을 세션에 보낸다 — 승강기는 경로의 하나만 답하는 근거 ──
+check("nav_state 에 탈 역의 역 안 이동(station_ingress)을 싣고, 내릴 역 쪽이면 싣지 않는다 (소스 가드, v2.29.6)", () => {
+  assert.match(HTML, /station_ingress: ig \? \{station: ig\.station, inside: ig\.inside \|\| \[\], car: \(ig\.car && ig\.car\.text\) \|\| null\} : null,/);
+  assert.match(HTML, /if\(steps\[gi3\] && steps\[gi3\]\.egress\) break;/);
+});
+
 // ── v2.29.3: 상담원이 물음으로 답을 끝내면 답할 틈을 두고 안내로 돌아온다 ──
 {
   const I = () => window.NAVI._internals();

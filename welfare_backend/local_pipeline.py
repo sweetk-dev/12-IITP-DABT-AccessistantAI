@@ -380,8 +380,7 @@ def _ollama_route_tools() -> list:
         fn("get_station_facilities",
            "지하철역의 교통약자 편의시설(엘리베이터·리프트 출입구, 장애인화장실 위치, 승강장 안전발판·틈)을 "
            "알려 준다. '○○역 엘리베이터 어디 있어' 질문에 사용.",
-           {"station": {"type": "string", "description": "역 이름"}},
-           ["station"]),
+           {"station": {"type": "string", "description": "역 이름. 길안내 중 타거나 내릴 역이면 비워도 된다"}}),
         fn("open_navi_screen",
            "화면을 이동·관광(지도) 탭으로 전환한다. 사용자가 화면 이동 자체를 명시적으로 요청할 때만 사용한다.",
            {}),
