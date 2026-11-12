@@ -1563,15 +1563,26 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   const naviDuckHit = () => naviBargeWin.slice(-NAVI_DUCK_LAST).filter((r) => r >= NAVI_BARGE_RMS).length >= NAVI_DUCK_NEED;
   window.__NAVI_GATE = { hit: naviBargeHit, duck: naviDuckHit, reset: naviBargeReset, RMS: NAVI_BARGE_RMS, WIN: NAVI_BARGE_WIN, NEED: NAVI_BARGE_NEED };
 
+  // 에코 제거 범위 (v2.30.3) — echoCancellation: true 만으로는 Android WebView 에서 페이지가 Web Audio 로 재생하는
+  // 상담원·안내 음성이 마이크에서 지워지지 않아(실기기 2026-11-12, WebView 156) 상담원이 자기 말을 듣고 답했다.
+  // "all"(기기에서 나가는 소리 전부를 지운다)을 먼저 요청하고, 지원하지 않는 브라우저면 종전 값으로 다시 연다.
+  const MIC_BASE = { channelCount: 1, noiseSuppression: true, autoGainControl: true };
+  const openMicStream = async () => {
+    try {
+      return await navigator.mediaDevices.getUserMedia({ audio: Object.assign({ echoCancellation: "all" }, MIC_BASE) });
+    } catch (e) {
+      if (e && (e.name === "NotAllowedError" || e.name === "NotFoundError" || e.name === "SecurityError")) throw e;
+      return await navigator.mediaDevices.getUserMedia({ audio: Object.assign({ echoCancellation: true }, MIC_BASE) });
+    }
+  };
+  window.__CHAT._openMicForTest = openMicStream;   // 테스트용 — 에코 제거 요청 순서 확인 (v2.30.3)
   const startMic = async () => {
-    micStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      }
-    });
+    micStream = await openMicStream();
+    try {
+      const st = ((micStream.getAudioTracks()[0] || {}).getSettings || (() => ({}))).call(micStream.getAudioTracks()[0]) || {};
+      window.__micSettings = { ec: st.echoCancellation, ns: st.noiseSuppression, agc: st.autoGainControl, rate: st.sampleRate };
+      trialEv("mic_settings", window.__micSettings);
+    } catch (e) {}
     // 헤드셋(블루투스·유선) 마이크면 스피커 소리가 되돌아오지 않는다 — 차단 기준을 절반으로 낮춘다 (v1.59.0)
     try {
       const HS = /bluetooth|wired headset|usb|블루투스/i;

@@ -820,5 +820,27 @@ check("조사: 숫자·받침", () => {
 
 let failed = 0;
 for (const [st, name] of results) { console.log(`${st === "PASS" ? "  ok" : "FAIL"}  ${name}`); if (st === "FAIL") failed++; }
+// ───────── v2.30.3 마이크 에코 제거 범위 ─────────
+{
+  const asked = [];
+  const w = boot((win) => { win.__gum = async (c) => { asked.push(c.audio.echoCancellation);
+    if (c.audio.echoCancellation === "all") { const e = new Error("bad value"); e.name = "TypeError"; throw e; }
+    return { getAudioTracks: () => [{ getSettings: () => ({ echoCancellation: true }) }] }; }; }, "https://example.test/policy");
+  w.navigator.mediaDevices.getUserMedia = (c) => w.__gum(c);
+  await sleep(30);
+  const st = await w.__CHAT._openMicForTest();
+  check("(v2.30.3) 에코 제거 'all' 을 먼저 요청하고, 안 되면 true 로 다시 연다", () => {
+    assert.deepEqual(asked, ["all", true]); assert.ok(st && st.getAudioTracks);
+  });
+  asked.length = 0;
+  w.__gum = async (c) => { asked.push(c.audio.echoCancellation); const e = new Error("denied"); e.name = "NotAllowedError"; throw e; };
+  let err = null; try { await w.__CHAT._openMicForTest(); } catch (e) { err = e; }
+  check("(v2.30.3) 마이크 권한 거부는 다시 묻지 않고 그대로 실패", () => { assert.deepEqual(asked, ["all"]); assert.equal(err && err.name, "NotAllowedError"); });
+  asked.length = 0;
+  w.__gum = async (c) => { asked.push(c.audio.echoCancellation); return { getAudioTracks: () => [] }; };
+  await w.__CHAT._openMicForTest();
+  check("(v2.30.3) 'all' 을 받아 주면 한 번만 연다", () => assert.deepEqual(asked, ["all"]));
+}
+
 console.log(`\n${results.length - failed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
