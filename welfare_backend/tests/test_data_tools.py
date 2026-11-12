@@ -91,7 +91,7 @@ def t_restaurants_confirmed():
     assert r["status"] == "success" and r["count"] == 3 and r["confirmed"] == 2
     assert [i["entry_label"] for i in r["items"]] == ["접근로·경사로 확인", "접근로·경사로 확인", "휠체어 정보 없음"]
     ai = r["ai_instruction"]
-    assert "12곳 중 휠체어 정보가 확인된 곳은 2곳" in ai, ai
+    assert "반경 안 12곳 중 2곳" in ai and "물을 때만" in ai, ai   # 개수는 물을 때만 (v2.29.5)
     assert "building_survey" in ai and "단정하지" in ai
     assert "toilet" in ai and "목록 전체를 읽지 마세요" in ai                  # v1.56.0 화장실 한 마디 — 1~2곳에만
     assert r["items"][0]["toilet"] == {"status": "own", "nearby": None}

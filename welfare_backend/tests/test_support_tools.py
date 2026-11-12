@@ -109,7 +109,8 @@ def t_support_cards_and_instruction():
     assert rp["open_hours"] is None and rp["open_hours_status"] == "unknown"
     assert rp["coord_suspect"] is True and rp["type_label"] == "수리센터"
     assert "지어내지" in r["ai_instruction"] and "전화" in r["ai_instruction"]
-    assert "콜택시를 함께 권하세요" in r["ai_instruction"]
+    assert "장애인콜택시 전화번호를 알려 드리세요" in r["ai_instruction"]   # 직접 부르겠다고 하지 않는다 (v2.29.5)
+    assert "'불러 드릴까요?'라고 묻지 마세요" in r["ai_instruction"]
     ua = r["ui_action"]
     assert ua["action"] == "show_support" and len(ua["payload"]["items"]) == 3
     assert ua["payload"]["base"] == {"lat": 37.39, "lng": 126.95}
