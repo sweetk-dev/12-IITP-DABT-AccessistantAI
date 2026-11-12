@@ -74,7 +74,7 @@ def test_start_guidance_with_route_sends_ui_action():
     r = nc.start_guidance_result({"route_id": "r1", "guiding": False, "step_idx": 0, "total_steps": 5})
     assert r["status"] == "success"
     assert r["ui_action"] == {"action": "start_guidance"}
-    assert "한 문장" in r["ai_instruction"]
+    assert r["ai_instruction"] == nc.SILENT_INSTRUCTION   # 상담원은 말하지 않는다 (v2.28.0)
 
 
 def test_start_guidance_without_route_asks_destination():

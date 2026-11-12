@@ -15,7 +15,9 @@ _NAV_FIELDS = ("route_id", "guiding", "step_idx", "total_steps",
                # 지하철 하차역 역 안/밖 안내 (#298) — {station, exit_no, where, inside[], outside}
                "station_egress",
                # 화면이 지금 역 안/밖·출구 확인을 기다리는지 (v1.52.0) — {kind, station, choices[]}
-               "station_wait")
+               "station_wait",
+               # 이용자가 말로 안내를 멈춘 상태인지 (v2.28.0) — 안내 상태(guiding)는 유지된다
+               "paused")
 
 
 def update_nav_state(nav: dict, msg: dict) -> None:
@@ -28,6 +30,7 @@ def update_nav_state(nav: dict, msg: dict) -> None:
     for k in _NAV_FIELDS:
         nav[k] = msg.get(k)
     nav["guiding"] = bool(nav.get("guiding"))
+    nav["paused"] = bool(nav.get("paused"))
     nav["station_egress"] = _clean_egress(nav.get("station_egress"))
     nav["station_wait"] = _clean_wait(nav.get("station_wait"))
     # step_idx/total_steps/remaining_m 은 정수화 실패 시 None 으로 방어
@@ -118,6 +121,13 @@ def annotate_route_success(result, nav: dict):
     return result
 
 
+# 화면이 말없이 처리하는 도구(안내 시작·멈춤·지도 크기)의 공통 지시 (v2.28.0).
+# 상담원이 "네, 안내를 시작할게요"라고 답하면 막 시작한 안내 음성이 끊겼다가 이어졌다(실기기 2026-11-12).
+# 화면은 이 도구의 결과가 온 턴의 상담원 음성을 내지 않는다(dropTurn) — 지시는 그 보조다.
+SILENT_INSTRUCTION = ("화면이 바로 처리했습니다. 이 결과에 대해서는 아무 말도 하지 말고 턴을 끝내세요. "
+                      "확인 문장·인사·설명을 덧붙이지 마세요.")
+
+
 def start_guidance_result(nav: dict) -> dict:
     """start_guidance 도구 응답 — "안내 시작해"를 말로 받는다 (v2.26.0).
 
@@ -126,6 +136,14 @@ def start_guidance_result(nav: dict) -> dict:
     세션 상태(nav)만 읽으므로 get_current_guidance 처럼 디스패처를 거치지 않는다.
     """
     nav = nav or {}
+    if nav.get("guiding") and nav.get("paused"):
+        # 말로 멈춘 안내를 다시 듣는다 (v2.28.0) — 처음부터가 아니라 지금 단계부터
+        return {
+            "status": "success", "tool_name": "start_guidance", "resumed": True,
+            "route_id": nav.get("route_id"),
+            "ui_action": {"action": "start_guidance"},
+            "ai_instruction": SILENT_INSTRUCTION,
+        }
     if nav.get("guiding") or nav.get("switching"):   # switching: 새 경로로 안내를 이어 가는 중
         return {
             "status": "already_guiding", "tool_name": "start_guidance",
@@ -143,10 +161,48 @@ def start_guidance_result(nav: dict) -> dict:
         "status": "success", "tool_name": "start_guidance",
         "route_id": nav.get("route_id"),
         "ui_action": {"action": "start_guidance"},
-        "ai_instruction": ("화면이 길안내를 시작했습니다. '네, 안내를 시작할게요' 한 문장만 답하세요. "
-                           "경로나 첫 안내를 다시 설명하지 마세요 — 첫 안내는 화면 음성이 말합니다. "
-                           "내부 번호(route_id)는 읽지 마세요."),
+        # 첫 안내는 화면 음성이 바로 말한다 — 상담원은 말하지 않는다 (v2.28.0)
+        "ai_instruction": SILENT_INSTRUCTION,
     }
+
+
+def pause_guidance_result(nav: dict) -> dict:
+    """pause_guidance 도구 응답 — "안내 그만", "안내 멈춰"를 말로 받는다 (v2.28.0).
+
+    안내를 끝내는 것이 아니라 멈춘다(홀드). 경로·진행 단계는 그대로 두고 안내 음성만 멈추며,
+    "다시 안내해줘"(start_guidance)로 지금 단계부터 이어서 듣는다. 화면에 '안내를 중단합니다'를 띄우고,
+    상담원은 말하지 않는다.
+    """
+    nav = nav or {}
+    if nav.get("guiding") or nav.get("switching"):
+        return {"status": "success", "tool_name": "pause_guidance",
+                "ui_action": {"action": "pause_guidance"},
+                "ai_instruction": SILENT_INSTRUCTION}
+    return {"status": "idle", "tool_name": "pause_guidance",
+            "ai_instruction": "지금은 진행 중인 길안내가 없다고 한 문장으로만 짧게 알리세요."}
+
+
+_ZOOM_IN = ("in", "zoom_in", "확대", "크게", "+")
+_ZOOM_OUT = ("out", "zoom_out", "축소", "작게", "-")
+
+
+def map_zoom_result(direction: str = "", mode=None) -> dict:
+    """map_zoom 도구 응답 — "지도 확대해줘", "지도 작게"를 말로 받는다 (v2.28.0).
+
+    화면이 지도를 한 단계 키우거나 줄이고 축척을 상태 줄에 보여 준다. 상담원은 말하지 않는다.
+    길안내 지도가 없는 정책상담 화면(mode="policy")에서는 화면을 건드리지 않는다.
+    """
+    d = (direction or "").strip().lower()
+    d = "in" if d in _ZOOM_IN else "out" if d in _ZOOM_OUT else ""
+    if mode == "policy":
+        return {"status": "idle", "tool_name": "map_zoom",
+                "ai_instruction": "이 화면에는 지도가 없다고, 이동경로 안내 화면에서 쓸 수 있다고 한 문장으로만 알리세요."}
+    if not d:
+        return {"status": "idle", "tool_name": "map_zoom",
+                "ai_instruction": "지도를 크게 할지 작게 할지 한 문장으로 여쭤 보세요."}
+    return {"status": "success", "tool_name": "map_zoom", "direction": d,
+            "ui_action": {"action": "map_zoom", "dir": d},
+            "ai_instruction": SILENT_INSTRUCTION}
 
 
 # 경로를 만들지 못한 결과의 status — "실패했지만 서비스는 정상"인 사유들이다.
@@ -235,6 +291,16 @@ def current_guidance_result(nav: dict) -> dict:
     step_no = None
     if nav.get("step_idx") is not None:
         step_no = nav["step_idx"] + 1        # 사람 기준 1부터
+    if nav.get("paused"):
+        return {
+            "status": "paused",
+            "tool_name": "get_current_guidance",
+            "route_id": nav.get("route_id"),
+            "destination": nav.get("dest_name"),
+            "current_instruction": nav.get("current"),
+            "ai_instruction": ("이용자가 말로 안내를 멈춘 상태입니다. 물은 것에만 짧게 답하고, 다시 들으려면 "
+                               "'다시 안내해줘'라고 말하면 된다고 한 문장으로 덧붙이세요. 다시 듣겠다고 하면 start_guidance 를 호출합니다."),
+        }
     return {
         "status": "guiding",
         "tool_name": "get_current_guidance",
