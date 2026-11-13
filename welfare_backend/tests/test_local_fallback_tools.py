@@ -50,7 +50,11 @@ ROUTE = {"find_bf_tour_spots", "plan_accessible_route", "explain_route_segment",
          "report_station_position",                        # v1.52.0 역 안/밖·출구 확인을 말로
          "find_accessible_restaurants", "check_building_accessibility",   # v1.55.0 음식점·건물 편의시설
          "find_service_providers", "find_standard_workplaces",            # v1.55.0 기관·사업장 명부
-         "find_culture_sports"}                                           # v2.4.0 문화·체육 시설
+         "find_culture_sports",                                           # v2.4.0 문화·체육 시설
+         "start_guidance",                                                # v2.26.0 말로 안내 시작
+         "pause_guidance", "map_zoom",                                    # v2.28.0 안내 멈춤·지도 크기
+         "list_sheet"}                                                    # v2.30.2 목록 펼치기·접기
+WEATHER = {"get_weather"}                                                 # v2.29.0 날씨 (경로 서비스와 무관)
 
 results = []
 
@@ -76,13 +80,13 @@ def props(tools, fname):
 
 def t_has_route_tools():
     got = names(lp._ollama_tools())
-    missing = (POLICY | ROUTE) - got
+    missing = (POLICY | ROUTE | WEATHER) - got
     assert not missing, "폴백에서 빠진 도구: %s" % sorted(missing)
 
 
 def t_no_extra():
     got = names(lp._ollama_tools())
-    extra = got - (POLICY | ROUTE)
+    extra = got - (POLICY | ROUTE | WEATHER)
     assert not extra, "폴백에만 있는 도구: %s" % sorted(extra)
 
 
@@ -93,7 +97,7 @@ def t_route_off_hides_route_tools():
     route_client.FEATURE_TOUR = False
     try:
         got = names(lp._ollama_tools())
-        assert got == POLICY, "경로 기능이 꺼졌는데 선언에 남은 도구: %s" % sorted(got - POLICY)
+        assert got == POLICY | WEATHER, "경로 기능이 꺼졌는데 선언에 남은 도구: %s" % sorted(got - POLICY - WEATHER)
     finally:
         route_client.FEATURE_ROUTE, route_client.FEATURE_TOUR = saved
 
@@ -120,8 +124,8 @@ def t_explain_segment_ids_optional():
 def t_dispatcher_backs_every_tool():
     disp = set(get_tool_dispatcher(None).keys())
     declared = names(lp._ollama_tools())
-    # get_current_guidance 는 세션 상태만 읽어 디스패처를 거치지 않는다
-    unbacked = declared - disp - {"get_current_guidance"}
+    # get_current_guidance·start_guidance 는 세션 상태만 읽어 디스패처를 거치지 않는다
+    unbacked = declared - disp - {"get_current_guidance", "start_guidance", "pause_guidance", "map_zoom", "list_sheet"}
     assert not unbacked, "구현 없는 도구를 선언함: %s" % sorted(unbacked)
 
 

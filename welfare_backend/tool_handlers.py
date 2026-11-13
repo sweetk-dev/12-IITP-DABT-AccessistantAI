@@ -59,8 +59,8 @@ def _get_expand_client():
         key = os.environ.get("GEMINI_API_KEY")
         if not key:
             return None
-        from google import genai
-        _expand_client = genai.Client(api_key=key)
+        from genai_client import make_client  # API 버전 명시(genai_client.py)
+        _expand_client = make_client(key)
     return _expand_client
 
 
@@ -419,21 +419,128 @@ def _fac_labels(facilities: dict) -> list:
     return [v for k, v in label.items() if (facilities or {}).get(k)]
 
 
+# ── 장애 유형 값 정규화 (v2.26.0) ──
+# 경로 서비스의 관광지 추천은 정해진 유형 이름만 안다. 모르는 이름이 하나라도 섞이면 조건이 비어
+# 추천이 0건이 된다 — 음성 모델이 "지체장애/휠체어"처럼 여러 유형을 한 값으로 넘기거나
+# "wheelchair" 같은 다른 표기를 넘겨 실제로 0건이 나왔다(현장 실증 2026-10-22, 리허설 2026-10-16).
+# 여기서 받은 값을 쪼개고(빗금·쉼표·가운뎃점) 아는 이름으로 바꾼다. 모르는 값은 버린다.
+DISABILITY_TYPES = ("지체장애", "휠체어", "시각장애", "청각장애", "영유아동반")
+_DISABILITY_ALIASES = {
+    # 지체·휠체어 — 휠체어 이용자의 관광지 조건은 '지체장애'(화장실·승강기·주차·경사로·휠체어 대여)가 기준
+    "지체장애": "지체장애", "지체": "지체장애", "지체장애인": "지체장애", "physical": "지체장애",
+    "휠체어": "휠체어", "wheelchair": "휠체어", "전동휠체어": "휠체어", "수동휠체어": "휠체어",
+    "휠체어이용자": "휠체어", "전동": "휠체어", "수동": "휠체어",
+    "wheelchair_electric": "휠체어", "wheelchair_manual": "휠체어",
+    "시각장애": "시각장애", "시각": "시각장애", "시각장애인": "시각장애", "visual": "시각장애", "blind": "시각장애",
+    "청각장애": "청각장애", "청각": "청각장애", "청각장애인": "청각장애", "hearing": "청각장애", "deaf": "청각장애",
+    "영유아동반": "영유아동반", "영유아": "영유아동반", "유아동반": "영유아동반", "유아동행": "영유아동반",
+    "유모차": "영유아동반", "유아차": "영유아동반", "infant": "영유아동반", "stroller": "영유아동반",
+}
+_DISABILITY_SPLIT_RE = re.compile(r"[/,·ㆍ、|&+]+|\s+및\s+|\s+and\s+", re.IGNORECASE)
+# 구분자 없이 이어 온 값("시각장애와 청각장애")에서 찾을 낱말 — 긴 것부터 본다
+_DISABILITY_KEYWORDS = (("휠체어", "휠체어"), ("지체", "지체장애"), ("시각", "시각장애"), ("청각", "청각장애"),
+                        ("영유아", "영유아동반"), ("유모차", "영유아동반"), ("유아", "영유아동반"))
+
+
+def normalize_disabilities(values) -> list:
+    """장애 유형 값을 경로 서비스가 아는 이름 목록으로 바꾼다.
+
+    values: 문자열 하나 또는 목록(음성 모델·화면이 넘긴 그대로).
+    반환: DISABILITY_TYPES 안의 이름만, 받은 순서대로, 중복 없이. 알아볼 값이 하나도 없으면
+    ["지체장애"](이 서비스의 기본 이용자 = 휠체어 이용자).
+    """
+    if values is None:
+        values = []
+    elif isinstance(values, str):
+        values = [values]
+    out = []
+    for v in values:
+        for tok in _DISABILITY_SPLIT_RE.split(str(v or "")):
+            key = tok.strip().lower().replace(" ", "")
+            name = _DISABILITY_ALIASES.get(key)
+            if name:
+                if name not in out:
+                    out.append(name)
+                continue
+            # 별칭에 없는 값 — 안에 든 낱말로 찾는다("시각장애와청각장애" → 시각장애, 청각장애)
+            for kw, kname in _DISABILITY_KEYWORDS:
+                if kw in key and kname not in out:
+                    out.append(kname)
+    return out or ["지체장애"]
+
+
+# 실내 시설로 보는 이름 (v2.29.0) — 관광지 자료에 실내·실외 구분이 없어 시설 이름으로 고른다.
+# 공원·하천·거리·운동장은 '실내'가 이름에 함께 있을 때만(예: 종합운동장(실내·외수영장)) 실내로 본다.
+_INDOOR_RE = re.compile(r"박물관|미술관|전시|기념관|과학관|도서관|문화원|문화센터|문화회관|예술회관|아트센터|아트홀|"
+                        r"공연장|극장|체육관|빙상장|수영장|실내|파빌리온|체험관|백화점|쇼핑")
+
+
+def is_indoor_name(name: str) -> bool:
+    return bool(_INDOOR_RE.search(name or ""))
+
+
+# 장소 찾기 결과는 한 곳씩 (v2.29.4) — 한 번에 여러 곳을 들으면 이동 중에 기억하기 어렵다
+_ONE_AT_A_TIME = ("나머지 곳은 먼저 말하지 마세요. 사용자가 '다른 곳', '또 있어?'처럼 물으면 도구를 다시 부르지 말고 "
+                  "이 목록의 다음 항목 하나만 같은 방식으로 말하세요. 목록을 다 말했으면 더 넓게 찾아볼지 물으세요. "
+                  "다음 곳도 한두 문장으로만 말하고 '더 안내해 드릴까요?'처럼 되묻지 마세요 — 원하면 사용자가 먼저 묻습니다. "
+                  "화면 카드의 '여기로 안내'는 사용자가 가는 길을 물을 때만 말하세요. ")
+
+# 시각을 오전·오후로 (v2.29.4) — "08:00~23:00" 을 그대로 주면 "팔시부터 이십삼시까지"로 읽는다
+_CLOCK_RE = re.compile(r"(?<!\d)([01]?\d|2[0-4])\s*:\s*([0-5]\d)(?!\d)")
+_ALLDAY_RE = re.compile(r"^\s*0?0\s*:\s*00\s*[~\-–]\s*(24\s*:\s*00|23\s*:\s*59)\s*$")
+
+
+def ko_clock(h: int, mi: int = 0) -> str:
+    if h in (0, 24):
+        lab = "밤 12시"
+    elif h == 12:
+        lab = "낮 12시"
+    elif h < 12:
+        lab = "오전 %d시" % h
+    else:
+        lab = "오후 %d시" % (h - 12)
+    return lab + (" %d분" % mi if mi else "")
+
+
+def ko_clock_text(s) -> Optional[str]:
+    """운영·개방 시간 문자열의 HH:MM 을 말하기 좋은 오전·오후 표현으로. 시각이 없으면 원문 그대로."""
+    if not isinstance(s, str) or not s.strip():
+        return s if isinstance(s, str) else None
+    if _ALLDAY_RE.match(s):
+        return "24시간"
+    out = _CLOCK_RE.sub(lambda m: ko_clock(int(m.group(1)), int(m.group(2))), s)
+    # "오전 8시~오후 11시" → "오전 8시부터 오후 11시까지"
+    out = re.sub(r"((?:오전|오후|낮|밤) \d+시(?: \d+분)?)\s*[~\-–]\s*((?:오전|오후|낮|밤) \d+시(?: \d+분)?)",
+                 r"\1부터 \2까지", out)
+    return out
+
+
 async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
                                   topk: int = 10,
                                   origin_lat: float = None, origin_lng: float = None,
-                                  offset: int = 0) -> dict:
+                                  offset: int = 0, indoor: bool = False) -> dict:
     """장애 유형별 무장애 관광지 추천.
 
     origin_lat/lng 를 주면 02 route-api 가 거리 오름차순으로 정렬하고
     offset 페이징(total/has_more)을 지원한다 — 프런트 무한스크롤용.
+    indoor=True 이면 실내 시설만 고른다(비·추위·더위 — v2.29.0). 이때는 한 번에 받아 거르고 페이징하지 않는다.
     """
+    indoor = indoor is True or str(indoor).lower() in ("true", "1", "yes")
+    try:
+        topk = max(1, min(int(topk or 10), 50))
+    except (TypeError, ValueError):
+        topk = 10
     data = await route_client.tour_recommend(
-        disabilities or ["지체장애"], sigungu=sigungu, topk=topk,
-        origin_lat=origin_lat, origin_lng=origin_lng, offset=offset,
+        normalize_disabilities(disabilities), sigungu=sigungu, topk=50 if indoor else topk,
+        origin_lat=origin_lat, origin_lng=origin_lng, offset=0 if indoor else offset,
     )
     if data.get("status") == "error":
         return data
+    if indoor:
+        data = dict(data)
+        picked = [it for it in (data.get("items") or []) if is_indoor_name(it.get("name"))][:topk]
+        data.update({"items": picked, "total": len(picked), "has_more": False})
+        offset = 0
 
     items = []
     for it in data.get("items", []):
@@ -460,12 +567,16 @@ async def tool_find_bf_tour_spots(disabilities=None, sigungu: str = "안양",
         "offset": offset,
         "has_more": data.get("has_more", offset + len(items) < total),
         "results": items,
+        "indoor_only": indoor,
         "ui_action": {"action": "show_tour_spots", "items": items},
         "ai_instruction": (
-            "상위 2~3곳만 이름과 대표 편의시설 위주로 짧게 안내하세요. 목록은 무장애 편의시설을 "
+            ("실내 시설만 시설 이름으로 골랐습니다. " if indoor else "")
+            + "맨 앞의 한 곳만 이름과 대표 편의시설 위주로 짧게 안내하세요. " + _ONE_AT_A_TIME + "목록은 무장애 편의시설을 "
             "많이 갖춘 곳(tier 1)을 먼저, 같은 등급 안에서는 가까운 순으로 정렬돼 있습니다. "
             "화면에 지도와 목록이 함께 표시되므로 전부 나열하지 마세요. "
-            "결과가 없으면 데이터가 아직 준비되지 않았다고 솔직히 말하세요."
+            + ("결과가 없으면 실내 관광지를 찾지 못했다고 말하고, 도서관·체육관은 find_culture_sports 로 "
+               "찾을 수 있다고 제안하세요." if indoor else
+               "결과가 없으면 데이터가 아직 준비되지 않았다고 솔직히 말하세요.")
         ),
     }
 
@@ -483,6 +594,11 @@ _ANYANG_STATIONS = {
     "평촌":   ("4호선", 37.394288,  126.9638795),
     "인덕원": ("4호선", 37.4016323, 126.9769656),
 }
+
+
+# 역 이름 뒤에 붙는 '역 안' 낱말 (v2.32.0) — 출구 번호("1번 출구")는 넣지 않는다. 출구를 말하면 그 출구 자체가 목적지다.
+_STATION_PLACE_RE = re.compile(
+    r"^(?P<name>.+?)(?:지하철)?역(?:맞이방|대합실|역사|역안|안쪽|안|내부|개찰구|승강장|타는곳|엘리베이터|승강기)?$")
 
 
 # checked 는 "범위를 받아 캐시했다"는 뜻이다 — 조회에 성공했을 때만 True 가 된다.
@@ -600,12 +716,15 @@ async def _resolve_place(place: str) -> Optional[dict]:
     #     역 접근성 테이블(poi_station_access_status)은 이동편의 DB(iitp_db) 소속이라
     #     이 백엔드의 정책 DB 세션으로는 조회할 수 없어, 변동 없는 안양 소재 7역을
     #     정적 매핑으로 둔다 (좌표 출처: iitp_db poi_station_access_status, 2026-07-14).
+    #     "명학역 맞이방"·"명학역 안"처럼 역 안을 가리키는 낱말이 붙어도 그 역이다(v2.32.0) — 전에는 이 매핑을
+    #     지나쳐 이름 검색으로 넘어갔고, "명학역 맞이방"이 안양역 스마트도서관(2.9km)으로 잡혔다(2026-11-13 확인).
     stn = re.sub(r"\s+", "", q)
-    stn = re.sub(r"(지하철)?역$", "", stn) or stn
-    hit = _ANYANG_STATIONS.get(stn)
+    m = _STATION_PLACE_RE.match(stn)
+    key = m.group("name") if m else stn
+    hit = _ANYANG_STATIONS.get(key)
     if hit:
-        return {"lat": hit[1], "lng": hit[2], "kind": "station",
-                "label": "%s역(%s)" % (stn, hit[0])}
+        return {"lat": hit[1], "lng": hit[2], "kind": "station", "station": key,
+                "label": "%s역(%s)" % (key, hit[0])}
 
     # (2) 장소 이름 검색 — 관광지·역·건물을 한 번에 본다
     try:
@@ -1035,6 +1154,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     """
     dest_label = None
     dest_coord = None
+    dest_station = None
     if not destination_poi_id and destination_lat is not None and destination_lng is not None:
         # 지도에서 직접 지정한 지점 — 이용자가 콕 집은 좌표이므로 그대로 쓴다
         dest_coord = {"lat": float(destination_lat), "lng": float(destination_lng)}
@@ -1048,6 +1168,9 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         if dhit is None:
             return _place_not_found("목적지", destination_place)
         dest_label = dhit["label"]
+        if dhit.get("kind") == "station" and dhit.get("station"):
+            # 도보로 역에 가면 휠체어 출구까지 안내하고 맞이방 가는 법을 말한다(02 v1.46.0)
+            dest_station = dhit["station"]
         if await _outside_place(dhit):
             # 범위 밖 안내에는 이용자가 말한 이름을 그대로 쓴다. 넓힌 재검색은 전국을
             # 대상으로 하므로 느슨하게 매칭된 상호명("○○ 서울시청점")이 잡힐 수 있고,
@@ -1142,10 +1265,12 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     _set_ctx = getattr(route_client, "set_log_ctx", None)   # 테스트 스텁은 이 함수가 없다
     if _set_ctx:
         _set_ctx(log_ctx)
+    # 목적지가 역일 때만 싣는다 — 역이 아닌 요청의 호출 형태는 종전 그대로 둔다(v2.32.0)
+    st_kw = {"dest_station": dest_station} if dest_station else {}
     auto_kept_walk = None     # 자동 추천이 리프트 승강장 때문에 도보를 유지했을 때의 사유 문장들
     auto_compare = None       # 자동 추천 비교 기록(v2.20.0) — 방식별 거리·점수·채택 여부
     if auto:
-        data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk")
+        data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk", **st_kw)
         if data.get("status") == "error":
             return data
         # 도보·대중교통 후보 비교 후 선택(v2.20.0) — 상세 규칙은 AUTO_MODE_WEIGHT 위 설명
@@ -1160,7 +1285,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         mode_used = "walk"
     else:
         data = await route_client.plan_route(origin_pt, dest, profile=profile, mode=req_mode,
-                                             realtime=True, low_floor=low_floor)
+                                             realtime=True, low_floor=low_floor, **st_kw)
         if data.get("status") == "error":
             return data
         mode_used = req_mode
@@ -1221,6 +1346,9 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                                       if isinstance(pa, dict) and pa.get("warning")],
             })
     platform_cautions = _platform_cautions(data)
+    station_end = _brief_station_end(data.get("station_end"))
+    if station_end and station_end.get("label"):
+        dest_label = station_end["label"]
     return {
         "status": "success",
         "tool_name": "plan_accessible_route",
@@ -1255,6 +1383,8 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         # 02 v1.28.0(#79) — 출발점이 역 가까이면 역 안/밖 질문, 역 안 출발이면 승강장→출구 안내
         "station_nearby": _brief_station_nearby(data.get("station_nearby")),
         "station_start": _brief_station_start(data.get("station_start")),
+        # 02 v1.46.0 — 도보 목적지가 역이면 휠체어 출구까지, 도착 후 맞이방 가는 법
+        "station_end": station_end,
         # 프런트가 지도·경로·턴바이턴을 그리도록 원본 경로를 그대로 전달
         # mode_requested: 사용자가 고른 이동 방식(자동 추천이면 None) — 화면이 이동 방식 카드 선택을 맞춘다.
         # 경로 원본만으로는 '자동 추천이 도보를 골랐다'와 '도보로 요청했다'를 구분할 수 없다(v2.11.0).
@@ -1281,6 +1411,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                     if lf.get("tier") in (1, 2) else "소요시간은 대기 미포함 추정임을 밝히세요. ")
                if transit_brief else "")
             + _station_ai_note(data)
+            + _station_end_ai_note(station_end)
             + _platform_ai_note(platform_cautions, auto_kept_walk)
             + "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로 요약하고, 첫 안내 한 문장을 덧붙이세요. "
             "경고(warnings)나 제약 완화(fallback.used=true)가 있으면 반드시 함께 알리세요. "
@@ -1288,6 +1419,27 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
             "화면의 이동 방식 카드로 다른 방식을 고를 수 있다는 점을 필요할 때만 짧게 안내하세요."
         ),
     }
+
+
+def _brief_station_end(se) -> Optional[dict]:
+    """02 station_end(v1.46.0)를 도구 결과용으로 줄인다 — 역·출구·도착 뒤 할 일."""
+    if not isinstance(se, dict) or not se.get("station"):
+        return None
+    ex = se.get("exit") if isinstance(se.get("exit"), dict) else None
+    enter = se.get("enter") if isinstance(se.get("enter"), dict) else {}
+    st = str(se["station"])
+    return {"station": st, "exit_no": (ex or {}).get("exit_no"), "via": enter.get("via"),
+            "label": ("%s역 %s번 출구" % (st, ex["exit_no"])) if ex and ex.get("exit_no") else "%s역" % st,
+            "enter": list(enter.get("inside") or [])}
+
+
+def _station_end_ai_note(se) -> str:
+    if not se:
+        return ""
+    if se.get("enter"):
+        return ("목적지는 %s(휠체어로 들어가는 출구)입니다. 도착하면 '%s'라고 한 마디 덧붙이세요. "
+                % (se["label"], se["enter"][0]))
+    return "목적지는 %s 입니다. " % se["label"]
 
 
 async def tool_explain_route_segment(route_id: str = "", step_idx: int = None) -> dict:
@@ -1436,6 +1588,7 @@ async def tool_find_emergency_support(lat: float = None, lng: float = None, plac
             "tel_owner": it.get("tel_owner") or "site",
             "tel_owner_name": it.get("tel_owner_name"),
             "open_hours": it.get("open_hours"),
+            "open_hours_ko": ko_clock_text(it.get("open_hours")),   # 말하기용 오전·오후 (v2.29.4)
             "open_hours_status": it.get("open_hours_status") or ("known" if it.get("open_hours") else "unknown"),
             "source_label": it.get("source_label"), "confidence": it.get("confidence"),
             "coord_suspect": bool(it.get("coord_suspect")),
@@ -1446,17 +1599,19 @@ async def tool_find_emergency_support(lat: float = None, lng: float = None, plac
         by_type[it["support_type"]] = by_type.get(it["support_type"], 0) + 1
     missing = [SUPPORT_TYPE_LABEL[t] for t in tsel.split(",") if t not in by_type]
     ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
-          + "유형별로 가장 가까운 1~2곳만 이름·거리·전화번호로 말하세요. "
-          "open_hours 가 있으면 그대로 전하고, open_hours_status 가 unknown 이면 운영시간을 "
+          + "가장 가까운 한 곳만 이름·거리·전화번호로 말하세요(충전·수리·콜택시처럼 여러 유형을 함께 찾았으면 유형마다 한 곳). "
+          + _ONE_AT_A_TIME +
+          "운영시간은 open_hours_ko 를 그대로 읽고(24시간제로 읽지 않습니다), open_hours_status 가 unknown 이면 운영시간을 "
           "지어내지 말고 '운영시간은 확인이 필요하니 전화해 보시라'고 하세요. "
           "coord_suspect 가 true 인 곳은 '위치가 정확하지 않을 수 있다'고 덧붙이세요. "
           "tel_owner 가 manager 인 번호는 설치장소가 아니라 관리기관(tel_owner_name) 번호이니 "
           "'관리기관 번호'라고 밝히고 전하세요. "
-          "화면에 카드가 떴고 '여기로 안내' 를 누르면 경로를 안내받을 수 있다고 알리세요. ")
+          )
     if missing:
         ai += "%s 은(는) 반경 %dm 안에 없다고 분명히 말하세요. " % ("·".join(missing), radius_m)
     if "charge" in tsel:
-        ai += "배터리 상황이면 이동 가능 거리를 먼저 묻고, 멀면 콜택시를 함께 권하세요. "
+        ai += ("배터리 상황이면 가장 가까운 충전소를 먼저 말하고, 멀다고 하면 장애인콜택시 전화번호를 알려 드리세요. "
+               "콜택시를 직접 부르거나 전화를 연결해 드릴 수는 없으니 '불러 드릴까요?'라고 묻지 마세요. ")
     return {
         "status": "success",
         "tool_name": "find_emergency_support",
@@ -1502,6 +1657,7 @@ async def tool_find_toilet(lat: float = None, lng: float = None, place: str = ""
             "dis_male_cnt": it.get("dis_male_cnt"), "dis_female_cnt": it.get("dis_female_cnt"),
             "unisex": bool(it.get("unisex")),
             "open_time": it.get("open_time"), "open_time_detail": it.get("open_time_detail"),
+            "open_time_ko": ko_clock_text(it.get("open_time")),   # 말하기용 오전·오후 (v2.29.4)
             "emg_bell": bool(it.get("emg_bell")), "tel": it.get("tel"),
             # 시설 내 장애인화장실(관광시설, 02 v1.27.0) — 시설 운영시간에만 이용 가능 (#298)
             "facility_toilet": bool(it.get("facility_toilet")),
@@ -1511,12 +1667,12 @@ async def tool_find_toilet(lat: float = None, lng: float = None, place: str = ""
             "lat": it.get("lat"), "lng": it.get("lng"),
         })
     ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
-          + ("가까운 순으로 1~2곳만 이름·거리·개방시간으로 말하세요. open_time 이 없으면 "
-             "'개방시간은 확인이 필요하다'고 하세요. facility_toilet 이 true 인 곳은 그 시설 안의 "
-             "화장실이라 시설 운영시간에만 쓸 수 있다고 덧붙이세요. building_toilet 이 true 인 곳은 "
-             "청사·도서관·병원 같은 공공건물 안의 장애인 화장실이라 건물이 문을 연 시간(대개 평일 낮)에 "
-             "이용할 수 있다고 말하세요. 화면 카드의 '여기로 안내' 로 "
-             "경로를 받을 수 있다고 알리세요. " if items else
+          + ("가장 가까운 한 곳(items 의 첫 항목)만 말하세요 — 첫 문장에 이름과 거리, 둘째 문장에 개방시간. "
+             "개방시간은 open_time_ko 를 그대로 읽고(24시간제로 읽지 않습니다), open_time 이 없으면 '개방시간은 확인이 필요하다'고 하세요. facility_toilet 이 true 인 곳은 그 시설 안의 "
+             "화장실이라 시설 운영시간에만 쓸 수 있고, building_toilet 이 true 인 곳은 공공건물 안이라 건물이 문을 연 "
+             "시간(대개 평일 낮)에 쓸 수 있다고 개방시간 문장에 함께 말하세요. 나머지 곳은 먼저 말하지 마세요. "
+             "사용자가 '다른 곳', '또 있어?', '더 가까운 데'처럼 물으면 도구를 다시 부르지 말고 이 목록의 다음 항목 "
+             "하나만 같은 방식으로 말하세요. 목록을 다 말했으면 더 넓게 찾아볼지 물으세요(radius_m 을 늘려 다시 호출). " if items else
              "반경 %dm 안에 장애인 화장실이 등록된 공중화장실이 없다고 분명히 말하고, 가까운 "
              "지하철역 화장실은 get_station_facilities 로 확인할 수 있다고 안내하세요. " % radius_m))
     return {
@@ -1547,7 +1703,8 @@ def _toilet_brief(t):
         return None
     nb = t.get("nearby") if isinstance(t.get("nearby"), dict) else None
     return {"status": t.get("status") or "none",
-            "nearby": ({"name": nb.get("name"), "dist_m": nb.get("dist_m"), "open_time": nb.get("open_time")}
+            "nearby": ({"name": nb.get("name"), "dist_m": nb.get("dist_m"), "open_time": nb.get("open_time"),
+                        "open_time_ko": ko_clock_text(nb.get("open_time"))}
                        if nb else None)}
 
 
@@ -1561,8 +1718,8 @@ def _toilet_instruction(items: list) -> str:
         return ""
     return ("이름을 말하는 식당에만 toilet 을 보고 화장실 한 마디를 덧붙이세요(목록 전체를 읽지 마세요): "
             "status 가 own 이면 '장애인 화장실이 등록된 곳', nearby 면 toilet.nearby 의 dist_m 와 name 값을 넣어 "
-            "'가게 화장실 정보는 없지만 (dist_m)m 에 (name)이 있다', none 이면 '근처 200m 안에 확인된 화장실은 "
-            "없다', unknown 이면 화장실은 말하지 마세요. ")
+            "'가게 화장실 정보는 없지만 (dist_m)m 에 (name)이 있다'. none·unknown 이면 화장실은 먼저 말하지 마세요"
+            "(물으면 none 은 '근처 200m 안에 확인된 화장실은 없다'). ")
 
 
 async def tool_find_accessible_restaurants(lat: float = None, lng: float = None, place: str = "",
@@ -1609,17 +1766,16 @@ async def tool_find_accessible_restaurants(lat: float = None, lng: float = None,
     if lat is None:
         where += "현재 위치를 몰라 안양시 전체에서 찾았습니다 — 거리는 말하지 마세요. "
     if confirmed:
-        ai = (where + "entry_status 가 yes 인 곳을 먼저 1~2곳 이름·거리로 말하세요. 근거는 '접근로나 경사로가 "
+        ai = (where + "entry_status 가 yes 인 곳 중 가장 가까운 한 곳만 이름·거리로 말하세요. " + _ONE_AT_A_TIME + "근거는 '접근로나 경사로가 "
               "있다고 등록된 곳'이라고 표현하고, 문턱이 전혀 없다고 단정하지 마세요. record_type 이 "
               "building_survey 인 곳은 건물 실태조사 기록이라 지금 같은 가게가 영업 중인지 확인이 필요하다고 "
-              "덧붙이세요. 반경 안 %d곳 중 휠체어 정보가 확인된 곳은 %d곳뿐이라는 점을 한 문장으로 알리고, "
-              "방문 전 전화로 출입구·좌석을 확인하시라고 권하세요. 화면 목록의 '여기로 안내' 로 경로를 받을 "
-              "수 있다고 알리세요. " % (total, confirmed)
+              "덧붙이세요. 휠체어 정보가 확인된 곳이 몇 곳인지(반경 안 %d곳 중 %d곳)는 사용자가 물을 때만 말하고, "
+              "방문 전 전화로 출입구·좌석을 확인하시라고 짧게 권하세요. " % (total, confirmed)
               + _toilet_instruction(items))
     elif items:
         ai = (where + "반경 안에 휠체어 출입이 확인된 음식점은 없다고 분명히 말하세요. 목록의 곳들은 "
-              "'휠체어 정보가 없는 곳'이지 못 가는 곳이 아닙니다 — 1~2곳만 이름을 말하고 방문 전 전화 확인을 "
-              "권하세요. 필요하면 google_search 로 경사로·문턱 정보를 찾아볼 수 있다고 제안하세요. "
+              "'휠체어 정보가 없는 곳'이지 못 가는 곳이 아닙니다 — 가장 가까운 한 곳만 이름을 말하고 방문 전 전화 확인을 "
+              "권하세요. " + _ONE_AT_A_TIME + "필요하면 google_search 로 경사로·문턱 정보를 찾아볼 수 있다고 제안하세요. "
               + _toilet_instruction(items))
     else:
         ai = (where + "반경 %dm 안에 등록된 음식점이 없다고 말하고, 범위를 넓히거나 다른 장소를 기준으로 "
@@ -1936,7 +2092,8 @@ async def tool_find_culture_sports(lat: float = None, lng: float = None, place: 
         by_type[it["facility_type"]] = by_type.get(it["facility_type"], 0) + 1
     radius_text = _km_text(radius_m).replace("약 ", "")
     ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
-          + "종류별로 가장 가까운 1~2곳만 이름·거리(dist_text)·전화번호로 말하세요. "
+          + "가장 가까운 한 곳만 이름·거리(dist_text)·전화번호로 말하세요(여러 종류를 함께 물었으면 종류마다 한 곳). "
+          + _ONE_AT_A_TIME +
           "beyond_radius 가 true 인 곳은 '반경 %s 안에는 없고, 경기도 자료 중 가장 가까운 곳은 ○○(dist_text)'라고 "
           "가까운 곳과 분명히 구분해 말하세요. 이 자료는 경기도 자료라 서울 등 인접 지역의 더 가까운 시설이 "
           "빠져 있을 수 있으니 '가장 가까운 곳'이라고 단정하지 마세요. "
@@ -1953,7 +2110,7 @@ async def tool_find_culture_sports(lat: float = None, lng: float = None, place: 
         ai += ("in_service_area 가 true 가 아닌 곳은 길안내 지역 밖이라 경로 안내는 할 수 없으니 전화로 문의하거나 "
                "대중교통을 이용하시라고 하세요. ")
     if items:
-        ai += "화면에 카드가 떴고, 길안내 지역 안이면 '여기로 안내' 로 경로를 받을 수 있다고 알리세요. "
+        ai += "길안내 지역 안이면 화면 카드의 '여기로 안내'로 경로를 받을 수 있습니다 — 이 말은 사용자가 가는 길을 물을 때만 하세요. "
     else:
         ai += ("찾는 시설이 없다고 분명히 말하세요. 이 자료는 경기도 자료라 경기도 밖 시설은 알 수 없다고 "
                "덧붙이세요. 시설을 지어내지 마세요. ")
@@ -2027,7 +2184,7 @@ async def tool_find_service_providers(service: str = "", district: str = "", nam
               "tel": it.get("tel")} for it in (data.get("items") or []) if isinstance(it, dict)]
     base = data.get("base_date")
     if items:
-        ai = ("2~3곳만 이름·제공 서비스·전화번호로 말하세요. %s 기준 명부라 운영 여부와 빈자리는 기관에 전화로 "
+        ai = ("한 곳만 이름·제공 서비스·전화번호로 말하세요. " + _ONE_AT_A_TIME + "%s 기준 명부라 운영 여부와 빈자리는 기관에 전화로 "
               "확인하시라고 권하세요. 바우처·주간활동 같은 서비스는 먼저 행정복지센터에 신청해 자격을 받아야 "
               "이용할 수 있으니, 신청 방법을 물으면 정책 도구(search_by_keyword)로 안내하세요. "
               "전체 %d곳이 있습니다. " % (base or "적재 시점", data.get("total", len(items))))
@@ -2048,7 +2205,7 @@ async def tool_find_standard_workplaces(district: str = "", keyword: str = "", s
               "tel": it.get("tel"), "cert_date": it.get("cert_date")}
              for it in (data.get("items") or []) if isinstance(it, dict)]
     base = data.get("base_date")
-    ai = (("2~3곳만 이름·업종·전화번호로 말하세요. 표준사업장은 장애인 고용 요건을 갖춰 인증받은 사업장이며, "
+    ai = (("한 곳만 이름·업종·전화번호로 말하세요. " + _ONE_AT_A_TIME + "표준사업장은 장애인 고용 요건을 갖춰 인증받은 사업장이며, "
            "지금 채용 중인지는 알 수 없으니 회사나 한국장애인고용공단(1588-1519)에 문의하시라고 권하세요. "
            "%s 기준 인증 현황입니다. " % (base or "적재 시점")) if items else
           "조건에 맞는 표준사업장이 없다고 말하고, 업종이나 지역을 바꿔 찾아볼지 물어보세요. ")
@@ -2148,7 +2305,7 @@ async def tool_find_nearby_transit(lat: float = None, lng: float = None,
         "items": out,
         "ai_instruction": (
             ("기준 위치는 %s 입니다. " % base_label if base_label else "")
-            + "가까운 순으로 2~3곳만 이름·거리와 함께 말하고, 나머지는 생략하세요. "
+            + "가장 가까운 한 곳만 이름·거리와 함께 말하세요. " + _ONE_AT_A_TIME +
             "accessible_status 가 unknown 인 정류장은 '이용 불가'가 아니라 "
             "'저상버스 정차 여부는 실시간 도착정보로 확인이 필요하다'고 말하세요. "
             "버스 방면은 end_station(종점명)으로 안내하되, 양방향 종점명이 같은 순환 "
@@ -2444,7 +2601,7 @@ def _station_query_name(text: str) -> str:
     return q
 
 
-async def tool_get_station_facilities(station: str = "") -> dict:
+async def tool_get_station_facilities(station: str = "", route_elevator: dict = None) -> dict:
     """역의 교통약자 편의시설 — "범계역 엘리베이터 어디 있어", "안양역 장애인 화장실 있어?".
 
     승강기·리프트는 출입구별 위치를, 화장실은 게이트 안/밖·출구를, 승강장은 안전발판·
@@ -2503,9 +2660,17 @@ async def tool_get_station_facilities(station: str = "") -> dict:
         "platform_gap_max_cm": max(gaps) if gaps else None,
         "platforms": platforms,
         "base_dt": data.get("base_dt"),
+        "route_elevator": route_elevator if isinstance(route_elevator, dict) else None,
         "ai_instruction": (
-            "역 이름과 노선을 말한 뒤, 사용자가 물은 항목만 답하세요. 엘리베이터를 물으면 "
-            "elevators 의 출입구·위치를 2~3개까지 읽어 주고, 화장실을 물으면 dis_toilets 의 "
+            ("안내 중인 경로에서 이용할 승강기는 route_elevator.text 입니다. 엘리베이터를 물으면 이 승강기 하나만 "
+             "말하세요(타는 역이면 탈 승강장 쪽 승강기, 내리는 역이면 내린 승강장의 승강기). "
+             "다른 승강기 위치는 사용자가 물을 때만 elevators 에서 하나씩 말하세요. "
+             if isinstance(route_elevator, dict) and route_elevator.get("text") else
+             "엘리베이터를 물으면 하나만 말하세요. 사용자가 탈 방향(○○ 방면)이나 출구를 말했으면 elevators 에서 그에 맞는 "
+             "승강장 승강기 하나만 말합니다. 방향을 모르면 위치를 늘어놓지 말고 '어느 방면으로 타세요?'라고 "
+             "elevators 에 나온 방면 이름 둘로 한 번만 물은 뒤, 답한 방향의 승강기 하나만 말하세요. 출구 쪽 승강기는 출구를 물을 때만. "
+             "다른 위치는 물을 때만 하나씩 말하세요. ")
+            + "역 이름과 노선은 처음 한 번만 말하고, 사용자가 물은 항목만 답하세요. 화장실을 물으면 dis_toilets 의 "
             "게이트 안/밖·출구를 말하세요. 리프트만 있는 역은 도움이 필요할 수 있다고 알리세요. "
             "상태 값이 unknown 이면 '없다'가 아니라 '자료가 없다'고 말하세요. "
             "승강장 이격거리(platform_gap_max_cm)는 휠체어 승차를 물었을 때만 '최대 약 n cm 틈, "
@@ -2601,16 +2766,29 @@ async def tool_report_station_position(where: str = "", travel: str = "",
 _REPORT_REASONS = ("curb", "no_sidewalk", "no_crossing", "steep", "blocked", "etc")
 
 
+_REPORT_LABELS = {"curb": "턱 있음", "no_sidewalk": "보도 없음·끊김", "no_crossing": "횡단보도 없음",
+                  "steep": "경사 심함", "blocked": "통행 불가(공사 등)", "etc": "기타"}
+
+
 async def tool_report_accessibility(reason: str = "etc", detail: str = "",
                                     lat: float = None, lng: float = None,
-                                    route_id: str = "") -> dict:
-    """접근성 문제 음성 제보 (v1.35.0) — 화면의 '신고' 버튼과 같은 02 수집 API 로 접수.
+                                    route_id: str = "", step: str = "propose") -> dict:
+    """접근성 문제 음성 제보 (v1.35.0, 확인 후 접수 v2.31.0) — 화면의 '신고' 버튼과 같은 02 수집 API 로 접수.
 
     사용자가 "여기 턱이 있어", "길이 끊겼어, 신고해줘" 처럼 말하면 호출된다.
     좌표는 모델이 지어내지 못하도록 서버가 현재 위치를 주입한다
     (inject_nav_defaults). 접수 즉시 해당 지점 경로 안내에
     '이용자 제보(미확인)' 경고가 붙는다.
+
+    v2.31.0 — 말로 한 신고는 바로 접수하지 않는다(실증 개선 목록 8). 잘못 알아들은 말이나 혼잣말이
+    신고로 들어가 경로 안내에 경고가 붙는 것을 막는다.
+      step=propose : 요약해 되묻기만 한다(접수 안 함). 세션이 처음 말한 위치를 기억한다(inject_nav_defaults)
+      step=confirm : 이용자가 '네'라고 한 뒤 — 기억한 위치로 접수한다
+      step=cancel  : 이용자가 '아니'라고 함 — 기억한 신고를 버린다
     """
+    if step == "cancel":
+        return {"status": "cancelled",
+                "ai_instruction": "신고하지 않았다고 한 문장으로만 말하세요."}
     if lat is None or lng is None:
         return {
             "status": "need_location",
@@ -2621,6 +2799,19 @@ async def tool_report_accessibility(reason: str = "etc", detail: str = "",
         }
     if reason not in _REPORT_REASONS:
         reason = "etc"
+    label = _REPORT_LABELS[reason]
+    summary = label + (" — " + str(detail)[:80] if (detail and reason == "etc") else "")
+    if step != "confirm":
+        return {
+            "status": "confirm_needed",
+            "summary": summary,
+            "ai_instruction": (
+                "아직 접수하지 않았습니다. 접수됐다고 말하지 마세요. "
+                "'여기를 %s(으)로 신고할까요?'처럼 지금 위치를 이 내용으로 신고할지 한 문장으로만 물으세요. "
+                "사용자가 네·응·그래·해줘 하면 step='confirm' 으로 다시 호출하고, 아니·됐어·취소 하면 step='cancel' 로 호출하세요. "
+                "사용자가 내용을 고쳐 말하면 고친 내용으로 step='propose' 를 다시 호출하세요." % summary
+            ),
+        }
     payload = {"lat": float(lat), "lng": float(lng), "reason": reason,
                "detail": (str(detail)[:500] if detail else None),
                "route_id": (str(route_id)[:20] if route_id else None)}
@@ -2635,6 +2826,49 @@ async def tool_report_accessibility(reason: str = "etc", detail: str = "",
             "알리세요. 접수 번호 등 세부 정보는 말하지 마세요."
         ),
     }
+
+
+# ─────────────────────────────────────────────────────────────
+# 날씨 (v2.29.0) — 휠체어 바깥 이동에 직접 영향을 주는 비·눈·기온·바람·미세먼지
+# ─────────────────────────────────────────────────────────────
+import weather_client  # noqa: E402
+
+_WEATHER_AI = (
+    "질문에 맞춰 한두 문장으로만 답하세요. 먼저 물은 것(비가 오는지, 기온 등) 하나를 말하고, "
+    "cautions 가 있으면 가장 앞의 것 하나만 덧붙이세요. 나머지 수치(습도·풍속·미세먼지 등)는 묻지 않았으면 말하지 마세요. "
+    "기온은 정수로 '15도'처럼 말하고, 앞으로의 날씨는 '예보로는'이라고 말하세요. "
+    "춥다·덥다는 feels_word(아침·밤은 feels_word_low, 낮은 feels_word_high)를 그대로 쓰고 더 세게 말하지 마세요"
+    "(예: '선선함'이면 '많이 춥다'고 하지 않습니다). "
+    "outdoor 가 '어려움'이거나 사용자가 실내 활동을 원할 때만 실내 장소를 찾아 드릴지 한 번 물으세요 — outdoor 가 '좋음'이면 묻지 않습니다"
+    "(찾을 때는 find_bf_tour_spots 를 indoor=true 로, 도서관·체육관은 find_culture_sports). "
+    "자료 출처는 사용자가 물을 때만 source(예: 기상청 단기예보)로 말하세요. observed 가 true 면 지금 날씨는 관측값입니다."
+)
+
+
+async def tool_get_weather(lat: float = None, lng: float = None, place: str = "",
+                           day: str = "today") -> dict:
+    """지금 날씨·오늘/내일 예보·미세먼지와 휠체어 이동 주의. 위치: 말한 장소 > 현재 위치 > 안양시."""
+    day = "tomorrow" if str(day or "").strip().lower() in ("tomorrow", "내일") else "today"
+    label = None
+    if place:
+        hit = await _resolve_place(place)
+        if hit is None:
+            return {"status": "place_not_found", "tool_name": "get_weather", "place": place,
+                    "ai_instruction": ("말씀하신 곳(%s)을 찾지 못했다고 짧게 말하고, 시·구 이름으로 다시 말씀해 "
+                                       "달라고 하세요." % place)}
+        lat, lng, label = hit["lat"], hit["lng"], (hit.get("label") or place)
+    elif lat is not None and lng is not None:
+        label = "현재 위치"
+    else:
+        lat, lng, label = weather_client.DEFAULT_POINT
+    raw = await weather_client.fetch(lat, lng)
+    if raw.get("error"):
+        return {"status": "error", "tool_name": "get_weather", "error": raw["error"],
+                "ai_instruction": "지금은 날씨 정보를 가져오지 못했다고 한 문장으로만 말하세요. 날씨를 짐작해 말하지 마세요."}
+    out = weather_client.summarize(raw["fc"], raw.get("air"), day=day)
+    out.update({"status": "success", "tool_name": "get_weather", "place_label": label,
+                "ai_instruction": ("기준 위치는 %s 입니다. " % label) + _WEATHER_AI})
+    return out
 
 
 # ─────────────────────────────────────────────────────────────
@@ -2674,6 +2908,7 @@ def get_tool_dispatcher(embed_fn):
         "open_navi_screen": tool_open_navi_screen,
         "report_accessibility_issue": tool_report_accessibility,
         "report_station_position": tool_report_station_position,
+        "get_weather": tool_get_weather,                     # v2.29.0
     }
 
 

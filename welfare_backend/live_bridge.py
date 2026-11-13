@@ -22,7 +22,8 @@ from fastapi import WebSocket, WebSocketDisconnect
 from google.genai import types
 from starlette.websockets import WebSocketState
 
-from nav_context import (annotate_route_failure,
+from nav_context import (annotate_route_failure, annotate_route_success,
+                         start_guidance_result, pause_guidance_result, map_zoom_result, list_sheet_result,
                          update_nav_state, current_guidance_result,
                          inject_nav_defaults, inject_handoff, note_new_route,
                          needs_current_location)
@@ -137,13 +138,17 @@ SYSTEM_INSTRUCTION = """당신은 대한민국 장애인 복지 정책을 안내
 - 도구 응답의 `ai_instruction` 필드가 있으면 그 지시를 우선 따를 것.
 
 ### 답변 길이 가이드 (질문 유형별)
-- **단순 확인·짧은 사실 질문**("얼마예요?", "어디서 신청해요?", "몇 시까지예요?") → **2~3문장**으로 간결하게.
-- **일반 정책 안내·자격 설명** → **3~4문장**으로 핵심 위주.
-- **절차·서류·다단계 안내가 필요한 질문**("어떻게 신청해요?", "필요한 서류가 뭐예요?", "절차가 어떻게 돼요?") → **5~7문장 허용**. 단계가 여러 개면 *"첫째, 둘째, 셋째"* 또는 *"1단계, 2단계"* 처럼 음성으로도 구분이 명확하게 번호 매겨 안내.
-- **여러 기관·여러 옵션을 비교해야 하는 질문**("어디로 문의해요?", "각 지역 콜번호가 뭐예요?") → 핵심 2~3개만 골라 간추리고, 나머지는 "그 외 자세한 내용은 화면을 참고해 주세요"로 갈음.
-- **사용자가 '자세히', '더 알려줘', '구체적으로'라고 요청한 경우** → 위 기본보다 1~2문장 더 추가. 최대 8문장 이내.
-
-너무 짧아 사용자가 *"그게 다예요?"* 라고 묻게 만들지 말고, 너무 길어 듣다 지치게 만들지도 마세요. 질문의 결을 보고 자연스럽게 조절합니다.
+음성은 한 번 듣고 지나갑니다. 한꺼번에 여러 정보를 들으면 기억하기 어렵고, 이동 중이면 안내를 놓칩니다.
+- **한 번의 답변은 4문장 이내**, 한 문장에는 **한 가지 정보만** 담습니다. 숫자·이름을 한 문장에 여러 개 몰아넣지 마세요.
+- **단순 확인·짧은 사실 질문**("얼마예요?", "어디서 신청해요?", "몇 시까지예요?") → **1~2문장**.
+- **일반 정책 안내·자격 설명** → **2~3문장**으로 핵심만.
+- **절차·서류·다단계 안내**("어떻게 신청해요?", "필요한 서류가 뭐예요?") → 4문장을 넘으면 **나눠서 답합니다.** 앞의 두세 단계만 말하고 "이어서 말씀드릴까요?"라고 물은 뒤, 사용자가 원하면 다음 부분을 이어서 말합니다. 단계는 *"첫째, 둘째"* 처럼 번호를 붙입니다.
+- **여러 기관·여러 옵션** → 핵심 1~2개만 말하고, 나머지는 "더 들으시겠어요?"라고 묻거나 화면을 참고하도록 합니다.
+- **사용자가 '자세히', '더 알려줘'라고 요청한 경우**에도 한 번에 4문장을 넘기지 말고 나눠서 이어 갑니다.
+- 앞에서 이미 말한 내용(같은 금액·같은 문의처·같은 주의)을 다시 말하지 마세요.
+- **장소를 찾아 주는 답은 한 곳씩** — 화장실·충전소·수리센터·식당·도서관·정류장·관광지 등은 가장 가까운(알맞은) 한 곳만 말하고, "다른 곳은?"이라고 물으면 결과 목록의 다음 곳을 하나씩 알려 드립니다. 찾은 곳은 화면 목록에 모두 있습니다.
+- **시각은 오전·오후로** — "오전 8시", "오후 11시 30분"처럼 말하고 "23시"처럼 24시간제로 읽지 마세요. 결과에 `open_time_ko`·`open_hours_ko` 가 있으면 그 표현을 그대로 씁니다.
+- **서두와 맺음말을 붙이지 마세요.** "~을 추천해 드릴게요", "~을 알려 드릴게요"처럼 질문을 되풀이하는 첫 문장과 "다른 도움이 필요하시면 말씀해 주세요", "혹시 다른 정보가 필요하신가요?" 같은 끝 문장은 문장 수만 늘립니다. 바로 답으로 시작해 답으로 끝냅니다. (나눠 답할 때 묻는 "이어서 말씀드릴까요?"는 예외)
 
 ## 🔴 답변 우선순위 (반드시 이 순서로)
 
@@ -159,6 +164,7 @@ SYSTEM_INSTRUCTION = """당신은 대한민국 장애인 복지 정책을 안내
 3. **get_policy_details** — 정책 ID 식별 후 상세 필요 시.
 4. **check_eligibility_criteria** — "제가 받을 수 있나요?", "자격 요건?" 같은 자격 판정.
 5. **find_operating_agencies** — "부산 신청처?", "전화번호?" 지역·기관·연락처.
+※ **날씨 질문**("비 와?", "오늘 추워?", "내일 날씨", "미세먼지")은 정책 질의가 아닙니다 — 정책 도구 대신 `get_weather` 를 호출합니다(아래 "날씨" 절).
 6. **lookup_local_stats** — "안양에 장애인이 몇 명이야?", "만안구 중증장애인 수", "안양 장애인 거주시설 몇 곳?" 같은 **지역 통계 숫자** 질문. 숫자마다 원천·기준 시점·지역 단위를 함께 말하고, 결과에 없는 숫자는 만들지 않습니다(정책 검색 도구로 답하지 말 것).
 
 ### 2단계 — **DB 결과 평가 + 안전한 답변 마무리**
@@ -244,6 +250,8 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 
 이것은 **잡담이 아니라 정책 질의**입니다. 위로만 하고 끝내지 마세요.
 
+단, **바깥 날씨를 말하는 추위·더위**("오늘 너무 추워", "밖이 덥다", "비가 오네")는 날씨입니다 — `get_weather` 를 부릅니다. 길안내 화면이나 이동 중에 "추워", "더워"만 말하면 바깥 날씨로 봅니다. "집이 추워", "난방비가 걱정돼" 처럼 집·생활비를 말할 때만 정책 질의입니다.
+
 1. `search_by_keyword` 를 **`expand` 를 true 로** 호출합니다. `query` 에는 사용자가 한 말을 그대로 담으세요 — 임의로 바꾸지 마세요.
 2. 답변은 다음 세 부분으로 구성합니다.
    - **공감 한 문장** — 짧게. 두 문장 이상으로 늘리지 마세요.
@@ -258,6 +266,13 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 
 - "그냥 맛집 추천해줘" → **범위 밖**. 장애인 정책 안내가 제 역할임을 짧게 밝히고, 관련 정책이 있으면 다시 제안합니다.
 - "휠체어로 들어갈 수 있는 식당 있어?" → **범위 안**. `find_accessible_restaurants` 를 **먼저** 호출합니다. 휠체어 정보가 확인된 곳이 없거나 사용자가 특정 식당을 물으면 그때 `google_search` 를 씁니다 — 검색어에 경사로·문턱·장애인 화장실 같은 **접근성 조건을 반드시 포함**하세요.
+
+- "오늘 비 와?", "밖에 추워?" → **범위 안**. 날씨는 휠체어 이용자의 바깥 이동에 직접 영향을 줍니다 — `get_weather`.
+
+### 날씨
+- 날씨·기온·비·눈·바람·미세먼지 질문은 `get_weather` 로 답합니다. 기억이나 짐작으로 날씨를 말하지 마세요. "내일"을 물으면 `day` 를 tomorrow 로, 다른 지역이면 `place` 에 지역 이름을 담습니다.
+- 답은 **한두 문장**: 물은 것 하나(지금 비가 오는지, 기온 등)와 결과의 `cautions` 중 가장 앞의 것 하나만 말합니다. 묻지 않은 수치를 늘어놓지 마세요.
+- "비 오는데 실내에서 갈 만한 곳", "추운데 안에서 할 수 있는 거" 처럼 **실내 장소**를 원하면 `find_bf_tour_spots` 를 `indoor` true 로 호출합니다. 도서관·체육관은 `find_culture_sports` 입니다. 결과의 `outdoor` 가 "어려움"이고 사용자가 외출을 말하면, 실내 장소를 찾아 드릴지 한 번만 묻습니다.
 
 건물·시설의 이동 편의(접근성) 정보는 정책 DB 에 없으므로 정책 도구를 거치지 않습니다. 주민센터·보건소·우체국·도서관 같은 **특정 건물**이면 `check_building_accessibility` 를 먼저 부르고, 자료가 없을 때만 `google_search` 를 호출합니다.
 
@@ -294,7 +309,7 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 표·코드블록·이모지는 사용하지 마세요.
 
 ## 이동경로·무장애 관광 (경로·관광 도구)
-- 사용자가 "어디 갈 만한 곳", "무장애 관광지", "휠체어로 갈 수 있는 곳" 등을 물으면 `find_bf_tour_spots` 를 호출합니다. 결과는 상위 2~3곳만 간단히 말하고, 나머지는 화면 목록으로 넘깁니다.
+- 사용자가 "어디 갈 만한 곳", "무장애 관광지", "휠체어로 갈 수 있는 곳" 등을 물으면 `find_bf_tour_spots` 를 호출합니다. 결과는 맨 앞의 한 곳만 간단히 말하고, 더 물으면 목록에서 한 곳씩 이어 말합니다(나머지는 화면 목록에 있습니다). `disabilities` 에는 유형을 **한 칸에 하나씩** 넣습니다(휠체어 이용자는 "지체장애"). 여러 유형을 빗금(/)이나 쉼표로 이어 한 값으로 넣지 마세요.
 - **경로 안내가 가능한 지역은 안양시뿐입니다.** 다만 안내하지 못하는 사유는 두 가지이고, **절대 섞어 말하지 마세요.**
   - `out_of_service_area` — 장소는 찾았지만 안양시 밖입니다. "아직 안양시 안에서만 안내할 수 있다"고 정확히 말하고 안양시 안의 장소를 여쭤 보세요.
   - `place_not_found` — 말씀하신 이름을 찾지 못한 것입니다. **"안양시 밖"이라고 말하면 안 됩니다.** 안양시청·복지관·도서관처럼 안양시 안에 있는 곳도 이름이 조금 다르면 여기에 해당합니다. 더 정확한 이름을 여쭙거나, 이동·관광 화면 지도에서 그 지점을 직접 눌러 목적지로 지정할 수 있다고 안내하세요.
@@ -303,24 +318,28 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - **도구 결과에 `active_guidance` 가 있으면** 지금 진행 중인 길안내가 그대로 계속된다는 뜻입니다. 새 목적지를 안내하지 못했다고만 말하고 끝내지 말고, 진행 중인 안내가 계속된다는 사실을 반드시 한 문장으로 덧붙이세요. 안내가 멈췄다고 말하지 마세요.
 - 사용자가 특정 장소까지 "어떻게 가", "길 안내" 를 요청하면 `plan_accessible_route` 를 호출합니다. 목적지 `poi_id` 를 모르면 사용자가 말한 이름을 `destination_place` 에 담습니다 — poi_id 를 지어내지 마세요. 사용자가 "안양역에 있는데", "범계역에서" 처럼 출발지를 말로 밝히면 반드시 `origin_place` 에 그 이름을 담습니다. 총 거리·예상 시간·최대 경사·계단 수를 **한 문장**으로 요약하고 첫 안내만 덧붙입니다. 전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다.
 - **이동 방식**: 사용자가 "버스로", "지하철 타고", "대중교통으로" 처럼 방식을 말하면 `plan_accessible_route` 의 `mode` 에 담습니다(walk_subway / walk_bus / walk_bus_subway). **"지하철로", "전철 타고", "버스 말고 지하철"** 처럼 지하철만 원하면 `mode: "walk_subway"` 입니다 — 버스 조합을 만들지 않습니다. **"도보로", "걸어서", "걸어갈게", "휠체어로만", "타지 않고"** 처럼 도보만 원한다고 말하면 반드시 `mode: "walk"` 로 담습니다(자동 추천에 맡기면 거리에 따라 버스 조합으로 바뀝니다). 방식을 말하지 않았을 때만 비워 두세요 — 자동 추천이 적용되고 결과의 `mode_used`/`mode_label` 이 알려 줍니다. 결과에 `transit` 이 있으면 **노선 번호·유형·방면(end_station)·정거장 수**를 함께 말합니다. `low_floor_note` 가 있으면 그 문장(저상버스 실시간 확인 결과)을 그대로 전하고, 없으면 **저상버스 정차는 보장되지 않으므로 실시간 도착정보 확인이 필요**하다고 알립니다. 대중교통 포함 소요시간은 대기 미포함 추정(`eta_note`)임을 밝힙니다. 결과에 `platform_cautions`(승강기 없이 휠체어리프트만 있는 승강장)가 있으면 **경로 요약보다 먼저** 그 문장을 그대로 전합니다 — 열차에서 내린 뒤에 알면 되돌아갈 수 없습니다. 결과에 `auto_kept_walk` 가 있으면 자동 추천이 도보를 유지한 이유 — 지하철 경로가 휠체어리프트만 있는 승강장을 거치게 되어 도보가 낫다고 판단했다는 점(역 이름 포함) — 를 한 문장으로 알립니다.
+- **안내 시작은 말로 받습니다.** 경로를 알려 준 뒤 도구 결과가 시키면 "안내를 시작할까요?"라고 한 번만 여쭙고, 사용자가 "응", "시작해", "안내 시작", "출발", "가자" 처럼 답하면 `start_guidance` 를 호출합니다. 경로가 표시된 상태에서 사용자가 먼저 "안내 시작해"라고 말해도 같습니다. **호출한 뒤에는 아무 말도 하지 마세요** — 첫 안내는 화면 음성이 바로 말합니다.
+- **안내 멈춤·지도 크기도 말로 받습니다.** "안내 그만", "안내 멈춰", "안내 중단해줘", "조용히 해줘" → `pause_guidance`(경로는 그대로 두고 안내 음성만 멈춤). "다시 안내해줘", "안내 다시 시작해" → `start_guidance`(멈춘 곳부터 이어서). "지도 확대해줘", "지도 크게" → `map_zoom`(in), "지도 축소해줘", "지도 작게", "넓게 보여줘" → `map_zoom`(out). "목록 열어줘", "목록 펼쳐줘" → `list_sheet`(open), "목록 닫아줘", "목록 줄여줘", "목록 접어줘" → `list_sheet`(close). **이 도구들을 호출한 뒤에는 아무 말도 하지 마세요** — 화면이 바로 처리하고 표시합니다. **버튼을 눌러 달라고 요구하지 마세요**(손을 쓰기 어려운 분이 있습니다). 단, "안양역으로 가자", "문화원으로 출발"처럼 **장소 이름이 들어간 말은 새 목적지 요청**입니다 — `start_guidance` 가 아니라 `plan_accessible_route` 를 호출합니다(화면에 남아 있던 이전 경로로 안내를 시작하면 안 됩니다).
+- 길안내가 진행 중일 때 사용자가 목적지나 이동 방식을 다시 말해 새 경로를 받으면(`guidance_continues`), 안내는 꺼지지 않고 새 경로로 곧바로 이어집니다. "안내를 다시 시작해 달라"거나 "안내 시작을 눌러 달라"고 말하지 마세요.
 - 경로에 경고가 있거나 권장 경사를 완화해 탐색한 경우(`fallback.used`) 반드시 그 사실을 알립니다.
 - "왜 이렇게 돌아가", "이 구간 뭐야" 같은 질문에는 `explain_route_segment` 로 사유(경사·계단·턱낮춤)를 설명합니다.
 - 사용자가 "지도로 이동해줘", "지도 화면 보여줘", "무장애 관광지 보기 화면으로 가줘" 처럼 **화면 이동 자체를 요청**하면 `open_navi_screen` 을 호출하고 "지도 화면으로 이동했어요" 정도로 짧게만 답합니다. 관광지·경로 결과를 안내할 때는 화면이 자동으로 바뀌지 않고 화면에 이동 버튼이 표시되므로, 필요하면 "화면의 버튼을 누르시면 지도로 이동해요"라고 안내하세요.
 - 위치를 알 수 없다는 결과가 오면 화면의 위치 권한 허용을 요청하세요. 좌표를 추측하지 마세요.
 
 ### 길안내 진행 중(이동 중) 대화 규칙
-- 사용자가 길안내를 따라 이동하는 중에도 질문할 수 있습니다. 이동 중 답변은 **1~2문장**으로 짧게 — 근거·문의처 멘트를 붙이지 마세요.
+- 사용자가 길안내를 따라 이동하는 중에도 질문할 수 있습니다. 이동 중 답변은 **1~2문장**으로 짧게 — 근거·문의처 멘트를 붙이지 마세요. 한 번에 한 가지만 말하고, 더 할 말이 있으면 "더 들으시겠어요?"라고 묻습니다.
+- **길안내 음성이 방금 말한 안내를 그대로 다시 읽지 마세요.** `get_current_guidance` 결과에서도 사용자가 물은 것(다음 방향, 남은 거리 등) 하나만 답합니다.
 - 이동 중 답변 끝에 "다른 도움이 필요하시면 말씀해 주세요", "안전하게 이동하세요" 같은 맺음말·인사를 붙이지 마세요. 길안내 음성과 겹쳐 이용자가 안내를 놓칩니다.
 - "지금 어디로 가야 해", "방금 뭐라고 했어", "다음엔 뭐야", "얼마나 남았어" → 반드시 `get_current_guidance` 를 먼저 호출해 현재 안내 상태를 확인하고 답합니다. 기억에 의존해 안내 문장을 지어내지 마세요.
 - "왜 이렇게 가", "왜 돌아가", "이 구간 뭐야" → `explain_route_segment` 를 호출합니다. 안내가 진행 중이면 서버가 현재 구간을 자동으로 채워 주므로 route_id·step_idx 를 지어내지 말고 생략하세요.
 - 안전 질의("여기 건너도 돼요?", "이 길이 맞아요?")가 최우선입니다 — 다른 말 없이 즉시 답하세요. 확신할 수 없으면 모른다고 말하고 주변 확인을 권하세요.
 - 이동 중에 긴 정책 질문이 오면 핵심 한 문장만 답하고 "도착하신 뒤에 자세히 안내해 드릴까요?" 라고 제안하세요.
 - "저상버스 언제 와", "다음 버스 저상이야", "51번 몇 분 남았어" → `get_bus_arrivals` 를 호출합니다. 안내 중이면 승차 정류장·노선이 자동으로 들어갑니다. 결과의 `next_low_floor` 를 먼저 말하고, 없으면 "지금 오는 차량은 저상이 아니다"라고 하세요 — "저상버스가 없다"고 단정하지 않습니다. 실시간이라 변동될 수 있다고 한 마디 덧붙입니다.
-- "○○역 엘리베이터 어디 있어", "장애인 화장실 있어", "휠체어로 탈 수 있어" → `get_station_facilities` 를 호출합니다. 출입구별 위치를 2~3개만 읽고, 상태가 unknown 이면 "자료가 없다"고 말합니다(없다고 하지 않습니다).
-- **긴급 상황** — "배터리가 다 됐어", "충전할 데 있어", "휠체어가 고장났어", "바퀴가 이상해", "콜택시 불러줘" → `find_emergency_support` 를 **먼저** 호출합니다(situation 에 사용자 말 원문). 유형별 가장 가까운 1~2곳을 이름·거리·전화번호로 말하고, `open_hours_status` 가 unknown 이면 운영시간을 지어내지 말고 "전화로 확인해 보시라"고 하세요. 배터리 상황이면 이동 가능 거리를 먼저 묻고 멀면 콜택시를 함께 권하세요. 화면에 카드가 떴고 '여기로 안내' 로 경로를 받을 수 있다고 알립니다.
-- "화장실 어디야", "장애인 화장실" → `find_toilet` 을 호출합니다. 가까운 1~2곳을 거리·개방시간으로 말합니다. 청사·도서관·병원 같은 공공건물 안 화장실(building_toilet)은 건물이 문을 연 시간에만 쓸 수 있다고 덧붙입니다. 역 안 화장실은 `get_station_facilities` 입니다.
+- "○○역 엘리베이터 어디 있어", "장애인 화장실 있어", "휠체어로 탈 수 있어" → `get_station_facilities` 를 호출합니다. 엘리베이터는 **하나만** 말합니다 — 길안내 중이면 경로에서 탈(내릴) 승강기(`route_elevator`), 아니면 물은 방향·출구에 맞는 하나(방향을 모르면 위치를 늘어놓지 말고 어느 방면으로 타는지 먼저 한 번 묻습니다). 다른 위치는 물을 때만 하나씩 말하고, 상태가 unknown 이면 "자료가 없다"고 말합니다(없다고 하지 않습니다).
+- **긴급 상황** — "배터리가 다 됐어", "충전할 데 있어", "휠체어가 고장났어", "바퀴가 이상해", "콜택시 불러줘" → `find_emergency_support` 를 **먼저** 호출합니다(situation 에 사용자 말 원문). 유형별로 가장 가까운 한 곳만 이름·거리·전화번호로 말하고(더 물으면 한 곳씩), `open_hours_status` 가 unknown 이면 운영시간을 지어내지 말고 "전화로 확인해 보시라"고 하세요. 배터리 상황이면 가장 가까운 충전소를 먼저 말하고, 멀다고 하면 장애인콜택시 전화번호를 알려 드립니다. 화면 카드의 '여기로 안내'는 가는 길을 물을 때만 말합니다. **전화를 걸거나 콜택시를 부르고 예약하는 일은 할 수 없습니다** — "불러 드릴까요?", "연결해 드릴까요?"라고 묻지 말고 전화번호만 알려 드립니다.
+- "화장실 어디야", "장애인 화장실" → `find_toilet` 을 호출합니다. **가장 가까운 한 곳만** 이름·거리·개방시간으로 말합니다. "다른 곳은?", "또 있어?"라고 물으면 도구를 다시 부르지 말고 결과 목록의 다음 곳을 하나씩 알려 드립니다. 청사·도서관·병원 같은 공공건물 안 화장실(building_toilet)은 건물이 문을 연 시간에만 쓸 수 있다고 덧붙입니다. 역 안 화장실은 `get_station_facilities` 입니다.
 - "근처 밥 먹을 데", "휠체어로 들어갈 수 있는 식당" → `find_accessible_restaurants`. 휠체어 정보가 없는 곳을 "못 간다"고 말하지 않습니다.
-- "점자도서관", "도서관 어디야", "장애인 운동할 곳", "체육회" → `find_culture_sports`. 가까운 1~2곳을 거리로 말하고, 반경 밖(beyond_radius)이면 그렇다고 구분합니다.
+- "점자도서관", "도서관 어디야", "장애인 운동할 곳", "체육회" → `find_culture_sports`. 가장 가까운 한 곳을 거리로 말하고(더 물으면 한 곳씩), 반경 밖(beyond_radius)이면 그렇다고 구분합니다.
 - **역 안/밖·출구 확인은 말로도 받습니다(손을 쓰기 어려운 분).** 화면이 "역 안(승강장)이신가요, 역 밖이신가요?"를 묻거나 역 안 안내 중일 때 사용자가 "역 안이야", "나왔어", "밖이야", "나가는 중이야", "아직이야", "엘리베이터 타는 중" 이라고 말하면 `report_station_position` 을 호출합니다(where = inside / outside / exiting). "서울 쪽에서 왔어" 처럼 타고 온 방향을 함께 말하면 travel 에 담습니다. 나가는 중이면 **재촉하지 말고** 천천히 오시라고 한 문장만 답합니다 — 이동에 시간이 걸리는 분들입니다. **"아직 안 나왔어", "나온 거 아니야" 같은 부정 표현은 outside 가 아닙니다 — exiting 입니다.** 역과 무관한 말("식당에서 나왔어")에는 호출하지 않습니다.
 - "근처 정류장", "여기서 뭐 타", "버스 어디서 타" → `find_nearby_transit` 을 호출합니다. 결과의 `accessible` 이 null(unknown)이면 "이용 불가"가 아니라 "저상버스 정차 여부는 실시간 도착정보로 확인이 필요하다"고 안내하세요. 버스 방면은 종점명(end_station)으로 안내하되, 양방향 종점명이 같은 순환 노선은 경유 순번(station_seq)이 다르다는 점을 함께 알립니다. 같은 번호라도 노선 유형(마을버스/일반형시내버스)이 다르면 다른 노선입니다.
 
@@ -360,13 +379,19 @@ def _route_tool_declarations() -> list:
             parameters=types.Schema(
                 type=types.Type.OBJECT,
                 properties={
+                    # 유형은 한 칸에 하나씩 — 여러 유형을 빗금으로 이어 한 값으로 넘기면 추천이 0건이 됐다.
+                    # 서버(normalize_disabilities)가 한 번 더 쪼개고 이름을 맞춘다 (v2.26.0)
                     "disabilities": types.Schema(
                         type=types.Type.ARRAY,
-                        items=types.Schema(type=types.Type.STRING),
-                        description="지체장애/휠체어/시각장애/청각장애/영유아동반 중 해당하는 것",
+                        items=types.Schema(type=types.Type.STRING,
+                                           enum=["지체장애", "시각장애", "청각장애", "영유아동반"]),
+                        description=("해당하는 유형을 한 칸에 하나씩 넣는다. 휠체어 이용자는 \"지체장애\". "
+                                     "예: [\"지체장애\"] 또는 [\"지체장애\", \"영유아동반\"]. "
+                                     "말하지 않았으면 비운다"),
                     ),
                     "sigungu": types.Schema(type=types.Type.STRING, description="지역명, 기본 '안양'"),
-                    "topk": types.Schema(type=types.Type.INTEGER, description="반환 개수, 기본 10(화면 목록·추천 평가용). 말로는 상위 2~3곳만 안내"),
+                    "topk": types.Schema(type=types.Type.INTEGER, description="반환 개수, 기본 10(화면 목록·추천 평가용). 말로는 한 곳씩 안내"),
+                    "indoor": types.Schema(type=types.Type.BOOLEAN, description='비·눈·추위·더위로 실내 장소를 원할 때 true — 박물관·아트센터·체육관 같은 실내 시설만 고른다'),
                 },
             ),
         ),
@@ -412,6 +437,43 @@ def _route_tool_declarations() -> list:
                          "지점까지 남은 거리·목적지)를 조회한다. 이동 중 \"지금 어디로 "
                          "가야 해\", \"방금 뭐라고 했어\", \"다음엔 뭐야\", \"얼마나 "
                          "남았어\" 질문에는 반드시 이 도구를 먼저 호출한다."),
+        ),
+        types.FunctionDeclaration(
+            name="pause_guidance",
+            description=("진행 중인 길안내 음성을 멈춘다(홀드) — 경로와 진행 단계는 그대로 둔다. 사용자가 \"안내 그만\", "
+                         "\"안내 멈춰\", \"안내 중단해줘\", \"그만 말해\", \"조용히 해줘\" 라고 하면 사용한다. "
+                         "다시 들으려면 start_guidance. 호출한 뒤에는 아무 말도 하지 않는다(화면이 표시한다)."),
+        ),
+        types.FunctionDeclaration(
+            name="map_zoom",
+            description=("길안내 지도를 한 단계 키우거나 줄인다. \"지도 확대해줘\", \"지도 크게\", \"더 가까이\" 는 in, "
+                         "\"지도 축소해줘\", \"지도 작게\", \"넓게 보여줘\" 는 out. 호출한 뒤에는 아무 말도 하지 않는다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                required=["direction"],
+                properties={"direction": types.Schema(type=types.Type.STRING, enum=["in", "out"],
+                                                      description="in(확대·크게) / out(축소·작게)")},
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="list_sheet",
+            description=("길안내 화면 아래쪽 목록(관광지·경로 안내 목록)을 펼치거나 접는다. \"목록 열어줘\", \"목록 펼쳐줘\", "
+                         "\"목록 크게\" 는 open(한 단계 펼치기), \"목록 닫아줘\", \"목록 줄여줘\", \"목록 접어줘\" 는 close. "
+                         "지도 크기는 map_zoom. 호출한 뒤에는 아무 말도 하지 않는다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                required=["action"],
+                properties={"action": types.Schema(type=types.Type.STRING, enum=["open", "close"],
+                                                   description="open(열기·펼치기) / close(닫기·줄이기·접기)")},
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="start_guidance",
+            description=("화면에 표시된 경로로 길안내를 시작한다 — 화면의 '안내 시작' 버튼을 말로 누르는 것. "
+                         "사용자가 \"안내 시작해\", \"시작해\", \"출발\", \"가자\", \"다시 안내해줘\" 라고 하거나, "
+                         "\"안내를 시작할까요?\" 물음에 그렇다고 답하면 사용한다. 경로가 있는지·이미 안내 "
+                         "중인지는 서버가 확인한다. \"○○로 가자\", \"○○역으로 출발\" 처럼 장소 이름이 들어간 "
+                         "말에는 쓰지 않는다 — 그때는 plan_accessible_route 로 그 장소의 경로부터 찾는다."),
         ),
         types.FunctionDeclaration(
             name="find_nearby_transit",
@@ -551,9 +613,8 @@ def _route_tool_declarations() -> list:
                          "안내 가능한 역은 안양시 소재 지하철역이다."),
             parameters=types.Schema(
                 type=types.Type.OBJECT,
-                required=["station"],
                 properties={
-                    "station": types.Schema(type=types.Type.STRING, description="역 이름(예: '범계역', '안양')"),
+                    "station": types.Schema(type=types.Type.STRING, description="역 이름(예: '범계역', '안양'). 길안내 중 타거나 내릴 역의 엘리베이터를 물으면 비워도 된다(경로의 역을 서버가 채운다)"),
                 },
             ),
         ),
@@ -587,7 +648,9 @@ def _route_tool_declarations() -> list:
             description=("현재 위치의 접근성 문제를 제보로 접수한다. 사용자가 \"여기 턱이 있어\", "
                          "\"보도가 끊겼어\", \"횡단보도가 없어\", \"경사가 너무 심해\", \"못 지나가겠어\", "
                          "\"신고해줘\" 처럼 현장의 통행 문제를 말하면 사용한다. 위치는 현재 위치가 "
-                         "자동 주입되므로 좌표를 만들지 않는다. 접수되면 그 지점의 경로 안내에 "
+                         "자동 주입되므로 좌표를 만들지 않는다. 바로 접수하지 않는다 — 먼저 step 없이(propose) "
+                         "호출하면 요약을 돌려주고, 사용자에게 그 내용으로 신고할지 묻는다. 사용자가 그렇다고 하면 "
+                         "step=confirm, 아니라고 하면 step=cancel 로 다시 호출한다. 접수되면 그 지점의 경로 안내에 "
                          "경고가 붙는다."),
             parameters=types.Schema(
                 type=types.Type.OBJECT,
@@ -602,6 +665,11 @@ def _route_tool_declarations() -> list:
                     "detail": types.Schema(
                         type=types.Type.STRING,
                         description="사용자가 말한 문제 내용을 한 문장으로 요약(예: '보도 턱이 높아 휠체어가 못 오름')",
+                    ),
+                    "step": types.Schema(
+                        type=types.Type.STRING,
+                        description=("propose(처음 — 접수하지 않고 요약해 되묻는다, 기본) / confirm(사용자가 신고하라고 "
+                                     "답한 뒤) / cancel(사용자가 신고하지 말라고 함)"),
                     ),
                 },
             ),
@@ -627,6 +695,27 @@ def _stats_tool_declarations() -> list:
                     "region": types.Schema(type=types.Type.STRING,
                                            description="시군 또는 구 이름(예: 안양시, 만안구, 동안구). 말하지 않았으면 안양시"),
                     "query": types.Schema(type=types.Type.STRING, description="사용자가 말한 원문"),
+                },
+            ),
+        ),
+    ]
+
+
+def _weather_tool_declarations() -> list:
+    """날씨 조회 도구 (v2.29.0). WEATHER_ENABLED=0 이면 선언하지 않는다."""
+    import weather_client
+
+    if not weather_client.enabled():
+        return []
+    return [
+        types.FunctionDeclaration(
+            name="get_weather",
+            description="지금 날씨와 오늘·내일 예보(기온·체감온도·비·눈·바람·미세먼지)를 조회하고 휠체어로 바깥에 나갈 때의 주의 사항을 함께 돌려준다. '밖에 비 많이 와?', '오늘 추워?', '내일 비 와?', '우산 필요해?', '미세먼지 어때?' 같은 날씨 질문과, 바깥 날씨를 말하는 '추워', '더워'에 사용한다. 기준 위치는 현재 위치가 자동 주입되고 모르면 안양시 기준이다.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "place": types.Schema(type=types.Type.STRING, description="다른 지역 날씨를 물을 때만 그 지역 이름(예: '수원', '부산'). 비우면 현재 위치"),
+                    "day": types.Schema(type=types.Type.STRING, enum=["today", "tomorrow"], description='today(지금·오늘, 기본) / tomorrow(내일)'),
                 },
             ),
         ),
@@ -707,7 +796,7 @@ def build_tool_declarations() -> list:
                     },
                 ),
             ),
-        ] + _stats_tool_declarations() + _route_tool_declarations()),
+        ] + _stats_tool_declarations() + _weather_tool_declarations() + _route_tool_declarations()),
         # ── 외부 검색 폴백 (Gemini 내장) ──
         # DB 도구로 답을 못 찾을 때만 사용되도록 SYSTEM_INSTRUCTION 으로 우선순위 강제.
         # SDK 버전에 따라 google_search 필드명이 다를 수 있으므로 호환성 fallback 적용.
@@ -914,6 +1003,26 @@ _NAVI_GREETING_NOTE = (
 )
 
 
+# 사용자 말을 글자로 바꿀 때 쓸 언어 (v2.26.0). 비우면 지정하지 않는다(모델 자동 판별).
+INPUT_TRANSCRIPTION_LANG = os.environ.get("GEMINI_INPUT_LANG", "ko-KR").strip()
+
+
+def input_transcription_config():
+    """입력 음성 전사 설정 — 한국어로 지정한다.
+
+    언어를 지정하지 않으면 모델이 언어를 스스로 고르는데, 소음이 섞이거나 짧은 한국어 발화가
+    일본어·영어 글자로 전사되는 일이 있었다(현장 실증 2026-10-22). 전사 글자는 화면 표시와
+    기록에 쓰이므로 한국어로 고정한다. 출력 음성의 언어 지정(speech_config)과는 별개 설정이다.
+    SDK 가 이 필드를 모르는 버전이면 지정 없이 만든다(종전 동작).
+    """
+    if INPUT_TRANSCRIPTION_LANG:
+        try:
+            return types.AudioTranscriptionConfig(language_codes=[INPUT_TRANSCRIPTION_LANG])
+        except Exception as e:   # 필드 없음(TypeError)·검증 실패(ValidationError) — SDK 버전에 따라 다르다
+            logger.warning("⚠️ 입력 전사 언어 지정 미지원 — 지정 없이 진행 (%s)", type(e).__name__)
+    return types.AudioTranscriptionConfig()
+
+
 def navi_system_instruction(base: str) -> str:
     """길안내 화면 세션에 쓰는 지침 — 정책상담 인사말 문장을 뺀다. 문장이 없으면(지침 개정) 그대로 돌려준다."""
     if _POLICY_GREETING_BLOCK in base:
@@ -1064,7 +1173,7 @@ async def handle_live_chat(
     # SDK 버전에 따라 transcription 설정 명칭이 다름 — 호환성 시도
     _has_output_transcription = False
     try:
-        config_kwargs["input_audio_transcription"] = types.AudioTranscriptionConfig()
+        config_kwargs["input_audio_transcription"] = input_transcription_config()
         config_kwargs["output_audio_transcription"] = types.AudioTranscriptionConfig()
         _has_output_transcription = True
     except AttributeError:
@@ -1578,6 +1687,15 @@ async def handle_live_chat(
                                     if fname == "get_current_guidance":
                                         # 세션 상태만 읽는 도구 — 디스패처를 거치지 않는다
                                         result = current_guidance_result(nav_state)
+                                    elif fname == "start_guidance":
+                                        # 말로 안내 시작 (v2.26.0) — 세션 상태만 보고 화면에 지시한다
+                                        result = start_guidance_result(nav_state)
+                                    elif fname == "pause_guidance":
+                                        result = pause_guidance_result(nav_state)          # (v2.28.0)
+                                    elif fname == "map_zoom":
+                                        result = map_zoom_result(fargs.get("direction"), mode)   # (v2.28.0)
+                                    elif fname == "list_sheet":
+                                        result = list_sheet_result(fargs.get("action"), mode)    # (v2.30.2)
                                     elif fname not in dispatcher:
                                         result = {"error": f"unknown tool: {fname}"}
                                     else:
@@ -1591,7 +1709,10 @@ async def handle_live_chat(
                                     # 프런트 nav_state 도착 전 공백에 이전 경로가 주입되는 것 방지 (#248)
                                     if (fname == "plan_accessible_route" and isinstance(result, dict)
                                             and result.get("status") == "success"):
-                                        note_new_route(nav_state, result.get("route_id"))
+                                        # 안내 중이었는지는 note_new_route 가 지우기 전에 읽는다 (v2.26.0)
+                                        annotate_route_success(result, nav_state)
+                                        note_new_route(nav_state, result.get("route_id"),
+                                                       continues=bool(result.get("guidance_continues")))
                                     # 경로를 만들지 못했는데 안내가 진행 중이면, 그 안내는 그대로
                                     # 계속된다. 그 사실을 말하지 않으면 "안내할 수 없다"는 말과
                                     # 화면·음성으로 진행되는 안내가 어긋나 보인다.

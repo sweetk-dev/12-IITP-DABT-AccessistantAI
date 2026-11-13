@@ -5,7 +5,9 @@ asyncpg>=0.29
 psycopg2-binary>=2.9
 python-dotenv>=1.0
 pgvector>=0.2.5
-google-genai>=0.3
+# 주 버전을 고정한다 — 3.x 는 기본 API 버전이 달라 모델 호출·음성(Live) 연결이 404 로 거절된다.
+# 올릴 때는 genai_client.py 의 API 버전과 함께 음성 연결까지 확인한 뒤 범위를 넓힌다.
+google-genai>=2.33,<3
 # 정책 갱신 크롤러
 httpx>=0.27
 jsonschema>=4.21

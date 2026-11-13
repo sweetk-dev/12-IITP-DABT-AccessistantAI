@@ -438,6 +438,42 @@ def ops_init_baseline(payload: dict = Body(default={})):
     return ops.run_init_baseline(payload.get("policy_id"))
 
 
+# ── 생성 모델 설정 (용도별 기본·차선·교차검증) ──
+import model_router as _mr  # noqa: E402
+
+
+@router.get("/admin/api/models")
+def models_status():
+    """모델 목록(키 설정 여부·오늘 사용량)과 용도별 현재 설정."""
+    return _mr.describe()
+
+
+@router.put("/admin/api/models/routing")
+def models_routing_save(payload: dict = Body(default={})):
+    """용도별 설정 저장 — {"roles": {"policy_update": {"primary","fallback":[...],"verifier"} | null}}.
+    null 은 그 용도를 종전 동작(환경변수)으로 되돌린다."""
+    roles = payload.get("roles")
+    if not isinstance(roles, dict) or not roles:
+        raise HTTPException(status_code=422, detail={"error": "roles 가 비어 있습니다."})
+    unknown = [r for r in roles if r not in _mr.ROLES]
+    if unknown:
+        raise HTTPException(status_code=422, detail={"error": f"알 수 없는 용도: {', '.join(unknown)}"})
+    try:
+        _mr.save_routing(roles)
+    except _mr.RouterError as e:
+        raise HTTPException(status_code=422, detail={"error": str(e)})
+    return _mr.describe()
+
+
+@router.post("/admin/api/models/test")
+def models_test(payload: dict = Body(default={})):
+    """짧은 고정 문장으로 모델 하나를 호출해 응답 시간과 JSON 형식을 본다(호출 한도 1회 사용)."""
+    mid = payload.get("model")
+    if mid not in _mr.MODELS:
+        raise HTTPException(status_code=422, detail={"error": "알 수 없는 모델"})
+    return _mr.test_model(mid)
+
+
 # ── 신규 발굴 (Phase 5 Track B) ──
 @router.post("/admin/api/discovery/run")
 def discovery_run():

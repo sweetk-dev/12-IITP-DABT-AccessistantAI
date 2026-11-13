@@ -58,8 +58,8 @@ _client = None
 def _get_client():
     global _client
     if _client is None:
-        from google import genai
-        _client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+        from genai_client import make_client  # API 버전 명시(genai_client.py)
+        _client = make_client(os.environ["GEMINI_API_KEY"])
     return _client
 
 

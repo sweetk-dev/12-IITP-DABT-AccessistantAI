@@ -36,6 +36,8 @@ from fastapi import WebSocket, WebSocketDisconnect
 import trial_recorder
 
 from nav_context import (update_nav_state, current_guidance_result,
+                         annotate_route_success, start_guidance_result,
+                         pause_guidance_result, map_zoom_result, list_sheet_result,
                          note_new_route, inject_nav_defaults, inject_handoff)
 from tool_handlers import run_tool, summarize_tool_result
 
@@ -74,13 +76,14 @@ LOCAL_SYSTEM_PROMPT = """당신은 대한민국 장애인 복지 정책을 안�
 - get_policy_details: 특정 정책의 상세(지원 금액·신청 방법)
 - check_eligibility_criteria: 자격 요건 판정
 - find_operating_agencies: 지역·기관·연락처
+- get_weather: 날씨·기온·비·미세먼지 질문, 바깥 날씨를 말하는 "추워"·"더워" (집이 춥다는 말은 정책 질문)
 
 한 번 검색해 관련 결과가 나오면 같은 질문으로 도구를 반복 호출하지 말고 바로 답하세요.
 도구 결과가 비어 있거나 오류이면, 추측하지 말고 정확히 찾지 못했다고 말한 뒤 보건복지부 129를 안내하세요.
 
 ## 답변 규칙
 - 도구 결과에 실제로 있는 사실만 사용하세요. 금액·자격·시행일·신청처를 지어내지 마세요.
-- 한국어 음성 상담체로 간결하게(2~5문장). 금액·날짜는 발화하기 쉬운 한국어로("월 만 육천원" 등).
+- 한국어 음성 상담체로 간결하게. 한 번에 4문장을 넘기지 말고, 한 문장에는 한 가지만 담으세요. 더 길어야 하면 앞부분만 말한 뒤 "이어서 말씀드릴까요?"라고 물으세요. 질문을 되풀이하는 서두와 "다른 도움이 필요하시면 말씀해 주세요" 같은 맺음말은 붙이지 마세요. 장소를 찾아 주는 답은 가장 가까운 한 곳만 말하고, 시각은 "오전 8시", "오후 11시"처럼 오전·오후로 말하세요. 금액·날짜는 발화하기 쉬운 한국어로("월 만 육천원" 등).
 - 내부 정책 ID(B001 등)와 URL은 음성으로 읽지 마세요.
 - 인사말은 이미 상담 시작에 했으니 다시 하지 말고, 사용자의 질문에 바로 답하세요.
 - 새 정책을 처음 안내하거나 신청 절차를 안내할 때만 마지막에 문의처(예: 보건복지부 129)를 한 번 덧붙이세요."""
@@ -232,7 +235,20 @@ def _ollama_tools() -> list:
            {"policy_id": S}, ["policy_id"]),
         fn("find_operating_agencies", "지역·기관 관련 질문에서 운영기관·연락처 청크를 벡터 검색.",
            {"query": S, "limit": I}, ["query"]),
-    ] + _ollama_stats_tools() + _ollama_route_tools()
+    ] + _ollama_stats_tools() + _ollama_weather_tools() + _ollama_route_tools()
+
+
+def _ollama_weather_tools() -> list:
+    """날씨 조회 도구 — Live 선언(live_bridge._weather_tool_declarations)과 1:1 (v2.29.0)."""
+    import weather_client
+    if not weather_client.enabled():
+        return []
+    return [{"type": "function", "function": {
+        "name": "get_weather",
+        "description": "지금 날씨와 오늘·내일 예보(기온·체감온도·비·눈·바람·미세먼지)를 조회하고 휠체어로 바깥에 나갈 때의 주의 사항을 함께 돌려준다. '밖에 비 많이 와?', '오늘 추워?', '내일 비 와?', '우산 필요해?', '미세먼지 어때?' 같은 날씨 질문과, 바깥 날씨를 말하는 '추워', '더워'에 사용한다. 기준 위치는 현재 위치가 자동 주입되고 모르면 안양시 기준이다.",
+        "parameters": {"type": "object", "properties": {
+            "place": {"type": "string", "description": "다른 지역 날씨를 물을 때만 그 지역 이름(예: '수원', '부산'). 비우면 현재 위치"},
+            "day": {"type": "string", "enum": ["today", "tomorrow"], "description": 'today(지금·오늘, 기본) / tomorrow(내일)'}}}}}]
 
 
 def _ollama_stats_tools() -> list:
@@ -273,10 +289,13 @@ def _ollama_route_tools() -> list:
     return [
         fn("find_bf_tour_spots",
            "장애 유형에 맞는 무장애 관광지를 추천한다. '갈 만한 곳', '휠체어로 갈 수 있는 곳' 질문에 사용.",
-           {"disabilities": {"type": "array", "items": S,
-                             "description": "지체장애/휠체어/시각장애/청각장애/영유아동반 중 해당하는 것"},
+           {"disabilities": {"type": "array",
+                             "items": {"type": "string", "enum": ["지체장애", "시각장애", "청각장애", "영유아동반"]},
+                             "description": "해당하는 유형을 한 칸에 하나씩 넣는다. 휠체어 이용자는 지체장애. "
+                                            "말하지 않았으면 비운다 (v2.26.0)"},
             "sigungu": {"type": "string", "description": "지역명, 기본 '안양'"},
-            "topk": I}),
+            "topk": I,
+            "indoor": {"type": "boolean", "description": '비·눈·추위·더위로 실내 장소를 원할 때 true — 박물관·아트센터·체육관 같은 실내 시설만 고른다'}}),
         fn("plan_accessible_route",
            "출발지에서 목적지까지 무장애 보행 경로를 만든다. 경로 안내가 가능한 지역은 안양시뿐이다. "
            "출발지는 현재 위치가 자동 주입된다. 목적지 poi_id 를 모르면 사용자가 말한 이름을 "
@@ -297,6 +316,19 @@ def _ollama_route_tools() -> list:
         fn("get_current_guidance",
            "진행 중인 길안내의 현재 상태(지금 할 안내·다음 안내·남은 거리·목적지)를 조회한다. "
            "이동 중 \"지금 어디로 가야 해\", \"얼마나 남았어\" 질문에는 반드시 이 도구를 먼저 호출한다.",
+           {}),
+        fn("pause_guidance",
+           "진행 중인 길안내 음성을 멈춘다(경로는 유지). \"안내 그만\", \"안내 멈춰\", \"안내 중단해줘\" 에 사용. 호출 뒤에는 말하지 않는다. (v2.28.0)",
+           {}),
+        fn("map_zoom",
+           "길안내 지도를 한 단계 키우거나(in) 줄인다(out). \"지도 확대해줘\" 는 in, \"지도 축소해줘\" 는 out. 호출 뒤에는 말하지 않는다. (v2.28.0)",
+           {"direction": {"type": "string", "enum": ["in", "out"]}}, ["direction"]),
+        fn("list_sheet",
+           "길안내 화면 아래쪽 목록을 펼치거나(open) 접는다(close). \"목록 열어줘·펼쳐줘\" 는 open, \"목록 닫아줘·줄여줘\" 는 close. 호출 뒤에는 말하지 않는다. (v2.30.2)",
+           {"action": {"type": "string", "enum": ["open", "close"]}}, ["action"]),
+        fn("start_guidance",
+           "화면에 표시된 경로로 길안내를 시작한다(화면의 '안내 시작' 버튼을 말로 누르는 것). "
+           "\"안내 시작해\", \"출발\" 이라고 하거나 \"안내를 시작할까요?\" 물음에 그렇다고 답하면 사용한다. (v2.26.0)",
            {}),
         fn("find_nearby_transit",
            "주변의 버스 정류장·지하철역을 찾는다. 기준 위치는 현재 위치가 자동 주입된다. "
@@ -351,8 +383,7 @@ def _ollama_route_tools() -> list:
         fn("get_station_facilities",
            "지하철역의 교통약자 편의시설(엘리베이터·리프트 출입구, 장애인화장실 위치, 승강장 안전발판·틈)을 "
            "알려 준다. '○○역 엘리베이터 어디 있어' 질문에 사용.",
-           {"station": {"type": "string", "description": "역 이름"}},
-           ["station"]),
+           {"station": {"type": "string", "description": "역 이름. 길안내 중 타거나 내릴 역이면 비워도 된다"}}),
         fn("open_navi_screen",
            "화면을 이동·관광(지도) 탭으로 전환한다. 사용자가 화면 이동 자체를 명시적으로 요청할 때만 사용한다.",
            {}),
@@ -365,10 +396,13 @@ def _ollama_route_tools() -> list:
            ["where"]),
         fn("report_accessibility_issue",
            "현재 위치의 접근성 문제를 제보로 접수한다. \"여기 턱이 있어\", \"보도가 끊겼어\", "
-           "\"신고해줘\" 처럼 현장의 통행 문제를 말하면 사용한다. 위치는 자동 주입되므로 좌표를 만들지 않는다.",
+           "\"신고해줘\" 처럼 현장의 통행 문제를 말하면 사용한다. 위치는 자동 주입되므로 좌표를 만들지 않는다. "
+           "바로 접수하지 않는다 — 먼저 propose 로 호출해 받은 요약으로 신고할지 묻고, 그렇다고 하면 confirm, "
+           "아니라고 하면 cancel 로 다시 호출한다.",
            {"reason": {"type": "string",
                        "description": "curb / no_sidewalk / no_crossing / steep / blocked / etc"},
-            "detail": {"type": "string", "description": "사용자가 말한 문제 내용을 한 문장으로"}},
+            "detail": {"type": "string", "description": "사용자가 말한 문제 내용을 한 문장으로"},
+            "step": {"type": "string", "description": "propose(기본, 되묻기) / confirm(신고하라고 답함) / cancel"}},
            ["reason"]),
     ]
 
@@ -464,6 +498,15 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                 if fname == "get_current_guidance":
                     # 세션 상태만 읽는 도구 — 디스패처를 거치지 않는다
                     result = current_guidance_result(_nav)
+                elif fname == "start_guidance":
+                    # 말로 안내 시작 (v2.26.0) — 세션 상태만 보고 화면에 지시한다
+                    result = start_guidance_result(_nav)
+                elif fname == "pause_guidance":
+                    result = pause_guidance_result(_nav)                         # (v2.28.0)
+                elif fname == "map_zoom":
+                    result = map_zoom_result(fargs.get("direction"), session_mode)   # (v2.28.0)
+                elif fname == "list_sheet":
+                    result = list_sheet_result(fargs.get("action"), session_mode)    # (v2.30.2)
                 elif fname not in dispatcher:
                     result = {"error": f"unknown tool: {fname}"}
                 else:
@@ -472,7 +515,9 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                     logger.info("✓ [로컬] 도구 %s 결과: %s", fname, summarize_tool_result(result))
                 if (fname == "plan_accessible_route" and isinstance(result, dict)
                         and result.get("status") == "success"):
-                    note_new_route(_nav, result.get("route_id"))
+                    annotate_route_success(result, _nav)   # note_new_route 가 지우기 전에 (v2.26.0)
+                    note_new_route(_nav, result.get("route_id"),
+                                   continues=bool(result.get("guidance_continues")))
                 if tracker is not None:
                     try:
                         tracker.on_tool_call(fname, fargs, result)

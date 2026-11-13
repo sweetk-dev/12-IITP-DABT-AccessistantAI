@@ -687,12 +687,14 @@ function boot(preset, url) {
     const RB = JSON.parse(JSON.stringify(ROUTE_B.ui_action.route)); RB.destination = { type: "tour", poi_id: "T2", lat: P(8)[0], lng: P(8)[1] };
     await w.__sockets[0]._msg({ type: "ui_action", action: "show_route", payload: { action: "show_route", route: RB } });
     await sleep(50);
-    check("재탐색 대기 중 말로 요청한 B 경로는 표시만 하고 안내를 자동으로 시작하지 않는다", () => {
-      assert.ok(hold.release, "재탐색 요청이 나가지 않음"); showsB(N, "말로 요청"); assert.equal(w.NAVI.isBusy(), false, "누르지 않은 안내가 시작됨");
+    // 안내 중에 말로 새 경로를 받으면 안내가 꺼지지 않는다 (v2.26.0) — 종전에는 표시만 하고 안내 전 상태로 돌아가,
+    // 다시 '안내 시작'을 누르기 전까지 안내 없이 이동했다. 직접 고른 경로((다))는 종전대로 표시만 한다.
+    check("재탐색 대기 중 말로 요청한 B 경로는 안내를 끄지 않고 B 로 이어 간다 (v2.26.0)", () => {
+      assert.ok(hold.release, "재탐색 요청이 나가지 않음"); showsB(N, "말로 요청"); assert.equal(w.NAVI.isBusy(), true, "안내가 꺼졌다");
       assert.equal(N().rerouting(), false); assert.ok(!$("naviStatus").classList.contains("navi-status--busy"), "'찾는 중' 표시가 남음");
     });
     await lateA(hold);
-    check("늦게 온 A 재탐색 응답이 B 경로를 덮어쓰지 않는다(말로 요청한 경로 뒤)", () => { showsB(N, "늦은 응답 뒤"); assert.equal(w.NAVI.isBusy(), false); });
+    check("늦게 온 A 재탐색 응답이 B 경로·안내를 덮어쓰지 않는다(말로 요청한 경로 뒤)", () => { showsB(N, "늦은 응답 뒤"); assert.equal(w.NAVI.isBusy(), true, "B 안내가 멈춤"); });
     w.close();
   }
   // (마) 응답이 끝내 오지 않는 재탐색 — 응답 대기 한도를 넘기면 요청을 끊고 기존 경로로 계속 안내한다
@@ -818,5 +820,27 @@ check("조사: 숫자·받침", () => {
 
 let failed = 0;
 for (const [st, name] of results) { console.log(`${st === "PASS" ? "  ok" : "FAIL"}  ${name}`); if (st === "FAIL") failed++; }
+// ───────── v2.30.3 마이크 에코 제거 범위 ─────────
+{
+  const asked = [];
+  const w = boot((win) => { win.__gum = async (c) => { asked.push(c.audio.echoCancellation);
+    if (c.audio.echoCancellation === "all") { const e = new Error("bad value"); e.name = "TypeError"; throw e; }
+    return { getAudioTracks: () => [{ getSettings: () => ({ echoCancellation: true }) }] }; }; }, "https://example.test/policy");
+  w.navigator.mediaDevices.getUserMedia = (c) => w.__gum(c);
+  await sleep(30);
+  const st = await w.__CHAT._openMicForTest();
+  check("(v2.30.3) 에코 제거 'all' 을 먼저 요청하고, 안 되면 true 로 다시 연다", () => {
+    assert.deepEqual(asked, ["all", true]); assert.ok(st && st.getAudioTracks);
+  });
+  asked.length = 0;
+  w.__gum = async (c) => { asked.push(c.audio.echoCancellation); const e = new Error("denied"); e.name = "NotAllowedError"; throw e; };
+  let err = null; try { await w.__CHAT._openMicForTest(); } catch (e) { err = e; }
+  check("(v2.30.3) 마이크 권한 거부는 다시 묻지 않고 그대로 실패", () => { assert.deepEqual(asked, ["all"]); assert.equal(err && err.name, "NotAllowedError"); });
+  asked.length = 0;
+  w.__gum = async (c) => { asked.push(c.audio.echoCancellation); return { getAudioTracks: () => [] }; };
+  await w.__CHAT._openMicForTest();
+  check("(v2.30.3) 'all' 을 받아 주면 한 번만 연다", () => assert.deepEqual(asked, ["all"]));
+}
+
 console.log(`\n${results.length - failed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

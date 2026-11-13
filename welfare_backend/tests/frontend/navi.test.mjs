@@ -769,6 +769,14 @@ for (let i = 0; i < 6 && !singleTag; i++) {
   m.content.dispatchEvent(new window.Event("click"));
   await sleep(10);
 }
+// 도착지 유지 상태를 다시 만든다 (v2.26.0) — 앞에서 말로 받은 경로(6번)는 좌표 목적지라 도착지 기억을 지운다.
+// 관광지 번호가 있는 목적지의 경로를 받아 '도착지가 기억된 상태'를 이 시험의 전제로 분명히 둔다.
+{
+  const keepDest = JSON.parse(JSON.stringify(ROUTE.ui_action));
+  keepDest.route.destination = Object.assign({}, keepDest.route.destination, { poi_id: "TBF-1" });
+  window.NAVI.onUiAction({ type: "ui_action", action: "show_route", payload: keepDest });
+  await sleep(20);
+}
 lastPlanQuery = null;
 singleTag.content.dispatchEvent(new window.Event("click"));
 await sleep(20);
@@ -1763,13 +1771,15 @@ check("상담 마이크 게이트: 상담원 음성 중·직후엔 지속 발화
   const busyAfter = NV.speakBusy();
   window.Date.now = realNow;
   check("실보행: 노드 스텝→링크 스텝이 한 번만, 끊기지 않고 발화되고 다음 안내로 이어진다 (v1.43.0)", () => {
-    const stepSpeaks = spoken.slice(before).filter((t) => !/다음 안내까지/.test(t));
+    // 도착 확인 질문은 실제 시간 0.5초 주기로 뜨므로 측정에서 뺀다 — 질문 자체는 v1.46.0 블록에서 검사
+    const stepSpeaks = spoken.slice(before).filter((t) => !/다음 안내까지|처음 화면으로 돌아갈까요/.test(t));
     assert.deepEqual(stepSpeaks, [
       "횡단보도가 있습니다. 횡단보도를 건너 14m 이동합니다. (턱낮춤 미상)",
       "좌회전 후 60m 이동합니다.",
       "목적지에 도착했습니다.",   // 종료 확인 질문은 확인 창이 뜰 때 말한다 (v1.46.0)
     ], JSON.stringify(spoken.slice(before)));
-    assert.equal(busyAfter, false);
+    // 막혀 있지 않은지만 본다 — 실제 시간으로 뜬 도착 확인 질문이 지금 재생 중일 수는 있다
+    assert.ok(!busyAfter || spoken.slice(before).some((t) => /처음 화면으로 돌아갈까요/.test(t)), "안내 음성이 끝나지 않았다");
   });
   NV.cancelArrivalReset();   // 이 블록은 발화만 본다 — 첫 화면 복귀는 v1.44.0 블록에서 따로 검증
   check("스텝 안내가 대기 중이면 중간 거리 안내는 버린다 / 즉시 발화는 대기열을 비운다 (v1.43.0)", () => {
@@ -3724,6 +3734,376 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   });
   NV.resetTrip(); NV.stopSpeak();
   window.Date.now = realNowR;
+}
+
+// ── v2.26.0: 말로 안내 시작 · 안내 중 새 경로에도 안내 유지 · 안내 복귀 반복 억제 ──
+{
+  const I = () => window.NAVI._internals();
+  const act = (action, payload) => window.NAVI.onUiAction({ type: "ui_action", action, payload: payload || {} });
+  const realNow = window.Date.now; let vnow = realNow() + 50_000_000; window.Date.now = () => vnow;
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+
+  // 1) 경로 없이 "안내 시작해"
+  act("start_guidance");
+  check("말로 안내 시작: 표시된 경로가 없으면 시작하지 않고 알린다 (v2.26.0)", () => {
+    assert.equal(I().isGuiding(), false);
+    assert.match($("naviStatus").textContent, /표시된 경로가 없습니다/);
+  });
+
+  // 2) 말로 받은 경로 → 안내 전 → "안내 시작해"
+  act("show_route", ROUTE.ui_action);
+  await sleep(10);
+  check("말로 받은 경로는 안내 전 상태로 표시된다", () => assert.equal(I().isGuiding(), false));
+  const r1 = act("start_guidance");
+  await sleep(10);
+  check("말로 안내 시작: 버튼 없이 안내가 시작된다 (v2.26.0)", () => {
+    assert.equal(r1, null, "이동 버튼 라벨을 만들면 안 된다");
+    assert.equal(I().isGuiding(), true);
+    assert.equal(I().stepIdx, 0);
+  });
+
+  // 3) 안내 중 "안내 시작해" — 처음부터 다시 시작하지 않는다
+  I().setStepIdxForTest(1);
+  check("말로 안내 시작: 이미 안내 중이면 다시 시작하지 않는다 (v2.26.0)", () => {
+    assert.equal(I().voiceStartGuidance(), false);
+    assert.equal(I().stepIdx, 1, "진행 단계가 처음으로 돌아가면 안 된다");
+  });
+
+  // 4) 안내 중에 말로 새 경로 — 안내가 꺼지지 않는다
+  act("show_route", MMROUTE.ui_action);
+  await sleep(10);
+  check("안내 중 말로 받은 새 경로: 안내가 꺼지지 않고 새 경로로 이어진다 (v2.26.0)", () => {
+    assert.equal(I().isGuiding(), true, "안내가 꺼졌다");
+    assert.equal(I().steps.length, 4, "새 경로의 단계가 아니다");
+    assert.equal(I().stepIdx, 0);
+  });
+  check("안내 전에 받은 새 경로는 종전대로 안내 전 상태 (소스 가드)", () => {
+    assert.match(HTML, /if\(guiding && !simActive\) _ro\.keepGuiding = true;/);
+  });
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+
+  // 5) 안내 복귀 반복 억제 — 지하철 승차 단계(긴 문장, 탈 칸이 끝에 있다)
+  const LONG = "2번 출구 승강기로 대합실에 올라가 승강기 전용 개찰구를 지나세요. 1호선 2개 역 뒤 명학역에서 내립니다. 10-4 칸에 타세요";
+  I().showRoute({ route_id: "r_rep", routes: [{ summary: { total_distance_m: 900, duration_sec: 600 },
+    geometry: [[37.4090, 126.9080], [37.4000, 126.9150], [37.3850, 126.9350]],
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "앞으로", distance_m: 100, coord: [37.4090, 126.9080], warnings: [] },
+      { idx: 1, maneuver: "subway_board", instruction: LONG, distance_m: 0, coord: [37.4000, 126.9150], link_type: "subway", warnings: [],
+        ingress: { car: { text: "10-4 칸에 타세요" } } },
+      { idx: 2, maneuver: "subway_alight", instruction: "명학역에서 하차합니다", distance_m: 0, coord: [37.3850, 126.9350], link_type: "subway", warnings: [] },
+      { idx: 3, maneuver: "arrive", instruction: "도착", distance_m: 0, coord: [37.3850, 126.9350], warnings: [] },
+    ] }] }, "반복 시험");
+  I().startGuidance(); await sleep(5);
+  I().setStepIdxForTest(1);
+  I().resumeRepForTest({ key: null, n: 0, ts: 0 });
+  const said = [];
+  said.push(I().resumeDecide()); vnow += 5000;
+  said.push(I().resumeDecide()); vnow += 5000;
+  said.push(I().resumeDecide()); vnow += 5000;
+  said.push(I().resumeDecide()); vnow += 5000;
+  check("안내 복귀: 같은 단계 첫 복귀는 전체 문장 (v2.26.0)", () => assert.equal(said[0], LONG));
+  check("안내 복귀: 두 번째부터는 핵심(탈 칸)만 (v2.26.0)", () => {
+    assert.equal(said[1], "10-4 칸에 타세요.");
+    assert.equal(said[2], "10-4 칸에 타세요.");
+  });
+  check("안내 복귀: 세 번 말한 뒤 1분 안에는 다시 말하지 않는다 (v2.26.0)", () => assert.equal(said[3], ""));
+  vnow += 61000;
+  check("안내 복귀: 1분이 지나면 다시 짧게 말한다 (v2.26.0)", () => assert.equal(I().resumeDecide(), "10-4 칸에 타세요."));
+  // 상담원이 현재 안내를 조회해 직접 답했다 — 복귀 발화는 건너뛴다(한 번만)
+  I().resumeRepForTest({ key: null, n: 0, ts: 0 });
+  window.NAVI.onToolCall("get_current_guidance");
+  check("안내 복귀: 상담원이 방금 현재 안내를 답했으면 다시 읽지 않는다 (v2.26.0)", () => assert.equal(I().resumeDecide(), ""));
+  check("안내 복귀: 그다음 복귀는 정상으로 돌아온다 (v2.26.0)", () => assert.equal(I().resumeDecide(), LONG));
+  // 단계가 바뀌면 처음부터 다시 센다
+  I().setStepIdxForTest(2);
+  check("안내 복귀: 단계가 바뀌면 다시 전체 문장부터 (v2.26.0)", () => assert.match(I().resumeDecide(), /명학역에서 하차합니다/));
+  check("짧게 말하기: 탈 칸 정보가 없는 긴 문장은 첫 문장만 (v2.26.0)", () => {
+    I().setStepIdxForTest(1);
+    const st = I().steps[1]; const keep = st.ingress; st.ingress = null;
+    assert.equal(I().resumeShort(1), "2번 출구 승강기로 대합실에 올라가 승강기 전용 개찰구를 지나세요.");
+    st.ingress = keep;
+  });
+  check("짧게 말하기: 그 구간의 주의는 줄이지 않는다 (v2.26.0)", () => {
+    const st = I().steps[1]; const keep = st.ingress, kw = st.warnings; st.ingress = null; st.warnings = ["턱 있음", "경사 7.0도"];
+    assert.equal(I().resumeShort(1), "2번 출구 승강기로 대합실에 올라가 승강기 전용 개찰구를 지나세요. (턱 있음, 경사 7.0도)");
+    st.ingress = keep; st.warnings = kw;
+  });
+  check("안내 복귀: 소리로만 끊긴 복귀는 반복으로 세지 않는다 (v2.26.0)", () => {
+    I().setStepIdxForTest(1); I().resumeRepForTest({ key: null, n: 0, ts: 0 });
+    for (let k = 0; k < 5; k++) assert.equal(I().resumeDecide(true), LONG, "소음 복귀는 늘 전체 문장");
+    assert.equal(I().resumeRepForTest().n, 0, "소음 복귀가 반복 횟수에 들어갔다");
+  });
+  // 말로 받은 좌표 목적지 — 이전 도착지 기억이 남지 않는다
+  {
+    const RC = JSON.parse(JSON.stringify(ROUTE.ui_action)); RC.route.destination = { lat: 37.3909, lng: 126.9511 };
+    const RP = JSON.parse(JSON.stringify(ROUTE.ui_action)); RP.route.destination = { poi_id: "TBF-1" };
+    act("show_route", RP); await sleep(5);
+    check("(준비) 관광지 목적지는 도착지로 기억된다", () => assert.equal(String(I().tripDest().poi_id), "TBF-1"));
+    act("show_route", RC); await sleep(5);
+    check("말로 받은 좌표 목적지: 이전 도착지 기억을 지운다 — 이탈 재탐색이 옛 도착지로 가지 않게 (v2.26.0)", () => assert.equal(I().tripDest(), null));
+  }
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+  window.Date.now = realNow;
+}
+
+// ── v2.27.0: 회전 안내를 두 번 (예고 약 30m 앞 + 직전 약 5m 앞) ──
+{
+  const I = () => window.NAVI._internals();
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+  // 북쪽으로 곧은 길 — 0m 출발, 200m 지점 좌회전, 230m 지점 우회전(앞 구간 30m — 짧다), 400m 도착
+  const B0 = [37.4000, 126.9300], P = (m) => [B0[0] + m / 110540, B0[1]], LL = (m) => ({ lat: P(m)[0], lng: P(m)[1] });
+  I().showRoute({ route_id: "r_turn", routes: [{ summary: { total_distance_m: 400, duration_sec: 360 },
+    geometry: [P(0), P(100), P(200), P(230), P(400)],
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "문예로를 따라 200m 이동합니다.", distance_m: 200, coord: P(0), link_name: "문예로", warnings: [] },
+      { idx: 1, maneuver: "left", instruction: "좌회전 후 30m 이동합니다.", distance_m: 30, coord: P(200), link_name: "만안로", warnings: ["턱 있음"] },
+      { idx: 2, maneuver: "right", instruction: "우회전 후 170m 이동합니다.", distance_m: 170, coord: P(230), warnings: [] },
+      { idx: 3, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: P(400), warnings: [] },
+    ] }] }, "회전 시험");
+  I().startGuidance(); await sleep(5); I().stopSpeak();
+  I().setFixAccForTest(5);
+  const pre = () => !!I().interimDone()["pre:1"];
+  I().setStepIdxForTest(0);
+  I().setHere(LL(150)); I().turnPreAnnounce(LL(150));
+  check("회전 예고: 50m 앞에서는 아직 말하지 않는다 (v2.27.0)", () => assert.equal(pre(), false));
+  I().turnPreAnnounce(LL(168));
+  check("회전 예고: 약 30m 앞에서 한 번 말한다 (v2.27.0)", () => assert.equal(pre(), true));
+  check("회전 예고 문장 (v2.27.0)", () => assert.match(HTML, /"약 " \+ TURN_PRE_M \+ "미터 앞에서 " \+ TURN_WORD\[man\] \+ "입니다"/));
+  check("회전 직전: 20m 앞에서는 아직 넘어가지 않는다 — 종전에는 여기서 말했다 (v2.27.0)", () => assert.equal(I().reachedStep(LL(180), 1), false));
+  check("회전 직전: 10m 앞에서도 아직 (v2.27.0)", () => assert.equal(I().reachedStep(LL(190), 1), false));
+  check("회전 직전: 8m 앞에서 넘어간다 — 약 5m 앞에서 들린다 (v2.27.0)", () => assert.equal(I().reachedStep(LL(192.5), 1), true));
+  check("회전 지점을 10m 넘게 지나쳤는지 판정 (v2.27.0)", () => {
+    assert.equal(I().turnPassed(LL(205), 1), false);
+    assert.equal(I().turnPassed(LL(215), 1), true);
+  });
+  check("지나친 뒤에는 회전 문장 대신 '계속 이동' + 그 구간의 주의 (v2.27.0)", () => {
+    assert.equal(I().continueUtterance(1), "만안로를 따라 계속 이동하세요. (턱 있음)");
+  });
+  check("앞 구간이 짧은 회전(30m)은 종전 규칙 — 예고 없음 (v2.27.0)", () => {
+    I().setStepIdxForTest(1); I().turnPreAnnounce(LL(205));
+    assert.ok(!I().interimDone()["pre:2"]);
+    assert.equal(I().reachedStep(LL(218), 2), true, "종전 규칙(앞 구간 절반)으로 넘어가야 한다");
+  });
+  check("위치가 거칠면(정확도 15m 초과) 종전 규칙으로 일찍 말한다 (v2.27.0)", () => {
+    I().setStepIdxForTest(0); I().setFixAccForTest(30);
+    assert.equal(I().reachedStep(LL(180), 1), true);
+    delete I().interimDone()["pre:1"]; I().turnPreAnnounce(LL(168));
+    assert.ok(!I().interimDone()["pre:1"], "위치가 거칠 때는 예고도 하지 않는다");
+    I().setFixAccForTest(5);
+  });
+  check("주행 루프에 예고·지나침 판정이 걸려 있다 (소스 가드, v2.27.0)", () => {
+    assert.match(HTML, /_turnPreAnnounce\(here\);/);
+    assert.match(HTML, /_turnPreAnnounce\(simPos\);/);
+    assert.match(HTML, /_announceStep\(stepIdx, _passed\);/);
+  });
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak(); I().setFixAccForTest(null);
+}
+
+// ── v2.30.2: 말로 목록 펼치기·접기 ──
+{
+  const I = () => window.NAVI._internals();
+  const act = (action, payload) => window.NAVI.onUiAction({ type: "ui_action", action, payload: payload || {} });
+  let drops = 0; const keepChat = window.__CHAT;
+  window.__CHAT = Object.assign({}, keepChat || {}, { dropTurn: () => { drops++; } });
+  window.show("view-navi");
+  window.NAVI.sheetSetBig(false); I().voiceSheet("close");
+  act("list_sheet", { dir: "open" }); await sleep(5);
+  check("목록 열어줘: 접힘 → 기본, 상담원 말없이 (v2.30.2)", () => {
+    assert.equal(JSON.stringify(I().sheetState()), JSON.stringify({ collapsed: false, big: false }));
+    assert.match($("naviStatus").textContent, /목록을 펼쳤습니다/);
+    assert.equal(drops, 1);
+  });
+  act("list_sheet", { dir: "open" }); await sleep(5);
+  check("목록 펼쳐줘: 기본 → 크게 (v2.30.2)", () => assert.equal(JSON.stringify(I().sheetState()), JSON.stringify({ collapsed: false, big: true })));
+  act("list_sheet", { dir: "open" }); await sleep(5);
+  check("가장 크게 펼친 상태면 알리기만 (v2.30.2)", () => assert.match($("naviStatus").textContent, /가장 크게 펼쳐져/));
+  act("list_sheet", { dir: "close" }); await sleep(5);
+  check("목록 닫아줘: 손잡이 '목록 접기'처럼 접는다 (v2.30.2)", () => {
+    assert.equal(JSON.stringify(I().sheetState()), JSON.stringify({ collapsed: true, big: false }));
+    assert.match($("naviStatus").textContent, /목록을 접었습니다/);
+  });
+  act("list_sheet", { dir: "close" }); await sleep(5);
+  check("이미 접혀 있으면 알리기만 (v2.30.2)", () => assert.match($("naviStatus").textContent, /이미 접혀/));
+  I().voiceSheet("open");
+  window.__CHAT = keepChat;
+}
+
+// ── v2.29.6: 탈 역의 역 안 이동을 세션에 보낸다 — 승강기는 경로의 하나만 답하는 근거 ──
+check("nav_state 에 탈 역의 역 안 이동(station_ingress)을 싣고, 내릴 역 쪽이면 싣지 않는다 (소스 가드, v2.29.6)", () => {
+  assert.match(HTML, /station_ingress: ig \? \{station: ig\.station, inside: ig\.inside \|\| \[\], car: \(ig\.car && ig\.car\.text\) \|\| null\} : null,/);
+  assert.match(HTML, /if\(steps\[gi3\] && steps\[gi3\]\.egress\) break;/);
+});
+
+// ── v2.29.3: 상담원이 물음으로 답을 끝내면 답할 틈을 두고 안내로 돌아온다 ──
+{
+  const I = () => window.NAVI._internals();
+  check("물음으로 끝난 답 판정 (v2.29.3)", () => {
+    for (const t of ["이어서 말씀드릴까요?", "거기로 안내해 드릴까요", "더 들으시겠어요?", "도착하신 뒤에 자세히 안내해 드릴까요? "])
+      assert.equal(I().endsWithQuestion(t), true, t);
+    for (const t of ["약 300미터 남았어요.", "왼쪽으로 이동하세요.", ""]) assert.equal(I().endsWithQuestion(t), false, t);
+    assert.equal(I().resumeGraceAfterAnswer("이어서 말씀드릴까요?"), 5000);
+    assert.equal(I().resumeGraceAfterAnswer("남았어요."), 1500);
+  });
+  check("상담원 턴이 끝나면 물음 여부로 복귀 대기를 고른다 (소스 가드, v2.29.3)", () =>
+    assert.match(HTML, /scheduleResume\(_askWait \? ANSWER_WAIT_MS : 1500\);/));
+  const act = (action, payload) => window.NAVI.onUiAction({ type: "ui_action", action, payload: payload || {} });
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+  window.show("view-navi");
+  act("show_route", ROUTE.ui_action); await sleep(10);
+  window.NAVI.showPreparedView(); await sleep(10);
+  act("start_guidance"); await sleep(10);
+  const resumed = () => spoken.some((t) => /안내를 이어갈게요/.test(t));
+  // 대조: 물음이 아닌 답은 곧 안내로 돌아온다
+  // 앞 블록의 반복 억제 횟수·'방금 말했다' 시각을 비운다 — 남아 있으면 복귀가 늦어져 대조가 안 된다
+  const freshRep = () => { I().resumeRepForTest({ key: null, n: 0, ts: 0 }); I().setUserSpeechTsForTest(0); };
+  I().stopSpeak(); spoken.length = 0; freshRep();
+  window.NAVI.onAiTurnComplete(); window.NAVI.onAiText("약 300미터 남았어요."); window.NAVI.onAiTurnComplete();
+  await sleep(2400);
+  const plainResumed = resumed();
+  // 물음으로 끝난 답은 2초 넘게 지나도 기다린다
+  I().stopSpeak(); spoken.length = 0; freshRep();
+  window.NAVI.onAiText("두 번째 단계까지 말씀드렸어요. 이어서 말씀드릴까요?"); window.NAVI.onAiTurnComplete();
+  await sleep(2400);
+  const askResumed = resumed();
+  check("물음이 아닌 답 뒤에는 곧 안내로 돌아온다 (대조, v2.29.3)", () => assert.equal(plainResumed, true));
+  check("'이어서 말씀드릴까요?' 뒤에는 답할 틈 동안 안내를 이어 말하지 않는다 (v2.29.3)", () => assert.equal(askResumed, false));
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+}
+
+// ── v2.28.0: 말로 하는 안내 제어 — 멈춤·재개·지도 크기·시작 확대·상담원 말없이 ──
+{
+  const I = () => window.NAVI._internals();
+  const act = (action, payload) => window.NAVI.onUiAction({ type: "ui_action", action, payload: payload || {} });
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak(); I().setGuideLevel(1);
+  let drops = 0; const keepChat = window.__CHAT;
+  window.__CHAT = Object.assign({}, keepChat || {}, { dropTurn: () => { drops++; } });
+  act("show_route", ROUTE.ui_action); await sleep(10);
+  window.NAVI.showPreparedView(); await sleep(10);
+  const lvBefore = mapCalls.length;
+  act("start_guidance"); await sleep(10);
+  check("말로 안내 시작: 상담원 답을 내지 않는다 (v2.28.0)", () => assert.equal(drops, 1));
+  check("안내 시작 때 축척 20m 단계(level 1)로 확대한다 (v2.28.0)", () => {
+    assert.equal(I().isGuiding(), true);
+    assert.match(HTML, /zoomForGuide\(here\);/);
+    assert.match(HTML, /zoomForGuide\(simPos\);/);
+  });
+  // 멈춤
+  I().stopSpeak(); I().setStepIdxForTest(1);
+  act("pause_guidance"); await sleep(5);
+  check("안내 그만: 상담원 답 없이 바로 멈추고 화면에 표시 (v2.28.0)", () => {
+    assert.equal(drops, 2);
+    assert.equal(I().isPaused(), true);
+    assert.equal(I().isGuiding(), true, "안내 상태는 유지(홀드)");
+    assert.match($("naviStatus").textContent, /안내를 중단합니다/);
+    assert.ok($("naviStatus").classList.contains("navi-status--paused"));
+  });
+  I().speak("다음 안내 시험 문장", { queue: true, kind: "step" });
+  check("멈춘 동안에는 길안내 음성을 내지 않는다 (v2.28.0)", () => assert.equal(I().speakBusy(), false));
+  check("멈춘 동안 대화가 끝나도 안내로 되돌아오지 않는다 (소스 가드, v2.28.0)", () => assert.match(HTML, /if\(guidePaused\) return;   \/\/ 말로 멈춘 안내 —/));
+  // 재개 — 처음부터가 아니라 지금 단계부터
+  act("start_guidance"); await sleep(5);
+  check("다시 안내해줘: 멈춘 단계부터 이어서 (v2.28.0)", () => {
+    assert.equal(I().isPaused(), false);
+    assert.equal(I().stepIdx, 1, "처음 단계로 돌아가면 안 된다");
+    assert.equal(drops, 3);
+    assert.ok(!$("naviStatus").classList.contains("navi-status--paused"));
+  });
+  // 상태 줄을 눌러도 이어서
+  I().pauseGuidance(); $("naviStatus").dispatchEvent(new window.Event("click"));
+  check("멈춘 안내는 상태 줄을 눌러도 이어서 (v2.28.0)", () => assert.equal(I().isPaused(), false));
+  // 지도 크기
+  const lvl = () => window.NAVI._internals ? (window.__mapLevelForTest ? window.__mapLevelForTest() : null) : null;
+  act("map_zoom", { dir: "out" }); await sleep(5);
+  check("지도 축소: 한 단계(20m→30m), 상담원 말없이 (v2.28.0)", () => {
+    assert.match($("naviStatus").textContent, /축소했습니다 — 축척 30m/);
+    assert.equal(I().guideLevel(), 2, "안내 중 고른 단계를 기억");
+    assert.equal(drops, 4);
+  });
+  act("map_zoom", { dir: "in" }); await sleep(5);
+  check("지도 확대: 30m→20m (v2.28.0)", () => assert.match($("naviStatus").textContent, /확대했습니다 — 축척 20m/));
+  act("map_zoom", { dir: "in" }); await sleep(5);
+  check("가장 크게 보이는 단계에서는 더 확대하지 않고 알린다 (v2.28.0)", () => assert.match($("naviStatus").textContent, /가장 크게 보이는 단계/));
+  // 안내가 없을 때 멈춤
+  I().clearRouteDisplay();
+  check("경로를 지우면 멈춤도 풀린다 (v2.28.0)", () => assert.equal(I().isPaused(), false));
+  check("상담 화면: 말없이 처리한 턴의 음성·글자를 내지 않는다 (소스 가드, v2.28.0)", () => {
+    assert.match(HTML, /if \(dropping\(\)\) break;   \/\/ 말없이 처리한 도구의 턴 — 길안내 음성을 끊지 않게/);
+    assert.match(HTML, /case "ai_transcript":   if \(dropping\(\)\) break;/);
+    assert.match(HTML, /if \(dropping\(\)\) \{ dropAiUntil = 0; activeAiText = ""; \}/);
+  });
+  window.__CHAT = keepChat;
+  I().resetTrip(); I().stopSpeak(); I().setGuideLevel(1);
+}
+
+// ── v2.31.0: 위치 고착 알림 (실증 S-16) ──
+{
+  const I = () => window.NAVI._internals();
+  I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak();
+  const B0 = [37.4000, 126.9300], P = (m) => [B0[0] + m / 110540, B0[1]];
+  const fix = (m, ts, east) => ({ timestamp: ts, coords: { latitude: P(m)[0], longitude: P(m)[1] + (east || 0) / 88400, accuracy: 5 } });
+  I().showRoute({ route_id: "r_stuck", routes: [{ summary: { total_distance_m: 400, duration_sec: 360 },
+    geometry: [P(0), P(200), P(400)],
+    steps: [
+      { idx: 0, maneuver: "depart", instruction: "문예로를 따라 200m 이동합니다.", distance_m: 200, coord: P(0), warnings: [] },
+      { idx: 1, maneuver: "crossing", instruction: "횡단보도를 건너 16m 이동합니다.", distance_m: 16, coord: P(200), warnings: [] },
+      { idx: 2, maneuver: "arrive", instruction: "목적지에 도착했습니다.", distance_m: 0, coord: P(400), warnings: [] },
+    ] }] }, "고착 시험");
+  I().startGuidance(); await sleep(5); I().stopSpeak();
+  I().setStepIdxForTest(0);
+  const T = 1_800_000_000_000;
+  I().stuckResetForTest();
+  // 이동 중 — 알리지 않는다
+  for (let k = 0; k <= 12; k++) I().noteFixForTest(fix(50 + k * 5, T + k * 5000), T + k * 5000);
+  check("위치 고착: 움직이는 동안에는 알리지 않는다 (v2.31.0)", () => assert.equal(I().stuckCheckForTest(T + 60000), null));
+  // 같은 자리 측위가 45초 넘게 — frozen
+  for (let k = 1; k <= 10; k++) I().noteFixForTest(fix(110, T + 60000 + k * 5000), T + 60000 + k * 5000);
+  check("위치 고착: 측위는 오는데 45초 넘게 같은 자리면 알린다 (v2.31.0)", () => {
+    assert.equal(I().stuckCheckForTest(T + 112000), "frozen");
+    assert.match($("naviStatus").textContent, /위치가 한동안 바뀌지 않고 있습니다/);
+  });
+  check("위치 고착: 한 번 알리면 되풀이하지 않는다 (v2.31.0)", () => assert.equal(I().stuckCheckForTest(T + 120000), null));
+  I().noteFixForTest(fix(125, T + 125000), T + 125000);
+  check("위치 고착: 10m 넘게 움직이면 풀고 '다시 찾았습니다' (v2.31.0)", () => {
+    assert.equal(I().stuckState(), null);
+    assert.match($("naviStatus").textContent, /위치를 다시 찾았습니다/);
+  });
+  // 새 측위가 끊김 — nofix (같은 timestamp 되풀이는 새 측위가 아니다)
+  I().stuckResetForTest(); I().setStepIdxForTest(0);
+  const T2 = T + 400000;
+  I().noteFixForTest(fix(130, T2), T2);
+  for (let k = 1; k <= 5; k++) I().noteFixForTest(fix(130, T2), T2 + k * 5000);
+  check("위치 고착: 같은 측위가 되풀이되며 20초 넘게 새 측위가 없으면 알린다 (v2.31.0)", () => {
+    assert.equal(I().stuckCheckForTest(T2 + 26000), "nofix");
+    assert.match($("naviStatus").textContent, /위치 신호가 잠시 끊겼습니다/);
+  });
+  I().noteFixForTest(fix(131, T2 + 30000), T2 + 30000);
+  check("위치 고착: 새 측위가 오면 nofix 해제 (v2.31.0)", () => assert.equal(I().stuckState(), null));
+  // 횡단보도 단계에서 경로 위에 서 있으면(신호 대기) 알리지 않는다
+  I().stuckResetForTest(); I().setStepIdxForTest(1);
+  const T3 = T + 800000;
+  I().setHere({ lat: P(198)[0], lng: P(198)[1] });
+  for (let k = 0; k <= 12; k++) I().noteFixForTest(fix(198, T3 + k * 5000), T3 + k * 5000);
+  check("위치 고착: 횡단보도 앞 경로 위 대기는 알리지 않는다 (v2.31.0)", () => assert.equal(I().stuckCheckForTest(T3 + 61000), null));
+  // 같은 횡단 단계라도 경로에서 20m 떨어져 멈추면(S-16) 알린다
+  I().stuckResetForTest(); I().setStepIdxForTest(1);
+  const T4 = T + 1200000, off = { lat: P(205)[0], lng: P(205)[1] + 22 / 88400 };
+  I().setHere(off);
+  for (let k = 0; k <= 12; k++) I().noteFixForTest(fix(205, T4 + k * 5000, 22), T4 + k * 5000);
+  check("위치 고착: 횡단 단계라도 경로에서 20m 떨어져 멈추면 알린다 — S-16 (v2.31.0)", () => assert.equal(I().stuckCheckForTest(T4 + 61000), "frozen"));
+  check("위치 고착: 측위 루프·안내 시작·경로 지우기에 걸려 있다 (소스 가드, v2.31.0)", () => {
+    assert.match(HTML, /if\(guiding && !simActive\) _noteFix\(pos\);/);
+    assert.match(HTML, /followCamera\(\); _stuckCheck\(\); \}/);
+    assert.match(HTML, /_stuckReset\(\); _stuckArm\(\);/);
+    assert.match(HTML, /guiding=false; _markPaused\(false\); _stuckReset\(\);/);
+    assert.match(HTML, /maximumAge: fresh \? 0 : 5000/);
+  });
+  I().clearRouteDisplay();
+  check("위치 고착: 경로를 지우면 상태도 비운다 (v2.31.0)", () => assert.equal(I().stuckState(), null));
+  check("방향 띠: 높이 52px·화살표 46px 로 줄임 (v2.31.0)", () => {
+    assert.match(HTML, /\.mv-banner\{[^}]*min-height:52px;\}/);
+    assert.match(HTML, /\.mv-arrow\{flex:none;width:46px;height:46px;/);
+  });
+  I().resetTrip(); I().stopSpeak();
 }
 
 // ── 결과 ──

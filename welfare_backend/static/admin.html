@@ -203,6 +203,15 @@
       <div id="ops-discovery" style="margin:12px 0;font-size:13px;">…</div>
       <button class="primary" id="btnDisc" onclick="runDiscovery()">지금 발굴 실행</button>
     </div>
+    <div class="card" style="padding:16px;grid-column:1/3;" id="ops-models-card">
+      <h2 style="margin:0 0 4px;font-size:15px;">생성 모델 설정</h2>
+      <div class="msg">정책 갱신 패치·주간 리포트 요약·신규 발굴 분류에 쓸 모델을 용도별로 고릅니다. 기본 모델이 실패하면 차선 모델을 차례로 씁니다. 교차검증 모델을 정하면 검토 큐에 올라가는 정책 패치를 그 모델로 한 번 더 만들어 비교하고, 다르면 검토 큐에 「모델 불일치」로 표시합니다. 음성 상담·답변 카드·외부검색이 필요한 작성은 여기서 바꾸지 않습니다. 「콘솔 설정 사용」을 끄면 그 용도는 서버 환경설정대로 동작합니다.</div>
+      <div id="ops-models" style="margin:12px 0;font-size:13px;">…</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="primary" id="mdSave" onclick="saveModels()" disabled>저장</button>
+        <span class="msg" id="mdMsg"></span>
+      </div>
+    </div>
     <div class="card" style="padding:16px;grid-column:1/3;" id="ops-collect-card">
       <h2 style="margin:0 0 4px;font-size:15px;">데이터 수집 (통계·이동편의·문화·체육·복지시설)</h2>
       <div class="msg">수집 서버가 정해진 주기로 외부 데이터를 받아 DB 에 적재합니다. 실패한 항목은 기존 데이터를 그대로 두고, 아래 주소로 알림 메일을 보냅니다(실패 뒤 정상화되면 한 번 더).</div>
@@ -496,7 +505,8 @@ async function loadDetail(pid){ current=pid; loadList();
       <div class="meta">${escapeHtml(d.staged_name)}${d.sources_changed&&d.sources_changed.length?" · 출처: "+escapeHtml(d.sources_changed.join(", ")):""}</div>`;
     if(reg) h+=`<div class="alert bad">회귀 가드 차단: ${escapeHtml(d.regression.join(" / "))}</div>`;
     if(!d.schema_ok) h+=`<div class="alert bad">스키마 오류: ${escapeHtml((d.schema_errors||[]).join(" / "))}</div>`;
-    if(d.review&&d.review.length) h+=`<div class="review"><b>검토 필요 ${d.review.length}건</b>: `+escapeHtml(d.review.map(x=>`${x.reason||x.classification||""} ${x.path||""}`).join(" · "))+`</div>`;
+    if(d.review&&d.review.length) h+=`<div class="review"><b>검토 필요 ${d.review.length}건</b>`+(d.review.length>3?': ':'')+reviewItemsHtml(d.review)+`</div>`;
+    h+=xcheckHtml(d.xcheck);
     if(d.discovery&&d.discovery.source==="discovery_gap") h+=`<div class="review">🔎 <b>발굴 보강 제안</b>(미답변 질의 기반) — 사유: ${escapeHtml(d.discovery.gap_detail||"")} · 반려 시 원 질의는 재분류 대기로 되돌아갑니다.</div>`;
     curDetail=d; _gid=0; const hasContent=(d.diffs||[]).some(function(x){return !x.is_meta;});
     h+=`<div class="difftools"><label class="chk"><input type="checkbox" id="diffCollapseChk" ${diffCollapse?"checked":""} onchange="toggleCollapse()"> 변경된 줄만 보기(동일 줄 접기)</label><span class="leg"><span class="lg del">삭제</span><span class="lg add">추가</span><span class="lg same">동일</span></span></div>`;
@@ -667,7 +677,7 @@ function _renderOp(name, d){
   if(name==="crawl"){ const ib=document.getElementById("btnInitBase"); if(ib) ib.disabled=run; const hb=document.getElementById("btnHash"); if(hb) hb.disabled=run; }
 }
 async function loadOps(){
-  loadCollect();
+  loadCollect(); if(!mdDirty) loadModels();
   try{ const d=await (await fetch(OAPI+"/status")).json();
     _renderOp("crawl",d); _renderOp("backup",d); _renderOp("discovery",d);
     const sc=d.schedules||{};
@@ -744,6 +754,92 @@ async function loadCollect(){
     if(!r.ok){ el.textContent="수집 상태 로드 실패: HTTP "+r.status; return; }
     const d=await r.json(); renderCollect(d); fillCollectAlert(d.alert);
   }catch(e){ el.textContent="수집 상태 로드 실패: "+e; }
+}
+/* ===== 생성 모델 설정 (v2.25.0) =====
+ * 용도별 기본·차선(최대 2)·교차검증 모델. 저장 전 서버가 기능(JSON 출력 등)·중복을 검사한다.
+ * 입력 중(mdDirty)이면 운영 탭 주기 새로고침이 덮어쓰지 않는다. */
+const MDAPI="/admin/api/models";
+let mdDirty=false, mdData=null, mdTest={}, mdTesting={};
+function _mdOpts(models, sel, allowNone){
+  let h=allowNone?'<option value="">없음</option>':'';
+  for(const m of models){ h+='<option value="'+m.id+'"'+(m.id===sel?' selected':'')+(m.configured?'':' disabled')+'>'+escapeHtml(m.label)+(m.configured?'':' (설정 없음)')+'</option>'; }
+  return h;
+}
+function _mdUsage(m){
+  const u=m.usage||{}; const parts=[];
+  if(u.calls) parts.push('오늘 호출 '+u.calls+'회(성공 '+(u.ok||0)+')');
+  if(u.day_remaining!=null) parts.push('남은 한도 '+u.day_remaining+(u.day_limit?'/'+u.day_limit:''));
+  else if(m.day_limit) parts.push('하루 한도 '+m.day_limit+'회');
+  if(u.exhausted) parts.push('<b style="color:var(--bad)">오늘 한도 소진</b>');
+  if(u.last_error && !u.exhausted) parts.push('최근 오류: '+escapeHtml(u.last_error));
+  return parts.join(' · ');
+}
+function renderModels(d){
+  mdData=d; const el=document.getElementById("ops-models"); if(!el) return;
+  let h='<table style="font-size:12px;margin-bottom:10px"><thead><tr><th>모델</th><th>세부 모델</th><th>상태</th><th>사용</th><th></th></tr></thead><tbody>';
+  for(const m of d.models){
+    h+='<tr><td><b>'+escapeHtml(m.label)+'</b><div class="msg">'+escapeHtml(m.note||"")+'</div></td><td>'+escapeHtml(m.model_name||"")+'</td>'
+      +'<td>'+(m.configured?'<span class="b ok">사용 가능</span>':'<span class="b off">설정 없음</span>')+'</td>'
+      +'<td>'+_mdUsage(m)+'</td>'
+      +'<td><button onclick="testModel(\''+m.id+'\')" '+(m.configured&&!mdTesting[m.id]?'':'disabled')+'>시험 호출</button><div class="msg" id="mdt-'+m.id+'">'+(mdTest[m.id]||"")+'</div></td></tr>';
+  }
+  h+='</tbody></table>';
+  h+='<table style="font-size:12px"><thead><tr><th>용도</th><th>콘솔 설정 사용</th><th>기본</th><th>차선 1</th><th>차선 2</th><th>교차검증</th></tr></thead><tbody>';
+  for(const r of d.roles){
+    const rt=r.route||{}; const fb=rt.fallback||[]; const dis=r.explicit?'':' disabled';
+    h+='<tr data-role="'+r.id+'"><td><b>'+escapeHtml(r.label)+'</b><div class="msg">'+escapeHtml(r.desc||"")+'</div></td>'
+      +'<td><label class="chk"><input type="checkbox" class="md-use" '+(r.explicit?'checked':'')+' onchange="mdToggle(this)"> 사용</label></td>'
+      +'<td><select class="md-primary"'+dis+'>'+_mdOpts(d.models, rt.primary, false)+'</select></td>'
+      +'<td><select class="md-fb1"'+dis+'>'+_mdOpts(d.models, fb[0]||"", true)+'</select></td>'
+      +'<td><select class="md-fb2"'+dis+'>'+_mdOpts(d.models, fb[1]||"", true)+'</select></td>'
+      +'<td>'+(r.verifier_supported?'<select class="md-ver"'+dis+'>'+_mdOpts(d.models, rt.verifier||"", true)+'</select>':'<span class="msg">-</span>')+'</td></tr>';
+  }
+  h+='</tbody></table>';
+  if(d.updated_at) h+='<div class="msg" style="margin-top:6px">마지막 저장 '+escapeHtml(d.updated_at)+'</div>';
+  el.innerHTML=h;
+  el.querySelectorAll("select").forEach(function(x){ x.onchange=function(){ mdDirty=true; }; });
+}
+function mdToggle(cb){
+  mdDirty=true; const tr=cb.closest("tr");
+  tr.querySelectorAll("select").forEach(function(x){ x.disabled=!cb.checked; });
+}
+async function _mdJson(r){ try{ return await r.json(); }catch(_){ return {detail:{error:"HTTP "+r.status+" (응답 형식 오류)"}}; } }
+async function loadModels(){
+  const btn=document.getElementById("mdSave");
+  try{ const r=await fetch(MDAPI); if(!r.ok) throw new Error("HTTP "+r.status); renderModels(await r.json()); if(btn) btn.disabled=false; }
+  catch(e){ if(btn) btn.disabled=true; const el=document.getElementById("ops-models"); if(el) el.innerHTML='<span class="msg">불러오지 못함: '+escapeHtml(String(e))+'</span>'; }
+}
+async function saveModels(){
+  const roles={};
+  document.querySelectorAll("#ops-models tr[data-role]").forEach(function(tr){
+    const rid=tr.dataset.role;
+    if(!tr.querySelector(".md-use").checked){ roles[rid]=null; return; }
+    const fb=[tr.querySelector(".md-fb1").value, tr.querySelector(".md-fb2").value].filter(Boolean);
+    const ver=tr.querySelector(".md-ver"); 
+    roles[rid]={primary:tr.querySelector(".md-primary").value, fallback:fb, verifier:ver?(ver.value||null):null};
+  });
+  const btn=document.getElementById("mdSave"); btn.disabled=true; setMsg("mdMsg","저장 중…");
+  try{
+    if(!Object.keys(roles).length){ setMsg("mdMsg","설정을 아직 불러오지 못했습니다.",true); btn.disabled=false; return; }
+    const r=await fetch(MDAPI+"/routing",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({roles:roles})});
+    const j=await _mdJson(r);
+    if(r.ok){ mdDirty=false; renderModels(j); setMsg("mdMsg","저장했습니다. 다음 실행부터 적용됩니다."); }
+    else { const d=j.detail||j; setMsg("mdMsg","저장 실패: "+(d.error||JSON.stringify(d)),true); }
+  }catch(e){ setMsg("mdMsg","저장 실패: "+e,true); }
+  btn.disabled=false;
+}
+async function testModel(mid){
+  if(mdTesting[mid]) return;          // 호출 한도가 있는 모델이 있어 겹쳐 누르지 않게
+  mdTesting[mid]=true; mdTest[mid]="호출 중…";
+  const out=document.getElementById("mdt-"+mid); if(out) out.textContent=mdTest[mid];
+  try{
+    const r=await fetch(MDAPI+"/test",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:mid})});
+    const j=await _mdJson(r);
+    mdTest[mid]=j.ok?('<span style="color:var(--ok)">정상</span> '+j.sec+'초'):('<span style="color:var(--bad)">실패</span> '+escapeHtml(j.error||(j.detail&&j.detail.error)||"")+(j.sec!=null?' ('+j.sec+'초)':''));
+    const o2=document.getElementById("mdt-"+mid); if(o2) o2.innerHTML=mdTest[mid];
+    if(!mdDirty) loadModels();
+  }catch(e){ mdTest[mid]='<span style="color:var(--bad)">실패</span> '+escapeHtml(String(e)); const o3=document.getElementById("mdt-"+mid); if(o3) o3.innerHTML=mdTest[mid]; }
+  mdTesting[mid]=false;
 }
 async function saveCollectAlert(){
   const btn=document.getElementById("caSave"); btn.disabled=true; setMsg("caMsg","저장 중…");
@@ -987,6 +1083,40 @@ async function loadOverview(){
     if(nx) t += `<div class="msg" style="font-size:11px;font-weight:400">다음 ${nx.replace("T"," ").slice(5,16)}</div>`;
     document.getElementById("ov-backup").innerHTML=t; }catch(e){ document.getElementById("ov-backup").textContent="-"; }
 }
+function reviewItemsHtml(list){
+  // 바로 반영되지 않은 패치 — 사유·경로와 함께 모델이 제안한 값을 보여 줘서 사람이 직접 판단·수정할 수 있게
+  const one=function(x){
+    const op=(x&&x.op&&typeof x.op==="object")?x.op:{};
+    const v=op.new!=null?op.new:(op.value!=null?op.value:null);
+    let t=escapeHtml(String((x&&(x.reason||x.classification))||"")+" "+String((x&&x.path)||""));
+    if(v!=null) t+=' → <span class="msg">'+escapeHtml(String(typeof v==="string"?v:JSON.stringify(v)).slice(0,160))+'</span>';
+    return t;
+  };
+  if(list.length<=3) return '<ul style="margin:4px 0 0 18px;padding:0">'+list.map(function(x){return '<li>'+one(x)+'</li>';}).join("")+'</ul>';
+  return '<details><summary>'+escapeHtml(list.slice(0,3).map(function(x){return String((x&&x.path)||"");}).join(" · "))+' …</summary><ul style="margin:4px 0 0 18px;padding:0">'+list.map(function(x){return '<li>'+one(x)+'</li>';}).join("")+'</ul></details>';
+}
+function xcheckHtml(x){
+  if(!x||!x.status) return "";
+  const pv=escapeHtml(x.primary_label||x.primary||"")+" ↔ "+escapeHtml(x.verifier_label||x.verifier||"");
+  if(x.status==="agree") return '<div class="review"><b>교차검증 일치</b> ('+pv+') — 두 모델이 같은 필드를 같은 사실(숫자·날짜·비율·중증/경증 구분)로 바꿨습니다. 숫자가 없는 문장은 바꾼 필드만 비교합니다.</div>';
+  if(x.status==="skipped") return '<div class="review"><b>교차검증 건너뜀</b> ('+pv+') — '+escapeHtml(x.reason||"")+'</div>';
+  if(x.status==="verifier_failed") return '<div class="review"><b>교차검증 실패</b> ('+pv+') — '+escapeHtml(x.error||"")+'</div>';
+  let h='<div class="alert bad"><b>모델 불일치</b> ('+pv+') — 반영 전에 출처를 직접 확인하세요.<ul style="margin:6px 0 0 18px;padding:0">';
+  for(const p of (x.only_primary||[])) h+='<li>기본 모델만 바꿈: '+escapeHtml(p)+'</li>';
+  for(const p of (x.only_verifier||[])) h+='<li>검증 모델만 바꿈: '+escapeHtml(p)+'</li>';
+  for(const f of (x.fact_diff||[])) h+='<li>'+escapeHtml(f.path)+' — 기본에만 ['+escapeHtml((f.only_primary||[]).join(", ")||"-")+'] / 검증에만 ['+escapeHtml((f.only_verifier||[]).join(", ")||"-")+']</li>';
+  h+='</ul>';
+  if(x.verifier_patches&&x.verifier_patches.length){
+    h+='<details style="margin-top:6px"><summary>검증 모델 패치 '+x.verifier_patches.length+'건 보기</summary><ul style="margin:6px 0 0 18px;padding:0">';
+    for(const p of x.verifier_patches){
+      if(!p||typeof p!=="object") continue;
+      const v=p.new!=null?(typeof p.new==="string"?p.new:JSON.stringify(p.new)):(p.value!=null?JSON.stringify(p.value):"");
+      h+='<li><b>'+escapeHtml(String(p.op||"")+" "+String(p.path||""))+'</b>: '+escapeHtml(String(v).slice(0,300))+(p.evidence?'<div class="msg">근거: '+escapeHtml(String(p.evidence).slice(0,200))+'</div>':'')+'</li>';
+    }
+    h+='</ul></details>';
+  }
+  return h+'</div>';
+}
 function setMsg(id,m,bad){ const el=document.getElementById(id); if(el){ el.textContent=m; el.style.color=bad?"var(--bad)":"var(--muted)"; } }
 /* ===== 검토 큐 다중선택·일괄 반영 ===== */
 let pendingItems=[], metaOnlyItems=[];
@@ -1005,6 +1135,7 @@ function makeCard(it){
     +'<div class="selbody"><div class="pid">'+it.policy_id+'</div><div class="ttl">'+escapeHtml(it.title||"")+'</div>'
     +'<div class="badges">'+badgeFor(it)
     +(it.schema_ok?'<span class="b ok">스키마 OK</span>':'<span class="b bad">스키마 오류</span>')
+    +(it.xcheck_status==="disagree"?'<span class="b bad">모델 불일치</span>':(it.xcheck_status==="agree"?'<span class="b ok">교차 일치</span>':''))
     +(reg?'<span class="b bad">회귀 차단</span>':'')+((nc>0&&it.review_count)?'<span class="b warn">검토 '+it.review_count+'</span>':'')
     +(it.priority?'<span class="b '+(it.priority==='high'?'bad':(it.priority==='medium'?'warn':'off'))+'">'+it.priority+'</span>':'')+(it.hold?'<span class="b off">보류</span>':'')
     +'</div></div></div>';

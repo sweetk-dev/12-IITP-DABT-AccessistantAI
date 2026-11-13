@@ -66,6 +66,13 @@ def _now():
     return datetime.now(KST).isoformat(timespec="seconds")
 
 
+def _crawl_timeout():
+    try:
+        return int((os.environ.get("CRAWL_TIMEOUT_SEC") or "").strip() or 7200)
+    except ValueError:
+        return 7200
+
+
 def _run_crawl(extra_args=None, label="full"):
     with _lock:
         if _status["crawl"]["running"]:
@@ -75,8 +82,10 @@ def _run_crawl(extra_args=None, label="full"):
     logger.info("크롤 시작(백그라운드) — %s", label)
     try:
         cmd = ["python", "-m", "crawler.crawler"] + list(extra_args or [])
+        # 교차검증 모델(응답이 느린 일괄 처리용)을 켜면 실행 시간이 늘어난다 — 상한은 환경변수로 조정
         r = subprocess.run(cmd, cwd=str(_POLICYDB),
-                           capture_output=True, text=True, timeout=3600)
+                           capture_output=True, text=True,
+                           timeout=_crawl_timeout())
         combined = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
         out = "\n".join(combined.splitlines()[-15:])
         st = "ok" if r.returncode == 0 else f"exit {r.returncode}"
