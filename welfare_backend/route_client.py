@@ -322,9 +322,14 @@ async def _call(method: str, path: str, *, params: Optional[dict] = None,
 async def plan_route(origin: dict, destination: dict, profile: str = "wheelchair_electric",
                      alternatives: int = 1, mode: str = "", realtime: bool = False,
                      low_floor: Optional[bool] = None,
-                     origin_station: Optional[dict] = None) -> dict:
+                     origin_station: Optional[dict] = None,
+                     dest_station: Optional[str] = None) -> dict:
     body = {"origin": origin, "destination": destination,
             "profile": profile, "alternatives": alternatives}
+    if dest_station and not origin_station and mode in ("", "walk", None):
+        # 02 v1.46.0 — 도보 목적지가 역: 휠체어 출구까지 계획하고 도착 문장에 맞이방 가는 법을 붙인다.
+        # 구버전 02 는 모르는 필드를 무시한다(역 대표점까지의 종전 경로가 온다).
+        body["destination_station"] = {"name": str(dest_station)[:20]}
     if origin_station and mode in ("", "walk", None):
         # 02 v1.28.0(#79) — 역 안(승강장)에서 출발: 출구에서 계획하고 승강장→출구 스텝을 붙인다.
         # 구버전 02 는 모르는 필드를 무시한다(역 근처 판정·질문도 오지 않으므로 이 경로가 열리지 않는다).

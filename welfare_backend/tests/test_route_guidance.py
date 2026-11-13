@@ -170,9 +170,10 @@ class _Spy(object):
     async def meta_network(self):
         return {"region": "안양시", "bbox": _BBOX}
 
-    async def plan_route(self, origin, destination, profile="wheelchair_manual", alternatives=1, mode=""):
+    async def plan_route(self, origin, destination, profile="wheelchair_manual", alternatives=1, mode="", **kw):
         self.plan_called += 1
         self.last = (origin, destination)
+        self.kw = kw                       # v2.32.0 — 역 목적지면 dest_station 이 실린다
         return {"route_id": "r_x", "routes": [{"summary": {"total_distance_m": 100,
                 "duration_sec": 120, "max_slope_deg": 1.0, "stairs_cnt": 0,
                 "crossing_cnt": 1, "warnings": []}, "steps": [{"instruction": "직진"}]}]}
@@ -285,6 +286,7 @@ def t_station_destination_uses_building_access():
             destination_place="범계역", origin_place="안양역"))
         assert r["status"] == "success", r
         assert spy.last[1]["type"] == "building", spy.last
+        assert spy.kw.get("dest_station") == "범계", spy.kw        # 역 안까지 안내(v2.32.0)
     _with_spy(body)
 
 
