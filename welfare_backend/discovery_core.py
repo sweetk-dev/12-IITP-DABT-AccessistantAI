@@ -7,6 +7,7 @@ import json
 import logging
 import math
 import os
+import sys
 from datetime import date, datetime
 from pathlib import Path
 
@@ -413,9 +414,17 @@ def run_discovery():
             f"- category 는 반드시 다음 중 하나: {enums['category']}\n"
             f"- benefit_type 은 반드시 다음 중 하나: {enums['benefit_type']} (현금 지급은 \"현금지급\")\n"
             "키: id(빈 문자열), leaflet_section, leaflet_number(0), title, short_summary, category, "
-            "benefit_type, supported_amount{rate,amount,scope}, eligibility{target}, legal_basis(배열), "
+            "benefit_type, supported_amount{rate,amount,scope}, "
+            "eligibility{target, severity_levels(배열), income_criteria, has_income_criteria(true/false), "
+            "age_criteria, age_min, age_max}, legal_basis(배열), "
             'legal_basis(배열, 각 항목은 객체 {"name":법령명(필수), "article":조항(선택), "url":(선택)} — 확실치 않으면 빈 배열 []), ' "how_to_use{default}, application{}, last_verified, version(\"1.0.0\"), "
             "sources(배열). \n"
+            "\n[eligibility 작성 규칙]\n"
+            "- severity_levels: 대상 중증도 [\"심한 장애(중증)\", \"심하지 않은 장애(경증)\"] 중 해당하는 것. 중증도와 무관하면 []\n"
+            "- has_income_criteria: 신청 자격에 소득·재산 조건이 있으면 true(일부 유형에만 있어도 true). "
+            "본인부담금 차등·지원 순서에만 소득을 쓰면 false. 조건 내용은 income_criteria 문장에\n"
+            "- age_min·age_max: 원칙 기준 만 나이(정수, 둘 다 포함 — '65세 미만'은 age_max 64). 제한이 없으면 null. "
+            "예외는 age_criteria 문장에\n"
             "\n[sources 작성 규칙 — 반드시 지킬 것]\n"
             "이 정책은 등록 후 정기적으로 출처를 다시 읽어 변경을 감지합니다. 따라서 출처는 "
             "'그 정책 내용이 실제로 적힌 페이지' 여야 하며, 아래 규칙을 어기면 그 정책은 이후 갱신되지 않습니다.\n"
@@ -721,7 +730,20 @@ def _coerce_schema_shapes(d):
             app["fee"] = {"default": app["fee"]}
         if isinstance(app.get("required_documents"), str) and app["required_documents"].strip():
             app["required_documents"] = [app["required_documents"]]
+    # 자격요건 구조화 칸(소득기준 여부·나이 범위·중증도) — 초안에 없으면 문구에서 추정해 채운다.
+    # 대상 문장만 있는 초안이 그대로 등록되면 검색 조건에서 빠지거나 소득기준이 '없음'으로 적재된다.
+    # 채운 값은 검토 화면에 그대로 보이므로 승인 전에 고칠 수 있다.
+    if isinstance(d.get("eligibility"), dict):
+        _fill_eligibility(d["eligibility"])
     return d
+
+
+def _fill_eligibility(elig):
+    pdb = str(_APP / "policy_db")
+    if pdb not in sys.path:
+        sys.path.insert(0, pdb)
+    from eligibility_fields import fill_missing
+    return fill_missing(elig)
 
 
 def enrich_candidate(cid, draft_override=None):

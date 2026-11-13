@@ -23,7 +23,10 @@
       "scope": "심한 장애(중증) 장애인을 동반하는 보호자 1인에게도 50% 할인 적용(선사별 운송약관에 따라 다르나 대부분 동일 적용). 보호자 좌석·등급은 본인과 동일하게 예매·동시 탑승. 경증 장애인의 동반자는 일반 운임."
     },
     "income_criteria": null,
+    "has_income_criteria": false,
     "age_criteria": null,
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": "거주지 제한 없음. 다만 '가보고 싶은 섬' 50% 할인 이용권 등 일부 한국해운조합·해양수산부 운영 별도 할인 프로모션은 가입·예매 절차가 별도."
   },
   "legal_basis": [

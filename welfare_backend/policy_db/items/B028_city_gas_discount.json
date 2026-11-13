@@ -18,7 +18,10 @@
     ],
     "companion_allowed": null,
     "income_criteria": "소득 기준 없음(중증장애인 자격만으로 신청 가능). 단, 기초생활수급자·차상위계층 자격을 동시에 보유한 경우 더 높은 경감한도 적용 가능.",
+    "has_income_criteria": false,
     "age_criteria": null,
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": "주민등록표상 주소지의 도시가스사에 신청. 실거주지와 주민등록 주소지가 다른 경우 실거주지 도시가스사 신청 가능(실거주 확인서류 추가 필요)."
   },
   "legal_basis": [

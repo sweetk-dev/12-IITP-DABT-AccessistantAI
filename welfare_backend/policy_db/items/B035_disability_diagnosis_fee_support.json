@@ -19,7 +19,10 @@
     ],
     "companion_allowed": null,
     "income_criteria": "기초생활수급자(생계·의료·주거·교육 급여 수급자 중 1개 이상 해당) 또는 차상위계층(차상위계층 확인사업, 차상위 본인부담경감, 차상위 장애인, 한부모 가족지원, 차상위 자활 등 해당자). 직권재판정 대상자는 소득 요건 없음.",
+    "has_income_criteria": true,
     "age_criteria": null,
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": "주소지 관할 읍·면·동 주민센터에 신청. 전국 공통 적용."
   },
   "legal_basis": [

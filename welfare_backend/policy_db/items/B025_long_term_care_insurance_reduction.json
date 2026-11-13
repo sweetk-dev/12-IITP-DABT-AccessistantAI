@@ -18,7 +18,10 @@
     ],
     "companion_allowed": null,
     "income_criteria": "소득기준 없음. 장기요양보험 수급자로 결정되지 않은 중증 장애인이면 소득에 관계없이 적용.",
+    "has_income_criteria": false,
     "age_criteria": "연령 제한 없음. 단, 만 65세 이상이 되어 장기요양 수급자로 결정되면 해당 경감은 종료되고 장기요양급여 체계로 전환.",
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": null
   },
   "legal_basis": [

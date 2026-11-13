@@ -23,7 +23,10 @@
       "scope": "심한 장애(중증) 장애인을 동반하는 보호자 1인에게도 동일한 50% 할인 적용. 보호자 좌석은 본인과 함께 동시에 예매·발권되어야 하며, 별도 예매 또는 보호자 단독 발권은 불가. 경증 장애인은 본인만 30% 할인이며 보호자는 일반 운임."
     },
     "income_criteria": null,
+    "has_income_criteria": false,
     "age_criteria": null,
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": "거주지 제한 없음. 전국 어느 코레일·SR 운영 노선에서도 동일 적용."
   },
   "legal_basis": [

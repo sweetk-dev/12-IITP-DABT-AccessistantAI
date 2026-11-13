@@ -19,7 +19,10 @@
     ],
     "companion_allowed": null,
     "income_criteria": "기초생활보장 수급자(생계·의료·주거·교육급여 해당자) 또는 차상위계층(소득인정액 기준 중위소득 50% 이하). 소득·재산 조사를 통해 해당 여부 결정. '장애인연금법상 중증장애인'이 아닌 경우에만 장애수당 지급 대상(중증이라도 장애인연금 수급 대상이면 장애수당 수급 불가).",
+    "has_income_criteria": true,
     "age_criteria": "만 18세 이상. 18세 미만은 B034 장애아동수당 대상.",
+    "age_min": 18,
+    "age_max": null,
     "residency_criteria": "국내 거주(주민등록 기준)."
   },
   "legal_basis": [

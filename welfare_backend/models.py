@@ -43,6 +43,13 @@ class WelfarePolicy(Base):
     updated_at = Column(DateTime(timezone=True))
 
 
+def severity_filter(severity):
+    """중증도 조건 — 그 중증도가 대상에 들어 있거나, 중증도 칸이 비어(제한 없음) 있는 정책."""
+    from sqlalchemy import or_
+    col = WelfarePolicy.severity_levels
+    return or_(col.contains([severity]), col.is_(None), func.cardinality(col) == 0)
+
+
 class PolicyChunk(Base):
     """벡터 검색용 청크 테이블 — 정책 1개당 평균 10여 개 청크.
     chunk_type: summary / eligibility / how_to_use / application / faq /

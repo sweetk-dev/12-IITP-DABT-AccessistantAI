@@ -120,7 +120,8 @@
               "심한 장애(중증)",
               "심하지 않은 장애(경증)"
             ]
-          }
+          },
+          "description": "대상 중증도. 빈 배열은 중증도 제한 없음(어느 중증도로 찾아도 포함)."
         },
         "companion_allowed": {
           "type": [
@@ -145,11 +146,36 @@
             "null"
           ]
         },
+        "has_income_criteria": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "신청 자격에 소득·재산 조건이 있으면 true(일부 유형에만 있어도 true). 본인부담금 차등·지원 순서에만 소득을 쓰면 false. 비어 있으면 income_criteria 문구에서 추정."
+        },
         "age_criteria": {
           "type": [
             "string",
             "null"
           ]
+        },
+        "age_min": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 120,
+          "description": "원칙 기준 최소 만 나이(포함, '이상'). 제한 없으면 null. 예외는 age_criteria 문구에."
+        },
+        "age_max": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 120,
+          "description": "원칙 기준 최대 만 나이(포함, '이하' — '65세 미만'은 64). 제한 없으면 null."
         },
         "residency_criteria": {
           "type": [

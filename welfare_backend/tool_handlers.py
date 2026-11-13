@@ -127,7 +127,7 @@ async def tool_search_policies_by_metadata(
 
     Args:
         category: 정책 카테고리. 교통/통신/의료/세제/소득지원/활동지원/문화·체육/보육·교육/주거/공공시설/기타
-        severity: 장애 정도. '심한 장애(중증)' 또는 '심하지 않은 장애(경증)'
+        severity: 장애 정도. '심한 장애(중증)' 또는 '심하지 않은 장애(경증)' (중증도 제한이 없는 정책도 함께 나온다)
         limit: 최대 반환 개수 (1~20)
     """
     async def run(db: AsyncSession):
@@ -135,7 +135,8 @@ async def tool_search_policies_by_metadata(
         if category:
             stmt = stmt.where(models.WelfarePolicy.category == category)
         if severity:
-            stmt = stmt.where(models.WelfarePolicy.severity_levels.contains([severity]))
+            # 중증도 칸이 빈 정책은 '중증도 제한 없음'이라 어느 중증도로 찾아도 함께 나와야 한다
+            stmt = stmt.where(models.severity_filter(severity))
         stmt = stmt.limit(min(max(limit, 1), 20))
         rows = (await db.execute(stmt)).scalars().all()
         return {

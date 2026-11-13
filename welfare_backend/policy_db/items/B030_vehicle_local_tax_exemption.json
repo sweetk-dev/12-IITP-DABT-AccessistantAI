@@ -18,7 +18,10 @@
     ],
     "companion_allowed": null,
     "income_criteria": null,
+    "has_income_criteria": false,
     "age_criteria": null,
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": "전국 공통. 단, 시각장애인 구 4급(현 경증)의 경우 지방자치단체 감면 조례에 따라 별도 면제가 가능하며, 지자체별로 혜택 여부가 다름. 신청은 차량 등록지 관할 시·군·구청(세무과)에서 처리."
   },
   "legal_basis": [

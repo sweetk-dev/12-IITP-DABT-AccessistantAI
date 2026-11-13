@@ -12,6 +12,10 @@ from psycopg2.extras import Json
 from pgvector.psycopg2 import register_vector
 import requests
 from dotenv import load_dotenv
+try:
+    from eligibility_fields import structured_fields
+except ImportError:  # welfare_backend 에서 모듈로 불러올 때
+    from policy_db.eligibility_fields import structured_fields
 
 # 콘솔 출력 인코딩 강제 (#33) — cp949/POSIX(ascii) 로케일에서 한글·박스문자·이모지
 # 출력 시 UnicodeEncodeError 로 죽지 않도록 stdout/stderr 를 UTF-8 로 재설정.
@@ -53,17 +57,6 @@ def _mask_secret(s: str) -> str:
     s = re.sub(r'AIza[A-Za-z0-9_\-]{10,}', 'AIza***', s)
     return s
 
-
-def parse_age_criteria(age_text):
-    if not age_text: return None, None
-    age_min, age_max = None, None
-    m = re.search(r'만\s*(\d+)\s*세\s*[~∼\-]\s*(?:만\s*)?(\d+)\s*세', age_text)
-    if m: return int(m.group(1)), int(m.group(2))
-    m = re.search(r'만\s*(\d+)\s*세\s*(이상|초과)', age_text)
-    if m: age_min = int(m.group(1))
-    m = re.search(r'만\s*(\d+)\s*세\s*(미만|이하)', age_text)
-    if m: age_max = int(m.group(1))
-    return age_min, age_max
 
 def make_chunk_content(policy_id, title, section_name, data_content):
     header = f"[{policy_id} {title} — {section_name}]\n"
@@ -129,6 +122,8 @@ def process_file(file_path, file_hash, cur, conn):
 
     try:
         eligibility = data.get("eligibility", {})
+        # 소득기준 여부·나이 범위·중증도는 명시 칸을 따르고, 없으면 문구에서 추정한다(eligibility_fields)
+        has_income, age_min, age_max, severity = structured_fields(eligibility)
         
         insert_master_query = """
             INSERT INTO welfare_policies 
@@ -148,8 +143,8 @@ def process_file(file_path, file_hash, cur, conn):
         cur.execute(insert_master_query, (
             policy_id, data.get("leaflet_section"), data.get("leaflet_number"),
             data.get("title"), data.get("short_summary"), data.get("category"), data.get("benefit_type"),
-            eligibility.get("severity_levels", []), True if eligibility.get("companion_allowed") else False, 
-            True if eligibility.get("income_criteria") else False, *parse_age_criteria(eligibility.get("age_criteria")), 
+            severity, True if eligibility.get("companion_allowed") else False,
+            has_income, age_min, age_max,
             Json(data), data.get("last_verified"), 
             file_hash, # 32글자 해시값이 에러 없이 쏙 들어갑니다!
             data.get("active", True), data.get("deactivated_at"),

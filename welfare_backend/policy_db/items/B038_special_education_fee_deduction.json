@@ -19,7 +19,10 @@
     ],
     "companion_allowed": null,
     "income_criteria": "특수교육비를 지출한 장애인이 기본공제대상자여야 함(연간 소득금액 100만원 이하). 단, 장애인 본인의 경우 소득·나이 요건 없음. 부양가족의 경우 나이 요건은 없으나 소득금액 100만원 이하 요건 충족 필요.",
+    "has_income_criteria": false,
     "age_criteria": "장애인 부양가족은 나이 요건 없음(일반 교육비의 경우 대학생 등 구분 있으나 장애인 특수교육비는 나이 무관).",
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": "기본공제대상 부양가족이어야 함. 장애인의 경우 별거 중이더라도 생계를 같이하는 것으로 봄."
   },
   "legal_basis": [

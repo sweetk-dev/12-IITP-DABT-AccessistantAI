@@ -12,7 +12,11 @@
     "scope": "전국 건축물의 8종 편의시설(출입구 경사로, 장애인전용주차구역, 장애인용 승강기, 장애인용 화장실, 주출입구 접근로, 출입구(문), 장애인객실, 시각장애인 안내표시) 설치 유무 및 BF(장애물 없는 생활환경) 인증 정보 제공"
   },
   "eligibility": {
-    "target": "장애인, 노인, 임산부 등 편의시설 정보가 필요한 모든 국민"
+    "target": "장애인, 노인, 임산부 등 편의시설 정보가 필요한 모든 국민",
+    "severity_levels": [],
+    "has_income_criteria": false,
+    "age_min": null,
+    "age_max": null
   },
   "legal_basis": [
     {
