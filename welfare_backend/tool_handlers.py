@@ -596,6 +596,11 @@ _ANYANG_STATIONS = {
 }
 
 
+# 역 이름 뒤에 붙는 '역 안' 낱말 (v2.32.0) — 출구 번호("1번 출구")는 넣지 않는다. 출구를 말하면 그 출구 자체가 목적지다.
+_STATION_PLACE_RE = re.compile(
+    r"^(?P<name>.+?)(?:지하철)?역(?:맞이방|대합실|역사|역안|안쪽|안|내부|개찰구|승강장|타는곳|엘리베이터|승강기)?$")
+
+
 # checked 는 "범위를 받아 캐시했다"는 뜻이다 — 조회에 성공했을 때만 True 가 된다.
 # retry_at 은 조회 실패 뒤 다음 조회를 허용하는 시각(time.monotonic 기준)이다.
 _SERVICE_BBOX = {"value": None, "checked": False, "retry_at": 0.0}
@@ -711,12 +716,15 @@ async def _resolve_place(place: str) -> Optional[dict]:
     #     역 접근성 테이블(poi_station_access_status)은 이동편의 DB(iitp_db) 소속이라
     #     이 백엔드의 정책 DB 세션으로는 조회할 수 없어, 변동 없는 안양 소재 7역을
     #     정적 매핑으로 둔다 (좌표 출처: iitp_db poi_station_access_status, 2026-07-14).
+    #     "명학역 맞이방"·"명학역 안"처럼 역 안을 가리키는 낱말이 붙어도 그 역이다(v2.32.0) — 전에는 이 매핑을
+    #     지나쳐 이름 검색으로 넘어갔고, "명학역 맞이방"이 안양역 스마트도서관(2.9km)으로 잡혔다(2026-11-13 확인).
     stn = re.sub(r"\s+", "", q)
-    stn = re.sub(r"(지하철)?역$", "", stn) or stn
-    hit = _ANYANG_STATIONS.get(stn)
+    m = _STATION_PLACE_RE.match(stn)
+    key = m.group("name") if m else stn
+    hit = _ANYANG_STATIONS.get(key)
     if hit:
-        return {"lat": hit[1], "lng": hit[2], "kind": "station",
-                "label": "%s역(%s)" % (stn, hit[0])}
+        return {"lat": hit[1], "lng": hit[2], "kind": "station", "station": key,
+                "label": "%s역(%s)" % (key, hit[0])}
 
     # (2) 장소 이름 검색 — 관광지·역·건물을 한 번에 본다
     try:
@@ -1146,6 +1154,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     """
     dest_label = None
     dest_coord = None
+    dest_station = None
     if not destination_poi_id and destination_lat is not None and destination_lng is not None:
         # 지도에서 직접 지정한 지점 — 이용자가 콕 집은 좌표이므로 그대로 쓴다
         dest_coord = {"lat": float(destination_lat), "lng": float(destination_lng)}
@@ -1159,6 +1168,9 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         if dhit is None:
             return _place_not_found("목적지", destination_place)
         dest_label = dhit["label"]
+        if dhit.get("kind") == "station" and dhit.get("station"):
+            # 도보로 역에 가면 휠체어 출구까지 안내하고 맞이방 가는 법을 말한다(02 v1.46.0)
+            dest_station = dhit["station"]
         if await _outside_place(dhit):
             # 범위 밖 안내에는 이용자가 말한 이름을 그대로 쓴다. 넓힌 재검색은 전국을
             # 대상으로 하므로 느슨하게 매칭된 상호명("○○ 서울시청점")이 잡힐 수 있고,
@@ -1253,10 +1265,12 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
     _set_ctx = getattr(route_client, "set_log_ctx", None)   # 테스트 스텁은 이 함수가 없다
     if _set_ctx:
         _set_ctx(log_ctx)
+    # 목적지가 역일 때만 싣는다 — 역이 아닌 요청의 호출 형태는 종전 그대로 둔다(v2.32.0)
+    st_kw = {"dest_station": dest_station} if dest_station else {}
     auto_kept_walk = None     # 자동 추천이 리프트 승강장 때문에 도보를 유지했을 때의 사유 문장들
     auto_compare = None       # 자동 추천 비교 기록(v2.20.0) — 방식별 거리·점수·채택 여부
     if auto:
-        data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk")
+        data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk", **st_kw)
         if data.get("status") == "error":
             return data
         # 도보·대중교통 후보 비교 후 선택(v2.20.0) — 상세 규칙은 AUTO_MODE_WEIGHT 위 설명
@@ -1271,7 +1285,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         mode_used = "walk"
     else:
         data = await route_client.plan_route(origin_pt, dest, profile=profile, mode=req_mode,
-                                             realtime=True, low_floor=low_floor)
+                                             realtime=True, low_floor=low_floor, **st_kw)
         if data.get("status") == "error":
             return data
         mode_used = req_mode
@@ -1332,6 +1346,9 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                                       if isinstance(pa, dict) and pa.get("warning")],
             })
     platform_cautions = _platform_cautions(data)
+    station_end = _brief_station_end(data.get("station_end"))
+    if station_end and station_end.get("label"):
+        dest_label = station_end["label"]
     return {
         "status": "success",
         "tool_name": "plan_accessible_route",
@@ -1366,6 +1383,8 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         # 02 v1.28.0(#79) — 출발점이 역 가까이면 역 안/밖 질문, 역 안 출발이면 승강장→출구 안내
         "station_nearby": _brief_station_nearby(data.get("station_nearby")),
         "station_start": _brief_station_start(data.get("station_start")),
+        # 02 v1.46.0 — 도보 목적지가 역이면 휠체어 출구까지, 도착 후 맞이방 가는 법
+        "station_end": station_end,
         # 프런트가 지도·경로·턴바이턴을 그리도록 원본 경로를 그대로 전달
         # mode_requested: 사용자가 고른 이동 방식(자동 추천이면 None) — 화면이 이동 방식 카드 선택을 맞춘다.
         # 경로 원본만으로는 '자동 추천이 도보를 골랐다'와 '도보로 요청했다'를 구분할 수 없다(v2.11.0).
@@ -1392,6 +1411,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                     if lf.get("tier") in (1, 2) else "소요시간은 대기 미포함 추정임을 밝히세요. ")
                if transit_brief else "")
             + _station_ai_note(data)
+            + _station_end_ai_note(station_end)
             + _platform_ai_note(platform_cautions, auto_kept_walk)
             + "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로 요약하고, 첫 안내 한 문장을 덧붙이세요. "
             "경고(warnings)나 제약 완화(fallback.used=true)가 있으면 반드시 함께 알리세요. "
@@ -1399,6 +1419,27 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
             "화면의 이동 방식 카드로 다른 방식을 고를 수 있다는 점을 필요할 때만 짧게 안내하세요."
         ),
     }
+
+
+def _brief_station_end(se) -> Optional[dict]:
+    """02 station_end(v1.46.0)를 도구 결과용으로 줄인다 — 역·출구·도착 뒤 할 일."""
+    if not isinstance(se, dict) or not se.get("station"):
+        return None
+    ex = se.get("exit") if isinstance(se.get("exit"), dict) else None
+    enter = se.get("enter") if isinstance(se.get("enter"), dict) else {}
+    st = str(se["station"])
+    return {"station": st, "exit_no": (ex or {}).get("exit_no"), "via": enter.get("via"),
+            "label": ("%s역 %s번 출구" % (st, ex["exit_no"])) if ex and ex.get("exit_no") else "%s역" % st,
+            "enter": list(enter.get("inside") or [])}
+
+
+def _station_end_ai_note(se) -> str:
+    if not se:
+        return ""
+    if se.get("enter"):
+        return ("목적지는 %s(휠체어로 들어가는 출구)입니다. 도착하면 '%s'라고 한 마디 덧붙이세요. "
+                % (se["label"], se["enter"][0]))
+    return "목적지는 %s 입니다. " % se["label"]
 
 
 async def tool_explain_route_segment(route_id: str = "", step_idx: int = None) -> dict:
