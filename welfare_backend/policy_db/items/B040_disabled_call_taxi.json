@@ -22,7 +22,10 @@
       "scope": "보호자(동반인) 1~2명까지 동승 가능. 경기도 기준 동반 가족·보호자 2명 이내. 지자체별 상이."
     },
     "income_criteria": null,
+    "has_income_criteria": false,
     "age_criteria": null,
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": "원칙적으로 해당 지자체 거주자. 수도권(서울·인천·경기)은 2023.12.21부터 광역 협약으로 수도권 전역 이용 가능(사전 예약 필수, 07~22시). 도 단위 광역이동지원센터는 도내 시·군 간 이동 지원."
   },
   "legal_basis": [

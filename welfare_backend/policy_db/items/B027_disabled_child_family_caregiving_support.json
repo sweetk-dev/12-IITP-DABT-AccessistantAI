@@ -18,7 +18,10 @@
     ],
     "companion_allowed": null,
     "income_criteria": "돌봄서비스: 기준 중위소득 120% 이하 가정 무료, 초과 가정 이용료 40% 본인부담. 가족휴식프로그램: 소득기준 없이 만 18세 미만 모든 장애아 가족 참여 가능(돌봄서비스 이용 가정 우선).",
+    "has_income_criteria": false,
     "age_criteria": "만 18세 미만(아동복지법상 아동 기준). 만 18세 도달 시 서비스 종료. 단, 특수교육대상자로서 만 18세 이후에도 학교에 재학 중인 경우 예외 적용 여부는 지자체 확인 필요.",
+    "age_min": null,
+    "age_max": 17,
     "residency_criteria": null
   },
   "legal_basis": [

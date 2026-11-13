@@ -12,7 +12,11 @@
     "scope": "전세보증금 지원 및 지원금액에 대한 저렴한 이자(연 1~2%) 부과"
   },
   "eligibility": {
-    "target": "무주택세대구성원 중 전년도 도시근로자 가구당 월평균 소득 70% 이하인 장애인(1순위) 및 100% 이하인 장애인(2순위) 등"
+    "target": "무주택세대구성원 중 전년도 도시근로자 가구당 월평균 소득 70% 이하인 장애인(1순위) 및 100% 이하인 장애인(2순위) 등",
+    "severity_levels": [],
+    "has_income_criteria": true,
+    "age_min": null,
+    "age_max": null
   },
   "legal_basis": [
     {

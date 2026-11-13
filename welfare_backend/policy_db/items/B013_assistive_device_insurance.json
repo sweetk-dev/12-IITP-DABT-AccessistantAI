@@ -19,7 +19,10 @@
     ],
     "companion_allowed": null,
     "income_criteria": "건강보험 가입자는 소득 무관. 의료급여 100% 지원은 의료급여 수급권자 또는 차상위 본인부담경감 대상자에 한함.",
+    "has_income_criteria": false,
     "age_criteria": "품목별 상이. 예: 전동휠체어·전동스쿠터는 만 6세 이상 신체적·정신적·인지적 조작이 가능한 자로 보행 곤란이 인정되는 경우, 자세보조용구는 만 6세 이상 등록 장애인.",
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": null
   },
   "legal_basis": [

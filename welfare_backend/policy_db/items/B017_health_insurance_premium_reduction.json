@@ -19,7 +19,10 @@
     ],
     "companion_allowed": null,
     "income_criteria": "**소득 360만원 이하** 및 **재산 과세표준액 1억 3,500만원 이하** 동시 충족(상한 변동 가능 — 보험료 경감고시 별표2 확인). 두 기준을 동시에 만족해야 경감 적용. 소득·재산 어느 한쪽이라도 초과하면 경감 미적용.",
+    "has_income_criteria": true,
     "age_criteria": null,
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": null
   },
   "legal_basis": [

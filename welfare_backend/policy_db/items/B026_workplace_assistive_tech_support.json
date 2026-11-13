@@ -18,7 +18,10 @@
     ],
     "companion_allowed": null,
     "income_criteria": null,
+    "has_income_criteria": false,
     "age_criteria": "근로연령 제한 없음. 단, 실제 근로 중이거나 3개월 내 취업 예정이어야 함.",
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": null
   },
   "legal_basis": [

@@ -821,7 +821,8 @@ async def search_policies_by_metadata(
     if category:
         stmt = stmt.where(models.WelfarePolicy.category == category)
     if severity:
-        stmt = stmt.where(models.WelfarePolicy.severity_levels.contains([severity]))
+        # 중증도 칸이 빈 정책은 '중증도 제한 없음'이라 어느 중증도로 찾아도 함께 나와야 한다
+        stmt = stmt.where(models.severity_filter(severity))
     stmt = stmt.limit(limit)
     result = await db.execute(stmt)
     policies = result.scalars().all()

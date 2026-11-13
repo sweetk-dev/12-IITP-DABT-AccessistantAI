@@ -23,7 +23,10 @@
       "scope": "대부분의 민간 시설에서 중증(심한 장애) 등록 장애인을 동행하는 보호자 1인까지 같은 할인 적용. 경증(심하지 않은 장애)은 본인만 할인. 단 시설별 정책에 따라 동반자 할인 여부·범위가 다를 수 있음(예: 씨라이프 코엑스 아쿠아리움은 본인 정가, 보호자 61% 할인 구조)."
     },
     "income_criteria": null,
+    "has_income_criteria": false,
     "age_criteria": null,
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": "전국 시설 공통. 거주지 제한 없음. 단 대한민국 장애인등록증(복지카드) 필수. 외국 발급 장애인증은 시설 재량."
   },
   "legal_basis": [

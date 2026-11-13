@@ -12,7 +12,11 @@
     "scope": "안내견 매칭, 파트너 교육(약 4주), 사후관리 등"
   },
   "eligibility": {
-    "target": "안내견을 통한 안전한 보행과 독립적인 일상생활을 희망하는 시각장애인"
+    "target": "안내견을 통한 안전한 보행과 독립적인 일상생활을 희망하는 시각장애인",
+    "severity_levels": [],
+    "has_income_criteria": false,
+    "age_min": null,
+    "age_max": null
   },
   "legal_basis": [
     {

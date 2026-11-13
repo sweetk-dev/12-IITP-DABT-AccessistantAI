@@ -23,7 +23,10 @@
       "scope": "심한 장애(중증) 장애인을 동반하는 보호자 1인에게도 본인과 동일한 할인율 적용(대한항공 50%, 아시아나 50%, LCC는 항공사별로 동반자 할인 여부·할인율 상이). 보호자 좌석은 본인과 함께 예매·동시 탑승해야 적용. 경증 장애인의 동반자는 일반 운임."
     },
     "income_criteria": null,
+    "has_income_criteria": false,
     "age_criteria": null,
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": "거주지 제한 없음. 다만 외국인의 경우 「장애인복지법」 제32조의2에 따른 등록을 마친 경우에 한함."
   },
   "legal_basis": [

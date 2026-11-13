@@ -19,7 +19,10 @@
     ],
     "companion_allowed": null,
     "income_criteria": null,
+    "has_income_criteria": false,
     "age_criteria": null,
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": "전국 동일. **장애인이 속한 세대 단위 1회선**이 원칙(이동통신과 달리 세대 기준). 가족(부모·배우자 등 같은 세대원) 명의 회선도 신청 가능. 주민등록등본으로 세대 확인."
   },
   "legal_basis": [

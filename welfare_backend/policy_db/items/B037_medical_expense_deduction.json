@@ -19,7 +19,10 @@
     ],
     "companion_allowed": null,
     "income_criteria": "의료비를 지출한 자가 납세자여야 함. 부양가족의 소득·나이 요건 불문하고 실제 납세자가 지출한 의료비라면 모두 공제 대상(기본공제 대상자 요건 불필요 — 의료비 공제의 특례). 단, 장애인 의료비를 한도 없이 공제받으려면 해당 의료비를 지출한 부양가족이 장애인이어야 함.",
+    "has_income_criteria": false,
     "age_criteria": null,
+    "age_min": null,
+    "age_max": null,
     "residency_criteria": null
   },
   "legal_basis": [
