@@ -2606,6 +2606,22 @@ window.NAVI = (function(){
     var seq = 0, objs = {}, lis = {}, q = [], qT = null;
     var center = {lat:37.3943, lng:126.9568}, level = 5;
     var lastRect = "", rectT = null, watching = false;
+    // 확대 단계를 바꾼 직후의 따라가기는 잠시 미뤘다가 보낸다 (v2.33.1) — 앱이 확대 동작 중에 따라가기를 받으면
+    // 그때의 (아직 바뀌기 전) 확대 단계로 카메라를 옮겨 확대가 덮어써졌다(2026-11-16 현장: 안내 시작 20m 확대가 안 됨).
+    // 앱 2.2.1 부터는 앱이 확대 목표 단계를 지키므로 미루지 않는다(구버전 앱만).
+    var LEVEL_HOLD_MS = 600, lvHold = 0, fwPend = null, fwT = null, _oldApp = null;
+    function nowMs(){ try{ return performance.now(); }catch(e){ return Date.now(); } }
+    function oldApp(){
+      if(_oldApp === null){
+        try{
+          var v = String(app().version() || "").split(".").map(function(x){ return parseInt(x, 10) || 0; });
+          _oldApp = (v[0] || 0) * 10000 + (v[1] || 0) * 100 + (v[2] || 0) < 20201;
+        }catch(e){ _oldApp = true; }
+      }
+      return _oldApp;
+    }
+    function sendFollow(){ fwT = null; var f = fwPend; fwPend = null; if(f) send({op:"follow", lat:f.lat, lng:f.lng}); }
+    function dropFollow(){ fwPend = null; if(fwT){ clearTimeout(fwT); fwT = null; } }
 
     function app(){ return window.AccessNaviApp; }
     function want(){
@@ -2640,24 +2656,38 @@ window.NAVI = (function(){
       opts = opts || {};
       if(opts.center) center = pt(opts.center);
       if(opts.level) level = opts.level;
-      objs = {}; lis = {};
+      objs = {}; lis = {}; lvHold = 0; dropFollow();
       send({op:"init", lat:center.lat, lng:center.lng, level:level});
       watchRect();
     }
-    NMap.prototype.setCenter = function(p){ center = pt(p); send({op:"center", lat:center.lat, lng:center.lng}); };
+    NMap.prototype.setCenter = function(p){ dropFollow(); center = pt(p); send({op:"center", lat:center.lat, lng:center.lng}); };
     NMap.prototype.panTo = NMap.prototype.setCenter;
     NMap.prototype.getCenter = function(){ return new LatLng(center.lat, center.lng); };
-    NMap.prototype.setBounds = function(b){ if(b && b._p && b._p.length) send({op:"bounds", pts:b._p.slice(0, 4000)}); };
+    NMap.prototype.setBounds = function(b){ if(b && b._p && b._p.length){ dropFollow(); send({op:"bounds", pts:b._p.slice(0, 4000)}); } };
     NMap.prototype.getLevel = function(){ return level; };
     NMap.prototype.setLevel = function(lv, o){
       level = lv;
+      if(oldApp()){
+        lvHold = nowMs() + LEVEL_HOLD_MS;
+        if(fwT){ clearTimeout(fwT); fwT = setTimeout(sendFollow, LEVEL_HOLD_MS); }   // 연달아 바꾸면 마지막 확대 뒤로
+      }
       var c = {op:"level", level:lv};
       if(o && o.anchor){ var a = pt(o.anchor); c.lat = a.lat; c.lng = a.lng; }
       send(c);
     };
     NMap.prototype.relayout = function(){ reportRect(true); };
     // 안내 중 현재 위치 따라가기 — 앱이 진행 방향으로 지도를 돌린다(웹 지도에는 없는 기능, followCamera 가 쓴다)
-    NMap.prototype.followTo = function(p){ center = pt(p); send({op:"follow", lat:center.lat, lng:center.lng}); };
+    NMap.prototype.followTo = function(p){
+      center = pt(p);
+      var wait = lvHold - nowMs();
+      if(wait > 0){   // 확대 동작이 끝난 뒤 마지막 위치로 한 번만 보낸다
+        fwPend = {lat:center.lat, lng:center.lng};
+        if(!fwT) fwT = setTimeout(sendFollow, wait);
+        return;
+      }
+      dropFollow();   // 미뤄 둔 것이 아직 남아 있으면 버리고 지금 위치만
+      send({op:"follow", lat:center.lat, lng:center.lng});
+    };
 
     // 지도 위 표시 공통 — 웹 지도와 같이 setMap(map) 으로 그리고 setMap(null) 로 지운다
     function Ov(){}
@@ -2737,7 +2767,7 @@ window.NAVI = (function(){
         var o = objs[d.id], el = o && o._o && o._o.content;
         if(el && typeof el.click === "function") el.click();
       }
-      else if(type === "dragstart") fire("dragstart");
+      else if(type === "dragstart"){ dropFollow(); fire("dragstart"); }   // 끌었으면 미뤄 둔 따라가기도 버린다
       else if(type === "camera"){
         center = {lat:+d.lat, lng:+d.lng};
         var lv = Math.round(+d.level);

@@ -10,6 +10,7 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.os.SystemClock
 import android.util.Log
 import android.view.Gravity
 import android.view.View
@@ -161,6 +162,8 @@ class NativeMapController(
     companion object {
         private const val TAG = "NativeMap"
         private const val ZOOM_BASE = 20
+        /** 확대 단계 명령 뒤 이 시간 동안은 따라가기·가운데 맞추기가 목표 단계를 쓴다(확대 동작 250ms + 여유). */
+        private const val ZOOM_HOLD_MS = 800L
         /**
          * 카메라 회전각 부호 — 진행 방위 h(정북 기준 시계방향)를 화면 위로 세우려면 카메라 회전각을 -h 로 준다
          * (카메라 θ 면 방위 w 가 화면 w + θ 에 놓이므로 h + (-h) = 0). 실기기 확인(2026-10-19) → -1.
@@ -229,6 +232,11 @@ class NativeMapController(
     private var lastFollow: LatLng? = null
     private var appliedDeg: Double? = null                 // 지금 지도에 적용된 진행 방향(도)
     private var lastLevel = -1
+    // 확대 단계 명령 직후 잠시 그 목표 단계를 기억한다 (앱 2.2.1) — 확대 동작 중에 따라가기·가운데 맞추기가 오면
+    // 지금(아직 바뀌기 전) 단계로 카메라를 옮겨 확대가 덮어써졌다(2026-11-16 현장: 안내 시작 20m 확대가 안 됨).
+    private var zoomTarget = -1
+    private var zoomTargetUntil = 0L
+    private fun pendingZoom(): Int? = if (zoomTarget > 0 && SystemClock.uptimeMillis() < zoomTargetUntil) zoomTarget else null
     private val headBtn = TextView(activity)
     /** 전체 경로 진행 바 (앱 2.2.0) — 지도 위 오른쪽. 화면이 progress 명령을 보낼 때만 보인다. */
     private val progressBar = RouteBarView(activity).apply { visibility = View.GONE }
@@ -351,6 +359,7 @@ class NativeMapController(
         map.setOnCameraMoveStartListener { _, g ->
             if (BuildConfig.DEBUG) Log.d(TAG, "MOVE_START gesture=$g")
             // 사람이 끌거나 돌린 경우만 — 앱이 옮긴 카메라(Unknown)·두 번 눌러 확대는 따라가기를 풀지 않는다
+            if (g != GestureType.Unknown) zoomTarget = -1   // 사람이 지도를 만지면(집어 확대 포함) 목표 단계는 버린다 (앱 2.2.1)
             if (g == GestureType.Pan || g == GestureType.Rotate || g == GestureType.RotateZoom ||
                 g == GestureType.LongTapAndDrag) emit("dragstart", JSONObject())
         }
@@ -393,7 +402,7 @@ class NativeMapController(
         val map = kmap ?: return
         try {
             when (c.optString("op")) {
-                "init" -> map.moveCamera(CameraUpdateFactory.newCenterPosition(ll(c), ZOOM_BASE - c.optInt("level", 5)))
+                "init" -> { zoomTarget = -1; map.moveCamera(CameraUpdateFactory.newCenterPosition(ll(c), ZOOM_BASE - c.optInt("level", 5))) }
                 "label" -> addLabel(map, c)
                 "move" -> {
                     val id = c.optString("id")
@@ -401,14 +410,20 @@ class NativeMapController(
                 }
                 "line" -> addLine(map, c)
                 "remove" -> remove(c.optString("id"))
-                "center" -> { if (BuildConfig.DEBUG) Log.d(TAG, "CENTER"); map.moveCamera(CameraUpdateFactory.newCenterPosition(ll(c)), CameraAnimation.from(300)) }
+                "center" -> {
+                    if (BuildConfig.DEBUG) Log.d(TAG, "CENTER")
+                    val pz = pendingZoom()
+                    map.moveCamera(if (pz != null) CameraUpdateFactory.newCenterPosition(ll(c), pz) else CameraUpdateFactory.newCenterPosition(ll(c)),
+                        CameraAnimation.from(300))
+                }
                 "follow" -> follow(map, ll(c))
                 "level" -> {
                     val z = ZOOM_BASE - c.optInt("level", 5)
+                    zoomTarget = z; zoomTargetUntil = SystemClock.uptimeMillis() + ZOOM_HOLD_MS
                     if (c.has("lat")) map.moveCamera(CameraUpdateFactory.newCenterPosition(ll(c), z), CameraAnimation.from(250))
                     else map.moveCamera(CameraUpdateFactory.zoomTo(z), CameraAnimation.from(250))
                 }
-                "bounds" -> { if (BuildConfig.DEBUG) Log.d(TAG, "BOUNDS"); fitBounds(map, c.optJSONArray("pts")) }
+                "bounds" -> { if (BuildConfig.DEBUG) Log.d(TAG, "BOUNDS"); zoomTarget = -1; fitBounds(map, c.optJSONArray("pts")) }
             }
         } catch (e: Exception) {
             Log.w(TAG, "cmd failed: ${c.optString("op")}", e)
@@ -423,7 +438,7 @@ class NativeMapController(
         labels.clear(); labelIds.clear(); clickable.clear(); roles.clear()
         lines.values.forEach { try { it.remove() } catch (_: Exception) {} }
         lines.clear(); linePts.clear()
-        lastFollow = null; appliedDeg = null
+        lastFollow = null; appliedDeg = null; zoomTarget = -1
     }
 
     private fun remove(id: String) {
@@ -612,8 +627,9 @@ class NativeMapController(
         val target = if (headingUp) (appliedDeg ?: 0.0) else 0.0
         val cam = map.cameraPosition
         if (cam == null) { map.moveCamera(CameraUpdateFactory.newCenterPosition(pos), CameraAnimation.from(400)); return }
-        val next = CameraPosition.from(CameraPosition.Builder(cam).setPosition(pos)
-            .setRotationAngle(camRad(target)))
+        val b = CameraPosition.Builder(cam).setPosition(pos).setRotationAngle(camRad(target))
+        pendingZoom()?.let { b.setZoomLevel(it) }   // 확대 동작 중이면 목표 단계로 (앱 2.2.1)
+        val next = CameraPosition.from(b)
         map.moveCamera(CameraUpdateFactory.newCameraPosition(next), CameraAnimation.from(500))
         rotateArrows(camRad(target))
         if (BuildConfig.DEBUG) Log.d(TAG, "FOLLOW pos=${pos.latitude},${pos.longitude} routeDeg=${routeBearing(pos)} deg=$deg applied=$appliedDeg " +
