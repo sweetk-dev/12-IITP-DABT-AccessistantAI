@@ -54,13 +54,13 @@ function fakeKakao(stats) {
   } };
 }
 
-async function boot({ nativeMap = true, app = true } = {}) {
+async function boot({ nativeMap = true, app = true, ver = "2.1.0" } = {}) {
   const cmds = [], rects = [], stats = {}, spoken = [];
   const dom = new JSDOM(HTML, { runScripts: "dangerously", pretendToBeVisual: true, url: "https://example.test/navi",
     beforeParse(win) {
       Object.defineProperty(win.navigator, "userAgent", { value: "Mozilla/5.0 (Linux; Android 15) AccessNaviApp/2.1.0" });
       if (app) win.AccessNaviApp = {
-        setBusy() {}, micGranted: () => true, version: () => "2.1.0",
+        setBusy() {}, micGranted: () => true, version: () => ver,
         mapAvailable: () => true,
         mapCmd: (j) => { JSON.parse(j).forEach((c) => cmds.push(c)); },
         mapRect: (x, y, w, h) => rects.push([x, y, w, h]),
@@ -156,14 +156,32 @@ NV.cancelArrivalReset();   // 선택 창 닫기
 await sleep(60);
 check("팝업이 닫히면 지도 칸을 다시 보고", () => assert.ok(A.rects.at(-1)[2] > 0, JSON.stringify(A.rects.at(-1))));
 
+const gs = A.cmds.length;
 NV.startGuidance();
 await sleep(30);
 A.fix(37.3903, 126.9503);
 await sleep(30);
+check("안내 시작 — 축척 20m(level 1) 명령, 확대 동작 중에는 follow 를 보내지 않는다 (v2.33.1)", () => {
+  const seg = A.cmds.slice(gs);
+  const lv = ops(seg, "level").at(-1);
+  assert.ok(lv, "level 명령 없음");
+  assert.equal(lv.level, 1);
+  assert.equal(ops(seg, "follow").length, 0, "확대 직후 follow 가 나갔다 — 앱이 확대를 덮어쓴다");
+});
+await sleep(650);
+check("확대 동작 뒤 미뤄 둔 follow 는 마지막 위치로 한 번만, level 뒤에 (v2.33.1)", () => {
+  const seg = A.cmds.slice(gs);
+  const f = ops(seg, "follow");
+  assert.equal(f.length, 1, "follow " + f.length + "번");
+  assert.ok(Math.abs(f[0].lat - 37.3903) < 1e-9);
+  assert.ok(seg.indexOf(f[0]) > seg.indexOf(ops(seg, "level").at(-1)));
+});
+A.fix(37.3904, 126.9504);
+await sleep(30);
 check("안내 중 위치 갱신 → follow(진행 방향 회전) 명령", () => {
   const f = ops(A.cmds, "follow").at(-1);
   assert.ok(f, "follow 없음");
-  assert.ok(Math.abs(f.lat - 37.3903) < 1e-9);
+  assert.ok(Math.abs(f.lat - 37.3904) < 1e-9);
 });
 check("앱 진행 바 — 안내 시작 때 표식·구간을 담은 progress, 웹 바는 숨김 (v2.23.0)", () => {
   const p = ops(A.cmds, "progress");
@@ -177,8 +195,13 @@ check("앱 진행 바 — 안내 시작 때 표식·구간을 담은 progress, �
   assert.equal(A.w.getComputedStyle($("routeBar")).display, "none", "앱 지도에서 웹 바가 보인다");
 });
 
+const ds = A.cmds.length;
+NV.mapObj().setLevel(2, null);
+A.fix(37.3905, 126.9505);
+await sleep(20);
 A.w.__NMAP.emit("dragstart", {});
-await sleep(10);
+await sleep(650);
+check("확대 직후 지도를 끌면 미뤄 둔 follow 는 보내지 않는다 (v2.33.1)", () => assert.equal(ops(A.cmds.slice(ds), "follow").length, 0));
 check("앱 지도를 끌면 따라가기 해제·목록 접기", () => {
   assert.equal(NV.followMe(), false);
   assert.ok($("naviSheet").classList.contains("collapsed"));
@@ -362,6 +385,45 @@ check("앱 지도 오류 → 웹 지도로 복귀하고 경로를 다시 그린�
     const last = ops(H.cmds, "move").filter((c) => c.id === sim.id).at(-1);
     const dM = Math.hypot((last.lat - END[0]) * 110540, (last.lng - END[1]) * 88200);
     assert.ok(dM < 3, "도착 지점까지 남은 거리 " + dM.toFixed(1) + "m");
+  });
+}
+
+// ── 확대 직후 따라가기 미루기의 세부 (v2.33.1) — 구버전 앱(2.1.0)은 미루고, 2.2.1 부터는 앱이 목표 단계를 지키므로 바로 보낸다 ──
+const O = await boot();
+O.w.NAVI.openNavi();
+await sleep(40);
+{
+  const NO = O.w.NAVI._internals(), M = NO.mapObj(), LL = NO.nmap().api.LatLng;
+  M.setLevel(3, null);
+  const s0 = O.cmds.length;
+  await sleep(300);
+  M.setLevel(2, null);                 // 연달아 바꾸면 마지막 확대 뒤로 미룬다
+  M.followTo(new LL(37.3911, 126.9511));
+  await sleep(400);                    // 첫 확대 기준(600ms)은 지났지만 두 번째 기준 전
+  check("확대를 연달아 바꾸면 follow 는 마지막 확대 뒤로 미룬다 (v2.33.1)", () => assert.equal(ops(O.cmds.slice(s0), "follow").length, 0));
+  await sleep(300);
+  check("마지막 확대 뒤 follow 1번", () => assert.equal(ops(O.cmds.slice(s0), "follow").length, 1));
+  const s1 = O.cmds.length;
+  M.setLevel(1, null);
+  M.followTo(new LL(37.3912, 126.9512));
+  const bb = new (NO.nmap().api.LatLngBounds)(); bb.extend(new LL(37.39, 126.95)); bb.extend(new LL(37.392, 126.952));
+  M.setBounds(bb);                     // 범위 맞춤을 하면 미뤄 둔 follow 는 버린다
+  await sleep(700);
+  check("확대 직후 범위 맞춤을 하면 미뤄 둔 follow 는 보내지 않는다 (v2.33.1)", () => assert.equal(ops(O.cmds.slice(s1), "follow").length, 0));
+}
+const N = await boot({ ver: "2.2.1" });
+N.w.NAVI.openNavi();
+await sleep(40);
+{
+  const NN = N.w.NAVI._internals(), M = NN.mapObj(), LL = NN.nmap().api.LatLng;
+  const s0 = N.cmds.length;
+  M.setLevel(1, null);
+  M.followTo(new LL(37.3911, 126.9511));
+  await sleep(20);
+  check("앱 2.2.1 — 확대 직후에도 follow 를 바로 보낸다(앱이 목표 단계를 지킨다) (v2.33.1)", () => {
+    const seg = N.cmds.slice(s0);
+    assert.equal(ops(seg, "level").length, 1);
+    assert.equal(ops(seg, "follow").length, 1);
   });
 }
 
