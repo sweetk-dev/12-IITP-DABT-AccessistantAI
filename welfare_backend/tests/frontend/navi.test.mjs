@@ -566,7 +566,7 @@ check("세션 미연결 상태의 텍스트 질문은 안내문으로 거절", (
   assert.match($("naviStatus").textContent, /상담 세션이 아직 연결되지 않았습니다/);
 });
 check("마이크 게이트 barge-in 배선 존재 (소스 레벨 가드)", () => {
-  assert.match(HTML, /naviBargeHit\(m\.rms \|\| 0\)/);   // v1.45.0 창 판정 · v2.8.0 이어마이크여도 기준을 낮추지 않는다(#359)
+  assert.match(HTML, /naviBargeHit\(m\.rms \|\| 0, m\.vz\)/);   // v1.45.0 창 판정 · v2.8.0 이어마이크여도 기준을 낮추지 않는다(#359) · v2.33.2 유성음 정도
   assert.match(HTML, /NAVI\.bargeStop/);
   assert.doesNotMatch(HTML, /if \(window\.__NAVI_SPEAKING\) return;   \/\/ 길안내 음성 발화 중에도 동일하게 차단/);
 });
@@ -3583,6 +3583,94 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   NV.resetTrip(); NV.stopSpeak();
 }
 
+// ── v2.33.2 바람·주변 소리로 안내가 끊기던 문제 — 유성음 정도로 거르기 · 끊긴 곳부터 잇기 ──
+{
+  const G = window.__NAVI_GATE;
+  const feed = (seq) => { G.reset(); let hitAt = -1; seq.forEach(([r, v], i) => { if (hitAt < 0 && G.hit(r, v)) hitAt = i; }); return hitAt; };
+  check("유성음 정도: 크지만 주기 없는 소리(바람)는 끊지도 줄이지도 않는다 (v2.33.2)", () => {
+    assert.equal(G.VOICED, 0.5);
+    const wind = Array.from({ length: 12 }, () => [0.07, 0.27]);   // 현장 11/16 안내를 끊은 소리 청크 중앙값 수준
+    assert.equal(feed(wind), -1);
+    G.reset(); G.hit(0.08, 0.3); G.hit(0.09, 0.2); assert.equal(G.duck(), false);
+    G.reset();
+  });
+  check("유성음 정도: 같은 크기라도 목소리(주기 뚜렷)는 종전처럼 1초 안에 끊는다 (v2.33.2)", () => {
+    const voice = [[0.06, 0.7], [0.012, 0.1], [0.05, 0.8], [0.07, 0.75], [0.01, 0.0], [0.06, 0.66], [0.05, 0.72]];
+    const at = feed(voice); assert.ok(at >= 0 && at <= 6, "성립 안 됨: " + at);
+    G.reset(); G.hit(0.05, 0.7); G.hit(0.05, 0.8); assert.equal(G.duck(), true);
+    G.reset();
+  });
+  check("유성음 정도가 없는 청크(옛 마이크 처리기)는 종전대로 크기만 본다 (v2.33.2)", () => {
+    assert.ok(feed([[0.05], [0.05], [0.05], [0.05]].map(([r]) => [r, undefined])) >= 0);
+    G.reset();
+  });
+  check("마이크 처리기를 새 판으로 부르고 vz 를 넘긴다 (소스 가드, v2.33.2)", () => {
+    assert.match(HTML, /mic-processor\.js\?v=2\.33\.2/);
+    const MP = readFileSync(new URL("../../static/mic-processor.js", import.meta.url), "utf8");
+    assert.match(MP, /type: 'pcm', data: pcm\.buffer, rms, vz \}/);
+    assert.match(MP, /for \(let k = 40; k <= kmax; k\+\+\)/);
+  });
+
+  const NV = window.NAVI._internals();
+  const prevFetch6 = window.fetch;
+  window.fetch = async (url, opt) => {
+    const u = String(url);
+    if (u.includes("/api/v1/tts")) return { ok: true, blob: async () => ({}) };
+    return prevFetch6(url, opt);
+  };
+  const made = [];
+  window.URL.createObjectURL = () => "blob:cut";
+  window.Audio = function (src) { const self = this; this.src = src; this.duration = 4.0; this.currentTime = 0; this.readyState = 1; this.volume = 1; made.push(self);
+    this.play = () => { self.playedFrom = self.currentTime; return Promise.resolve(); }; this.pause = () => { self.paused = true; }; this.addEventListener = () => {}; };
+  window.show("view-navi");
+  NV.stopSpeak();
+  NV.speak("장내로를 따라 80m 직진합니다.", { queue: true, kind: "step" });
+  await sleep(400);
+  const a = made.at(-1);
+  a.currentTime = 2.6;
+  window.NAVI.bargeStop();
+  check("끊을 때 끊긴 자리를 기억한다 (v2.33.2)", () => {
+    const c = NV.bargeCut();
+    assert.ok(c, "기억 없음");
+    assert.equal(c.text, "장내로를 따라 80m 직진합니다.");
+    assert.equal(c.pos, 2.6);
+    assert.equal(c.url, "blob:cut");
+    assert.equal(window.__NAVI_SPEAKING, false);
+  });
+  const ok = NV.playBargeCutForTest();
+  await sleep(30);
+  check("주변 소리였으면 끊긴 곳 1초 앞부터 이어 들려준다 — 처음부터 다시 읽지 않는다 (v2.33.2)", () => {
+    assert.equal(ok, true);
+    const b = made.at(-1);
+    assert.notEqual(b, a);
+    assert.equal(b.src, "blob:cut");
+    assert.ok(Math.abs(b.playedFrom - 1.6) < 1e-6, "시작 위치 " + b.playedFrom);
+    assert.equal(window.__NAVI_SPEAKING, true);
+    assert.equal(NV.bargeCut(), null);
+  });
+  NV.stopSpeak();
+  NV.speak("앞부분만 들은 문장입니다.", { queue: true, kind: "step" });
+  await sleep(400);
+  made.at(-1).currentTime = 0.8;
+  window.NAVI.bargeStop();
+  NV.playBargeCutForTest();
+  await sleep(30);
+  check("1.5초 안에 끊겼으면 처음부터 (v2.33.2)", () => assert.equal(made.at(-1).playedFrom, 0));
+  NV.stopSpeak();
+  NV.speak("새 안내 전에 끊긴 문장입니다.", { queue: true, kind: "step" });
+  await sleep(400);
+  made.at(-1).currentTime = 2.0;
+  window.NAVI.bargeStop();
+  NV.speak("새 안내가 나왔습니다.", { queue: true, kind: "step" });
+  check("새 안내가 나오면 끊긴 문장은 잇지 않는다 (v2.33.2)", () => assert.equal(NV.bargeCut(), null));
+  check("안내 복귀가 주변 소리 판정일 때 끊긴 곳부터 잇는다 (소스 가드, v2.33.2)", () => {
+    assert.match(HTML, /if\(opt\.barge && !sawAi && _bargeCut && _playBargeCut\(\)\) return;/);
+    assert.match(HTML, /_tev\("navi_barge"\); sendActivity\("navi_barge"\); _takeBargeCut\(\); stopSpeak\(\);/);
+  });
+  window.fetch = prevFetch6;
+  NV.resetTrip(); NV.stopSpeak();
+}
+
 // ── v2.16.0 내 말 + 상담원 답을 한 영역에 · 듣는 중 색 표시 · 목록 크게 단계 ──
 {
   window.show("view-navi");
@@ -4055,9 +4143,18 @@ check("nav_state 에 탈 역의 역 안 이동(station_ingress)을 싣고, 내�
   // 이동 중 — 알리지 않는다
   for (let k = 0; k <= 12; k++) I().noteFixForTest(fix(50 + k * 5, T + k * 5000), T + k * 5000);
   check("위치 고착: 움직이는 동안에는 알리지 않는다 (v2.31.0)", () => assert.equal(I().stuckCheckForTest(T + 60000), null));
-  // 같은 자리 측위가 45초 넘게 — frozen
+  // 같은 자리 측위가 45초 넘게 — 단말이 흔들리는 중(움직이고 있다)이면 frozen
+  const bins = (t1, sd) => Array.from({ length: 30 }, (_, i) => ({ sec: Math.floor(t1 / 1000) - 29 + i, sd }));
   for (let k = 1; k <= 10; k++) I().noteFixForTest(fix(110, T + 60000 + k * 5000), T + 60000 + k * 5000);
-  check("위치 고착: 측위는 오는데 45초 넘게 같은 자리면 알린다 (v2.31.0)", () => {
+  I().motionForTest(bins(T + 112000, 0.05));
+  check("위치 고착: 같은 자리라도 단말이 가만히 있으면(신호 대기·멈춤) 알리지 않는다 (v2.33.2)", () => {
+    assert.equal(I().stuckCheckForTest(T + 112000), null);
+    assert.equal(I().stuckState(), null);
+  });
+  I().motionForTest([]);
+  check("위치 고착: 흔들림 자료가 없는 단말이면 frozen 은 알리지 않는다 (v2.33.2)", () => assert.equal(I().stuckCheckForTest(T + 112000), null));
+  I().motionForTest(bins(T + 112000, 0.6));
+  check("위치 고착: 측위는 오는데 45초 넘게 같은 자리이고 단말은 움직이면 알린다 (v2.31.0 · v2.33.2)", () => {
     assert.equal(I().stuckCheckForTest(T + 112000), "frozen");
     assert.match($("naviStatus").textContent, /위치가 한동안 바뀌지 않고 있습니다/);
   });
@@ -4089,7 +4186,23 @@ check("nav_state 에 탈 역의 역 안 이동(station_ingress)을 싣고, 내�
   const T4 = T + 1200000, off = { lat: P(205)[0], lng: P(205)[1] + 22 / 88400 };
   I().setHere(off);
   for (let k = 0; k <= 12; k++) I().noteFixForTest(fix(205, T4 + k * 5000, 22), T4 + k * 5000);
+  I().motionForTest(bins(T4 + 61000, 0.6));
   check("위치 고착: 횡단 단계라도 경로에서 20m 떨어져 멈추면 알린다 — S-16 (v2.31.0)", () => assert.equal(I().stuckCheckForTest(T4 + 61000), "frozen"));
+  check("흔들림: 1초 묶음 표준편차로 움직임을 잰다 (v2.33.2)", () => {
+    I().motionForTest([]);
+    const now = Date.now();
+    for (let i = 0; i < 30; i++) I().motionForTest(Array.from({ length: i + 1 }, (_, j) => ({ sec: Math.floor(now / 1000) - 29 + j, sd: j % 2 ? 0.5 : 0.1 })));
+    const st = I().motionState(now);
+    assert.equal(st.n, 30); assert.equal(st.share, 0.5); assert.equal(st.moving, true);
+    I().motionForTest(Array.from({ length: 8 }, (_, j) => ({ sec: Math.floor(now / 1000) - j, sd: 1 })));
+    assert.equal(I().motionState(now).moving, null, "10초 미만 자료는 판단하지 않는다");
+  });
+  check("흔들림: devicemotion 표본을 1초씩 묶는다 (v2.33.2)", () => {
+    I().motionForTest([]);
+    const ev = (v) => ({ accelerationIncludingGravity: { x: 0, y: 0, z: 9.8 + v } });
+    for (let i = 0; i < 20; i++) I().onMotionForTest(ev(i % 2 ? 0.8 : -0.8));
+    assert.equal(I().motionState(Date.now()).moving, null);   // 아직 1초가 닫히지 않았다
+  });
   check("위치 고착: 측위 루프·안내 시작·경로 지우기에 걸려 있다 (소스 가드, v2.31.0)", () => {
     assert.match(HTML, /if\(guiding && !simActive\) _noteFix\(pos\);/);
     assert.match(HTML, /followCamera\(\); _stuckCheck\(\); \}/);
