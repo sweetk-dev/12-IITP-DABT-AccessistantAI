@@ -1549,7 +1549,20 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   const NAVI_BARGE_NEED = 4;          // 그중 4청크 이상
   const naviBargeWin = [];
   const naviPreRoll = [];             // 게이트가 닫힌 동안의 최근 프레임(base64) — barge 성립 시 먼저 보낸다
-  const naviBargeHit = (rms) => {
+  // v2.33.2 — 바람·차 소리로 안내가 끊겼다(현장 2026-11-16: 안내 118문장 중 11번 끊기·18번 줄이기, 그 뒤 말은 0건).
+  // 크기만 보지 않고 사람 목소리처럼 주기가 있는 소리(유성음 정도 vz, mic-processor.js)만 센다.
+  // 같은 날 휴대폰 마이크 녹음으로 맞춘 값: 0.5 이면 끊기 11→2·줄이기 18→5, 말 28건 중 3초 안 성립 19→18건.
+  // vz 가 없는 청크(옛 mic-processor.js 가 캐시에 남은 경우)는 종전대로 크기만 본다.
+  const NAVI_VOICED_MIN = 0.5;
+  let naviVoiceSkipAt = 0;
+  const naviBargeHit = (rms, vz) => {
+    if (vz != null && vz < NAVI_VOICED_MIN) {
+      if ((rms || 0) >= NAVI_BARGE_RMS && Date.now() - naviVoiceSkipAt > 3000) {   // 큰 소리를 말소리가 아니라고 본 기록(실증 계정만)
+        naviVoiceSkipAt = Date.now();
+        trialEv("navi_voice_skip", { rms: Math.round((rms || 0) * 1000) / 1000, vz: Math.round(vz * 100) / 100 });
+      }
+      rms = 0;
+    }
     naviBargeWin.push(rms || 0);
     if (naviBargeWin.length > NAVI_BARGE_WIN) naviBargeWin.shift();
     return naviBargeWin.filter((r) => r >= NAVI_BARGE_RMS).length >= NAVI_BARGE_NEED;
@@ -1562,7 +1575,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   const NAVI_DUCK_LAST = 3;          // 최근 3청크(128ms × 3 ≈ 0.38초)
   const NAVI_DUCK_NEED = 2;          // 그중 2청크 이상이면 조기 감지
   const naviDuckHit = () => naviBargeWin.slice(-NAVI_DUCK_LAST).filter((r) => r >= NAVI_BARGE_RMS).length >= NAVI_DUCK_NEED;
-  window.__NAVI_GATE = { hit: naviBargeHit, duck: naviDuckHit, reset: naviBargeReset, RMS: NAVI_BARGE_RMS, WIN: NAVI_BARGE_WIN, NEED: NAVI_BARGE_NEED };
+  window.__NAVI_GATE = { hit: naviBargeHit, duck: naviDuckHit, reset: naviBargeReset, RMS: NAVI_BARGE_RMS, WIN: NAVI_BARGE_WIN, NEED: NAVI_BARGE_NEED, VOICED: NAVI_VOICED_MIN };
 
   // 에코 제거 범위 (v2.30.3) — echoCancellation: true 만으로는 Android WebView 에서 페이지가 Web Audio 로 재생하는
   // 상담원·안내 음성이 마이크에서 지워지지 않아(실기기 2026-11-12, WebView 156) 상담원이 자기 말을 듣고 답했다.
@@ -1595,7 +1608,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       }
     } catch (e) { micHeadset = false; }
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.audioWorklet.addModule(withBase("/static/mic-processor.js"));
+    await audioCtx.audioWorklet.addModule(withBase("/static/mic-processor.js?v=2.33.2"));   // 유성음 정도(vz)가 든 판 (v2.33.2)
 
     micNode = audioCtx.createMediaStreamSource(micStream);
     micProcessor = new AudioWorkletNode(audioCtx, "mic-processor", {
@@ -1648,7 +1661,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
           naviPreRoll.push(btoa(binp));
           if (naviPreRoll.length > NAVI_BARGE_WIN) naviPreRoll.shift();
           // 이어마이크여도 기준을 낮추지 않는다 — 현장 점검(10/16)에서 거리 소음으로 안내가 끊긴 경우가 절반이었다 (#359)
-          if (naviBargeHit(m.rms || 0)) {
+          if (naviBargeHit(m.rms || 0, m.vz)) {
             const pre = naviPreRoll.splice(0);
             naviBargeReset();
             if (window.NAVI && window.NAVI.bargeStop) window.NAVI.bargeStop();
@@ -2326,6 +2339,7 @@ window.NAVI = (function(){
     if(!voiceOn || !text){ if(text) _tev("navi_muted", {text:text}); return; }
     opts = opts || {};
     cancelResume();               // 새 발화가 시작되면 예약된 안내 복귀는 폐기 (#248)
+    _bargeCut = null;             // 새 안내가 나오면 끊긴 문장은 잇지 않는다 (v2.33.2)
     if(opts.queue){
       if(opts.kind === "interim"){
         // 중간 거리 안내는 스텝 안내가 대기 중이면 의미가 없다
@@ -2347,7 +2361,7 @@ window.NAVI = (function(){
     var seq = speakSeq;
     var est = _estSpeakSec(text) * 1000, now = Date.now();
     // 합성 대기 단계 — 재생 시작 전에는 끝났다고 보지 않는다 (v1.43.1)
-    speakPlaying = {text:text, ended:false, phase:"loading", loadDeadline: now + SPEAK_LOAD_MAX_MS,
+    speakPlaying = {text:text, kind:kind, ended:false, phase:"loading", loadDeadline: now + SPEAK_LOAD_MAX_MS,
                     minEnd: 0, maxEnd: 0};        // 재생 창은 _markPlaying 에서 실제 시작 시각으로 잡는다
     speakLoadTimer = setTimeout(function(){
       // 합성이 너무 오래 걸린다 — 이 문장은 기기 내장 TTS 로 말하고, 서버 응답은 캐시에만 남긴다
@@ -3183,16 +3197,47 @@ window.NAVI = (function(){
      STUCK_CROSS_OFF_M 이상 떨어져 멈춘 경우만 본다(S-16 은 경로에서 20~25m). 알릴 때 위치 감시를 한 번 새로 연다. */
   var STUCK_NOFIX_MS = 20000, STUCK_FROZEN_MS = 45000, STUCK_MOVE_M = 4, STUCK_RESUME_M = 10,
       STUCK_CROSS_OFF_M = 12, STUCK_REWARN_MS = 120000;
+  /* v2.33.2 — 멈춰 서 있을 때(건널목 신호 대기·사진 촬영) frozen 이 울렸다(현장 2026-11-16: 16번 모두 멈춰 있던 때,
+     측위는 오차 3~8m 로 계속 들어옴). 위치만으로는 '서 있음'과 '단말 위치가 굳음'을 가를 수 없어 단말 흔들림(가속도)을 함께 본다.
+       · 최근 STUCK_MOTION_WIN_MS 동안 1초 묶음마다 가속도 크기의 표준편차를 재서, STUCK_MOTION_STD 이상인 묶음이
+         STUCK_MOTION_SHARE 이상이면 '움직이는 중' — 이때만 frozen 을 알린다(위치는 그대로인데 몸은 움직인다)
+       · 가속도를 받지 못하는 단말이면 frozen 은 알리지 않는다(nofix 는 그대로). 알리지 않은 경우는 loc_still 로 남긴다
+     기준값은 리허설(11/20)에서 loc_still·loc_stuck 의 motion 값으로 다시 맞춘다. */
+  var STUCK_MOTION_WIN_MS = 30000, STUCK_MOTION_STD = 0.3, STUCK_MOTION_SHARE = 0.5;
+  var _motionBins = [], _motionCur = null, _motionOn = false, _stillLogAt = 0;
+  function _onMotion(e){
+    var g = e && (e.accelerationIncludingGravity || e.acceleration);
+    if(!g || g.x == null) return;
+    var m = Math.sqrt(g.x * g.x + g.y * g.y + g.z * g.z), sec = Math.floor(Date.now() / 1000);
+    if(!_motionCur || _motionCur.sec !== sec){
+      if(_motionCur && _motionCur.n >= 5) _motionBins.push({sec: _motionCur.sec, sd: Math.sqrt(Math.max(0, _motionCur.q / _motionCur.n - Math.pow(_motionCur.s / _motionCur.n, 2)))});
+      while(_motionBins.length && _motionBins[0].sec < sec - 120) _motionBins.shift();
+      _motionCur = {sec: sec, n: 0, s: 0, q: 0};
+    }
+    _motionCur.n++; _motionCur.s += m; _motionCur.q += m * m;
+  }
+  function _motionStart(){ if(_motionOn) return; _motionOn = true; _motionBins = []; _motionCur = null; try{ window.addEventListener("devicemotion", _onMotion); }catch(e){} }
+  function _motionStop(){ if(!_motionOn) return; _motionOn = false; try{ window.removeEventListener("devicemotion", _onMotion); }catch(e){} _motionBins = []; _motionCur = null; }
+  // 반환: {moving: true|false|null(자료 없음), share, n}
+  function _motionState(now){
+    var from = Math.floor(((now || Date.now()) - STUCK_MOTION_WIN_MS) / 1000);
+    var bs = _motionBins.filter(function(b){ return b.sec >= from; });
+    if(bs.length < 10) return {moving: null, share: null, n: bs.length};
+    var hi = bs.filter(function(b){ return b.sd >= STUCK_MOTION_STD; }).length, share = hi / bs.length;
+    return {moving: share >= STUCK_MOTION_SHARE, share: Math.round(share * 100) / 100, n: bs.length};
+  }
   var _fixLog = [], _lastFixWall = 0, _lastFixTs = null, _stuck = null, _stuckMsg = null, _stuckLastWarn = 0, stuckTimer = null;
   function _stuckReset(){
     _fixLog = []; _lastFixWall = Date.now(); _lastFixTs = null; _stuck = null; _stuckLastWarn = 0;
     if(_stuckMsg !== null){ var el = $("naviStatus"); if(el && el.textContent === _stuckMsg) setStatusWarn(false); _stuckMsg = null; }
     if(stuckTimer){ clearInterval(stuckTimer); stuckTimer = null; }
+    _motionStop(); _stillLogAt = 0;
   }
   function _stuckArm(){
+    _motionStart();
     if(stuckTimer) clearInterval(stuckTimer);
     stuckTimer = setInterval(function(){
-      if(!guiding){ clearInterval(stuckTimer); stuckTimer = null; return; }
+      if(!guiding){ clearInterval(stuckTimer); stuckTimer = null; _motionStop(); return; }
       _stuckCheck(Date.now());
     }, 5000);
   }
@@ -3231,11 +3276,19 @@ window.NAVI = (function(){
       if(anchor && win.length >= 3 && _hav(anchor, last) <= STUCK_MOVE_M &&
          win.every(function(f){ return _hav(f, last) <= STUCK_MOVE_M; })) kind = "frozen";
     }
+    var mo = null;
+    if(kind === "frozen"){
+      mo = _motionState(now);
+      if(mo.moving !== true){                    // 서 있다(또는 흔들림 자료가 없다) — 알리지 않는다 (v2.33.2)
+        if(now - _stillLogAt > 60000){ _stillLogAt = now; _tev("loc_still", {step: stepIdx, motion: mo.share, bins: mo.n}); }
+        return null;
+      }
+    }
     if(!kind) return null;
     var at = _fixLog.length ? _fixLog[_fixLog.length - 1] : (here ? {lat: here.lat, lng: here.lng} : {lat: 0, lng: 0});
     _stuck = {kind: kind, since: now, at: {lat: at.lat, lng: at.lng}};
     _stuckLastWarn = now;
-    _tev("loc_stuck", {kind: kind, step: stepIdx, acc: lastFixAcc != null ? Math.round(lastFixAcc) : null});
+    _tev("loc_stuck", {kind: kind, step: stepIdx, acc: lastFixAcc != null ? Math.round(lastFixAcc) : null, motion: mo ? mo.share : null});
     if(kind === "nofix"){
       _stuckMsg = "위치 신호가 잠시 끊겼습니다. 안내가 실제 위치와 다를 수 있으니 주변을 확인하며 이동해 주세요.";
       speak("위치 신호가 잠시 끊겼어요. 주변을 확인하며 천천히 이동해 주세요.");
@@ -3637,10 +3690,60 @@ window.NAVI = (function(){
     _clearHeard();
     _tev("navi_unduck");
   }
+  /* 끊긴 곳부터 잇기 (v2.33.2) — 소리로 끊겼는데 상담원 답이 없으면(주변 소리) 그 문장을 처음부터 다시 읽지 않고
+     끊긴 자리 1초 앞부터 이어 들려준다(현장 2026-11-16: "장내로를 따라 80m 직진합니다" 30초 동안 5번 처음부터).
+     서버 음성으로 재생 중이던 문장만 — 기기 내장 음성은 중간부터 이을 수 없어 종전대로 다시 읽는다. */
+  var BARGE_CUT_KEEP_MS = 20000, BARGE_CUT_BACK_S = 1.0, _bargeCut = null;
+  function _takeBargeCut(){
+    _bargeCut = null;
+    try{
+      if(!speakPlaying || speakPlaying.phase !== "playing" || speakPlaying.ended || !ttsAudio || !ttsAudio.src) return;
+      var pos = +ttsAudio.currentTime || 0;
+      if(isFinite(ttsAudio.duration) && ttsAudio.duration > 0 && pos >= ttsAudio.duration - 0.3) return;   // 거의 다 들었다
+      _bargeCut = {url: ttsAudio.src, pos: pos, text: speakPlaying.text, kind: speakPlaying.kind || "step",
+                   key: _resumeKey(), ts: Date.now(), queue: speakQueue.slice()};
+    }catch(e){ _bargeCut = null; }
+  }
+  // 반환: 이어 재생을 시작했으면 true. 실패하면 false — 부른 쪽이 종전대로 문장을 다시 읽는다
+  function _playBargeCut(){
+    var c = _bargeCut; _bargeCut = null;
+    if(!c || c.key !== _resumeKey() || Date.now() - c.ts > BARGE_CUT_KEEP_MS) return false;
+    _stopCurrent();
+    var seq = speakSeq, from = c.pos < 1.5 ? 0 : Math.max(0, c.pos - BARGE_CUT_BACK_S);
+    var a;
+    try{ a = new Audio(c.url); }catch(e){ return false; }
+    ttsAudio = a;
+    speakQueue = c.queue.concat(speakQueue);
+    speakPlaying = {text: c.text, kind: c.kind, ended: false, phase: "loading", loadDeadline: Date.now() + 3000, minEnd: 0, maxEnd: 0};
+    a.volume = NAVI_TTS_VOL;
+    _setNaviSpeaking(true);
+    var redo = function(){                       // 이어 재생이 안 되면 그 문장을 처음부터
+      if(seq !== speakSeq) return;
+      _setNaviSpeaking(false); speakPlaying = null; ttsAudio = null;
+      speakQueue.unshift({text: c.text, kind: c.kind}); _drainSpeak();
+    };
+    a.onended = function(){ _speakEnded(); };
+    a.onerror = redo;
+    var went = false;
+    var go = function(){
+      if(went || seq !== speakSeq) return;        // 메타데이터 사건과 대기 시간 중 먼저 온 쪽 한 번만
+      went = true;
+      try{ if(from > 0) a.currentTime = from; }catch(e){}
+      a.play().then(function(){
+        if(seq !== speakSeq) return;
+        var left = (isFinite(a.duration) && a.duration > 0) ? (a.duration - from) * 1000 : _estSpeakSec(c.text) * 1000;
+        _tev("navi_resume_cut", {text: c.text, from: Math.round(from * 10) / 10});
+        _markPlaying(Math.max(300, left));
+      }).catch(redo);
+    };
+    if(a.readyState >= 1 || from === 0) go();
+    else { a.addEventListener("loadedmetadata", go, {once: true}); setTimeout(go, 800); }
+    return true;
+  }
   function bargeStop(){
     if(simActive) return;             // 모의 주행은 안내를 끝까지 듣는 용도 — 에코 오탐으로 끊지 않는다 (v1.43.2)
     if(duckTimer){ clearTimeout(duckTimer); duckTimer = null; }   // 끊는다 — 소음 복귀 타이머는 필요 없다 (v2.14.0)
-    if(window.__NAVI_SPEAKING){ try{ console.info("[navi] barge-in: 사용자 발화 감지로 안내 중단"); }catch(e){} _tev("navi_barge"); sendActivity("navi_barge"); stopSpeak(); }
+    if(window.__NAVI_SPEAKING){ try{ console.info("[navi] barge-in: 사용자 발화 감지로 안내 중단"); }catch(e){} _tev("navi_barge"); sendActivity("navi_barge"); _takeBargeCut(); stopSpeak(); }
     if(guiding) scheduleResume(2500, {barge:true});   // 대화가 이어지지 않으면 곧 안내로 돌아온다 (#359, 종전 8초)
   }
   function cancelResume(){ if(resumePoll){ clearInterval(resumePoll); resumePoll=null; } }
@@ -3673,6 +3776,8 @@ window.NAVI = (function(){
       var st = steps[stepIdx];
       // "안내를 이어갈게요"는 상담원과 대화가 있었을 때만 붙인다 — 소리로 끊긴 문장은 그대로 다시 읽는다 (#359)
       // 같은 단계에서 되풀이되면 짧게, 더 되풀이되면 말하지 않는다 (v2.26.0, _resumeDecide)
+      if(opt.barge && !sawAi && _bargeCut && _playBargeCut()) return;   // 주변 소리로 끊겼다 — 끊긴 곳부터 (v2.33.2)
+      _bargeCut = null;
       if(st){
         var ru = _resumeDecide(!!opt.barge && !sawAi);
         if(ru) speak(((sawAi || !opt.barge) ? "안내를 이어갈게요. " : "") + ru);
@@ -7062,6 +7167,8 @@ window.NAVI = (function(){
                                      openSosSheet:openSosSheet, sosItems:function(){return sosItems;}, resetSosLoaded:function(k){ delete sosLoaded[k]; }, onUiAction:onUiAction,
                                      guiding:function(){return guiding;},
                                      noteFixForTest:_noteFix, stuckCheckForTest:_stuckCheck, stuckState:function(){ return _stuck; }, stuckResetForTest:_stuckReset,
+                                     motionForTest:function(bins){ _motionBins = bins.slice(); _motionCur = null; }, motionState:_motionState, onMotionForTest:_onMotion,
+                                     bargeCut:function(){ return _bargeCut; }, playBargeCutForTest:_playBargeCut, takeBargeCutForTest:_takeBargeCut,
                                      egressWhere:function(){return egressWhere;}, gotoStep:gotoStep,
                                      stationHint:function(){return stationHint;},
                                      maybeAutoExit:maybeAutoExit, stationWait:stationWait, undoAutoExit:undoAutoExit,

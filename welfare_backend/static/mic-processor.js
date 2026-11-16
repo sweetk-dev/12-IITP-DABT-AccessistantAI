@@ -16,7 +16,10 @@
  * ScriptProcessorNode(deprecated) 대비 메모리 누수·블로킹 없음.
  *
  * 메인에서 받는 메시지 포맷:
- *   { type: 'pcm', data: Int16Array.buffer, rms: float }            — 모든 청크
+ *   { type: 'pcm', data: Int16Array.buffer, rms: float, vz: float } — 모든 청크
+ *     vz: 유성음 정도(0~1) — 300Hz 고역 통과 신호의 정규화 자기상관 최대값(80~400Hz 주기).
+ *         사람 목소리는 주기가 뚜렷해 높고(현장 2026-11-16 말소리 청크 중앙 0.71), 바람·차 소리는
+ *         주기가 없어 낮다(같은 날 안내를 끊은 소리 청크 중앙 0.27). 소리가 작으면(rms < 0.02) 0 으로 둔다.
  *   { type: 'voice_state', voiced: bool, rms: float }                — 상태 전환 시에만
  *
  * 옵션 (processorOptions 로 전달):
@@ -51,6 +54,14 @@ class MicProcessor extends AudioWorkletProcessor {
     // 발화 감지 상태
     this.consecutiveVoiced = 0;
     this.isCurrentlyVoiced = false;
+
+    // 유성음 정도(vz) 계산용 — 300Hz 2차 버터워스 고역 통과 두 단(16kHz 기준). 바람 소리는 낮은 대역에 몰린다
+    const w0 = 2 * Math.PI * 300 / this.targetSR, cw = Math.cos(w0), al = Math.sin(w0) / (2 * Math.SQRT1_2);
+    const a0 = 1 + al;
+    this.hpB = [(1 + cw) / 2 / a0, -(1 + cw) / a0, (1 + cw) / 2 / a0];
+    this.hpA = [-2 * cw / a0, (1 - al) / a0];
+    this.hpZ = [[0, 0, 0, 0], [0, 0, 0, 0]];   // 단마다 x1, x2, y1, y2
+    this.hpBuf = new Float32Array(this.chunkFrames * 2);
 
     this.port.onmessage = (e) => {
       const m = e.data || {};
@@ -93,12 +104,50 @@ class MicProcessor extends AudioWorkletProcessor {
     return true;
   }
 
+  // 고역 통과 — 상태를 청크 사이에 이어 간다(조용한 청크도 거른다)
+  highpass(frames) {
+    const b = this.hpB, a = this.hpA, out = this.hpBuf;
+    for (let i = 0; i < frames; i++) out[i] = this.downBuffer[i];
+    for (let st = 0; st < 2; st++) {
+      const z = this.hpZ[st];
+      for (let i = 0; i < frames; i++) {
+        const x = out[i];
+        const y = b[0] * x + b[1] * z[0] + b[2] * z[1] - a[0] * z[2] - a[1] * z[3];
+        z[1] = z[0]; z[0] = x; z[3] = z[2]; z[2] = y;
+        out[i] = y;
+      }
+    }
+    return out;
+  }
+
+  // 유성음 정도 — 정규화 자기상관의 최대값(지연 40~200 표본 = 400~80Hz).
+  // 오디오 스레드를 오래 잡지 않게 곱의 합은 표본을 하나 걸러 더한다(청크 길이는 그대로).
+  voicing(x, frames) {
+    let mean = 0;
+    for (let i = 0; i < frames; i++) mean += x[i];
+    mean /= frames;
+    for (let i = 0; i < frames; i++) x[i] -= mean;
+    let r0 = 0;
+    for (let i = 0; i < frames; i += 2) r0 += x[i] * x[i];
+    if (r0 <= 1e-9) return 0;
+    let best = 0;
+    const kmax = Math.min(200, frames - 1);
+    for (let k = 40; k <= kmax; k++) {
+      let r = 0;
+      for (let i = 0; i + k < frames; i += 2) r += x[i] * x[i + k];
+      if (r > best) best = r;
+    }
+    return best / r0;
+  }
+
   flushChunk() {
     const frames = this.downIndex;
     // 2) RMS 계산 — UI 표시용 voice_state 만 산출 (오디오 전송 게이트로는 사용하지 않음)
     let sumSq = 0;
     for (let i = 0; i < frames; i++) sumSq += this.downBuffer[i] * this.downBuffer[i];
     const rms = Math.sqrt(sumSq / frames);
+    const hp = this.highpass(frames);
+    const vz = rms >= 0.02 ? this.voicing(hp, frames) : 0;   // 끊기 기준(0.028)보다 작은 소리는 재지 않는다
     const voiced = rms >= this.rmsThreshold;
 
     if (voiced) {
@@ -123,7 +172,7 @@ class MicProcessor extends AudioWorkletProcessor {
       pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
     }
     // transferable 로 zero-copy 전송
-    this.port.postMessage({ type: 'pcm', data: pcm.buffer, rms }, [pcm.buffer]);
+    this.port.postMessage({ type: 'pcm', data: pcm.buffer, rms, vz }, [pcm.buffer]);
 
     // 4) 다운 버퍼 리셋 (잔여 샘플 보존 위해 큰 버퍼 활용 — 다음 호출에 이어 채움)
     this.downIndex = 0;
