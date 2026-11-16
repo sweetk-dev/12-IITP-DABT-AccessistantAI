@@ -2045,7 +2045,12 @@ window.NAVI = (function(){
     // 무엇으로 바뀌었는지는 배지가 알려 주므로 안내 줄은 수치 위주로 짧게 (#306). 음성은 전체 문장
     status(profileLabel(wheelProfile) + " 기준: " + lim); if(!viaVoice) speak(msg);
     sendActivity("profile_select");
-    if(tripDest && route){ rerouteNote = "경로를 재 탐색 합니다 — " + profileLabel(wheelProfile) + " 기준"; routeReason = "profile"; requestRoute(tripDest); }
+    if(tripDest && route){
+      rerouteNote = "경로를 재 탐색 합니다 — " + profileLabel(wheelProfile) + " 기준"; routeReason = "profile";
+      // 실제 안내 중이면 새 기준 경로로 안내를 이어 간다 — 전에는 경로만 바뀌고 안내가 꺼졌다 (v2.33.3)
+      if(guiding && !simActive){ cancelTripResume(); autoResumeGuide = true; }
+      requestRoute(tripDest, {sameTrip: true, lead: profileLabel(wheelProfile) + " 기준으로 바꿨습니다."});
+    }
   }
   // 저상버스 우선 (#291, 02 v1.22.0) — null=서버 기본(휠체어 프로필 on). 스위치로 바꾸면 값이 고정된다.
   var lowFloorPref=null, rerouteNote=null;
@@ -4505,10 +4510,16 @@ window.NAVI = (function(){
        opts : {reroute: 토큰} — 안내 중 경로 이탈로 인한 자동 재탐색일 때만 준다(maybeReroute 가 발급).
               이때는 응답을 기다리는 동안 기존 경로·안내를 유지하고, 새 경로를 받았을 때만 교체한다.
               실패(서버 오류 응답·통신 예외·출발지 확인 불가)하면 기존 경로로 계속 안내하고 그 사실을 알린다.
+       opts : {sameTrip:true, lead:"…"} — 같은 여정에서 조건만 바꿔 다시 찾을 때(유형·이동 방식·저상버스, v2.33.3).
+              실제 안내 중이 아니면(경로 미리보기·모의 주행) 지금 보이는 경로의 출발지에서 다시 찾는다.
+              lead 는 다시 찾지 못했을 때 안내 앞에 붙이는 문장이다(무엇이 바뀌었는지가 실패 안내에 묻히지 않게).
      반환값 없음(Promise). 예외는 밖으로 내보내지 않는다. */
   async function requestRoute(spot, opts){
     if(!routeAllowed()){ noRouteNotice(); return; }   // 경로 추천이 없는 유형 (v2.22.0)
     var rerouteTok = (opts && opts.reroute) || 0;
+    var sameTrip = !!(opts && opts.sameTrip) && !rerouteTok;
+    var lead = (opts && opts.lead) ? opts.lead + " " : "";
+    var wasSim = simActive;
     if(!rerouteTok){
       // 재탐색이 아닌 경로 요청 — 응답을 기다리던 이탈 재탐색이 있으면 무효로 만든다(늦게 온 응답이 이 요청의 결과를 덮지 않게).
       // 이 요청을 부른 쪽이 직전에 건 안내 자동 재개 예약(이어서 안내·저상 정보 만료·역 안 출발)은 그대로 살린다.
@@ -4521,16 +4532,23 @@ window.NAVI = (function(){
     var prevDest = tripDest;
     tripDest = spot;   // 어떤 경로로 안내가 시작됐든 이 도착지를 기억한다 (#210)
     var o = activeOrigin();
+    // v2.33.3 — 경로 미리보기·모의 주행 중에 조건을 바꾸면 휴대폰의 실제 위치에서 다시 찾았다. 말로 "관악역에서" 받은
+    // 경로가 지금 서 있는 곳 출발로 바뀌고, 그곳이 안양 밖이면 "현재 위치가 안양시 밖" 안내로 끝났다
+    // (모의 주행 중 유형 전환, 2026-11-16). 실제로 안내 중일 때만 현재 위치에서 다시 찾는다.
+    if(sameTrip && !(guiding && !simActive)){
+      var ro = route && route.origin;
+      if(ro && isFinite(+ro.lat) && isFinite(+ro.lng) && inServiceArea({lat:+ro.lat, lng:+ro.lng})) o = {lat:+ro.lat, lng:+ro.lng};
+    }
     if(rerouteTok && (!o || !inServiceArea(o))){ rerouteFailed(); return; }   // 재탐색 출발지를 쓸 수 없다 — 기존 안내 유지
     if(!o){
-      status("현재 위치를 확인할 수 없습니다. 위치 권한을 허용하거나 지도를 눌러 출발지를 지정해 주세요.");
-      speak("현재 위치를 확인할 수 없습니다. 지도를 눌러 출발지를 지정해 주세요.");
+      status(lead + "현재 위치를 확인할 수 없습니다. 위치 권한을 허용하거나 지도를 눌러 출발지를 지정해 주세요.");
+      speak(lead + "현재 위치를 확인할 수 없습니다. 지도를 눌러 출발지를 지정해 주세요.");
       autoResumeGuide = false;   // 요청을 보내지 못했다 — 걸어 둔 안내 자동 재개 예약이 다음 수동 경로로 새지 않게 한다
       return;
     }
     if(!inServiceArea(o)){
-      status("현재 위치가 " + regionName() + " 밖입니다. 지도를 눌러 출발지를 지정해 주세요.");
-      speak("현재 위치가 " + regionName() + " 밖입니다. 지도를 눌러 출발지를 지정해 주세요.");
+      status(lead + "현재 위치가 " + regionName() + " 밖입니다. 지도를 눌러 출발지를 지정해 주세요.");
+      speak(lead + "현재 위치가 " + regionName() + " 밖입니다. 지도를 눌러 출발지를 지정해 주세요.");
       autoResumeGuide = false;   // 위와 같은 이유 — 요청 없이 끝나는 경로에서는 예약을 지운다
       return;
     }
@@ -4622,7 +4640,7 @@ window.NAVI = (function(){
           tripDest = null;
           renderFailPanel(em);
         }
-        status(em); speak(em); return;
+        status(lead + em); speak(lead + em); return;
       }
       setStatusWarn(false);
       lastModeLabel = data.mode_label || null;     // 자동 추천이 고른 방식의 표시 이름 (#251)
@@ -4633,6 +4651,11 @@ window.NAVI = (function(){
         offRouteWarnMsg = null;   // 새 경로로 바뀌었다 — 이전 경로의 이탈 경고 표식은 더 볼 필요가 없다
       }
       showRoute(data.ui_action.route, spot.name, rerouteTok ? {autoResume: true} : null);
+      if(wasSim && sameTrip){
+        // 모의 주행 중 조건을 바꿨다 — 새 경로가 오면 모의 주행은 멈춘다(showRoute). 멈춘 이유를 알린다 (v2.33.3)
+        var sn = "바꾼 기준으로 경로를 다시 찾았습니다. 모의 주행은 멈췄으니, 다시 보시려면 모의 주행을 눌러 주세요.";
+        status(sn); speak(sn, {queue: true});
+      }
     }catch(e){
       if(abortTimer){ clearTimeout(abortTimer); abortTimer = null; }
       if(rerouteTok){
@@ -4640,7 +4663,8 @@ window.NAVI = (function(){
         if(rerouteTok === rerouteToken){ routeBusy(false); if(guiding) rerouteFailed(); }
         return;
       }
-      routeBusy(false); autoResumeGuide = false; status("경로 서비스에 연결하지 못했습니다.");
+      routeBusy(false); autoResumeGuide = false; status(lead + "경로 서비스에 연결하지 못했습니다.");
+      if(lead) speak(lead + "경로 서비스에 연결하지 못했습니다.");
     }
   }
 
@@ -4800,7 +4824,7 @@ window.NAVI = (function(){
         speak("경로를 재 탐색 합니다.");
         sendActivity("low_floor_toggle");
         routeReason = "low_floor";
-        requestRoute(tripDest);
+        requestRoute(tripDest, {sameTrip: true});
       });
       hrow.appendChild(lt);
     }
@@ -4840,7 +4864,7 @@ window.NAVI = (function(){
           routeMode = mk[0];
           sendActivity("mode_select");
           routeReason = "mode";
-          requestRoute(tripDest);
+          requestRoute(tripDest, {sameTrip: true});
         });
         mrow.appendChild(b);
       });
@@ -7145,7 +7169,7 @@ window.NAVI = (function(){
                                      speakBusy:speakBusy, stepUtterance:stepUtterance, drainSpeak:_drainSpeak,
                                      platformCautionSpeech:platformCautionSpeech,
                                      resetTrip:resetTrip, tripDest:function(){return tripDest;},
-                                     startGuidance:startGuidance, setHere:function(h){here=h;}, advanceStep:advanceStep,
+                                     startGuidance:startGuidance, startSimulation:startSimulation, isSim:function(){ return simActive; }, setHere:function(h){here=h;}, advanceStep:advanceStep,
                                      landmarks:function(){return landmarks;}, alongOnRoute:alongOnRoute,
                                      setLmLastTs:function(t){_lmLastTs=t;},
                                      lmDone:function(){return _lmDone;}, setLmKeepOnStart:function(v){_lmKeepOnStart=!!v;},
