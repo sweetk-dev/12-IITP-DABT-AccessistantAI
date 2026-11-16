@@ -2441,6 +2441,71 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
       assert.match(lastPlanQuery || "", /mode=walk_subway/, "재탐색 요청: " + lastPlanQuery);
     });
   }
+  {
+    // v2.33.3 — 경로 미리보기·모의 주행 중 유형을 바꾸면 지금 경로의 출발지에서 다시 찾는다.
+    // 전에는 휴대폰의 실제 위치에서 찾아, 그곳이 안양 밖이면 "현재 위치가 안양시 밖" 으로 끝났다(2026-11-16).
+    const NV3 = window.NAVI._internals();
+    const OUT = { lat: 37.4695, lng: 126.9228 };   // 안양시 범위 밖
+    const mkRoute = (withOrigin) => {
+      const R = JSON.parse(JSON.stringify(ROUTE.ui_action.route));
+      R.destination.poi_id = "TBF-1";
+      if (withOrigin) R.origin = { lat: 37.3900, lng: 126.9500 };
+      return R;
+    };
+    const other = () => (NAV.profile() === "wheelchair_electric" ? "wheelchair_manual" : "wheelchair_electric");
+    NAV.clearRouteDisplay(); NAV.resetTrip();
+    NV3.setHere(OUT);
+    NV3.showRoute(mkRoute(true), "테스트 무장애 공원");
+    NV3.startSimulation();
+    check("모의 주행이 시작됐다 (v2.33.3 준비)", () => assert.equal(NV3.isSim(), true));
+    spoken.length = 0; lastPlanQuery = null;
+    NV3.setWheelProfile(other());
+    await sleep(120);
+    check("모의 주행 중 유형 전환 — 실제 위치(안양 밖)가 아니라 경로 출발지에서 다시 찾는다 (v2.33.3)", () => {
+      assert.match(lastPlanQuery || "", /origin_lat=37\.39(&|$)/, String(lastPlanQuery));
+      assert.match(lastPlanQuery || "", /origin_lng=126\.95(&|$)/);
+      assert.match(lastPlanQuery || "", /reason=profile/);
+      assert.ok(!spoken.some((t) => /밖입니다/.test(t)), JSON.stringify(spoken));
+    });
+    check("새 경로가 오면 모의 주행을 멈추고 그 이유를 알린다 (v2.33.3)", () => {
+      assert.equal(NV3.isSim(), false);
+      assert.ok(spoken.some((t) => /모의 주행은 멈췄으니/.test(t)) || /모의 주행은 멈췄으니/.test($("naviStatus").textContent),
+        JSON.stringify(spoken));
+    });
+    // 다시 찾기가 실패해도(범위 밖 응답) 기준이 바뀌었다는 사실은 실패 안내 앞에 함께 말한다
+    NAV.clearRouteDisplay(); NAV.resetTrip();
+    NV3.setHere({ lat: 37.3902, lng: 126.9502 });
+    NV3.showRoute(mkRoute(true), "테스트 무장애 공원");
+    const fetchOK = window.fetch;
+    window.fetch = async (url, opt) => (String(url).includes("plan_accessible_route")
+      ? { ok: true, json: async () => ({ status: "out_of_service_area" }) } : fetchOK(url, opt));
+    spoken.length = 0;
+    NV3.setWheelProfile(other());
+    await sleep(80);
+    window.fetch = fetchOK;
+    check("다시 찾지 못해도 '○○휠체어 기준으로 바꿨습니다' 를 실패 안내 앞에 붙인다 (v2.33.3)", () => {
+      assert.ok(spoken.some((t) => /휠체어 기준으로 바꿨습니다\. 이 서비스는 .+ 안에서만/.test(t)), JSON.stringify(spoken));
+      assert.match($("naviStatus").textContent, /기준으로 바꿨습니다/);
+    });
+    check("실패 안내 앞붙임 — 범위 밖 조기 종료 경로에도 같은 문장 (소스 가드, v2.33.3)", () => {
+      assert.match(HTML, /speak\(lead \+ "현재 위치가 " \+ regionName\(\) \+ " 밖입니다/);
+    });
+    // 실제 안내 중 — 현재 위치에서 다시 찾고, 새 경로로 안내를 이어 간다
+    NAV.clearRouteDisplay(); NAV.resetTrip();
+    NV3.setHere({ lat: 37.3902, lng: 126.9502 });
+    NV3.showRoute(mkRoute(true), "테스트 무장애 공원");
+    NV3.startGuidance();
+    lastPlanQuery = null;
+    NV3.setWheelProfile(other());
+    await sleep(120);
+    check("실제 안내 중 유형 전환 — 현재 위치에서 다시 찾는다 (v2.33.3)", () => {
+      assert.match(lastPlanQuery || "", /origin_lat=37\.3902/, String(lastPlanQuery));
+    });
+    check("실제 안내 중 유형 전환 — 새 기준 경로로 안내가 이어진다 (v2.33.3)", () => assert.equal(NV3.isGuiding(), true));
+    NAV.clearRouteDisplay(); NAV.resetTrip(); NV3.setHere(null);
+    if (NAV.profile() !== "wheelchair_electric") NV3.setWheelProfile("wheelchair_electric");
+    await sleep(30);
+  }
   window.fetch = prevFetchPF;
 }
 
