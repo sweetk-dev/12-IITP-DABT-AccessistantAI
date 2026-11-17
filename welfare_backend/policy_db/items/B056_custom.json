@@ -1,0 +1,80 @@
+{
+  "id": "B056",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "경기도 장애인 누림통장",
+  "short_summary": "경기도에 사는 만 19~23세(매년 12월 31일 기준) 심한 장애인이 저축하면 24개월간 월 10만 원 이내를 1:1로 매칭해 줍니다(유사 자산형성사업 기지원자 제외).",
+  "category": "소득지원",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": null,
+    "amount": "월 10만원이내 1:1 매칭지원",
+    "scope": "월 10만원이내 1:1 매칭지원"
+  },
+  "eligibility": {
+    "target": "경기도 거주 심한 장애인, 매년 12월 31일 기준 19세~23세 유사 자산형성지원사업 기지원자 제외",
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
+    "residency_criteria": "경기도 거주",
+    "has_income_criteria": false,
+    "age_min": 19,
+    "age_max": 23
+  },
+  "legal_basis": [
+    {
+      "name": "경기도 장애인자산형성지원조례",
+      "law_id": "2216784",
+      "law_serial_no": "1672017",
+      "law_ref_type": "ordin",
+      "enforcement_date": "20220106",
+      "mapping_status": "fuzzy",
+      "mapping_confidence": "fuzzy"
+    }
+  ],
+  "how_to_use": {
+    "default": "읍면동 주민센터 방문신청",
+    "exceptions": "지원 주기: 월"
+  },
+  "application": {},
+  "operating_agencies": [
+    {
+      "region": "경기도",
+      "agency": "경기도 복지국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": "읍면동 주민센터 방문신청",
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00004995&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 경기도 장애인복지과 031-8008-2431"
+    }
+  ],
+  "sources": [
+    {
+      "title": "복지로 지자체 복지서비스 — 경기도 장애인 누림통장",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00004995&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00004995, 원천 수정일 20260729)"
+      },
+      "accessed": "2026-10-15"
+    }
+  ],
+  "last_verified": "2026-10-15",
+  "version": "1.0.0",
+  "related_items": [
+    "B044",
+    "B046"
+  ],
+  "active": true
+}

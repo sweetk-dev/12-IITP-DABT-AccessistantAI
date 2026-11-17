@@ -389,6 +389,8 @@ def _add_by_path(doc: dict, path: str, value) -> bool:
     if last in parent and isinstance(parent[last], list):
         parent[last].append(value)
         return True
+    if "/" in last:                 # 경로 표기가 잘못된 키는 새로 만들지 않는다(_pointer_to_dot 참고)
+        return False
     if last not in parent:
         parent[last] = value
         return True
@@ -477,6 +479,22 @@ def _old_matches(op: dict, cur) -> bool:
     return a == b or b.startswith(a[:30]) or a.startswith(b[:30])
 
 
+def _pointer_to_dot(path):
+    """JSON Pointer 식 경로를 이 모듈의 점 경로로 바꾼다.
+
+    모델이 가끔 '/faq/2/a'·'exceptions_and_caveats/-' 처럼 JSON Patch 표기로 경로를 준다.
+    그대로 두면 '/' 가 든 문자열이 마지막 키로 취급돼 'exceptions_and_caveats/-' 라는 새 최상위 키가
+    생기고, 목록에 들어가야 할 내용이 상담 검색에서 빠진다(2026-11 운영 항목 8건에서 확인).
+    끝의 '-'(목록 끝에 덧붙이기)는 버린다 — add 는 대상이 목록이면 원래 덧붙인다.
+    """
+    if not isinstance(path, str) or "/" not in path:
+        return path
+    parts = [p for p in path.strip().strip("/").split("/") if p != ""]
+    if parts and parts[-1] == "-":
+        parts = parts[:-1]
+    return ".".join(parts)
+
+
 def _apply_patch(existing: dict, patches: list):
     """패치를 기존 문서에 적용한다. add/update 만 자동 적용하고, 패치에 명시되지
     않은 필드는 절대 변경하지 않는다(미변경 필드 불변 보장). delete 는 적용하지
@@ -487,7 +505,7 @@ def _apply_patch(existing: dict, patches: list):
     applied, review = [], []
     for op in (patches or []):
         kind = op.get("op")
-        path = op.get("path", "")
+        path = _pointer_to_dot(op.get("path", ""))
         if kind == "update":
             if isinstance(path, str) and _LIST_STEP_RE.search(path):
                 found, cur = _current_value(existing, path)   # 같은 묶음의 앞 패치와 무관하게 원래 값과 대조

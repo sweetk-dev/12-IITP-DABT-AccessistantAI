@@ -1,0 +1,83 @@
+{
+  "id": "B060",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "안양시 장애인가정 출산지원금",
+  "short_summary": "부 또는 모가 등록장애인이고 안양시에 6개월 이상 거주한 가정이 출산하면 심한 장애 100만 원 이내, 심하지 않은 장애 70만 원 이내를 지급합니다(출생일부터 1년 이내 신청).",
+  "category": "소득지원",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": null,
+    "amount": "1) 지원금액 - 심한장애 : 100만원 이내 - 심하지 않은 장애 : 70만원 이내",
+    "scope": "1) 지원금액 - 심한장애 : 100만원 이내 - 심하지 않은 장애 : 70만원 이내"
+  },
+  "eligibility": {
+    "target": "1) 지원대상 - 2010.1.1 이후 출생한 신생아의 부 또는 모가 등록장애인으로 구성된 세대 - 출생일 기준으로 신생아의 부 또는 모가 안양시 관내에 주민등록을 두고 6개월 이상 계속 거주한 장애인 가정 - 신생아의 출생일로부터 1년 이내 신청 / 선정기준: - 출생일 기준으로 신생아의 부 또는 모가 안양시 관내에 주민등록을 두고 6개월 이상 계속 거주한 장애인 가정 - 심한장애 100만원 이내, 심하지 않은 장애 70만원 이내 * 쌍생아의 경우 추가 출생 영아당 1/2가산 지급 * 국민기초생활보장법에 의거 해산급여를 받는 경우 차액 지급 * 안양시 출산 지원에 관한 조례에 의한 출산지원금 추가 지급 가능",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "residency_criteria": "안양시 거주",
+    "has_income_criteria": false,
+    "age_min": null,
+    "age_max": null
+  },
+  "legal_basis": [
+    {
+      "name": "안양시 장애인가정 출산지원금 지원에 관한 조례",
+      "law_id": "2146684",
+      "law_serial_no": "1794601",
+      "law_ref_type": "ordin",
+      "enforcement_date": "20230331",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    }
+  ],
+  "how_to_use": {
+    "default": "1) 신청방법 : 동 행정복지센터에 신청 2) 지급방법 : 대상가구 계좌에 시청에서 직접 입금",
+    "exceptions": "지원 주기: 수시"
+  },
+  "application": {},
+  "operating_agencies": [
+    {
+      "region": "안양시",
+      "agency": "경기도 안양시 복지문화국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": "1) 신청방법 : 동 행정복지센터에 신청 2) 지급방법 : 대상가구 계좌에 시청에서 직접 입금",
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00002478&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 안양시청 장애인복지과 031-8045-5580"
+    }
+  ],
+  "sources": [
+    {
+      "title": "복지로 지자체 복지서비스 — 장애인가정 출산장려금 지원",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00002478&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00002478, 원천 수정일 20260723)"
+      },
+      "accessed": "2026-10-15"
+    }
+  ],
+  "last_verified": "2026-10-15",
+  "version": "1.0.0",
+  "related_items": [
+    "B023"
+  ],
+  "exceptions_and_caveats": [
+    "국가 사업인 여성장애인 출산비용 지원(B023)과 별도인 안양시 조례 사업입니다. 부 또는 모가 장애인이면 대상입니다."
+  ],
+  "active": true
+}

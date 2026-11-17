@@ -1,0 +1,115 @@
+{
+  "id": "B061",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "안양시 상·하수도 요금 감면(심한 장애인 세대)",
+  "short_summary": "심한 장애인이 있는 세대는 수도요금·하수도사용료를 세대당 월 10㎥ 이하 사용분까지 감면받습니다.",
+  "category": "주거",
+  "benefit_type": "감면",
+  "supported_amount": {
+    "rate": null,
+    "amount": null,
+    "scope": "세대당 월 10㎥ 이하 사용분의 수도요금(수도급수 조례 제36조①5호)과 하수도사용료(하수도 조례 제22조①1호)"
+  },
+  "eligibility": {
+    "target": "안양시에서 수돗물을 쓰는 세대 중 심한 장애인이 있는 세대",
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
+    "residency_criteria": "안양시 급수 세대",
+    "has_income_criteria": false,
+    "age_min": null,
+    "age_max": null
+  },
+  "legal_basis": [
+    {
+      "name": "안양시 수도급수 조례",
+      "article": "제36조 제1항 제5호",
+      "url": "https://www.law.go.kr/자치법규/안양시수도급수조례",
+      "law_id": "2151007",
+      "law_serial_no": "2038719",
+      "law_ref_type": "ordin",
+      "enforcement_date": "20250516",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    },
+    {
+      "name": "안양시 하수도 조례",
+      "article": "제22조 제1항 제1호",
+      "url": "https://www.law.go.kr/자치법규/안양시하수도조례",
+      "law_id": "2087764",
+      "law_serial_no": "1862393",
+      "law_ref_type": "ordin",
+      "enforcement_date": "20231010",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    }
+  ],
+  "how_to_use": {
+    "default": "주민센터 또는 안양시 상하수도사업소에 감면 신청(장애인 등록 확인). 감면 범위·절차는 조례 원문과 상하수도사업소 안내를 확인하세요."
+  },
+  "application": {},
+  "operating_agencies": [
+    {
+      "region": "안양시",
+      "agency": "안양시 상하수도사업소",
+      "lines_or_routes": [],
+      "apply_channel": "주민센터·상하수도사업소",
+      "card_or_proof_type": "장애인 등록 확인",
+      "url": "https://www.law.go.kr/자치법규/안양시수도급수조례",
+      "notes": null
+    }
+  ],
+  "sources": [
+    {
+      "title": "안양시 수도급수 조례 제36조(수도요금 등의 감면)",
+      "publisher": "국가법령정보센터(안양시 자치법규)",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/자치법규/안양시수도급수조례",
+      "priority": "primary",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": false,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "자치법규 일련번호 2038719, 2025-05-16 일부개정(제3755호)"
+      },
+      "accessed": "2026-10-15"
+    },
+    {
+      "title": "안양시 하수도 조례 제22조(감면 등)",
+      "publisher": "국가법령정보센터(안양시 자치법규)",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/자치법규/안양시하수도조례",
+      "priority": "primary",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": false,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "자치법규 일련번호 1862393, 2023-10-10 일부개정(제3560호)"
+      },
+      "accessed": "2026-10-15"
+    }
+  ],
+  "last_verified": "2026-10-15",
+  "version": "1.0.0",
+  "exceptions_and_caveats": [
+    "같은 조례 감면 대상에는 수급자 세대, 수도요금의 경우 18세 이하 자녀 3명 이상 가정도 포함됩니다."
+  ],
+  "related_items": [
+    "B028",
+    "B029"
+  ],
+  "active": true
+}

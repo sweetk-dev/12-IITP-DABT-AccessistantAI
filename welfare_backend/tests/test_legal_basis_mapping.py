@@ -72,6 +72,7 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(classify_target("x", "서울특별시 장애인 지원 조례"), "ordin")
         self.assertEqual(classify_target("x", "KTX 여객운송약관"), "none")
         self.assertEqual(classify_target("x", "장애인복지 사업안내"), "none")
+        self.assertEqual(classify_target("경기도 장애인 복지사업 안내", "경기도 장애인 복지사업 안내"), "none")
 
     def test_manual_override_documented(self):
         # 리서치로 확정한 3건 — 전부 행정규칙

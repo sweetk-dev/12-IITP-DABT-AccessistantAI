@@ -94,3 +94,26 @@ def test_two_patches_same_item_compare_against_original():
         {"op": "update", "path": "faq.0.a", "old": "태아 1인당 100만원입니다.", "new": "120만원"},
         {"op": "update", "path": "faq.0.q", "old": "얼마인가요?", "new": "지원금은 얼마인가요?"}])
     assert len(applied) == 2 and new["faq"][0] == {"q": "지원금은 얼마인가요?", "a": "120만원"}
+
+
+def test_json_pointer_append_goes_into_list():
+    """'exceptions_and_caveats/-' 는 목록 끝에 덧붙인다 — 새 최상위 키를 만들지 않는다 (v2.33.4)."""
+    new, applied, review = _apply_patch(_doc(), [
+        {"op": "add", "path": "exceptions_and_caveats/-", "value": "중복 지원 불가"}])
+    assert new["exceptions_and_caveats"][-1] == "중복 지원 불가"
+    assert "exceptions_and_caveats/-" not in new and not review
+    assert applied == [{"op": "add", "path": "exceptions_and_caveats"}]
+
+
+def test_json_pointer_update_list_item():
+    """'/faq/0/a' 는 faq.0.a 와 같다."""
+    new, applied, _ = _apply_patch(_doc(), [
+        {"op": "update", "path": "/faq/0/a", "old": "태아 1인당 100만원입니다.", "new": "120만원"}])
+    assert new["faq"][0]["a"] == "120만원" and applied[0]["path"] == "faq.0.a"
+
+
+def test_key_with_slash_never_created():
+    """경로를 바꿔도 남는 '/' 키는 만들지 않는다(검토로 넘김)."""
+    from crawler.llm_updater import _add_by_path
+    d = _doc()
+    assert _add_by_path(d, "a/b", "x") is False and "a/b" not in d

@@ -1,0 +1,158 @@
+{
+  "id": "B052",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "안양시 장애인 보조기기(전동휠체어 등) 수리 지원 사업",
+  "short_summary": "안양시에 거주하는 등록 장애인을 대상으로 전동휠체어, 전동스쿠터 등 보조기기 수리 비용을 연간 최대 40만 원까지 지원하고, 지정된 수리 센터를 통해 수리 및 출장 서비스를 제공하는 사업입니다.",
+  "category": "기타",
+  "benefit_type": "서비스제공",
+  "supported_amount": {
+    "rate": "기초생활수급자 및 차상위계층: 수리비의 90% 지원 (자부담 10%) / 일반 장애인: 수리비의 80% 지원 (자부담 20%)",
+    "amount": "1인당 연간 최대 40만 원 한도 내 지원",
+    "scope": "전동휠체어, 수동휠체어, 전동스쿠터 등의 부품 교체, 배터리 교체, 소독·세척 및 출장 수리 서비스"
+  },
+  "eligibility": {
+    "target": "안양시에 주민등록을 두고 거주하는 등록 장애인",
+    "severity_levels": [],
+    "has_income_criteria": false,
+    "age_min": null,
+    "age_max": null
+  },
+  "legal_basis": [
+    {
+      "name": "안양시 장애인 지원시설 설치 및 운영 조례",
+      "article": "제3조(장애인 지원시설)",
+      "url": "https://www.law.go.kr/LSW/ordinInfoP.do?ordinSeq=1358121",
+      "law_id": "2140556",
+      "law_serial_no": "2085451",
+      "law_ref_type": "ordin",
+      "enforcement_date": "20251113",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    },
+    {
+      "name": "장애인복지법",
+      "article": "제65조(장애인보조기구)",
+      "url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=253342",
+      "law_id": "000187",
+      "law_serial_no": "290211",
+      "law_ref_type": "law",
+      "enforcement_date": "20261002",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    }
+  ],
+  "how_to_use": {
+    "default": "안양시가 지정한 장애인 보조기기 수리업체에 직접 방문하거나 전화로 출장 수리를 요청한 후, 수리 신청서를 작성하여 서비스를 이용합니다. (예: 안양시청이 위치한 동안구 관내에는 '밀알보장구수리센터(동안구 관평로327번길 29)'가 있으며, 만안구에는 '온누리부흥센터(만안구 냉천로153번길 9)' 등이 지정되어 운영 중입니다. 방문 전 복지카드 및 수급자/차상위 증명서를 지참해야 합니다.)"
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "방문",
+        "method": "방문",
+        "url": ""
+      },
+      {
+        "channel": "전화",
+        "method": "전화",
+        "url": ""
+      }
+    ],
+    "required_documents": [
+      "장애인 복지카드(등록증)",
+      "기초생활수급자 또는 차상위계층 증명서 (해당자에 한함)"
+    ],
+    "processing_period": "수리 내역 및 부품 수급 상황에 따라 상이",
+    "fee": {
+      "default": "지원 한도 내 자부담금(10~20%) 및 연간 한도(40만 원) 초과분 전액 본인 부담"
+    },
+    "online_available": false,
+    "proxy_allowed": true
+  },
+  "last_verified": "2026-09-28",
+  "version": "1.0.0",
+  "sources": [
+    {
+      "title": "안양시 장애인 지원시설 설치 및 운영 조례",
+      "publisher": "국가법령정보센터",
+      "url": "https://www.law.go.kr/LSW/ordinInfoP.do?ordinSeq=1358121",
+      "priority": "primary",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "notes": "조례 개정 및 수리센터 법적 근거 변경 감시"
+      }
+    },
+    {
+      "title": "안양시 생활지원 (장애인 보조기기 교부 및 수리 안내)",
+      "publisher": "안양시청",
+      "url": "https://www.anyang.go.kr/main/contents.do?key=1053",
+      "priority": "secondary",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "#contents",
+        "notes": "안양시 장애인 보조기기 수리 지원 내용 및 지정 업체 변경 감시"
+      }
+    },
+    {
+      "title": "장애인 보조기기 수리비용 지원",
+      "publisher": "복지로",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00001138",
+      "priority": "supplementary",
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": ".wlfareInfo",
+        "notes": "전국 지자체 장애인 보조기기 수리 지원 공통 가이드라인 감시"
+      }
+    }
+  ],
+  "faq": [
+    {
+      "q": "안양시청 근처에서 전동휠체어를 수리할 수 있는 서비스센터가 어디에 있나요?",
+      "a": "안양시청이 위치한 동안구에는 '밀알보장구수리센터(동안구 관평로327번길 29, 전화 031-8068-6100)'가 지정되어 운영 중입니다. 만안구 쪽이 가깝다면 '온누리부흥센터(만안구 냉천로153번길 9, 전화 031-455-1313)'를 이용하실 수도 있습니다. 두 곳 모두 전동휠체어 수리 및 출장 서비스를 제공합니다."
+    },
+    {
+      "q": "수리 센터에 직접 가기 힘든데 출장 수리도 가능한가요?",
+      "a": "네, 가능합니다. 안양시 지정 수리센터인 밀알보장구수리센터와 온누리부흥센터 모두 출장 수리, 수거 및 배송, 긴급출동 서비스를 제공하고 있으므로 센터로 전화하여 요청하시면 됩니다."
+    },
+    {
+      "q": "수리 비용 지원 한도를 초과하면 어떻게 되나요?",
+      "a": "1인당 연간 최대 40만 원까지만 지원(수급자/차상위 90%, 일반 80%)되며, 40만 원을 초과하는 수리 비용은 전액 본인이 부담해야 합니다."
+    },
+    {
+      "q": "수리하는 동안 휠체어를 사용하지 못하면 어떻게 이동하나요?",
+      "a": "지정 수리센터(밀알보장구수리센터, 온누리부흥센터)에서는 수리 기간 동안 대체기기 대여 서비스를 제공하고 있으므로, 수리 접수 시 문의하시면 도움을 받을 수 있습니다."
+    }
+  ],
+  "operating_agencies": [
+    {
+      "agency": "밀알보장구수리센터",
+      "region": "경기도 안양시 동안구 관평로327번길 29 (관양동) 1층 4호",
+      "apply_channel": "방문 및 전화",
+      "url": "",
+      "notes": "전화: 031-8068-6100 / 수동·전동휠체어, 의료용스쿠터 부품교체, 경정비, 세척·소독, 출장수리, 긴급출동, 대체기기 대여 제공"
+    },
+    {
+      "agency": "온누리부흥센터",
+      "region": "경기도 안양시 만안구 냉천로153번길 9 (안양동)",
+      "apply_channel": "방문 및 전화",
+      "url": "",
+      "notes": "전화: 031-455-1313 / 수동·전동휠체어, 의료용스쿠터 부품교체, 경정비, 세척·소독, 출장수리, 긴급출동, 대체기기 대여 제공"
+    }
+  ],
+  "validity": {
+    "expiry": "연간 적용 (매년 1월 1일 ~ 12월 31일 기준으로 40만 원 한도 갱신)"
+  },
+  "exceptions_and_caveats": [
+    "안양시에 주민등록을 둔 등록 장애인만 지원 대상입니다. 반드시 안양시가 지정한 수리센터(밀알보장구수리센터, 온누리부흥센터 등)를 이용해야 수리비 지원을 받을 수 있습니다. 연간 지원 한도(40만 원)를 초과하는 수리 비용은 전액 본인이 부담해야 합니다."
+  ],
+  "contact": [
+    {
+      "name": "안양시청 노인장애인과 장애인복지팀(031-8045-5258), 밀알보장구수리센터(031-8068-6100), 온누리부흥센터(031-455-1313)"
+    }
+  ],
+  "active": true
+}

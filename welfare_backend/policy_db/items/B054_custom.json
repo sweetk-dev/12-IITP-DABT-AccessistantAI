@@ -1,0 +1,178 @@
+{
+  "id": "B054",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "안양시 장애인 이동지원 차량(콜 승합차·봉사차량·특장차량·통학차량)",
+  "short_summary": "안양시가 운영비를 지원하는 장애인 이동지원 차량으로, 병원·관공서·금융기관 방문, 출퇴근, 장보기, 장애학생 통학·재활프로그램 참가 등 이동을 돕습니다(예약제 중심, 당일 콜).",
+  "category": "교통",
+  "benefit_type": "서비스제공",
+  "supported_amount": {
+    "rate": null,
+    "amount": null,
+    "scope": "① 중증장애인 콜 승합차: 병원·관공서·금융기관 등 외출 시 예약 이동 ② 교통이용 봉사차량: 민원업무 대행, 직장 출퇴근, 장보기, 병원 이용 보조, 교통안전 캠페인 ③ 지체장애인 특장차량: 대중교통 이용이 불편한 장애인 이동·민원 서비스 ④ 장애학생 통학용 차량: 통학·방과후·재활프로그램 참가 운송"
+  },
+  "eligibility": {
+    "target": "안양시 거주 장애인(콜 승합차·특장차량은 거동이 불편한 장애인, 콜 승합차는 장애인복지회 회원), 관내 장애학생(통학차량)",
+    "severity_levels": [],
+    "residency_criteria": "안양시 거주",
+    "has_income_criteria": false,
+    "age_min": null,
+    "age_max": null
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "law_id": "000187",
+      "law_serial_no": "290211",
+      "law_ref_type": "law",
+      "enforcement_date": "20261002",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    },
+    {
+      "name": "장애인 등에 대한 특수교육법",
+      "law_id": "010449",
+      "law_serial_no": "276191",
+      "law_ref_type": "law",
+      "enforcement_date": "20251001",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    }
+  ],
+  "how_to_use": {
+    "default": "예약제 중심, 당일 콜 이용. 차량별 운영 단체·연락처는 안양시 장애인복지과에 확인",
+    "exceptions": "지원 주기: 수시(통학용 차량은 원천에 '1회성'으로 표기)"
+  },
+  "application": {},
+  "operating_agencies": [
+    {
+      "region": "안양시",
+      "agency": "경기도 안양시 복지문화국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": "예약제 중심, 당일 콜제",
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00000763&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 안양시청 장애인복지과 031-8045-5510 중증장애인 콜 승합차 운영"
+    },
+    {
+      "region": "안양시",
+      "agency": "경기도 안양시 복지문화국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": "예약제 중심, 당일 콜제",
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00001043&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 안양시청 장애인복지과 031-8045-5510 장애인 교통이용 봉사차량 지원"
+    },
+    {
+      "region": "안양시",
+      "agency": "경기도 안양시 복지문화국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": "예약제 중심, 당일 콜제",
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00000764&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 안양시청 장애인복지과 031-8045-5510 지체장애인 특장차량 운영비"
+    },
+    {
+      "region": "안양시",
+      "agency": "경기도 안양시 복지문화국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": "예약제 중심, 당일 콜제",
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00002479&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 안양시청 장애인복지과 031-8045-5510 장애학생 통학용 차량 운영비"
+    }
+  ],
+  "sources": [
+    {
+      "title": "복지로 지자체 복지서비스 — 중증장애인 콜 승합차 운영",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00000763&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00000763, 원천 수정일 20260723)"
+      },
+      "accessed": "2026-10-15"
+    },
+    {
+      "title": "복지로 지자체 복지서비스 — 장애인 교통이용 봉사차량 지원",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00001043&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00001043, 원천 수정일 20260723)"
+      },
+      "accessed": "2026-10-15"
+    },
+    {
+      "title": "복지로 지자체 복지서비스 — 지체장애인 특장차량 운영비",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00000764&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00000764, 원천 수정일 20260723)"
+      },
+      "accessed": "2026-10-15"
+    },
+    {
+      "title": "복지로 지자체 복지서비스 — 장애학생 통학용 차량 운영비",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00002479&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00002479, 원천 수정일 20260723)"
+      },
+      "accessed": "2026-10-15"
+    }
+  ],
+  "last_verified": "2026-10-15",
+  "version": "1.0.0",
+  "exceptions_and_caveats": [
+    "개인에게 차량이나 비용을 주는 사업이 아니라, 시가 지원하는 차량을 예약해 이용하는 서비스입니다.",
+    "원천에는 차량 운영 단체명·이용 요금·예약 번호가 없습니다. 이용 전 안양시청 장애인복지과(031-8045-5510)에 확인하세요.",
+    "광역 장애인 콜택시(특별교통수단)는 별도 항목(B040)입니다."
+  ],
+  "related_items": [
+    "B040"
+  ],
+  "active": true
+}
