@@ -1,0 +1,71 @@
+{
+  "id": "B055",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "경기도 저소득 장애인 의료비 지원",
+  "short_summary": "경기도에 사는 중위소득 80% 이하(건강보험료 기준) 등록장애인의 입원 1회 의료비 본인부담금을 1인당 연 150만 원 이내로 지원합니다(심장·신장장애인은 투석·이식 등 횟수 제한 없이 같은 한도).",
+  "category": "의료",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": null,
+    "amount": "1인당 연간 150만원 이내, 연속된 기간의 입원 1회의 의료비 본인부담금을 지원 - 심장 또는 신장장애인의 경우 혈액투석, 복막투석, 신장이식, 심장이식, 심장질환 치료, 심장보조기 구입비 등을 횟수제한 없이 지원 (단, 1인당 150만원 이내 한도 동일하게 적용)",
+    "scope": "1인당 연간 150만원 이내, 연속된 기간의 입원 1회의 의료비 본인부담금을 지원 - 심장 또는 신장장애인의 경우 혈액투석, 복막투석, 신장이식, 심장이식, 심장질환 치료, 심장보조기 구입비 등을 횟수제한 없이 지원 (단, 1인당 150만원 이내 한도 동일하게 적용)"
+  },
+  "eligibility": {
+    "target": "중위소득 80%이하 등록장애인을 지원 / 선정기준: 건강보험료 월 납입금액이 가구소득기준 중위소득 80%이하",
+    "severity_levels": [],
+    "residency_criteria": "경기도 거주",
+    "has_income_criteria": true,
+    "age_min": null,
+    "age_max": null
+  },
+  "legal_basis": [
+    {
+      "name": "2026년 경기도 장애인복지사업안내",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
+    }
+  ],
+  "how_to_use": {
+    "default": "읍면동사무소에 신청서 제출※ 온라인접수 불가",
+    "exceptions": "지원 주기: 1회성"
+  },
+  "application": {},
+  "operating_agencies": [
+    {
+      "region": "경기도",
+      "agency": "경기도 복지국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": "읍면동사무소에 신청서 제출※ 온라인접수 불가",
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00006696&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 경기도 장애인복지과 031-8008-4359"
+    }
+  ],
+  "sources": [
+    {
+      "title": "복지로 지자체 복지서비스 — 저소득장애인 의료비 지원",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00006696&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00006696, 원천 수정일 20260729)"
+      },
+      "accessed": "2026-10-15"
+    }
+  ],
+  "last_verified": "2026-10-15",
+  "version": "1.0.0",
+  "active": true
+}

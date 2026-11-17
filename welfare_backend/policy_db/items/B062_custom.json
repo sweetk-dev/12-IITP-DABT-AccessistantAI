@@ -1,0 +1,81 @@
+{
+  "id": "B062",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "안양시 공영주차장 요금 감면(장애인)",
+  "short_summary": "안양시 공영주차장에서 장애인 차량은 주차요금을 감면받습니다(심한 장애 50%·최초 2시간 면제, 심하지 않은 장애 50%).",
+  "category": "교통",
+  "benefit_type": "감면",
+  "supported_amount": {
+    "rate": "50%(심한 장애 일일·월정 70%, 병원 진료 목적 100%)",
+    "amount": null,
+    "scope": "심한 장애(본인 자가운전, 본인 동승 대리운전 포함): 1회 주차 50%·최초 2시간 면제, 일일·월정 70% / 심하지 않은 장애(본인 자가운전): 50% / 심한 장애인 병원 진료 목적: 100%(진료 영수증 제시)"
+  },
+  "eligibility": {
+    "target": "장애인 등록 차량(장애인 사용자동차 표지). 심하지 않은 장애는 본인 자가운전일 때",
+    "severity_levels": [
+      "심한 장애(중증)",
+      "심하지 않은 장애(경증)"
+    ],
+    "residency_criteria": null,
+    "has_income_criteria": false,
+    "age_min": null,
+    "age_max": null
+  },
+  "legal_basis": [
+    {
+      "name": "안양시 주차장 설치 및 관리 조례",
+      "article": "제3조 제2항, 별표 2",
+      "url": "https://www.law.go.kr/자치법규/안양시주차장설치및관리조례",
+      "law_id": "2140337",
+      "law_serial_no": "2102223",
+      "law_ref_type": "ordin",
+      "enforcement_date": "20251231",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    }
+  ],
+  "how_to_use": {
+    "default": "안양시 공영주차장 출차 시 장애인 사용자동차 표지·장애인 등록 확인으로 감면. 병원 진료 목적 면제는 진료 영수증 제시."
+  },
+  "application": {},
+  "operating_agencies": [
+    {
+      "region": "안양시",
+      "agency": "안양시 공영주차장(시설관리공단 등 운영 주체)",
+      "lines_or_routes": [],
+      "apply_channel": "주차장 현장",
+      "card_or_proof_type": "장애인 사용자동차 표지",
+      "url": "https://www.law.go.kr/자치법규/안양시주차장설치및관리조례",
+      "notes": null
+    }
+  ],
+  "sources": [
+    {
+      "title": "안양시 주차장 설치 및 관리 조례 제3조·별표 2(주차요금 감면)",
+      "publisher": "국가법령정보센터(안양시 자치법규)",
+      "publisher_type": "법령DB",
+      "url": "https://www.law.go.kr/자치법규/안양시주차장설치및관리조례",
+      "priority": "primary",
+      "official_api": {
+        "available": false,
+        "endpoint": null,
+        "auth_required": false,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "자치법규 일련번호 2102223, 2025-12-31 일부개정(제3832호)"
+      },
+      "accessed": "2026-10-15"
+    }
+  ],
+  "last_verified": "2026-10-15",
+  "version": "1.0.0",
+  "related_items": [
+    "B010"
+  ],
+  "active": true
+}

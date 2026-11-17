@@ -1,0 +1,87 @@
+{
+  "id": "B058",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "경기도 장애인 대소변흡수용품 구입 지원",
+  "short_summary": "경기도에 사는 만 2~64세 심한 장애인 중 배변·배뇨 조절점수 2점 이하인 사람에게 대소변흡수용품 구입비의 50%를 월 5만 원 한도로 지원합니다(시설입소자·유사사업 대상자 제외).",
+  "category": "기타",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": null,
+    "amount": "대소변흡수용품 구입비 50%(매월 5만원 한도)",
+    "scope": "대소변흡수용품 구입비 50%(매월 5만원 한도)"
+  },
+  "eligibility": {
+    "target": "1) 거주지: 경기도 거주 등록장애인 2) 연령: 만2세 이상(25개월) ~ 만64세 이하 3) 장애 유형 및 장애 정도 : 정도가 심한 장애인 / 선정기준: 심한 장애인 중 기준을 충족하는 사람* 연령기준 : 만 2세 이상∼만 64세 이하* 일상생활동작검사결과서(수정바델지수 등) 중 배변, 배뇨 조절점수가 2점 이하(병원 발급)* 제외대상 : 시설입소 장애인, 유사사업 대상자",
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
+    "residency_criteria": "경기도 거주",
+    "has_income_criteria": false,
+    "age_min": 2,
+    "age_max": 64
+  },
+  "legal_basis": [
+    {
+      "name": "장애인복지법",
+      "article": "제6조",
+      "law_id": "000187",
+      "law_serial_no": "290211",
+      "law_ref_type": "law",
+      "enforcement_date": "20261002",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    },
+    {
+      "name": "경기도 장애인 위생용품 지원에 관한 조례",
+      "article": "제3조",
+      "law_id": "2242364",
+      "law_serial_no": "2012595",
+      "law_ref_type": "ordin",
+      "enforcement_date": "20250120",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    }
+  ],
+  "how_to_use": {
+    "default": "주민등록상 주소지 관할 동 행정복지센터 방문접수",
+    "exceptions": "지원 주기: 분기"
+  },
+  "application": {},
+  "operating_agencies": [
+    {
+      "region": "경기도",
+      "agency": "경기도 복지국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": "주민등록상 주소지 관할 동 행정복지센터 방문접수",
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00005364&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 경기도 장애인복지과 031-8008-4329"
+    }
+  ],
+  "sources": [
+    {
+      "title": "복지로 지자체 복지서비스 — 경기도 장애인 대소변흡수용품 구입지원",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00005364&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00005364, 원천 수정일 20260825)"
+      },
+      "accessed": "2026-10-15"
+    }
+  ],
+  "last_verified": "2026-10-15",
+  "version": "1.0.0",
+  "active": true
+}

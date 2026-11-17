@@ -72,7 +72,8 @@ def classify_target(name: str, raw: str):
         return "ordin"                     # 자치법규
     if "약관" in r or "내규" in r:
         return "none"                      # 비법령
-    if "사업안내" in r or "사업지침" in r or "KLRI" in r or "영문" in r:
+    rs = r.replace(" ", "")              # '복지사업 안내'·'장애인복지사업 안내'처럼 띄어 쓴 표기도 같게 본다
+    if "사업안내" in rs or "사업지침" in rs or "KLRI" in r or "영문" in r:
         return "none"                      # 비법령(사업지침/영문 등)
     if "고시" in r or "훈령" in r or "예규" in r:
         return "admrul"                    # 행정규칙

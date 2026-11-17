@@ -1,0 +1,161 @@
+{
+  "id": "B064",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "지하철 승강장 발빠짐 사고 피해 보상",
+  "short_summary": "지하철 승강장 발빠짐 사고 발생 시, 사고 원인(운영기관 과실 여부)에 따라 지하철 운영기관의 영업배상책임보험 또는 지자체 시민안전보험을 통해 피해 보상을 받을 수 있는 제도입니다.",
+  "category": "교통",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": "",
+    "amount": "지하철 운영기관 과실 시 치료비 등 배상, 지자체 시민안전보험(대중교통 상해 후유장해 등) 최대 2,000만원 한도 (지자체별 상이)",
+    "scope": "치료비, 위자료, 후유장해 보상금 등 (사고 책임 소재 및 가입된 보험에 따라 상이)"
+  },
+  "eligibility": {
+    "target": "지하철 승강장 발빠짐 사고로 상해를 입은 피해자 (단, 스마트폰 주시, 무리한 승차 등 승객 본인의 명백한 부주의로 인한 사고는 운영기관 보상 불가)",
+    "severity_levels": [],
+    "has_income_criteria": false,
+    "age_min": null,
+    "age_max": null
+  },
+  "legal_basis": [
+    {
+      "name": "민법",
+      "article": "제758조(공작물등의 점유자, 소유자의 책임)",
+      "url": "https://www.law.go.kr/법령/민법",
+      "law_id": "001706",
+      "law_serial_no": "284415",
+      "law_ref_type": "law",
+      "enforcement_date": "20260317",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    },
+    {
+      "name": "재난 및 안전관리 기본법",
+      "article": "제4조(국가 등의 책무)",
+      "url": "https://www.law.go.kr/법령/재난및안전관리기본법",
+      "law_id": "009640",
+      "law_serial_no": "282883",
+      "law_ref_type": "law",
+      "enforcement_date": "20260722",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    }
+  ],
+  "how_to_use": {
+    "default": "1. 사고 발생 시 즉시 역무원에게 신고하여 사고 접수 및 증빙자료(치료비 영수증, 진단서 등) 확보\n2. 지하철 운영기관(예: 서울교통공사) 관할 역 또는 고객센터에 피해 보상 청구\n3. 운영기관 과실 인정 시 영업배상책임보험을 통해 치료비 등 보상 (본인 과실 명백 시 보상 불가)\n4. 지자체 시민안전보험 보장 항목(대중교통 이용 중 상해 등) 해당 시, 관할 지자체 또는 한국지방재정공제회 등에 별도 청구"
+  },
+  "application": {
+    "where": [
+      {
+        "channel": "방문/전화",
+        "method": "방문",
+        "url": ""
+      },
+      {
+        "channel": "전화/우편",
+        "method": "전화",
+        "url": "https://www.safekorea.go.kr/idsiSFK/neo/sfk/cs/contents/insurance/insuranceInfo.html?menuSeq=394"
+      }
+    ],
+    "required_documents": [
+      "사고 접수증(또는 역무원 확인)",
+      "신분증 사본",
+      "통장 사본",
+      "진단서 및 치료비 영수증",
+      "시민안전보험 청구 시: 보험금 청구서, 주민등록초본, 후유장해 진단서 등(보험사별 상이)"
+    ],
+    "processing_period": "사고 조사 및 과실 비율 산정, 보험사 심사에 따라 수 주 ~ 수 개월 소요",
+    "fee": {
+      "default": "없음"
+    },
+    "online_available": false,
+    "proxy_allowed": true
+  },
+  "last_verified": "2026-11-02",
+  "version": "1.0.0",
+  "sources": [
+    {
+      "title": "민법",
+      "publisher": "국가법령정보센터",
+      "url": "https://www.law.go.kr/법령/민법",
+      "priority": "primary",
+      "crawl": {
+        "frequency": "quarterly",
+        "change_detection_method": "last_modified_field",
+        "css_selector_hint": null,
+        "notes": "민법 제758조 공작물 책임 조항 개정 여부 감시"
+      }
+    },
+    {
+      "title": "서울시민안전보험 안내",
+      "publisher": "서울특별시",
+      "url": "https://news.seoul.go.kr/safe/archives/513552",
+      "priority": "secondary",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "#content",
+        "notes": "시민안전보험 보장 항목 및 대중교통 상해 보상 한도 변경 감시"
+      }
+    },
+    {
+      "title": "시민안전보험",
+      "publisher": "국민재난안전포털",
+      "url": "https://www.safekorea.go.kr/idsiSFK/neo/sfk/cs/contents/insurance/insuranceInfo.html?menuSeq=394",
+      "priority": "supplementary",
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": "#content",
+        "notes": "전국 지자체 시민안전보험 공통 안내 및 청구 절차 감시"
+      }
+    }
+  ],
+  "faq": [
+    {
+      "q": "이렇게 어 지하철을 탔다가 지하철이랑 승강장 사이 틈으로 빠져서 다치게 되면은 이거는 누가 피해 보상을 해 주는 거야?",
+      "a": "사고 원인과 과실 비율에 따라 다릅니다. 지하철 시설물 하자나 운영기관의 과실이 인정되면 해당 지하철 운영기관(예: 서울교통공사)이 가입한 영업배상책임보험을 통해 치료비 등을 보상받을 수 있습니다. 하지만 스마트폰을 보거나 무리하게 승차하는 등 승객 본인의 부주의가 원인이라면 보상을 받을 수 없습니다."
+    },
+    {
+      "q": "승객 부주의로 다친 경우에도 지자체에서 가입한 시민안전보험으로 치료비를 받을 수 있나요?",
+      "a": "시민안전보험의 '대중교통 이용 중 상해' 항목은 대부분 단순 치료비가 아닌 '사망'이나 '후유장해'가 발생했을 때 보상금을 지급합니다(지자체별 상이). 따라서 단순 타박상이나 골절 치료비는 시민안전보험으로 보상받기 어려울 수 있으며, 본인의 실손의료보험 등을 활용해야 합니다."
+    },
+    {
+      "q": "사고가 났을 때 가장 먼저 해야 할 일은 무엇인가요?",
+      "a": "사고 발생 즉시 현장에서 역무원에게 사고 사실을 알리고 접수하는 것이 가장 중요합니다. 이후 병원 진료를 받고 진단서와 치료비 영수증 등을 챙겨 지하철 운영기관에 보상을 청구해야 하며, CCTV 등 증빙 자료가 확보되어야 과실 여부를 명확히 판단할 수 있습니다."
+    },
+    {
+      "q": "시민안전보험은 따로 가입해야 혜택을 받을 수 있나요?",
+      "a": "아닙니다. 시민안전보험은 해당 지자체에 주민등록이 되어 있는 시민(등록 외국인 포함)이라면 별도의 가입 절차 없이 자동으로 가입되며, 보험료도 지자체가 전액 부담합니다. 사고 발생 시 해당 지자체가 계약한 보험사에 직접 청구하시면 됩니다."
+    }
+  ],
+  "operating_agencies": [
+    {
+      "agency": "각 지하철 운영기관 (예: 서울교통공사)",
+      "region": "전국",
+      "apply_channel": "사고 발생 역무실 및 관할 고객센터",
+      "url": "http://www.seoulmetro.co.kr",
+      "notes": "영업배상책임보험 처리"
+    },
+    {
+      "agency": "지방자치단체 및 계약 보험사 (예: 서울시-메리츠화재 컨소시엄 등)",
+      "region": "전국 (지자체별 상이)",
+      "apply_channel": "시민안전보험 전담 콜센터",
+      "url": "https://www.safekorea.go.kr",
+      "notes": "시민안전보험 (대중교통 상해 후유장해 등)"
+    }
+  ],
+  "validity": {
+    "expiry": "시민안전보험: 지자체별 1년 단위 갱신 (사고 발생일로부터 3년 이내 청구 가능)"
+  },
+  "exceptions_and_caveats": [
+    "스마트폰 주시, 이어폰 착용, 무리한 승하차, 에스컬레이터 걷기/뛰기, 음주 등 승객 본인의 명백한 부주의로 인한 사고는 지하철 운영기관의 치료비 보상이 불가합니다(서울교통공사 승소율 94.4%). 시민안전보험은 지자체별로 보장 항목과 한도가 다르며, 대중교통 상해의 경우 단순 부상이 아닌 '사망' 또는 '후유장해' 발생 시에만 보상하는 경우가 많습니다."
+  ],
+  "contact": [
+    {
+      "name": "서울교통공사 고객센터(1577-1234), 국민재난안전포털 시민안전보험 안내(https://www.safekorea.go.kr), 2026년 서울시 시민안전보험 콜센터(1522-3556)"
+    }
+  ],
+  "active": true
+}

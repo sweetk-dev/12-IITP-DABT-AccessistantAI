@@ -1,0 +1,79 @@
+{
+  "id": "B057",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "경기도 장애인가구 냉난방비 지원",
+  "short_summary": "기초생활 수급 중증 장애인가구에 냉난방비 지원으로 생활안정 도모",
+  "category": "주거",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": null,
+    "amount": "가구당 난방비 월 5만원씩 5개월(1,2,3,11,12월) 지원 가구당 냉방비 월 4만원씩 3개월(7,8,9월) 지원",
+    "scope": "가구당 난방비 월 5만원씩 5개월(1,2,3,11,12월) 지원 가구당 냉방비 월 4만원씩 3개월(7,8,9월) 지원"
+  },
+  "eligibility": {
+    "target": "생계 또는 의료급여 수급자 중 중증(1~2급 및 3급 중복장애) 장애인 가구 - 보장시설 수급자 제외 / 선정기준: 생계 또는 의료급여 수급자 중 중증(1~2급 및 3급 중복장애) 장애인 가구",
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
+    "residency_criteria": "경기도 거주",
+    "has_income_criteria": true,
+    "age_min": null,
+    "age_max": null
+  },
+  "legal_basis": [
+    {
+      "name": "경기도 장애인 복지사업 안내",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
+    }
+  ],
+  "how_to_use": {
+    "default": "담당 부서·주민센터 문의(상세는 출처 확인)",
+    "exceptions": "지원 주기: 년"
+  },
+  "application": {},
+  "operating_agencies": [
+    {
+      "region": "경기도",
+      "agency": "경기도 복지국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": null,
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003392&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 경기도 장애인복지과 031-8008-2431"
+    }
+  ],
+  "sources": [
+    {
+      "title": "복지로 지자체 복지서비스 — 장애인가구 냉난방비",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003392&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00003392, 원천 수정일 20260729)"
+      },
+      "accessed": "2026-10-15"
+    }
+  ],
+  "last_verified": "2026-10-15",
+  "version": "1.0.0",
+  "exceptions_and_caveats": [
+    "대상 표기(1~2급 및 3급 중복장애)는 원천의 옛 등급 표기를 그대로 옮긴 것입니다. 장애등급제 개편 뒤 기준은 시·군에 확인하세요."
+  ],
+  "active": true,
+  "related_items": [
+    "B059"
+  ]
+}

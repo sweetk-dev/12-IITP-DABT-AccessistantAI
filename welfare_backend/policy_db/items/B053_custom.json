@@ -1,0 +1,146 @@
+{
+  "id": "B053",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "경기도 청각장애인 인공달팽이관 수술·재활치료비 지원",
+  "short_summary": "경기도 등록 청각장애인(만 60세 이하)의 인공달팽이관 수술비를 1인 600만 원 이내로 지원합니다. 수술 뒤 언어·청능 재활치료비는 3년간 연 300만 원 이내로, 도비 수술지원자는 안양시가, (사)사랑의달팽이 지원 수술자는 경기도가 지원합니다.",
+  "category": "의료",
+  "benefit_type": "서비스제공",
+  "supported_amount": {
+    "rate": null,
+    "amount": "수술비·당해연도 재활치료비 1인 600만 원 이내(①, 의료기관에 직접 납부) / 수술 다음 해부터 3년간 연 300만 원 이내 재활치료비(②) / 수술 후 3년간 매년 300만 원 이내 재활치료비(③)",
+    "scope": "인공달팽이관 수술비, 언어·청능 훈련 등 재활치료비(매핑 포함)"
+  },
+  "eligibility": {
+    "target": "① 수술지원(경기도): 수술 전 검사로 수술 가능함을 의료기관이 확인한 만 60세 이하 등록 청각장애인(저연령·저소득 순 우선) ② 재활치료비(안양시): 도비 수술지원을 받은 사람 ③ 재활치료비(경기도): (사)사랑의달팽이 지원으로 인공달팽이관 수술을 받은 청각장애인",
+    "severity_levels": [],
+    "residency_criteria": "경기도 거주(②는 안양시 거주)",
+    "has_income_criteria": false,
+    "age_min": null,
+    "age_max": 60
+  },
+  "legal_basis": [
+    {
+      "name": "경기도 장애인 복지사업 안내",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
+    },
+    {
+      "name": "장애인복지법",
+      "article": "제18조",
+      "law_id": "000187",
+      "law_serial_no": "290211",
+      "law_ref_type": "law",
+      "enforcement_date": "20261002",
+      "mapping_status": "matched",
+      "mapping_confidence": "exact"
+    }
+  ],
+  "how_to_use": {
+    "default": "① 접수 기간 안에 시·군에 수술 지원 신청(청각장애인 가구에 안내문 발송) ② 언어치료센터 등에서 재활치료 후 분기마다 동 행정복지센터에 영수증 제출, 계좌 입금(안양시) ③ 재활치료 후 시·군·구(읍·면·동)에 재활치료비 청구",
+    "exceptions": "지원 주기: ① 1회성 ② 분기 ③ 수시"
+  },
+  "application": {},
+  "operating_agencies": [
+    {
+      "region": "경기도",
+      "agency": "경기도 복지국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": "접수 기간 내 시군에 수술 지원 신청(청각장애인 가구에 안내문 발송)",
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003472&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 경기도 장애인복지과 031-8008-4359 수술지원(경기도, 1인 600만 원 이내)"
+    },
+    {
+      "region": "경기도",
+      "agency": "경기도 복지국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": "재활치료 후 시군구(읍면동)에 재활치료비 청구",
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00000720&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 경기도 장애인복지과 031-8008-4359 저소득층 청각장애인 재활지원 — 사랑의달팽이 지원 수술자 재활치료비(경기도)"
+    },
+    {
+      "region": "안양시",
+      "agency": "경기도 안양시 복지문화국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": "1) 신청방법 : 언어치료 센터 등(병원부설 or 언어 치료소)에서 재활치료를 실시하고, 매 분기마다 관할 동 행정복지센터에 영수증 제출 2) 지급방법 : 계좌입금",
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00002573&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 안양시청 장애인복지과 031-8045-2239 도비 수술지원자 재활치료비(안양시)"
+    }
+  ],
+  "sources": [
+    {
+      "title": "복지로 지자체 복지서비스 — 청각장애인 인공달팽이관 수술지원",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003472&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00003472, 원천 수정일 20260729)"
+      },
+      "accessed": "2026-10-15"
+    },
+    {
+      "title": "복지로 지자체 복지서비스 — 저소득층 청각장애인 재활지원",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00000720&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00000720, 원천 수정일 20260729)"
+      },
+      "accessed": "2026-10-15"
+    },
+    {
+      "title": "복지로 지자체 복지서비스 — 청각장애인 인공달팽이관 치료비",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00002573&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00002573, 원천 수정일 20260723)"
+      },
+      "accessed": "2026-10-15"
+    }
+  ],
+  "last_verified": "2026-10-15",
+  "version": "1.0.0",
+  "exceptions_and_caveats": [
+    "수술 경로(경기도 수술지원 / (사)사랑의달팽이 지원)에 따라 수술 뒤 재활치료비를 신청하는 사업이 다릅니다.",
+    "재활치료비(②)는 안양시 사업으로 확인된 것입니다. 다른 시·군의 시행 여부는 거주 시·군에 확인하세요."
+  ],
+  "related_items": [
+    "B013"
+  ],
+  "active": true
+}

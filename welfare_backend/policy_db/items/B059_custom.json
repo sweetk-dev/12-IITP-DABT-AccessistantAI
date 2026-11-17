@@ -1,0 +1,81 @@
+{
+  "id": "B059",
+  "leaflet_section": "기타",
+  "leaflet_number": 0,
+  "title": "경기도 장애수당(도비, 중증 수급 장애인)",
+  "short_summary": "경기도에 사는 생계·의료급여 수급자 중 중증 등록장애인(보장시설 수급자 제외)에게 매월 6만 원을 지급합니다.",
+  "category": "소득지원",
+  "benefit_type": "현금지급",
+  "supported_amount": {
+    "rate": null,
+    "amount": "1인당 매월 6만원 지급",
+    "scope": "1인당 매월 6만원 지급"
+  },
+  "eligibility": {
+    "target": "생계 또는 의료급여 수급자 중 중증(1~2급 및 3급 중복 장애) 등록 장애인- 보장시설 수급자 제외 / 선정기준: 생계 또는 의료급여 수급자 중 중증(1~2급 및 3급 중복 장애) 등록 장애인",
+    "severity_levels": [
+      "심한 장애(중증)"
+    ],
+    "residency_criteria": "경기도 거주",
+    "has_income_criteria": true,
+    "age_min": null,
+    "age_max": null
+  },
+  "legal_basis": [
+    {
+      "name": "경기도 장애인복지사업 안내",
+      "law_ref_type": "none",
+      "mapping_status": "not_applicable",
+      "mapping_confidence": ""
+    }
+  ],
+  "how_to_use": {
+    "default": "담당 부서·주민센터 문의(상세는 출처 확인)",
+    "exceptions": "지원 주기: 월"
+  },
+  "application": {},
+  "operating_agencies": [
+    {
+      "region": "경기도",
+      "agency": "경기도 복지국 장애인복지과",
+      "lines_or_routes": [],
+      "apply_channel": null,
+      "card_or_proof_type": null,
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00004070&wlfareInfoReldBztpCd=02",
+      "notes": "문의: 경기도 장애인복지과 031-8008-4466"
+    }
+  ],
+  "sources": [
+    {
+      "title": "복지로 지자체 복지서비스 — 도비 장애수당",
+      "publisher": "한국사회보장정보원(복지로)",
+      "publisher_type": "공기업",
+      "url": "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00004070&wlfareInfoReldBztpCd=02",
+      "priority": "primary",
+      "official_api": {
+        "available": true,
+        "endpoint": "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfaredetailed",
+        "auth_required": true,
+        "docs_url": null
+      },
+      "crawl": {
+        "frequency": "monthly",
+        "change_detection_method": "page_hash",
+        "css_selector_hint": null,
+        "notes": "지자체 복지서비스 상세(servId=WLF00004070, 원천 수정일 20250606)"
+      },
+      "accessed": "2026-10-15"
+    }
+  ],
+  "last_verified": "2026-10-15",
+  "version": "1.0.0",
+  "related_items": [
+    "B032",
+    "B033",
+    "B057"
+  ],
+  "exceptions_and_caveats": [
+    "국가 장애수당(B033)과 다른 경기도 자체 수당이며, 중증 대상이라 비교할 국가 제도는 장애인연금(B032)입니다. 대상 표기(1~2급 및 3급 중복장애)는 원천의 옛 등급 표기입니다."
+  ],
+  "active": true
+}
