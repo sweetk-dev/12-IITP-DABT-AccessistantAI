@@ -2203,7 +2203,7 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   });
   check("정적 자원이 바뀌었으므로 서비스워커 캐시 이름이 올라가고 셸에 아이콘이 들어간다 (v1.46.1)", () => {
     const SW = readFileSync(new URL("../../static/sw.js", import.meta.url), "utf8");
-    assert.match(SW, /const CACHE = "accessistant-v6";/);   // v1.49.0 긴급·편의 시트로 셸이 바뀜 → v2.1.0 하위 경로 배포 대응
+    assert.match(SW, /const CACHE = "accessistant-v7";/);   // v1.49.0 긴급·편의 시트로 셸이 바뀜 → v2.1.0 하위 경로 배포 대응 → v2.35.0 계정 바꾸기·실패 응답 미캐시
     assert.match(SW, /"\/static\/icons\/icon-512\.png"/);
     assert.match(SW, /"\/static\/icons\/apple-touch-icon-180\.png"/);
   });

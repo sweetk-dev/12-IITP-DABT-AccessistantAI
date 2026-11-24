@@ -1,6 +1,6 @@
 /* AccessistantAI 서비스워커 — 홈 화면 설치·오프라인 최소 지원.
    API·WebSocket 응답은 캐시하지 않는다(정책·경로 정보는 항상 최신이어야 함). */
-const CACHE = "accessistant-v6";
+const CACHE = "accessistant-v7";
 // 배포 기준 경로(v2.1.0) — 이 파일은 <기준 경로>/static/sw.js 에 있다. 루트 배포면 BASE="".
 // 하위 경로(예: /iitp/accessistantai)로 열려도 같은 파일로 동작하도록 주소를 이 값 기준으로 만든다.
 const BASE = self.location.pathname.replace(/\/static\/sw\.js$/, "");
@@ -26,11 +26,15 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   if (url.pathname.startsWith(BASE + "/api/") || url.pathname.startsWith(BASE + "/ws/")) return;
   if (url.origin !== location.origin) return;
+  // 계정 바꾸기(v2.35.0) — 로그인 창은 브라우저가 직접 받은 응답에만 뜬다. 이 요청은 가로채지 않는다
+  if (url.searchParams.has("acct")) return;
   e.respondWith(
     fetch(e.request)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
+        if (res.ok) {   // 401 같은 실패 응답은 담지 않는다 (v2.35.0)
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
+        }
         return res;
       })
       .catch(() => caches.match(e.request))
