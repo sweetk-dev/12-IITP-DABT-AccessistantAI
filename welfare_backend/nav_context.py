@@ -88,13 +88,75 @@ def route_elevator(nav: dict, station: str = ""):
     nav = nav or {}
     want = _st_key(station)
     ing, eg = nav.get("station_ingress"), nav.get("station_egress")
+    res = None
     if ing and (not want or _st_key(ing.get("station")) == want):
         lines = ing.get("inside") or []
         plat = [x for x in lines if "승강장" in x] or lines
-        return {"side": "board", "station": ing.get("station"), "text": plat[0], "car": ing.get("car")}
-    if eg and (not want or _st_key(eg.get("station")) == want) and (eg.get("inside") or []):
-        return {"side": "alight", "station": eg.get("station"), "text": eg["inside"][0]}
+        res = {"side": "board", "station": ing.get("station"), "text": plat[0], "car": ing.get("car")}
+    elif eg and (not want or _st_key(eg.get("station")) == want) and (eg.get("inside") or []):
+        res = {"side": "alight", "station": eg.get("station"), "text": eg["inside"][0]}
+    else:
+        # 화면이 아직 역 안내를 보내지 않았다 — 대화로 만든 경로의 승·하차 역에서 찾는다 (v2.34.0)
+        for side in ("board", "alight"):
+            rs = _route_station(nav, side, want)
+            if rs and rs.get("inside"):
+                lines = rs["inside"]
+                plat = ([x for x in lines if "승강장" in x] or lines) if side == "board" else lines
+                res = {"side": side, "station": rs.get("station"), "text": plat[0]}
+                if side == "board":
+                    res["car"] = rs.get("car")
+                break
+    if res:
+        # 이용할 승강장의 방향(상행·하행) — 승강장 틈을 그 승강장 값으로 답하는 근거 (v2.34.0)
+        rs = _route_station(nav, res["side"], res.get("station"))
+        if rs:
+            if rs.get("updown"):
+                res["updown"] = rs["updown"]
+            if res["side"] == "board" and not res.get("car") and rs.get("car"):
+                res["car"] = rs["car"]
+    return res
+
+
+def _route_station(nav: dict, side: str, station: str = ""):
+    want = _st_key(station)
+    for rs in (nav or {}).get("route_stations") or []:
+        if rs.get("side") == side and (not want or _st_key(rs.get("station")) == want):
+            return rs
     return None
+
+
+def seed_route_stations(nav: dict, result) -> None:
+    """대화로 만든 경로의 지하철 승·하차 역(탈 칸·승강장 방향·역 안 이동)을 세션에 둔다 (v2.34.0).
+
+    화면은 경로를 받은 뒤 nav_state 로 역 안내(station_ingress·egress)를 보내 오지만, 그 전이나 화면 없이
+    대화만 할 때는 "몇 번 칸에 타요?"에 경로 기준 근거가 없어 승강기 바로 앞 칸으로 답했다(경로 안내는 7-2,
+    답은 1-1). 화면이 보낸 역 안내가 있으면 그것이 먼저다(route_elevator). note_new_route 다음에 부른다.
+    """
+    if nav is None or not isinstance(result, dict):
+        return
+    route = ((result.get("ui_action") or {}).get("route") or {}) if isinstance(result.get("ui_action"), dict) else {}
+    primary = ((route.get("routes") or [{}])[0] or {}) if isinstance(route, dict) else {}
+    steps = [s for s in (primary.get("steps") or []) if isinstance(s, dict)]
+    out = []
+    for leg in primary.get("legs") or []:
+        if not isinstance(leg, dict) or leg.get("kind") != "subway":
+            continue
+        pam = leg.get("platform_access") if isinstance(leg.get("platform_access"), dict) else {}
+        b = (leg.get("board") or {}).get("name")
+        a = (leg.get("alight") or {}).get("name")
+        ing = next((s["ingress"] for s in steps if isinstance(s.get("ingress"), dict)
+                    and _st_key(s["ingress"].get("station")) == _st_key(b)), None) or {}
+        car = ing.get("car")
+        car = car.get("text") if isinstance(car, dict) else (car if isinstance(car, str) else None)
+        eg = leg.get("egress") if isinstance(leg.get("egress"), dict) else {}
+        out.append({"side": "board", "station": str(b or "")[:20] or None,
+                    "updown": ((pam.get("board") or {}).get("updown") if isinstance(pam.get("board"), dict) else None),
+                    "car": str(car)[:80] if car else None,
+                    "inside": [str(x)[:160] for x in (ing.get("inside") or []) if x][:4]})
+        out.append({"side": "alight", "station": str(a or "")[:20] or None,
+                    "updown": ((pam.get("alight") or {}).get("updown") if isinstance(pam.get("alight"), dict) else None),
+                    "inside": [str(x)[:160] for x in (eg.get("inside") or []) if x][:4]})
+    nav["route_stations"] = out[:6]
 
 
 # 화면이 기다리는 역 안/밖 확인의 종류 (v1.52.0)
@@ -128,8 +190,11 @@ def note_new_route(nav: dict, route_id: str, continues: bool = False) -> None:
     if not route_id:
         return
     if nav.get("route_id") != route_id:
+        keep = nav.get("dial_numbers")       # 방금 안내한 전화번호는 경로와 무관하게 남긴다 (v2.34.0)
         nav.clear()
         nav.update({"route_id": route_id, "guiding": False})
+        if keep:
+            nav["dial_numbers"] = keep
     if continues:
         nav["switching"] = True
 
@@ -548,3 +613,54 @@ def _report_step(fargs: dict, nav: dict, now: float = None) -> None:
     if fargs.get("lat") is not None:
         nav["report_pending"] = {"lat": fargs["lat"], "lng": fargs["lng"], "route_id": fargs.get("route_id"),
                                  "reason": fargs.get("reason"), "detail": fargs.get("detail"), "ts": now}
+
+
+# ─────────────────────────────────────────────────────────────
+# 전화 걸기 (v2.34.0) — "전화를 걸까요?" 에 그렇다고 하면 화면이 전화 앱을 번호가 입력된 채로 연다.
+# 통화 버튼은 이용자가 누른다. 번호는 이 세션에서 방금 안내한 결과(콜택시·충전소·수리센터·식당 등)에
+# 나온 번호만 건다 — 모델이 번호를 지어내 걸지 못하게 한다.
+# ─────────────────────────────────────────────────────────────
+import re as _re
+
+_TEL_RE = _re.compile(r"\+?\d[\d\- ]{6,14}\d")
+
+
+def _tel_digits(s) -> str:
+    return _re.sub(r"\D", "", str(s or ""))
+
+
+def note_dial_numbers(nav: dict, result) -> None:
+    """도구 결과(items[].tel)에 나온 번호를 세션에 기억한다 — dial_phone 이 걸 수 있는 번호."""
+    if nav is None or not isinstance(result, dict):
+        return
+    items = result.get("items")
+    if not isinstance(items, list):
+        return
+    found = []
+    for it in items[:20]:
+        if not isinstance(it, dict) or not it.get("tel"):
+            continue
+        for m in _TEL_RE.finditer(str(it["tel"])):
+            d = _tel_digits(m.group(0))
+            if 8 <= len(d) <= 12:
+                found.append({"tel": m.group(0).strip(), "digits": d, "name": str(it.get("name") or "")[:60]})
+    if found:
+        old = [x for x in (nav.get("dial_numbers") or []) if x["digits"] not in {f["digits"] for f in found}]
+        nav["dial_numbers"] = (found + old)[:20]
+
+
+def dial_phone_result(nav: dict, tel: str = "", name: str = "") -> dict:
+    """dial_phone 도구 응답 — 방금 안내한 번호면 화면에 전화 걸기 화면을 열게 한다."""
+    known = (nav or {}).get("dial_numbers") or []
+    d = _tel_digits(tel)
+    pick = next((x for x in known if d and x["digits"] == d), None)
+    if pick is None and not d and name:
+        pick = next((x for x in known if name in x["name"] or x["name"] in name), None)
+    if pick is None:
+        return {"status": "unknown_number", "tool_name": "dial_phone",
+                "ai_instruction": ("방금 안내한 번호가 아니라서 전화를 걸 수 없습니다. 번호를 그대로 불러 드리고, "
+                                   "직접 거시도록 짧게 안내하세요. 번호를 지어내지 마세요.")}
+    return {"status": "success", "tool_name": "dial_phone", "tel": pick["tel"], "name": pick["name"],
+            "ui_action": {"action": "dial", "tel": pick["digits"], "name": pick["name"]},
+            "ai_instruction": ("전화 앱이 번호가 입력된 채로 열립니다. '전화 화면을 열었어요. 통화 버튼을 누르시면 "
+                               "연결됩니다' 한 문장만 말하세요. 대신 통화하거나 예약한다고 하지 마세요.")}

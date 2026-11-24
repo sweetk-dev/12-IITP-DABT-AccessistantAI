@@ -265,7 +265,7 @@ def test_instruction_rules():
     s = lb.SYSTEM_INSTRUCTION
     for frag in ("한 번의 답변은 4문장 이내", "이어서 말씀드릴까요?", "바깥 날씨를 말하는 추위·더위",
                  "`get_weather`", "`indoor` true", "길안내 음성이 방금 말한 안내를 그대로 다시 읽지 마세요",
-                 "불러 드릴까요?", "서두와 맺음말을 붙이지 마세요"):
+                 "지금 전화를 걸까요?", "서두와 맺음말을 붙이지 마세요"):   # 콜택시는 번호 안내 뒤 전화 걸기를 묻는다 (v2.34.0)
         assert frag in s, frag
     assert "5~7문장 허용" not in s and "최대 8문장" not in s
     assert "get_weather" in lp.LOCAL_SYSTEM_PROMPT and "4문장" in lp.LOCAL_SYSTEM_PROMPT

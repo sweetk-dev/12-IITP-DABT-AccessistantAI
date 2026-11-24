@@ -925,7 +925,7 @@ def _auto_score(data: dict, mode: str):
                      "weight": w}
 
 
-async def _auto_pick(origin_pt, dest, profile, low_floor, walk_data):
+async def _auto_pick(origin_pt, dest, profile, low_floor, walk_data, dest_station=None):
     """자동 추천 — 도보와 대중교통 후보를 비교해 하나를 고른다(v2.20.0, 위 설명 참조).
 
     반환: (선택된 경로 응답, 실제 방식, 리프트 때문에 버린 후보의 경고 문장들 또는 None, 비교 기록 목록)
@@ -938,8 +938,10 @@ async def _auto_pick(origin_pt, dest, profile, low_floor, walk_data):
     if walk_m < AUTO_TRANSIT_MIN_M:
         return walk_data, "walk", None, compare
     req_modes = ("walk_subway", "walk_bus", "walk_bus_subway")
+    # 목적지가 역이면 대중교통 후보도 그 역 출구에서 끝나게 한다(v2.34.0) — 역 대표점까지 걷는 후보와 비교하지 않는다
+    st_kw = {"dest_station": dest_station} if dest_station else {}
     results = await asyncio.gather(*[
-        route_client.plan_route(origin_pt, dest, profile=profile, mode=m, realtime=True, low_floor=low_floor)
+        route_client.plan_route(origin_pt, dest, profile=profile, mode=m, realtime=True, low_floor=low_floor, **st_kw)
         for m in req_modes], return_exceptions=True)
     lift_cautions = None
     seen = set()
@@ -1276,7 +1278,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
             return data
         # 도보·대중교통 후보 비교 후 선택(v2.20.0) — 상세 규칙은 AUTO_MODE_WEIGHT 위 설명
         data, mode_used, auto_kept_walk, auto_compare = await _auto_pick(
-            origin_pt, dest, profile, low_floor, data)
+            origin_pt, dest, profile, low_floor, data, dest_station=dest_station)
         logger.info("자동 추천 비교: %s", auto_compare)
     elif st_in is not None:
         data = await route_client.plan_route(origin_pt, dest, profile=profile, mode="walk",
@@ -1554,6 +1556,35 @@ async def _resolve_base(place: str, lat, lng, tool_name: str):
     return lat, lng, None
 
 
+# 장애인콜택시 (v2.34.0) — 자료는 시·군 교통약자이동지원센터(접수센터) 목록이다. 차량 위치가 아니라 센터 사무실
+# 좌표라서, 반경으로 찾으면 '근처에 없다'는 답이 사무실까지의 거리로 갈린다(안양문화원에서 안양시 센터 2.5km →
+# 반경 2km 밖 → "바로 이용할 수 있는 콜택시가 없다"). 서비스 지역(시) 센터를 거리와 무관하게 하나 골라 번호를 안내한다.
+CALLTAXI_SEARCH_M = 30000
+_CALLTAXI_AI = ("장애인콜택시(support_type calltaxi)는 근처 차량을 찾는 것이 아니라 지역 접수센터에 전화해 부르는 "
+                "방식입니다. 거리나 '근처에 없다'는 말하지 마세요. 센터 이름과 첫 번째 전화번호를 말하고, 운영시간이 "
+                "있으면 '24시간 접수'처럼 짧게 덧붙인 뒤 '지금 전화를 걸까요?'라고 한 번 물으세요. 그렇다고 하면 "
+                "dial_phone 을 그 번호로 호출합니다. 콜택시를 대신 부르거나 예약해 준다고 말하지 마세요. ")
+
+
+async def _calltaxi_center(lat: float, lng: float) -> Optional[dict]:
+    """서비스 지역(시)의 장애인콜택시 접수센터 하나 — 이름에 지역명이 든 곳 우선, 없으면 가장 가까운 곳. 거리는 싣지 않는다."""
+    try:
+        data = await route_client.support_nearby(lat, lng, types="calltaxi", radius_m=CALLTAXI_SEARCH_M, limit=10)
+    except Exception:
+        logger.exception("장애인콜택시 센터 조회 실패")
+        return None
+    rows = [it for it in ((data or {}).get("items") or [])
+            if isinstance(it, dict) and it.get("tel") and it.get("support_type", "calltaxi") == "calltaxi"] \
+        if isinstance(data, dict) and data.get("status") != "error" else []
+    if not rows:
+        return None
+    city = re.sub(r"(특례시|시|군)$", "", SERVICE_AREA or "")
+    local = [it for it in rows if city and city in (it.get("name") or "") + " " + (it.get("addr") or "")]
+    pick = dict((local or rows)[0])
+    pick["dist_m"] = None
+    return pick
+
+
 async def tool_find_emergency_support(lat: float = None, lng: float = None, place: str = "",
                                       types: str = "", situation: str = "",
                                       radius_m: int = 2000) -> dict:
@@ -1572,13 +1603,20 @@ async def tool_find_emergency_support(lat: float = None, lng: float = None, plac
         radius_m = max(300, min(int(radius_m or 2000), 10000))
     except (TypeError, ValueError):
         radius_m = 2000
-    data = await route_client.support_nearby(lat, lng, types=tsel, radius_m=radius_m, limit=3)
-    if isinstance(data, dict) and data.get("status") == "error":
-        return data
+    want_taxi = "calltaxi" in tsel.split(",")
+    near_types = ",".join(t for t in tsel.split(",") if t != "calltaxi")
+    if near_types:
+        data = await route_client.support_nearby(lat, lng, types=near_types, radius_m=radius_m, limit=3)
+        if isinstance(data, dict) and data.get("status") == "error":
+            return data
+    else:
+        data = {"items": []}
+    raw = [it for it in (data.get("items") or []) if isinstance(it, dict) and it.get("support_type") != "calltaxi"]
+    taxi = await _calltaxi_center(lat, lng) if want_taxi else None
+    if taxi is not None:
+        raw.append(taxi)
     items = []
-    for it in (data.get("items") or []):
-        if not isinstance(it, dict):
-            continue
+    for it in raw:
         items.append({
             "support_type": it.get("support_type"),
             "type_label": SUPPORT_TYPE_LABEL.get(it.get("support_type"), it.get("type_label")),
@@ -1598,7 +1636,8 @@ async def tool_find_emergency_support(lat: float = None, lng: float = None, plac
     by_type = {}
     for it in items:
         by_type[it["support_type"]] = by_type.get(it["support_type"], 0) + 1
-    missing = [SUPPORT_TYPE_LABEL[t] for t in tsel.split(",") if t not in by_type]
+    # 콜택시는 위치 반경으로 찾는 대상이 아니다 — '반경 안에 없다'고 말하지 않는다(아래 별도 지시)
+    missing = [SUPPORT_TYPE_LABEL[t] for t in tsel.split(",") if t not in by_type and t != "calltaxi"]
     ai = (("기준 위치는 %s 입니다. " % base_label if base_label else "")
           + "가장 가까운 한 곳만 이름·거리·전화번호로 말하세요(충전·수리·콜택시처럼 여러 유형을 함께 찾았으면 유형마다 한 곳). "
           + _ONE_AT_A_TIME +
@@ -1610,9 +1649,12 @@ async def tool_find_emergency_support(lat: float = None, lng: float = None, plac
           )
     if missing:
         ai += "%s 은(는) 반경 %dm 안에 없다고 분명히 말하세요. " % ("·".join(missing), radius_m)
+    if want_taxi:
+        ai += (_CALLTAXI_AI if taxi is not None else
+               "이 지역 장애인콜택시 접수센터 자료를 찾지 못했다고 짧게 말하세요. 번호를 지어내지 마세요. ")
     if "charge" in tsel:
-        ai += ("배터리 상황이면 가장 가까운 충전소를 먼저 말하고, 멀다고 하면 장애인콜택시 전화번호를 알려 드리세요. "
-               "콜택시를 직접 부르거나 전화를 연결해 드릴 수는 없으니 '불러 드릴까요?'라고 묻지 마세요. ")
+        ai += ("배터리 상황이면 가장 가까운 충전소를 먼저 말하고, 멀다고 하면 장애인콜택시 접수센터 번호를 알려 드릴 수 "
+               "있다고 하세요. 콜택시를 대신 부르거나 예약해 준다고 하지 마세요. ")
     return {
         "status": "success",
         "tool_name": "find_emergency_support",
@@ -2644,6 +2686,12 @@ async def tool_get_station_facilities(station: str = "", route_elevator: dict = 
                   "gap_min_cm": p.get("gap_min_cm"), "gap_max_cm": p.get("gap_max_cm")}
                  for p in (data.get("platforms") or [])]
     gaps = [p["gap_max_cm"] for p in platforms if p.get("gap_max_cm") is not None]
+    # 이 경로에서 탈(내릴) 승강장 (v2.34.0) — 틈은 승강장(방향)마다 다르다. 역 전체 최댓값을 말하면 탈 승강장보다
+    # 훨씬 큰 값이 들릴 수 있다(관악역: 상행 최대 15.3cm, 안양 방면 하행 최대 10.8cm).
+    ud = route_elevator.get("updown") if isinstance(route_elevator, dict) else None
+    route_platform = next((p for p in platforms if ud and p.get("updown") == ud), None)
+    re_ok = isinstance(route_elevator, dict) and route_elevator.get("text")
+    car = route_elevator.get("car") if re_ok else None
     return {
         "status": "success",
         "tool_name": "get_station_facilities",
@@ -2660,22 +2708,35 @@ async def tool_get_station_facilities(station: str = "", route_elevator: dict = 
         "safety_plate_status": status.get("safety_plate", "unknown"),
         "platform_gap_max_cm": max(gaps) if gaps else None,
         "platforms": platforms,
+        "route_platform": route_platform,
         "base_dt": data.get("base_dt"),
         "route_elevator": route_elevator if isinstance(route_elevator, dict) else None,
         "ai_instruction": (
             ("안내 중인 경로에서 이용할 승강기는 route_elevator.text 입니다. 엘리베이터를 물으면 이 승강기 하나만 "
              "말하세요(타는 역이면 탈 승강장 쪽 승강기, 내리는 역이면 내린 승강장의 승강기). "
              "다른 승강기 위치는 사용자가 물을 때만 elevators 에서 하나씩 말하세요. "
-             if isinstance(route_elevator, dict) and route_elevator.get("text") else
+             + ("몇 번 칸에 타는지 물으면 route_elevator.car 를 그대로 말하세요 — 승강기 바로 앞 칸이 아니라 "
+                "내릴 역 승강기에 맞춘 칸입니다. " if car else
+                "몇 번 칸에 타는지 물으면 칸 번호를 지어내지 말고 탈 승강장 승강기 위치만 말하세요. ")
+             if re_ok else
              "엘리베이터를 물으면 하나만 말하세요. 사용자가 탈 방향(○○ 방면)이나 출구를 말했으면 elevators 에서 그에 맞는 "
              "승강장 승강기 하나만 말합니다. 방향을 모르면 위치를 늘어놓지 말고 '어느 방면으로 타세요?'라고 "
              "elevators 에 나온 방면 이름 둘로 한 번만 물은 뒤, 답한 방향의 승강기 하나만 말하세요. 출구 쪽 승강기는 출구를 물을 때만. "
-             "다른 위치는 물을 때만 하나씩 말하세요. ")
+             "다른 위치는 물을 때만 하나씩 말하세요. "
+             "경로 없이 몇 번 칸에 타는지 물으면 탈 승강장 승강기 위치만 말하고, 목적지를 알려 주시면 내릴 역 승강기에 "
+             "맞춘 칸을 알려 드릴 수 있다고 덧붙이세요. ")
             + "역 이름과 노선은 처음 한 번만 말하고, 사용자가 물은 항목만 답하세요. 화장실을 물으면 dis_toilets 의 "
             "게이트 안/밖·출구를 말하세요. 리프트만 있는 역은 도움이 필요할 수 있다고 알리세요. "
             "상태 값이 unknown 이면 '없다'가 아니라 '자료가 없다'고 말하세요. "
-            "승강장 이격거리(platform_gap_max_cm)는 휠체어 승차를 물었을 때만 '최대 약 n cm 틈, "
-            "안전발판 유무' 로 덧붙이세요. 실시간 고장·운행 여부는 알 수 없다고 하세요."
+            + ("승강장 틈(열차와 승강장 사이)을 물으면 route_platform(이 경로에서 이용할 승강장) 값만 '약 "
+               "gap_min_cm~gap_max_cm cm'로 말하고, safety_plate 가 yes 일 때만 안전발판이 있다고 하세요. "
+               "다른 승강장 값과 platform_gap_max_cm 은 말하지 마세요. "
+               if route_platform else
+               "승강장 틈(열차와 승강장 사이)은 승강장(방향)마다 다릅니다. platform_gap_max_cm 은 역 전체에서 가장 큰 "
+               "값이라 그대로 말하지 마세요. 탈 방향을 알면 platforms 에서 그 방향(updown — 상행은 서울 방면, 하행은 "
+               "수원·오이도 방면) 하나의 값을 '약 gap_min_cm~gap_max_cm cm'로 말하고, 모르면 어느 방면으로 타는지 먼저 "
+               "물으세요. 안전발판은 그 승강장의 safety_plate 가 yes 일 때만 있다고 하세요. ")
+            + "실시간 고장·운행 여부는 알 수 없다고 하세요."
         ),
     }
 

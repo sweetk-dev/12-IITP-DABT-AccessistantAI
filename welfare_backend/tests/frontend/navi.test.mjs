@@ -4052,6 +4052,24 @@ check("시트 손잡이가 시트 맨 위에 붙고(위 여백 0) 상하 간격�
   I().resetTrip(); I().clearRouteDisplay(); I().stopSpeak(); I().setFixAccForTest(null);
 }
 
+// ── v2.34.0: 말로 전화 걸기 — 전화 앱을 번호가 입력된 채로 연다 ──
+{
+  const I = () => window.NAVI._internals();
+  let clicked = null;
+  const realClick = window.HTMLAnchorElement.prototype.click;
+  window.HTMLAnchorElement.prototype.click = function(){ clicked = this.getAttribute("href"); };
+  const r = window.NAVI.onUiAction({ type: "ui_action", action: "dial", payload: { action: "dial", tel: "16660420", name: "센터" } });
+  check("dial: tel: 링크로 전화 앱을 연다, 화면 버튼은 만들지 않는다 (v2.34.0)", () => {
+    assert.equal(clicked, "tel:16660420");
+    assert.equal(I().lastDial(), "16660420");
+    assert.equal(r, null);
+  });
+  clicked = null;
+  window.NAVI.onUiAction({ type: "ui_action", action: "dial", payload: { action: "dial", tel: "12" } });
+  check("dial: 번호가 아니면 열지 않는다 (v2.34.0)", () => assert.equal(clicked, null));
+  window.HTMLAnchorElement.prototype.click = realClick;
+}
+
 // ── v2.30.2: 말로 목록 펼치기·접기 ──
 {
   const I = () => window.NAVI._internals();

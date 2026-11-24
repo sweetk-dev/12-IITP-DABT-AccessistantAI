@@ -53,7 +53,8 @@ ROUTE = {"find_bf_tour_spots", "plan_accessible_route", "explain_route_segment",
          "find_culture_sports",                                           # v2.4.0 문화·체육 시설
          "start_guidance",                                                # v2.26.0 말로 안내 시작
          "pause_guidance", "map_zoom",                                    # v2.28.0 안내 멈춤·지도 크기
-         "list_sheet"}                                                    # v2.30.2 목록 펼치기·접기
+         "list_sheet",                                                    # v2.30.2 목록 펼치기·접기
+         "dial_phone"}                                                    # v2.34.0 전화 앱 열기
 WEATHER = {"get_weather"}                                                 # v2.29.0 날씨 (경로 서비스와 무관)
 
 results = []
@@ -125,7 +126,8 @@ def t_dispatcher_backs_every_tool():
     disp = set(get_tool_dispatcher(None).keys())
     declared = names(lp._ollama_tools())
     # get_current_guidance·start_guidance 는 세션 상태만 읽어 디스패처를 거치지 않는다
-    unbacked = declared - disp - {"get_current_guidance", "start_guidance", "pause_guidance", "map_zoom", "list_sheet"}
+    unbacked = declared - disp - {"get_current_guidance", "start_guidance", "pause_guidance", "map_zoom", "list_sheet",
+                                  "dial_phone"}   # 세션이 기억한 번호로만 (v2.34.0)
     assert not unbacked, "구현 없는 도구를 선언함: %s" % sorted(unbacked)
 
 
