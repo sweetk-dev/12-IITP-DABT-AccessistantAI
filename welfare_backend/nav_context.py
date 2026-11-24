@@ -213,7 +213,7 @@ def annotate_route_success(result, nav: dict):
         return result
     if nav and nav.get("guiding"):
         extra = (" 길안내가 진행 중이었으므로 화면은 새 경로로 안내를 곧바로 이어 갑니다. "
-                 "경로 요약(거리·시간·주의 사항)은 그대로 말하되, '안내 시작'을 묻거나 버튼을 눌러 "
+                 "경로 요약(걸리는 시간·주의할 곳)은 짧게 말하되, '안내 시작'을 묻거나 버튼을 눌러 "
                  "달라고 하지 말고 끝에 새 경로로 안내를 이어 간다고 한 문장을 덧붙이세요.")
         result["guidance_continues"] = True
     else:

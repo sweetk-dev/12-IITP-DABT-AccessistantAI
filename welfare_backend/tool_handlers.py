@@ -1103,6 +1103,65 @@ def _station_ai_note(data: dict) -> str:
     return ""
 
 
+# 경로를 찾은 뒤 하는 말 (v2.34.2) — 거리·최대 경사·계단 수·첫 이동 문장을 한꺼번에 말하면 한 번에 20~35초가
+# 걸렸고, 같은 내용은 화면 경로 카드에 모두 나온다. 말은 걸리는 시간·주의할 곳·안내 시작 질문만 하고 나머지는
+# 물을 때 답한다(값은 결과에 그대로 있다). 리프트만 있는 승강장 같은 안전 경고는 그대로 먼저 말한다.
+_ROUTE_SPEECH_RULE = (
+    "말은 짧게 하세요. ① 걸리는 시간을 '20분쯤'처럼 반올림해 한 마디(지하철·버스 구간이 있으면 노선·정거장 수와 "
+    "함께) ② speak_cautions 가 있으면 어디쯤 무엇이 있는지 한 문장 ③ 안내를 시작할지 묻기. "
+    "총 거리 숫자, 최대 경사 숫자, 계단 수, 첫 이동 문장, '○○년 기준'은 말하지 마세요 — 화면 경로 카드에 나옵니다. "
+    "사용자가 거리·경사·계단을 물으면 summary 값으로 답하세요. ")
+ROUTE_CAUTION_NEAR_M = 150      # 출발점·도착점에서 이 안이면 "출발하자마자"·"도착 바로 앞"
+ROUTE_CAUTION_SLOPE_DEG = 6.0   # 경사 구간 경고는 권장 기준(6°) 이상만 말한다
+_CAUTION_WHAT = (("경사", "경사가 심한 곳"), ("턱", "턱이 있는 곳"), ("공사", "공사 중인 곳"),
+                 ("보도", "보도가 없는 곳"), ("통행", "지나가기 어려운 곳"), ("계단", "계단이 있는 곳"))
+
+
+def _route_speak_cautions(primary: dict) -> list:
+    """경로 스텝 경고 중 말로 알릴 것 — 이용자 제보와 권장 기준 이상 경사만, 가까운 곳은 하나로 묶는다(최대 2곳).
+
+    '턱낮춤 미상'은 자료가 없다는 뜻이라 말하지 않는다(화면 스텝에는 남는다).
+    """
+    steps = [s for s in ((primary or {}).get("steps") or []) if isinstance(s, dict)]
+    total = sum(float(s.get("distance_m") or 0) for s in steps)
+    out, acc, last_at = [], 0.0, None
+    for s in steps:
+        at = acc
+        acc += float(s.get("distance_m") or 0)
+        for w in s.get("warnings") or []:
+            w = str(w)
+            if "이용자 제보" in w:
+                pass
+            else:
+                m = re.search(r"경사\s*([0-9.]+)\s*도", w)
+                if not (m and float(m.group(1)) >= ROUTE_CAUTION_SLOPE_DEG):
+                    continue
+            what = next((label for key, label in _CAUTION_WHAT if key in w), "주의할 곳")
+            if last_at is not None and at - last_at <= ROUTE_CAUTION_NEAR_M and out and out[-1]["what"] == what:
+                break                       # 바로 앞 경고와 같은 곳 — 하나로 본다
+            if at <= ROUTE_CAUTION_NEAR_M:
+                where = "출발하자마자"
+            elif total - at <= ROUTE_CAUTION_NEAR_M:
+                where = "도착 바로 앞"
+            else:
+                where = ("약 %.1fkm 지나서" % (at / 1000.0)) if at >= 1000 else ("약 %dm 지나서" % (round(at / 100.0) * 100))
+                if s.get("link_name"):
+                    where += " %s에서" % s["link_name"]
+            out.append({"where": where, "what": what, "reported": "이용자 제보" in w})
+            last_at = at
+            break
+        if len(out) >= 2:
+            break
+    return out
+
+
+def _speak_cautions_note(cautions: list) -> str:
+    if not cautions:
+        return "주의할 곳이 없으면 그 말은 하지 마세요. "
+    return ("주의할 곳: " + " / ".join("%s %s" % (c["where"], c["what"]) for c in cautions)
+            + " — 이것을 '출발하자마자 경사가 심한 곳이 있으니 천천히 가세요'처럼 한 문장으로 말하세요. ")
+
+
 def _platform_ai_note(cautions: list, kept_walk) -> str:
     """리프트만 있는 승강장 경고를 모델이 출발 전에 말하도록 하는 지시문(02 v1.35.0).
 
@@ -1349,6 +1408,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                                       if isinstance(pa, dict) and pa.get("warning")],
             })
     platform_cautions = _platform_cautions(data)
+    speak_cautions = _route_speak_cautions(primary)
     station_end = _brief_station_end(data.get("station_end"))
     if station_end and station_end.get("label"):
         dest_label = station_end["label"]
@@ -1383,6 +1443,8 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         "auto_compare": auto_compare,
         "fallback": data.get("fallback", {}),
         "first_steps": [s.get("instruction") for s in (primary.get("steps") or [])[:2]],
+        # 말로 알릴 주의할 곳(v2.34.2) — 위치(출발하자마자·○m 지나서·도착 바로 앞)와 무엇. 최대 2곳
+        "speak_cautions": speak_cautions,
         # 02 v1.28.0(#79) — 출발점이 역 가까이면 역 안/밖 질문, 역 안 출발이면 승강장→출구 안내
         "station_nearby": _brief_station_nearby(data.get("station_nearby")),
         "station_start": _brief_station_start(data.get("station_start")),
@@ -1399,8 +1461,8 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                " (자동 추천)" if auto else "") if mode_used else "")
             + ("지하철 구간은 없으니 환승·지하철을 언급하지 마세요. "
                if mode_used != "walk_bus_subway" and "subway" in (mode_requested or "") else "")
-            + ("대중교통 구간이 있으면 transit 의 노선 번호·유형·방면(end_station)·"
-               "정거장 수를 함께 말하세요. "
+            + ("대중교통 구간이 있으면 노선(버스 번호·지하철 호선)과 정거장 수를 한 마디로 말하세요"
+               "(방면·승강기 위치는 묻거나 안내가 시작되면 말합니다). "
                + (("저상버스 우선으로 고른 경로입니다 — 가장 가까운 정류장이 아니라 저상버스가 오는 "
                    "정류장·노선을 골랐다는 점을 짧게 밝히고, " if lf.get("mode") else "")
                   + "저상버스 실시간 확인 결과(low_floor_note)를 그대로 한 문장으로 전하고, "
@@ -1408,17 +1470,17 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
                   if low_floor_note else
                   "저상버스 정차는 보장되지 않으니 실시간 도착정보 확인이 필요하다고 알리고, "
                   "'저상버스 언제 와' 라고 물으면 확인해 드릴 수 있다고 안내하세요. ")
-               + "지하철 구간이 있고 board_facilities.elevators 가 있으면 승차 역 승강기 "
-                 "출입구를 한 마디로 알리세요(예: '안양역은 1번 출구 옆 엘리베이터'). "
-                 + ("소요시간은 저상버스 대기를 더한 추정임을 밝히세요. "
-                    if lf.get("tier") in (1, 2) else "소요시간은 대기 미포함 추정임을 밝히세요. ")
+               + ("소요시간은 저상버스 대기를 더한 추정임을 밝히세요. "
+                  if lf.get("tier") in (1, 2) else "소요시간이 차량 대기를 뺀 추정이라는 것은 물을 때만 말하세요. ")
                if transit_brief else "")
             + _station_ai_note(data)
             + _station_end_ai_note(station_end)
             + _platform_ai_note(platform_cautions, auto_kept_walk)
-            + "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로 요약하고, 첫 안내 한 문장을 덧붙이세요. "
-            "경고(warnings)나 제약 완화(fallback.used=true)가 있으면 반드시 함께 알리세요. "
-            "전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다. "
+            + _ROUTE_SPEECH_RULE
+            + (_speak_cautions_note(speak_cautions))
+            + ("평소 기준으로는 길이 없어 경사 조건을 낮춰 찾은 경로라는 것을 한 문장으로 알리세요. "
+               if (data.get("fallback") or {}).get("used") else "")
+            + "전체 경로를 단계별로 읽지 마세요 — 화면과 안내 음성이 따로 진행합니다. "
             "화면의 이동 방식 카드로 다른 방식을 고를 수 있다는 점을 필요할 때만 짧게 안내하세요."
         ),
     }
