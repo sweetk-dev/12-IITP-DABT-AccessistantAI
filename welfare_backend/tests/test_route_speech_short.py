@@ -97,3 +97,12 @@ def test_say_time_rounding():
     assert th._say_time(390) == "약 6분" and th._say_time(334) == "약 6분"
     assert th._say_time(1419) == "약 25분" and th._say_time(1116) == "약 20분" and th._say_time(600) == "약 10분"
     assert th._say_time(None) == "약 1분" and th._say_time("x") == ""
+
+
+def test_no_unprompted_mode_switch_hint():
+    """경로 답에 '다른 방식을 눌러 바꿀 수 있다'를 먼저 붙이지 않는다 (v2.34.4)."""
+    import inspect
+    src = inspect.getsource(th)
+    assert "필요할 때만 짧게 안내하세요" not in src
+    assert "먼저 꺼내지 마세요" in src
+
