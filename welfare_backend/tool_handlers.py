@@ -1107,10 +1107,23 @@ def _station_ai_note(data: dict) -> str:
 # 걸렸고, 같은 내용은 화면 경로 카드에 모두 나온다. 말은 걸리는 시간·주의할 곳·안내 시작 질문만 하고 나머지는
 # 물을 때 답한다(값은 결과에 그대로 있다). 리프트만 있는 승강장 같은 안전 경고는 그대로 먼저 말한다.
 _ROUTE_SPEECH_RULE = (
-    "말은 짧게 하세요. ① 걸리는 시간을 '20분쯤'처럼 반올림해 한 마디(지하철·버스 구간이 있으면 노선·정거장 수와 "
-    "함께) ② speak_cautions 가 있으면 어디쯤 무엇이 있는지 한 문장 ③ 안내를 시작할지 묻기. "
+    "말은 짧게 하세요. ① 걸리는 시간은 say_time 을 그대로 말하세요(직접 계산하거나 바꾸지 않습니다. 지하철·버스 "
+    "구간이 있으면 노선·정거장 수와 함께) ② speak_cautions 가 있으면 어디쯤 무엇이 있는지 한 문장 ③ 안내를 시작할지 묻기. "
     "총 거리 숫자, 최대 경사 숫자, 계단 수, 첫 이동 문장, '○○년 기준'은 말하지 마세요 — 화면 경로 카드에 나옵니다. "
-    "사용자가 거리·경사·계단을 물으면 summary 값으로 답하세요. ")
+    "사용자가 거리·계단을 물으면 summary 값으로 답하세요. 경사를 물으면 summary.max_slope_deg 는 지도 높이 자료로 계산한 "
+    "값이라고 밝히고, speak_cautions 에 경사가 심한 곳이 있으면 '그런데 ○○ 경사가 심하다는 이용자 제보가 있습니다'처럼 "
+    "그 위치를 함께 말하세요 — 숫자만 말하면 실제보다 완만하게 들립니다. ")
+
+
+def _say_time(sec) -> str:
+    """말로 할 걸리는 시간 (v2.34.3) — 10분 미만은 분 그대로, 그 이상은 5분 단위로 반올림. 모델이 예시 숫자를 쓰지 않게 서버가 만든다."""
+    try:
+        m = max(1, round(float(sec or 0) / 60.0))
+    except (TypeError, ValueError):
+        return ""
+    if m < 10:
+        return "약 %d분" % m
+    return "약 %d분" % (int(5 * round(m / 5.0)))
 ROUTE_CAUTION_NEAR_M = 150      # 출발점·도착점에서 이 안이면 "출발하자마자"·"도착 바로 앞"
 ROUTE_CAUTION_SLOPE_DEG = 6.0   # 경사 구간 경고는 권장 기준(6°) 이상만 말한다
 _CAUTION_WHAT = (("경사", "경사가 심한 곳"), ("턱", "턱이 있는 곳"), ("공사", "공사 중인 곳"),
@@ -1445,6 +1458,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
         "first_steps": [s.get("instruction") for s in (primary.get("steps") or [])[:2]],
         # 말로 알릴 주의할 곳(v2.34.2) — 위치(출발하자마자·○m 지나서·도착 바로 앞)와 무엇. 최대 2곳
         "speak_cautions": speak_cautions,
+        "say_time": _say_time(summary.get("duration_sec")),   # 말로 할 걸리는 시간 (v2.34.3)
         # 02 v1.28.0(#79) — 출발점이 역 가까이면 역 안/밖 질문, 역 안 출발이면 승강장→출구 안내
         "station_nearby": _brief_station_nearby(data.get("station_nearby")),
         "station_start": _brief_station_start(data.get("station_start")),

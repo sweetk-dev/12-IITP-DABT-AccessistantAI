@@ -85,7 +85,15 @@ def test_instruction_is_short_and_values_kept():
     assert "말은 짧게 하세요" in ins and "총 거리 숫자, 최대 경사 숫자, 계단 수, 첫 이동 문장" in ins
     assert "총 거리·예상 시간·최대 경사·계단 수를 한 문장으로" not in ins and "첫 안내 한 문장을 덧붙이세요" not in ins
     assert "주의할 곳: 출발하자마자 경사가 심한 곳" in ins
+    assert r["say_time"] == "약 20분" and "say_time 을 그대로" in ins and "'20분쯤'" not in ins   # (v2.34.3)
+    assert "지도 높이 자료로 계산한 값" in ins
     assert r["speak_cautions"][0]["where"] == "출발하자마자"
     s = r["summary"]                                            # 물으면 답할 값은 그대로
     assert s["distance_m"] == 1227 and s["max_slope_deg"] == 3.46 and s["stairs_cnt"] == 0
     assert r["warnings"] == ["이용자 제보: 경사 심함 (미확인)"]
+
+
+def test_say_time_rounding():
+    assert th._say_time(390) == "약 6분" and th._say_time(334) == "약 6분"
+    assert th._say_time(1419) == "약 25분" and th._say_time(1116) == "약 20분" and th._say_time(600) == "약 10분"
+    assert th._say_time(None) == "약 1분" and th._say_time("x") == ""
