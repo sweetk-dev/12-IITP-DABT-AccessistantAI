@@ -326,8 +326,9 @@ async def plan_route(origin: dict, destination: dict, profile: str = "wheelchair
                      dest_station: Optional[str] = None) -> dict:
     body = {"origin": origin, "destination": destination,
             "profile": profile, "alternatives": alternatives}
-    if dest_station and not origin_station and mode in ("", "walk", None):
+    if dest_station and not origin_station and mode in ("", "walk", None, "walk_subway", "walk_bus", "walk_bus_subway"):
         # 02 v1.46.0 — 도보 목적지가 역: 휠체어 출구까지 계획하고 도착 문장에 맞이방 가는 법을 붙인다.
+        # 02 v1.46.4 — 대중교통 모드도: 그 역에서 내리면 하차역 출구에서 끝난다(역 대표점까지 걷지 않는다).
         # 구버전 02 는 모르는 필드를 무시한다(역 대표점까지의 종전 경로가 온다).
         body["destination_station"] = {"name": str(dest_station)[:20]}
     if origin_station and mode in ("", "walk", None):

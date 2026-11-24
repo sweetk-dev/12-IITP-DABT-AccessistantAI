@@ -104,17 +104,39 @@ def t_support_cards_and_instruction():
     rec = _Rec(SUPPORT)
     r = _support(rec, lat=37.39, lng=126.95, situation="배터리가 다 됐어요 바퀴도 이상하고 택시도")
     assert r["status"] == "success" and r["count"] == 3, r
-    assert rec.calls[0]["types"] == "charge,repair,calltaxi"
+    # 콜택시는 반경 조회에서 빼고 지역 접수센터를 따로 찾는다 (v2.34.0)
+    assert rec.calls[0]["types"] == "charge,repair"
+    assert rec.calls[1]["types"] == "calltaxi" and rec.calls[1]["radius_m"] == 30000
     rp = [i for i in r["items"] if i["support_type"] == "repair"][0]
     assert rp["open_hours"] is None and rp["open_hours_status"] == "unknown"
     assert rp["coord_suspect"] is True and rp["type_label"] == "수리센터"
     assert "지어내지" in r["ai_instruction"] and "전화" in r["ai_instruction"]
-    assert "장애인콜택시 전화번호를 알려 드리세요" in r["ai_instruction"]   # 직접 부르겠다고 하지 않는다 (v2.29.5)
-    assert "'불러 드릴까요?'라고 묻지 마세요" in r["ai_instruction"]
+    assert "장애인콜택시 접수센터 번호를 알려 드릴 수" in r["ai_instruction"]
+    assert "대신 부르거나 예약해 준다고 하지 마세요" in r["ai_instruction"]   # 직접 부르겠다고 하지 않는다
+    assert "지금 전화를 걸까요?" in r["ai_instruction"] and "dial_phone" in r["ai_instruction"]   # (v2.34.0)
+    taxi = [i for i in r["items"] if i["support_type"] == "calltaxi"][0]
+    assert taxi["dist_m"] is None, "콜택시 센터 거리는 싣지 않는다 — 사무실 거리는 이용과 무관"
     ua = r["ui_action"]
     assert ua["action"] == "show_support" and len(ua["payload"]["items"]) == 3
     assert ua["payload"]["base"] == {"lat": 37.39, "lng": 126.95}
     assert r["count_by_type"] == {"charge": 1, "repair": 1, "calltaxi": 1}
+
+
+def t_calltaxi_is_center_not_nearby():
+    """콜택시만 물으면 반경 조회 없이 서비스 지역 센터 — '근처에 없다'는 지시가 없다 (v2.34.0)."""
+    centers = {"source": "db", "items": [
+        {"support_type": "calltaxi", "name": "과천시교통약자이동지원센터", "tel": "02-580-8400", "dist_m": 900},
+        {"support_type": "calltaxi", "name": "안양시 교통약자이동지원센터(착한수레·장애인콜택시)",
+         "tel": "1666-0420 / 031-857-0420(시내 직통)", "dist_m": 2491, "open_hours": "즉시콜 365일 24시간"}]}
+    rec = _Rec(centers)
+    r = _support(rec, lat=37.3903, lng=126.9257, situation="장애인 콜택시 어떻게 불러요")
+    assert [c["types"] for c in rec.calls] == ["calltaxi"], rec.calls
+    assert r["count"] == 1 and r["items"][0]["name"].startswith("안양시"), r["items"]
+    assert r["items"][0]["dist_m"] is None
+    assert "없다고 분명히 말하세요" not in r["ai_instruction"]
+    assert "근처에 없다'는 말하지 마세요" in r["ai_instruction"]
+    none = _support(_Rec({"source": "db", "items": []}), lat=37.39, lng=126.92, types="calltaxi")
+    assert none["count"] == 0 and "찾지 못했다" in none["ai_instruction"] and "지어내지" in none["ai_instruction"]
 
 
 def t_missing_type_is_said():

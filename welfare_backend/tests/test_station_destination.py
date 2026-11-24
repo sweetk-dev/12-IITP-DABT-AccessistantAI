@@ -6,7 +6,8 @@
 계약:
   1) "명학역 맞이방"·"명학역 안"·"명학 지하철역"은 정적 역 매핑으로 명학역이다(이름 검색으로 넘기지 않는다)
   2) "명학역 1번 출구"는 역 매핑에 걸리지 않는다(그 출구가 목적지)
-  3) 도보 목적지가 역이면 02 에 destination_station 을 싣는다 — 대중교통 모드·역 안 출발에는 싣지 않는다
+  3) 목적지가 역이면 02 에 destination_station 을 싣는다 — 도보·대중교통(v2.34.0, 그 역에서 내리면 출구에서 끝) 모두.
+     역 안 출발에는 싣지 않는다
   4) 02 station_end 가 오면 목적지 이름을 "명학역 1번 출구"로, 도구 결과에 station_end 를, 지침에 맞이방 안내를 싣는다
 """
 import asyncio
@@ -145,9 +146,24 @@ def t_auto_mode_walk_call_sends_destination_station():
     assert r["destination_label"] == "명학역 1번 출구"
 
 
-def t_transit_mode_does_not_send():
-    r, bodies = _plan(destination_place="명학역", mode="walk_subway")
-    assert all("destination_station" not in (b or {}) for b in bodies), bodies
+def t_transit_mode_sends_destination_station():
+    """대중교통 모드도 싣는다 (v2.34.0) — 02 v1.46.4 가 그 역에서 내리면 하차역 출구에서 끝낸다."""
+    r, bodies = _plan(destination_place="안양역", mode="walk_subway")
+    assert bodies and all((b or {}).get("destination_station") == {"name": "안양"} for b in bodies), bodies
+
+
+def t_auto_mode_transit_candidates_send_destination_station():
+    """자동 추천의 대중교통 후보 비교에도 싣는다 (v2.34.0) — "안양역 가자"가 역 대표점까지 걷는 후보로 비교되지 않게."""
+    bodies, fake = _with_fake([_route(dist=3000)])
+    orig = route_client._call
+    route_client._call = fake
+    try:
+        _run(tool_handlers.tool_plan_accessible_route(origin_lat=37.4188, origin_lng=126.9095, destination_place="안양역"))
+    finally:
+        route_client._call = orig
+    modes = [(b or {}).get("mode", "walk") for b in bodies]
+    assert {"walk_subway", "walk_bus", "walk_bus_subway"} <= set(modes), modes
+    assert all((b or {}).get("destination_station") == {"name": "안양"} for b in bodies), bodies
 
 
 def t_non_station_destination_unchanged():

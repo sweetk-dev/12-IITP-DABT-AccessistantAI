@@ -26,7 +26,7 @@ from nav_context import (annotate_route_failure, annotate_route_success,
                          start_guidance_result, pause_guidance_result, map_zoom_result, list_sheet_result,
                          update_nav_state, current_guidance_result,
                          inject_nav_defaults, inject_handoff, note_new_route,
-                         needs_current_location)
+                         needs_current_location, seed_route_stations, note_dial_numbers, dial_phone_result)
 from text_normalize import looks_like_echo, normalize_numbers
 from tool_handlers import get_tool_dispatcher, run_tool, summarize_tool_result
 from unresolved_logger import TurnTracker
@@ -335,8 +335,8 @@ DB 결과가 부족하면 아래를 **한 번의 답변 안에서** 자연스럽
 - 안전 질의("여기 건너도 돼요?", "이 길이 맞아요?")가 최우선입니다 — 다른 말 없이 즉시 답하세요. 확신할 수 없으면 모른다고 말하고 주변 확인을 권하세요.
 - 이동 중에 긴 정책 질문이 오면 핵심 한 문장만 답하고 "도착하신 뒤에 자세히 안내해 드릴까요?" 라고 제안하세요.
 - "저상버스 언제 와", "다음 버스 저상이야", "51번 몇 분 남았어" → `get_bus_arrivals` 를 호출합니다. 안내 중이면 승차 정류장·노선이 자동으로 들어갑니다. 결과의 `next_low_floor` 를 먼저 말하고, 없으면 "지금 오는 차량은 저상이 아니다"라고 하세요 — "저상버스가 없다"고 단정하지 않습니다. 실시간이라 변동될 수 있다고 한 마디 덧붙입니다.
-- "○○역 엘리베이터 어디 있어", "장애인 화장실 있어", "휠체어로 탈 수 있어" → `get_station_facilities` 를 호출합니다. 엘리베이터는 **하나만** 말합니다 — 길안내 중이면 경로에서 탈(내릴) 승강기(`route_elevator`), 아니면 물은 방향·출구에 맞는 하나(방향을 모르면 위치를 늘어놓지 말고 어느 방면으로 타는지 먼저 한 번 묻습니다). 다른 위치는 물을 때만 하나씩 말하고, 상태가 unknown 이면 "자료가 없다"고 말합니다(없다고 하지 않습니다).
-- **긴급 상황** — "배터리가 다 됐어", "충전할 데 있어", "휠체어가 고장났어", "바퀴가 이상해", "콜택시 불러줘" → `find_emergency_support` 를 **먼저** 호출합니다(situation 에 사용자 말 원문). 유형별로 가장 가까운 한 곳만 이름·거리·전화번호로 말하고(더 물으면 한 곳씩), `open_hours_status` 가 unknown 이면 운영시간을 지어내지 말고 "전화로 확인해 보시라"고 하세요. 배터리 상황이면 가장 가까운 충전소를 먼저 말하고, 멀다고 하면 장애인콜택시 전화번호를 알려 드립니다. 화면 카드의 '여기로 안내'는 가는 길을 물을 때만 말합니다. **전화를 걸거나 콜택시를 부르고 예약하는 일은 할 수 없습니다** — "불러 드릴까요?", "연결해 드릴까요?"라고 묻지 말고 전화번호만 알려 드립니다.
+- "○○역 엘리베이터 어디 있어", "장애인 화장실 있어", "휠체어로 탈 수 있어" → `get_station_facilities` 를 호출합니다. 엘리베이터는 **하나만** 말합니다 — 길안내 중이면 경로에서 탈(내릴) 승강기(`route_elevator`), 아니면 물은 방향·출구에 맞는 하나(방향을 모르면 위치를 늘어놓지 말고 어느 방면으로 타는지 먼저 한 번 묻습니다). 다른 위치는 물을 때만 하나씩 말하고, 상태가 unknown 이면 "자료가 없다"고 말합니다(없다고 하지 않습니다). 몇 번 칸에 타는지는 경로의 탈 칸(`route_elevator.car`)으로 답하고, 승강장 틈은 이용할 승강장(`route_platform`)의 값만 말합니다 — 역 전체에서 가장 큰 값(`platform_gap_max_cm`)을 그대로 말하지 않습니다.
+- **긴급 상황** — "배터리가 다 됐어", "충전할 데 있어", "휠체어가 고장났어", "바퀴가 이상해", "콜택시 불러줘" → `find_emergency_support` 를 **먼저** 호출합니다(situation 에 사용자 말 원문). 유형별로 가장 가까운 한 곳만 이름·거리·전화번호로 말하고(더 물으면 한 곳씩), `open_hours_status` 가 unknown 이면 운영시간을 지어내지 말고 "전화로 확인해 보시라"고 하세요. 배터리 상황이면 가장 가까운 충전소를 먼저 말하고, 멀다고 하면 장애인콜택시 접수센터 번호를 알려 드립니다. 화면 카드의 '여기로 안내'는 가는 길을 물을 때만 말합니다. **콜택시를 대신 부르거나 예약하는 일은 할 수 없습니다.** 장애인콜택시는 근처 차량을 찾는 것이 아니라 지역 접수센터에 전화해 부르는 방식이라, "근처에 콜택시가 없다"고 말하지 않고 센터 이름·번호를 알려 드린 뒤 "지금 전화를 걸까요?"라고 한 번 묻습니다. 그렇다고 하면 `dial_phone` 으로 전화 앱을 번호가 입력된 채로 엽니다(통화 버튼은 이용자가 누릅니다). 방금 안내한 번호만 걸 수 있습니다.
 - "화장실 어디야", "장애인 화장실" → `find_toilet` 을 호출합니다. **가장 가까운 한 곳만** 이름·거리·개방시간으로 말합니다. "다른 곳은?", "또 있어?"라고 물으면 도구를 다시 부르지 말고 결과 목록의 다음 곳을 하나씩 알려 드립니다. 청사·도서관·병원 같은 공공건물 안 화장실(building_toilet)은 건물이 문을 연 시간에만 쓸 수 있다고 덧붙입니다. 역 안 화장실은 `get_station_facilities` 입니다.
 - "근처 밥 먹을 데", "휠체어로 들어갈 수 있는 식당" → `find_accessible_restaurants`. 휠체어 정보가 없는 곳을 "못 간다"고 말하지 않습니다.
 - "점자도서관", "도서관 어디야", "장애인 운동할 곳", "체육회" → `find_culture_sports`. 가장 가까운 한 곳을 거리로 말하고(더 물으면 한 곳씩), 반경 밖(beyond_radius)이면 그렇다고 구분합니다.
@@ -474,6 +474,18 @@ def _route_tool_declarations() -> list:
                          "\"안내를 시작할까요?\" 물음에 그렇다고 답하면 사용한다. 경로가 있는지·이미 안내 "
                          "중인지는 서버가 확인한다. \"○○로 가자\", \"○○역으로 출발\" 처럼 장소 이름이 들어간 "
                          "말에는 쓰지 않는다 — 그때는 plan_accessible_route 로 그 장소의 경로부터 찾는다."),
+        ),
+        types.FunctionDeclaration(
+            name="dial_phone",
+            description=("전화 앱을 번호가 입력된 채로 연다(통화 버튼은 이용자가 누른다). 방금 안내한 장애인콜택시 "
+                         "접수센터·충전소·수리센터 등의 번호로 \"전화를 걸까요?\"라고 물었고 이용자가 그렇다고 하면 사용한다. "
+                         "방금 도구 결과에 나온 번호만 걸 수 있다 — 번호를 지어내지 않는다."),
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                required=["tel"],
+                properties={"tel": types.Schema(type=types.Type.STRING, description="걸 번호(방금 안내한 번호 그대로)"),
+                            "name": types.Schema(type=types.Type.STRING, description="기관·장소 이름")},
+            ),
         ),
         types.FunctionDeclaration(
             name="find_nearby_transit",
@@ -1696,6 +1708,9 @@ async def handle_live_chat(
                                         result = map_zoom_result(fargs.get("direction"), mode)   # (v2.28.0)
                                     elif fname == "list_sheet":
                                         result = list_sheet_result(fargs.get("action"), mode)    # (v2.30.2)
+                                    elif fname == "dial_phone":
+                                        # 방금 안내한 번호만 — 세션이 기억한 번호로 확인한다 (v2.34.0)
+                                        result = dial_phone_result(nav_state, fargs.get("tel"), fargs.get("name"))
                                     elif fname not in dispatcher:
                                         result = {"error": f"unknown tool: {fname}"}
                                     else:
@@ -1713,11 +1728,13 @@ async def handle_live_chat(
                                         annotate_route_success(result, nav_state)
                                         note_new_route(nav_state, result.get("route_id"),
                                                        continues=bool(result.get("guidance_continues")))
+                                        seed_route_stations(nav_state, result)   # 탈 칸·승강장 방향 (v2.34.0)
                                     # 경로를 만들지 못했는데 안내가 진행 중이면, 그 안내는 그대로
                                     # 계속된다. 그 사실을 말하지 않으면 "안내할 수 없다"는 말과
                                     # 화면·음성으로 진행되는 안내가 어긋나 보인다.
                                     elif fname == "plan_accessible_route":
                                         annotate_route_failure(result, nav_state)
+                                    note_dial_numbers(nav_state, result)   # "전화를 걸까요?" 에 쓸 번호 (v2.34.0)
                                     # Phase 5 Track A — 도구 호출 시퀀스 추적
                                     tracker.on_tool_call(fname, fargs, result)
                                     # #208: 정책 도구 결과가 오는 '지금'이 카드를 만들 최적 시점 —

@@ -38,7 +38,8 @@ import trial_recorder
 from nav_context import (update_nav_state, current_guidance_result,
                          annotate_route_success, start_guidance_result,
                          pause_guidance_result, map_zoom_result, list_sheet_result,
-                         note_new_route, inject_nav_defaults, inject_handoff)
+                         note_new_route, inject_nav_defaults, inject_handoff,
+                         seed_route_stations, note_dial_numbers, dial_phone_result)
 from tool_handlers import run_tool, summarize_tool_result
 
 logger = logging.getLogger(__name__)
@@ -326,6 +327,10 @@ def _ollama_route_tools() -> list:
         fn("list_sheet",
            "길안내 화면 아래쪽 목록을 펼치거나(open) 접는다(close). \"목록 열어줘·펼쳐줘\" 는 open, \"목록 닫아줘·줄여줘\" 는 close. 호출 뒤에는 말하지 않는다. (v2.30.2)",
            {"action": {"type": "string", "enum": ["open", "close"]}}, ["action"]),
+        fn("dial_phone",
+           "전화 앱을 번호가 입력된 채로 연다(통화 버튼은 이용자가 누른다). 방금 안내한 콜택시 접수센터·충전소 등의 번호로 "
+           "\"전화를 걸까요?\" 물음에 그렇다고 하면 사용한다. 방금 결과에 나온 번호만 걸 수 있다. (v2.34.0)",
+           {"tel": {"type": "string"}, "name": {"type": "string"}}, ["tel"]),
         fn("start_guidance",
            "화면에 표시된 경로로 길안내를 시작한다(화면의 '안내 시작' 버튼을 말로 누르는 것). "
            "\"안내 시작해\", \"출발\" 이라고 하거나 \"안내를 시작할까요?\" 물음에 그렇다고 답하면 사용한다. (v2.26.0)",
@@ -507,6 +512,8 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                     result = map_zoom_result(fargs.get("direction"), session_mode)   # (v2.28.0)
                 elif fname == "list_sheet":
                     result = list_sheet_result(fargs.get("action"), session_mode)    # (v2.30.2)
+                elif fname == "dial_phone":
+                    result = dial_phone_result(_nav, fargs.get("tel"), fargs.get("name"))   # (v2.34.0)
                 elif fname not in dispatcher:
                     result = {"error": f"unknown tool: {fname}"}
                 else:
@@ -518,6 +525,8 @@ async def _run_llm_turn(messages: list, dispatcher: dict, tracker, on_sources,
                     annotate_route_success(result, _nav)   # note_new_route 가 지우기 전에 (v2.26.0)
                     note_new_route(_nav, result.get("route_id"),
                                    continues=bool(result.get("guidance_continues")))
+                    seed_route_stations(_nav, result)   # 탈 칸·승강장 방향 (v2.34.0)
+                note_dial_numbers(_nav, result)         # "전화를 걸까요?" 에 쓸 번호 (v2.34.0)
                 if tracker is not None:
                     try:
                         tracker.on_tool_call(fname, fargs, result)

@@ -6602,10 +6602,26 @@ window.NAVI = (function(){
 
   function _dropAiTurn(){ try{ if(window.__CHAT && window.__CHAT.dropTurn) window.__CHAT.dropTurn(); }catch(e){} }
 
+  // 말로 "전화 걸어줘" (v2.34.0) — 전화 앱을 번호가 입력된 채로 연다. 통화 버튼은 이용자가 누른다.
+  // 앱(웹뷰)은 tel: 링크를 전화 앱으로 넘기고, 브라우저는 전화 앱 선택 창을 띄운다. 번호는 서버가 방금 안내한 번호로 확인했다.
+  var lastDial = null;
+  function dialPhone(tel){
+    var d = String(tel || "").replace(/[^0-9+]/g, "");
+    if(d.length < 8 || d.length > 13) return false;
+    lastDial = d;
+    try{ if(typeof sendActivity === "function") sendActivity("dial"); }catch(e){}
+    var a = document.createElement("a"); a.href = "tel:" + d; a.style.display = "none";
+    document.body.appendChild(a);
+    try{ a.click(); }catch(e){}
+    setTimeout(function(){ try{ a.remove(); }catch(e){} }, 0);
+    return true;
+  }
+
   function onUiAction(msg){
     var p = msg.payload || {};
     // 서버는 도구 결과의 ui_action 전체를 payload 로 보낸다 — 카드형 액션은 그 안에 payload 가 한 겹 더 있다
     if(p && p.payload && typeof p.payload === "object" && !Array.isArray(p.payload)) p = p.payload;
+    if(msg.action === "dial"){ dialPhone(p.tel); return null; }   // 정책상담·이동경로 안내 공통 (v2.34.0)
     if(!IS_NAVI) return policyUiAction(msg, p);   // 정책상담 화면 (v2.0.0)
     routeBusy(false);                             // 결과가 왔다 (v2.0.1)
     // 화면을 강제로 전환하지 않는다(#213) — 갑작스러운 화면 이동은 혼란을 준다.
@@ -7154,7 +7170,7 @@ window.NAVI = (function(){
     // 첫 진입은 장애유형 선택 게이트를 먼저 — 선택 완료 후 목록 로드 (#202)
     openNavi: function(){ openNavi(); if(typeConfirmed) loadSpots(); else renderTypeSelectPanel(); },
     // 테스트용 노출
-    _internals: function(){ return {duckState: function(){ return {ducked: !!duckTimer, heard: Date.now() < heardUntil, coolUntil: duckCoolUntil, vol: ttsAudio ? ttsAudio.volume : null}; },
+    _internals: function(){ return {lastDial: function(){ return lastDial; }, duckState: function(){ return {ducked: !!duckTimer, heard: Date.now() < heardUntil, coolUntil: duckCoolUntil, vol: ttsAudio ? ttsAudio.volume : null}; },
       steps:steps, stepIdx:stepIdx, spots:spots, speak:speak, showRoute:showRoute,
                                      isGuiding:function(){ return guiding; }, voiceStartGuidance:voiceStartGuidance,
                                      resumeDecide:_resumeDecide, resumeShort:resumeShort,
