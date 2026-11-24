@@ -106,7 +106,7 @@ def t_support_cards_and_instruction():
     assert r["status"] == "success" and r["count"] == 3, r
     # 콜택시는 반경 조회에서 빼고 지역 접수센터를 따로 찾는다 (v2.34.0)
     assert rec.calls[0]["types"] == "charge,repair"
-    assert rec.calls[1]["types"] == "calltaxi" and rec.calls[1]["radius_m"] == 30000
+    assert rec.calls[1]["types"] == "calltaxi" and rec.calls[1]["radius_m"] == 20000
     rp = [i for i in r["items"] if i["support_type"] == "repair"][0]
     assert rp["open_hours"] is None and rp["open_hours_status"] == "unknown"
     assert rp["coord_suspect"] is True and rp["type_label"] == "수리센터"
