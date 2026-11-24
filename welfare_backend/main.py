@@ -118,6 +118,7 @@ if _static_dir.exists():
 import re as _re
 from fastapi import HTTPException as _HTTPException
 from fastapi.responses import FileResponse as _FileResponse
+from fastapi.responses import HTMLResponse as _HTMLResponse, JSONResponse as _JSONResponse
 
 
 def _front_page():
@@ -136,6 +137,72 @@ async def page_policy():
 @app.get("/navi", include_in_schema=False)
 async def page_navi():
     return _front_page()
+
+
+# ─────────────────────────────────────────────────────────────
+# 웹에서 계정 바꾸기 (v2.35.0) — 사이트 기본 인증(nginx)은 브라우저가 계정을 기억해 두어
+# 화면에서 지울 방법이 없다. 바꾸기를 누르면 표시 쿠키를 두고, 다음 화면 요청이 같은 계정으로
+# 오면 한 번만 401(같은 realm)로 돌려 브라우저가 로그인 창을 다시 띄우게 한다.
+# 로그인 창에 다른 계정을 넣으면 그대로 들어가고, 같은 계정을 다시 넣어도 두 번째부터는 들어간다.
+# 앱(이동경로 안내)은 앱이 계정을 다루므로 이 경로를 쓰지 않는다.
+# ─────────────────────────────────────────────────────────────
+from fastapi import Request as _Request  # noqa: E402
+
+_ACCT_COOKIE = "aa_acct_switch"
+_ACCT_TTL_S = 300
+_SITE_AUTH_REALM = os.environ.get("SITE_AUTH_REALM", "AccessistantAI (testers only)")
+
+
+def _acct_name(v) -> str:
+    return _re.sub(r"[^A-Za-z0-9_.-]", "", str(v or ""))[:40]
+
+
+def _is_front_page_path(path: str) -> bool:
+    p = (path or "").rstrip("/")
+    return p in ("", "/policy", "/navi") or p.endswith("/accessistant.html")
+
+
+@app.get("/api/v1/whoami", include_in_schema=False)
+async def whoami(request: _Request):
+    return {"user": _acct_name(request.headers.get("x-remote-user")) or None}
+
+
+@app.post("/api/v1/account/switch", include_in_schema=False)
+async def account_switch(request: _Request):
+    user = _acct_name(request.headers.get("x-remote-user"))
+    resp = _JSONResponse({"ok": bool(user)})
+    if user:
+        resp.set_cookie(_ACCT_COOKIE, "p." + user, max_age=_ACCT_TTL_S, path="/", httponly=True, samesite="lax", secure=True)
+    return resp
+
+
+_ACCT_PAGE = (
+    "<!doctype html><html lang=\"ko\"><head><meta charset=\"utf-8\">"
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+    "<meta name=\"theme-color\" content=\"#ffffff\"><title>계정 바꾸기</title></head>"
+    "<body style=\"font-family:sans-serif;padding:32px 20px;text-align:center;line-height:1.6\">"
+    "<p style=\"font-size:20px;font-weight:700\">다른 계정으로 로그인해 주세요</p>"
+    "<p>로그인 창이 뜨지 않았으면 아래 버튼을 눌러 주세요.</p>"
+    "<p><a href=\"\" onclick=\"location.reload();return false;\" style=\"display:inline-block;padding:14px 22px;"
+    "border-radius:12px;background:#2563EB;color:#fff;text-decoration:none;font-weight:700\">다시 열기</a></p>"
+    "</body></html>")
+
+
+@app.middleware("http")
+async def _account_switch_gate(request, call_next):
+    mark = request.cookies.get(_ACCT_COOKIE)
+    if not mark or request.method != "GET" or not _is_front_page_path(request.url.path):
+        return await call_next(request)
+    user = _acct_name(request.headers.get("x-remote-user"))
+    if user and mark == "p." + user:
+        # 브라우저가 기억한 계정 그대로 왔다 — 한 번만 로그인 창을 띄운다
+        resp = _HTMLResponse(_ACCT_PAGE, status_code=401, headers={
+            "WWW-Authenticate": 'Basic realm="%s", charset="UTF-8"' % _SITE_AUTH_REALM, "Cache-Control": "no-store"})
+        resp.set_cookie(_ACCT_COOKIE, "a." + user, max_age=_ACCT_TTL_S, path="/", httponly=True, samesite="lax", secure=True)
+        return resp
+    resp = await call_next(request)
+    resp.delete_cookie(_ACCT_COOKIE, path="/")
+    return resp
 
 
 # 이동경로 안내 앱 배포본 — 앱이 새 버전 유무를 확인하고 내려받는다.
