@@ -823,13 +823,13 @@ for (const [st, name] of results) { console.log(`${st === "PASS" ? "  ok" : "FAI
 // ───────── v2.30.3 마이크 에코 제거 범위 ─────────
 {
   const asked = [];
-  const w = boot((win) => { win.__gum = async (c) => { asked.push(c.audio.echoCancellation);
+  const w = boot((win) => { win.AccessNaviApp = {}; win.__gum = async (c) => { asked.push(c.audio.echoCancellation);
     if (c.audio.echoCancellation === "all") { const e = new Error("bad value"); e.name = "TypeError"; throw e; }
     return { getAudioTracks: () => [{ getSettings: () => ({ echoCancellation: true }) }] }; }; }, "https://example.test/policy");
   w.navigator.mediaDevices.getUserMedia = (c) => w.__gum(c);
   await sleep(30);
   const st = await w.__CHAT._openMicForTest();
-  check("(v2.30.3) 에코 제거 'all' 을 먼저 요청하고, 안 되면 true 로 다시 연다", () => {
+  check("(v2.30.3) 앱에서는 에코 제거 'all' 을 먼저 요청하고, 안 되면 true 로 다시 연다", () => {
     assert.deepEqual(asked, ["all", true]); assert.ok(st && st.getAudioTracks);
   });
   asked.length = 0;
@@ -840,6 +840,17 @@ for (const [st, name] of results) { console.log(`${st === "PASS" ? "  ok" : "FAI
   w.__gum = async (c) => { asked.push(c.audio.echoCancellation); return { getAudioTracks: () => [] }; };
   await w.__CHAT._openMicForTest();
   check("(v2.30.3) 'all' 을 받아 주면 한 번만 연다", () => assert.deepEqual(asked, ["all"]));
+}
+// ───────── v2.35.1 휴대폰 브라우저는 true · 주소로 비교 ─────────
+for (const [url, want, name] of [["https://example.test/policy", [true], "휴대폰 브라우저(Chrome)는 11/12 이전처럼 true 로 한 번 연다"],
+                                  ["https://example.test/policy?ec=all", ["all"], "주소 ?ec=all 이면 'all' 로 연다(비교 시험)"],
+                                  ["https://example.test/policy?ec=on", [true], "주소 ?ec=on 이면 true 로 연다"]]) {
+  const asked = [];
+  const w = boot((win) => { win.__gum = async (c) => { asked.push(c.audio.echoCancellation); return { getAudioTracks: () => [] }; }; }, url);
+  w.navigator.mediaDevices.getUserMedia = (c) => w.__gum(c);
+  await sleep(30);
+  await w.__CHAT._openMicForTest();
+  check("(v2.35.1) " + name, () => assert.deepEqual(asked, want));
 }
 
 console.log(`\n${results.length - failed} passed, ${failed} failed`);
