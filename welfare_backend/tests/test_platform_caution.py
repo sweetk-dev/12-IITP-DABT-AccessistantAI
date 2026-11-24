@@ -56,7 +56,7 @@ def t_explicit_subway_result_carries_cautions():
     ins = r["ai_instruction"]
     assert "platform_cautions 가 있으면 경로 요약보다 먼저" in ins, ins
     # 지시문의 순서 — 승강장 주의가 거리·시간 요약 지시보다 앞에 온다
-    assert ins.index("platform_cautions") < ins.index("총 거리·예상 시간"), ins
+    assert ins.index("platform_cautions") < ins.index("말은 짧게 하세요"), ins
     assert r["auto_kept_walk"] is None
 
 
