@@ -1581,8 +1581,17 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   // 에코 제거 범위 (v2.30.3) — echoCancellation: true 만으로는 Android WebView 에서 페이지가 Web Audio 로 재생하는
   // 상담원·안내 음성이 마이크에서 지워지지 않아(실기기 2026-11-12, WebView 156) 상담원이 자기 말을 듣고 답했다.
   // "all"(기기에서 나가는 소리 전부를 지운다)을 먼저 요청하고, 지원하지 않는 브라우저면 종전 값으로 다시 연다.
+  // 휴대폰 브라우저(Chrome)는 11/12 이전처럼 true 로 연다 (v2.35.1) — 갤럭시 S22(Chrome 158)에서 "all" 로 열면
+  // 상담원 음성이 아예 안 나오거나 앞부분이 되풀이되는 일이 있었다(moto g56 앱은 정상). "all" 은 앱(WebView)에만 쓴다.
+  // 비교 시험용으로 주소에 ?ec=all / ?ec=on 을 붙이면 그 값으로 연다.
   const MIC_BASE = { channelCount: 1, noiseSuppression: true, autoGainControl: true };
+  const micEcPref = () => {
+    try { const q = new URLSearchParams(location.search).get("ec"); if (q === "all") return "all"; if (q === "on") return true; } catch (e) {}
+    return (window.AccessNaviApp || /; wv\)/.test(navigator.userAgent || "")) ? "all" : true;
+  };
   const openMicStream = async () => {
+    const ec = micEcPref();
+    if (ec !== "all") return await navigator.mediaDevices.getUserMedia({ audio: Object.assign({ echoCancellation: true }, MIC_BASE) });
     try {
       return await navigator.mediaDevices.getUserMedia({ audio: Object.assign({ echoCancellation: "all" }, MIC_BASE) });
     } catch (e) {
