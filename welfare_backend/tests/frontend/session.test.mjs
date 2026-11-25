@@ -853,6 +853,17 @@ for (const [url, want, name] of [["https://example.test/policy", [true], "휴대
   await w.__CHAT._openMicForTest();
   check("(v2.35.1) " + name, () => assert.deepEqual(asked, want));
 }
+for (const [stored, url, want, name] of [["off", "https://example.test/static/accessistant.html", [false], "기억해 둔 ?ec=off 를 주소 값 없이 열어도 쓴다(설치한 앱)"],
+                                          ["off", "https://example.test/static/accessistant.html?ec=auto", [true], "?ec=auto 면 기억을 지우고 기본(true)으로"]]) {
+  const asked = [];
+  const w = boot((win) => { try { win.localStorage.setItem("aa_ec", stored); } catch (e) {}
+    win.__gum = async (c) => { asked.push(c.audio.echoCancellation); return { getAudioTracks: () => [] }; }; }, url);
+  w.navigator.mediaDevices.getUserMedia = (c) => w.__gum(c);
+  await sleep(30);
+  await w.__CHAT._openMicForTest();
+  check("(v2.35.4) " + name, () => assert.deepEqual(asked, want));
+  if (url.includes("auto")) check("(v2.35.4) ?ec=auto 뒤에는 기억이 없다", () => assert.equal(w.localStorage.getItem("aa_ec"), null));
+}
 check("(v2.35.3) ?ec=off 시험은 상담원이 말하는 동안 마이크 소리를 보내지 않는다", () =>
   assert.match(HTML, /if \(MIC_HALF && !forced && \(aiAudioActive\(\) \|\| aiQueued > 0\)\) \{ naviAiRun = 0; naviAiOpen = false; return; \}/));
 

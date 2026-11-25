@@ -1599,7 +1599,16 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   // 비교 시험용으로 주소에 ?ec=all / ?ec=on 을 붙이면 그 값으로 연다.
   const MIC_BASE = { channelCount: 1, noiseSuppression: true, autoGainControl: true };
   const micEcPref = () => {
-    try { const q = new URLSearchParams(location.search).get("ec"); if (q === "all") return "all"; if (q === "on") return true; if (q === "off") return false; } catch (e) {}
+    // 주소 값은 이 기기에 기억한다 (v2.35.4) — 홈 화면에 설치한 앱은 주소 값 없이 열리므로, Chrome 에서 한 번 ?ec=off 로
+    // 열어 두면 설치한 앱도 같은 방식으로 연다. ?ec=auto 로 열면 기억을 지우고 기본으로 돌아간다.
+    let q = null;
+    try { q = new URLSearchParams(location.search).get("ec"); } catch (e) {}
+    try {
+      if (q === "auto") { localStorage.removeItem("aa_ec"); q = null; }
+      else if (q === "all" || q === "on" || q === "off") localStorage.setItem("aa_ec", q);
+      else q = localStorage.getItem("aa_ec");
+    } catch (e) {}
+    if (q === "all") return "all"; if (q === "on") return true; if (q === "off") return false;
     return (window.AccessNaviApp || /; wv\)/.test(navigator.userAgent || "")) ? "all" : true;
   };
   // 시험(?ec=off, v2.35.3) — 에코 제거를 끄면 휴대폰이 소리를 '통화' 경로로 바꾸지 않는다(미디어 볼륨 · 아래 스피커).
