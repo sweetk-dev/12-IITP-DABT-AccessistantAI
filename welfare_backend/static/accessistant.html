@@ -515,8 +515,9 @@ html[data-product="navi"] #modeNaviBtn .av svg{stroke:#fff;}
          ["icon","16x16","image/png","/static/icons/favicon-16.png"],
          ["icon","","image/svg+xml","/static/logo.svg"]];
   for(var i=0;i<L.length;i++){
+    // 매니페스트는 사이트 기본 인증 뒤에 있다 — 브라우저는 매니페스트를 인증 없이 가져오므로 use-credentials 를 붙인다 (v2.35.2)
     document.write('<link rel="'+L[i][0]+'"'+(L[i][1]?' sizes="'+L[i][1]+'"':'')+(L[i][2]?' type="'+L[i][2]+'"':'')
-      +' href="'+withBase(L[i][3])+'">');
+      +(L[i][0]==="manifest"?' crossorigin="use-credentials"':'')+' href="'+withBase(L[i][3])+'">');
   }
 })();
 </script>
@@ -1243,6 +1244,18 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   // 실증 기록(#318) — 이 연결에서 받은 상담원 음성 바이트 누적. 서버 기록 파일의 위치와 1:1 로 맞는다
   let aiRecvBytes = 0;
   const trialEv = (t, d) => { try { if (window.__TRIAL && window.__TRIAL.enabled) window.__TRIAL.ev(t, d); } catch (e) {} };
+  // 상담원 음성 재생기 진단 (v2.35.2) — 갤럭시 S22(Chrome)에서 소리가 났다 안 났다 한다. 재생기를 만들 때와 상태가 바뀔 때를
+  // 실증 기록(참여자 계정)에 남긴다. 주소에 ?pb=native 를 붙이면 시험용으로 재생기를 기기 기본 표본율로 한 번만 만들어
+  // 끊김(중단) 때도 닫지 않고 계속 쓴다 — 기본 동작은 그대로다.
+  const PB_MODE = (() => { try { return new URLSearchParams(location.search).get("pb") === "native" ? "native" : ""; } catch (e) { return ""; } })();
+  const newPlaybackCtx = (rate) => {
+    const C = window.AudioContext || window.webkitAudioContext;
+    const ctx = PB_MODE === "native" ? new C() : new C({ sampleRate: rate });
+    trialEv("ai_ctx", { rate: ctx.sampleRate, state: ctx.state, pb: PB_MODE || "-", base: ctx.baseLatency, out: ctx.outputLatency });
+    try { ctx.onstatechange = () => trialEv("ai_ctx_state", { state: ctx.state }); } catch (e) {}
+    if (PB_MODE === "native" && ctx.state === "suspended" && !aiHeld) { try { ctx.resume(); } catch (e) {} }
+    return ctx;
+  };
   let lastAiAudioEnd = 0;    // 상담원(서버) 음성 재생 종료 시각 — 잔향 게이트용
   // 상담 음성(서버 합성)과 길안내 TTS(브라우저) 의 체감 볼륨 정합용 게인.
   // 브라우저 TTS 는 volume 1.0 이 상한이라 키울 수 없어, 더 크게 들리는 서버 음성을 낮춰 맞춘다.
@@ -1818,9 +1831,9 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
       try {
         const buffer = b642ab(b64);
         const sampleRate = parseInt((mimeType || "audio/pcm;rate=24000").match(/rate=(\d+)/)?.[1] || "24000", 10);
-        if (!playbackCtx || playbackCtx.sampleRate !== sampleRate) {
+        if (!playbackCtx || (PB_MODE !== "native" && playbackCtx.sampleRate !== sampleRate)) {
           if (playbackCtx) { try { await playbackCtx.close(); } catch{} }
-          playbackCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+          playbackCtx = newPlaybackCtx(sampleRate);
           if (aiHeld) { try { playbackCtx.suspend(); } catch (e) {} }   // 길안내 문장 재생 중 (#359)
         }
         const int16 = new Int16Array(buffer);
@@ -1854,7 +1867,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
     activeSources.clear();
     aiQueued = 0;
     pendingPlayback = Promise.resolve();
-    if (playbackCtx) {
+    if (playbackCtx && PB_MODE !== "native") {   // 시험(?pb=native)은 재생기를 닫지 않고 계속 쓴다
       try { playbackCtx.close(); } catch {}
       playbackCtx = null;
     }
