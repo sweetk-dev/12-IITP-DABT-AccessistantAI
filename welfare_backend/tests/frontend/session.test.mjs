@@ -844,7 +844,8 @@ for (const [st, name] of results) { console.log(`${st === "PASS" ? "  ok" : "FAI
 // ───────── v2.35.1 휴대폰 브라우저는 true · 주소로 비교 ─────────
 for (const [url, want, name] of [["https://example.test/policy", [true], "휴대폰 브라우저(Chrome)는 11/12 이전처럼 true 로 한 번 연다"],
                                   ["https://example.test/policy?ec=all", ["all"], "주소 ?ec=all 이면 'all' 로 연다(비교 시험)"],
-                                  ["https://example.test/policy?ec=on", [true], "주소 ?ec=on 이면 true 로 연다"]]) {
+                                  ["https://example.test/policy?ec=on", [true], "주소 ?ec=on 이면 true 로 연다"],
+                                  ["https://example.test/policy?ec=off", [false], "(v2.35.3) 주소 ?ec=off 이면 에코 제거를 끄고 연다(시험)"]]) {
   const asked = [];
   const w = boot((win) => { win.__gum = async (c) => { asked.push(c.audio.echoCancellation); return { getAudioTracks: () => [] }; }; }, url);
   w.navigator.mediaDevices.getUserMedia = (c) => w.__gum(c);
@@ -852,6 +853,8 @@ for (const [url, want, name] of [["https://example.test/policy", [true], "휴대
   await w.__CHAT._openMicForTest();
   check("(v2.35.1) " + name, () => assert.deepEqual(asked, want));
 }
+check("(v2.35.3) ?ec=off 시험은 상담원이 말하는 동안 마이크 소리를 보내지 않는다", () =>
+  assert.match(HTML, /if \(MIC_HALF && !forced && \(aiAudioActive\(\) \|\| aiQueued > 0\)\) \{ naviAiRun = 0; naviAiOpen = false; return; \}/));
 
 console.log(`\n${results.length - failed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
