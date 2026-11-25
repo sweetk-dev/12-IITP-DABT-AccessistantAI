@@ -76,6 +76,22 @@ check("계정 바꾸기 요청은 서비스워커가 가로채지 않고, 실패
   assert.match(HTML, /location\.replace\(location\.pathname\+"\?acct="/);
 });
 
+// ───────── v2.35.2 ─────────
+{
+  const w = boot("https://example.test/static/accessistant.html"); await ready(w);
+  const m = w.document.querySelector('link[rel="manifest"]');
+  check("(v2.35.2) 매니페스트는 인증 정보와 함께 가져온다(crossorigin=use-credentials)", () => { assert.ok(m); assert.equal(m.getAttribute("crossorigin"), "use-credentials"); });
+  w.close();
+}
+check("(v2.35.2) 재생기 진단 — 만들 때·상태 바뀔 때 실증 기록에 남긴다", () => {
+  assert.match(HTML, /trialEv\("ai_ctx", \{ rate: ctx\.sampleRate, state: ctx\.state/);
+  assert.match(HTML, /ctx\.onstatechange = \(\) => trialEv\("ai_ctx_state"/);
+});
+check("(v2.35.2) 시험(?pb=native)만 기본 표본율로 만들고 닫지 않는다 — 기본 동작은 24kHz·중단 때 닫기 그대로", () => {
+  assert.match(HTML, /PB_MODE === "native" \? new C\(\) : new C\(\{ sampleRate: rate \}\)/);
+  assert.match(HTML, /if \(playbackCtx && PB_MODE !== "native"\) \{/);
+});
+
 let failed = 0;
 for (const [st, name] of results) { console.log(`${st === "PASS" ? "  ok" : "FAIL"}  ${name}`); if (st === "FAIL") failed++; }
 console.log(`\n${results.length - failed} passed, ${failed} failed`);
