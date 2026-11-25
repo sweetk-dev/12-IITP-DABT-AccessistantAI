@@ -1599,11 +1599,15 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
   // 비교 시험용으로 주소에 ?ec=all / ?ec=on 을 붙이면 그 값으로 연다.
   const MIC_BASE = { channelCount: 1, noiseSuppression: true, autoGainControl: true };
   const micEcPref = () => {
-    try { const q = new URLSearchParams(location.search).get("ec"); if (q === "all") return "all"; if (q === "on") return true; } catch (e) {}
+    try { const q = new URLSearchParams(location.search).get("ec"); if (q === "all") return "all"; if (q === "on") return true; if (q === "off") return false; } catch (e) {}
     return (window.AccessNaviApp || /; wv\)/.test(navigator.userAgent || "")) ? "all" : true;
   };
+  // 시험(?ec=off, v2.35.3) — 에코 제거를 끄면 휴대폰이 소리를 '통화' 경로로 바꾸지 않는다(미디어 볼륨 · 아래 스피커).
+  // 대신 상담원 목소리가 마이크로 되돌아오므로, 상담원이 말하는 동안에는 마이크 소리를 보내지 않는다(번갈아 말하기).
+  const MIC_HALF = micEcPref() === false;
   const openMicStream = async () => {
     const ec = micEcPref();
+    if (ec === false) return await navigator.mediaDevices.getUserMedia({ audio: Object.assign({}, MIC_BASE, { echoCancellation: false }) });
     if (ec !== "all") return await navigator.mediaDevices.getUserMedia({ audio: Object.assign({ echoCancellation: true }, MIC_BASE) });
     try {
       return await navigator.mediaDevices.getUserMedia({ audio: Object.assign({ echoCancellation: "all" }, MIC_BASE) });
@@ -1698,6 +1702,7 @@ function chatDayLabel(){var d=new Date();return d.getFullYear()+"\ub144 "+(d.get
         return;   // 재생 중 프레임은 에코일 수 있어 보관만 하고, 멈춘 다음 프레임부터 통과
       }
       if (!forced) naviBargeReset();
+      if (MIC_HALF && !forced && (aiAudioActive() || aiQueued > 0)) { naviAiRun = 0; naviAiOpen = false; return; }   // 시험(?ec=off) — 번갈아 말하기
       if (!forced && aiAudioActive()) {
         // 상담원 음성 중·직후에는 지속 발화(barge-in)가 감지된 뒤부터 프레임을 통과시킨다.
         // 원래 이동·관광 화면에만 두던 게이트를 상담 화면에도 적용한다(v1.40.0) — 상담 화면은
