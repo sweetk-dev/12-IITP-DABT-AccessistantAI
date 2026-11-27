@@ -21,7 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from test_route_mode import _Recorder, _plan, _transit_resp, _walk_resp, check, FAILS  # noqa: E402
+from test_route_mode import _Recorder, _plan, _plan_all, _transit_resp, _walk_resp, check, FAILS  # noqa: E402
 import tool_handlers  # noqa: E402
 
 WARN = ("관악역 하차 승강장(석수 방향)에는 대합실로 이어지는 승강기가 없고 휠체어리프트만 있습니다"
@@ -92,7 +92,7 @@ def t_auto_keeps_walk_when_lift_only_and_saving_small():
     # 도보 2,500m vs 지하철 경로 도보 1,310m — 아끼는 1,190m 가 감점 1,500m 이하 → 도보 유지
     err = {"status": "error", "message": "조합 없음"}
     rec = _Recorder([_walk_resp(2500), _lift_transit(), err, err])
-    r = _plan("", rec)
+    r = _plan_all("", rec)
     assert rec.calls == ["walk", "walk_subway", "walk_bus", "walk_bus_subway"], rec.calls
     assert r["mode_used"] == "walk" and r["auto_mode"] is True, r["mode_used"]
     assert r["auto_kept_walk"] == [WARN]
@@ -113,10 +113,10 @@ def t_auto_upgrades_without_lift_flags_as_before():
     # v2.20.0 — 리프트 경고가 없어도 '무조건 승격'하지 않고 비교한다. 도보 1,000m(1,000초)가
     # 버스+지하철 (1,400+360)×1.45=2,552 보다 나으므로 도보. 도보가 멀면(4,000초) 대중교통.
     err = {"status": "error", "message": "조합 없음"}
-    r = _plan("", _Recorder([_walk_resp(1000), err, err, _transit_resp()]))
+    r = _plan_all("", _Recorder([_walk_resp(1000), err, err, _transit_resp()]))
     assert r["mode_used"] == "walk" and r["auto_kept_walk"] is None, "리프트 때문이 아닌 도보 선택"
     rec = _Recorder([_walk_resp(4000), err, err, _transit_resp()])
-    r = _plan("", rec)
+    r = _plan_all("", rec)
     assert r["mode_used"] == "walk_bus_subway"
     assert r["platform_cautions"] == [] and r["auto_kept_walk"] is None
     assert "platform_cautions 가 있으면" not in r["ai_instruction"]

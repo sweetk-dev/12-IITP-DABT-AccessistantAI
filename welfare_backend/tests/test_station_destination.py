@@ -155,12 +155,14 @@ def t_transit_mode_sends_destination_station():
 def t_auto_mode_transit_candidates_send_destination_station():
     """자동 추천의 대중교통 후보 비교에도 싣는다 (v2.34.0) — "안양역 가자"가 역 대표점까지 걷는 후보로 비교되지 않게."""
     bodies, fake = _with_fake([_route(dist=3000)])
-    orig = route_client._call
+    orig, orig_modes = route_client._call, tool_handlers.AUTO_TRANSIT_MODES
     route_client._call = fake
+    tool_handlers.AUTO_TRANSIT_MODES = ("walk_subway", "walk_bus", "walk_bus_subway")   # 세 방식 모두 비교하는 설정
     try:
         _run(tool_handlers.tool_plan_accessible_route(origin_lat=37.4188, origin_lng=126.9095, destination_place="안양역"))
     finally:
         route_client._call = orig
+        tool_handlers.AUTO_TRANSIT_MODES = orig_modes
     modes = [(b or {}).get("mode", "walk") for b in bodies]
     assert {"walk_subway", "walk_bus", "walk_bus_subway"} <= set(modes), modes
     assert all((b or {}).get("destination_station") == {"name": "안양"} for b in bodies), bodies
