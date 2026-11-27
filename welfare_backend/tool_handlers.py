@@ -884,8 +884,8 @@ AUTO_TRANSIT_MIN_M = 700     # 도보 경로가 이 거리 미만이면 자동 �
 # 2026-10-22 실증 1-A 에서 도보 1.3km 대신 마을버스 순환 노선 58정거장·총 20km 경로가 기본으로 나왔다
 # (02 쪽 계산 결함은 02 v1.43.0 에서 따로 고침). 이제 도보와 대중교통 후보를 모두 만들어 비교한다.
 #
-#   1) 후보: 도보(항상) + 도보+지하철 / 도보+버스 / 도보+버스+지하철 (도보가 AUTO_TRANSIT_MIN_M 이상일 때,
-#      세 방식을 동시에 요청). 같은 실제 방식(legs 기준)이 겹치면 하나만 쓴다.
+#   1) 후보: 도보(항상) + AUTO_TRANSIT_MODES 의 대중교통 방식(도보가 AUTO_TRANSIT_MIN_M 이상일 때 동시에 요청).
+#      v2.36.0 부터 기본은 도보+지하철 하나 — 아래 AUTO_TRANSIT_MODES 참조. 같은 실제 방식(legs 기준)이 겹치면 하나만 쓴다.
 #   2) 제외: ① 오류·경로 없음 ② 총거리가 도보 거리의 AUTO_TRANSIT_MAX_DIST_RATIO 배 초과(상식 밖 우회)
 #      ③ 리프트만 있는 승강장을 거치면서 덜 걷는 이득이 감점 이하(_lift_only_keeps_walk, 종전 규칙)
 #   3) 점수 = (예상 소요시간 + 대중교통 구간당 AUTO_TRANSIT_LEG_OVERHEAD_SEC) × 방식 가중치. 가장 낮은 후보 채택.
@@ -900,6 +900,29 @@ AUTO_MODE_WEIGHT = {
     "walk_bus_subway": 1.45,  # 4순위 도보+버스+지하철
 }
 AUTO_MODE_ORDER = ("walk", "walk_subway", "walk_bus", "walk_bus_subway")
+
+# 자동 추천이 도보와 함께 계산해 비교할 대중교통 방식 (v2.36.0)
+# 버스가 들어간 방식(walk_bus·walk_bus_subway)은 경로 서비스가 후보 정류장마다 버스 실시간 도착정보를
+# 외부 API 로 조회하므로 계산이 길다. 세 방식을 동시에 요청하면 경로 서비스가 차례로 처리해
+# 자동 추천 응답이 3~4초까지 늘었다(2026-11-26 실증, 같은 요청을 하나씩 보내면 각 1초 안팎).
+# 그래서 자동 추천은 도보+지하철만 함께 계산하고, 버스 경로는 이용자가 이동 방식 카드(도보+버스·버스+지하철)를
+# 고르거나 말로 "버스로" 요청할 때 그 방식으로 따로 계산한다. 비교 규칙(점수·가중치·제외 조건)은 그대로다.
+# 운영 설정 AUTO_TRANSIT_MODES(쉼표 구분)로 바꿀 수 있다 — 예: "walk_subway,walk_bus,walk_bus_subway" 면 종전 동작.
+AUTO_TRANSIT_ALLOWED = ("walk_subway", "walk_bus", "walk_bus_subway")
+AUTO_TRANSIT_DEFAULT = ("walk_subway",)
+
+
+def _parse_auto_transit_modes(raw) -> tuple:
+    """AUTO_TRANSIT_MODES 설정값을 방식 목록으로. 알 수 없는 값은 버리고, 남는 것이 없으면 기본값."""
+    out = []
+    for tok in (raw or "").split(","):
+        m = tok.strip().lower()
+        if m in AUTO_TRANSIT_ALLOWED and m not in out:
+            out.append(m)
+    return tuple(out) or AUTO_TRANSIT_DEFAULT
+
+
+AUTO_TRANSIT_MODES = _parse_auto_transit_modes(os.environ.get("AUTO_TRANSIT_MODES", ""))
 # 대중교통 구간당 더하는 시간(초) — 02 의 예상 소요시간은 정거장 수 기반이라 휠체어 승하차(리프트·경사판)·
 # 정류장/승강장 이동 시간이 빠져 있다. 저상버스 대기(실시간)는 02 가 이미 더하므로 여기서는 승하차만 본다.
 AUTO_TRANSIT_LEG_OVERHEAD_SEC = 180
@@ -937,7 +960,7 @@ async def _auto_pick(origin_pt, dest, profile, low_floor, walk_data, dest_statio
     compare.append(dict({"mode": "walk", "distance_m": walk_m, "score": round(ws or 0), "status": "후보"}, **wbasis))
     if walk_m < AUTO_TRANSIT_MIN_M:
         return walk_data, "walk", None, compare
-    req_modes = ("walk_subway", "walk_bus", "walk_bus_subway")
+    req_modes = tuple(AUTO_TRANSIT_MODES)      # v2.36.0 — 기본은 도보+지하철만(버스 경로는 고를 때 계산)
     # 목적지가 역이면 대중교통 후보도 그 역 출구에서 끝나게 한다(v2.34.0) — 역 대표점까지 걷는 후보와 비교하지 않는다
     st_kw = {"dest_station": dest_station} if dest_station else {}
     results = await asyncio.gather(*[
@@ -1319,7 +1342,7 @@ async def tool_plan_accessible_route(destination_poi_id: str = "",
 
     # ── 모드 결정 (#251) ──
     # ""/auto = 자동 추천: 도보 경로를 먼저 만들고, 도보가 멀면(기준 이상)
-    # 대중교통 조합(walk_bus_subway)으로 승격을 시도한다. 조합이 없으면 도보 유지.
+    # 대중교통 후보(AUTO_TRANSIT_MODES, 기본 도보+지하철)와 비교한다(_auto_pick). 후보가 없으면 도보 유지.
     req_mode = (mode or "").strip().lower()
     auto = req_mode in ("", "auto", "recommend")
     if not auto and req_mode not in ROUTE_MODES:
